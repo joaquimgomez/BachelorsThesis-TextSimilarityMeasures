@@ -1,0 +1,2189 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+High-fidelity prediction of crack formation in 2D and 3D pullout tests
+
+Lorenzo Benedetti, Miguel Cervera, Michele Chiumenti
+International Center for Numerical Methods in Engineering (CIMNE),
+
+Technical University of Catalonia (UPC), Edificio C1, Campus Norte,
+
+Jordi Girona 1-3, 08034 Barcelona, Spain
+
+Corresponding author: lbenedetti@cimne.upc.edu
+
+Abstract
+
+This paper presents the 2D and 3D numerical analysis of pullout tests on steel anchorages in
+concrete blocks using standard and mixed finite elements. A novel (stabilized) mixed formulation
+in the variables of total strain ε and displacements u is introduced to overcome the intrinsic de-
+ficiencies of the standard displacement-based one in the context of localization of strains, such as
+mesh dependency. The quasi-brittle behaviour of concrete is described through an elastoplastic
+constitutive law with a local Rankine yielding criterion. The proposed formulation is shown to be
+a reliable and accurate tool, sensitive to the physical parameters of the pullout tests, but objective
+with respect to the adopted FE mesh. Furthermore, the mixed ε/u finite element is able to capture
+the correct failure mechanism with relatively coarse discretizations. At the same time, the spurious
+behavior of the standard formulation is not alleviated by mesh-refinement.
+
+1
+
+
+
+1 Introduction
+
+Concrete is widely used in the context of civil structures, and yet, it is a rather complex material.
+Having an inherent internal heterogeneity and reacting to environmental conditions makes the post-
+peak non-linear behavior and the subsequent failure very difficult to predict, if not impossible. Then,
+it is clear the key role of experimental tests in the context of concrete structures reliability. Within
+the extensive literature in the field, one can recall L-shaped panels tests by Winkler et al. [1], wedge
+splitting by Trunk [2], single edge notched beams by Guinea et al. [3], Gálvez et al. [4], mixed mode
+fracture tests by Nooru-Mohamed [5], Ballatore et al. [6] and indentation tests by Berenbaum and
+Brodie [7].
+
+In this work, the pullout test is addressed, being one of the most interesting experimental techniques
+to evaluate the strength of concrete and the overall behavior of embedded anchorages. First accounts
+of the pullout test come from Abrams [8] and Slater et al. [9]. Later, Elfgren et al. [10] and Peier [11]
+introduced numerical modeling as a validation of the experimental procedure. While the laboratory
+setup can be easily reproduced, the test outcomes are strictly dependent on the choice of various
+parameters as the mechanical properties of the employed materials, the size of specimens and the
+anchorage embed depth. The influential works of Eligehausen and Sawade [12], Bažant et al. [13],
+Ožbolt et al. [14], Karihaloo [15] emphasized the structural size effect on the pullout test and its
+influence on the energy dissipated in the cracking process. Most recent advances are related to the
+possibility of testing the coupling between FRP composites and concrete [16, 17]. Hereafter, the
+attention will be focused on the reported experiments from Dejori [18], Thenier and Hofstetter [19]
+for the 2D case, whereas the work by Gasser and Holzapfel [20], Areias and Belytschko [21] will be
+considered for the 3D case.
+
+The methodology used to assess physical properties of specimens during a test is as critical as
+the details that characterize the particular experiment. Slight changes in the application of a load
+or in the supporting system can affect severely the results without a clear explanation. Permutating
+over multiple experimental settings can help to understand better the numerous variables involved,
+but, in reality, not all combinations are possible, due to limitations in controlling the test bench as
+well as time and cost restrictions. Hence, it is in this framework that numerical simulations play a
+fundamental role for the prediction and the possible improvement of experiments.
+
+Recently, the authors presented a general purpose finite element technology for compressible and
+incompressible plasticity [22], which has successfully tackled geotechnical problems [23]. The proposed
+mixed strain-displacement (ε/u) formulation has been applied to local constitutive models in plasticity,
+in the framework of the smeared crack approach [24]. In problems involving strain-localization, stan-
+dard finite elements present numerous limitations, being affected by spurious mesh-biased dependence
+and stress locking. In such cases, the sensibility required to evaluate the change of results with respect
+to diverse boundary conditions can be overshadowed by the lack of precision in the inelastic range of
+classical displacement-based finite elements. On the contrary, the mixed ε/u finite element formulation
+is capable to overcome these issues, predicting effectively the peak load, the failure mechanism and
+the localization bands. The method is also free from any mesh dependence and it does not require any
+additional tracking technique. This is a substantial clinching feat, as, leaving out theoretical qualms
+and from the factual point of view, local crack tracking procedures are very difficult to implement in
+3D and global methods cannot deal with crack branching.
+
+Taking advantage of its reliability, the proposed method is applied in this work to the pullout
+problem, using 2D and 3D elements with linear interpolations of both the displacement and total
+strain fields. In previous works [25, 26, 27], the formulation has been used in the context of isotropic
+damage models. In this work, though, a plasticity model based on the Rankine failure criterion is
+used, similarly to those used in references [20, 28, 29, 30, 31]. Furthermore, plasticity with strain
+softening has been proved to be able to reproduce structural size-effect in a wide range of scales and,
+particularly, in engineering-size problems [25].
+
+The objective of the paper is proving that the use of an appropriate finite element technology is
+crucial for the study of the experimental setting and for the assessment of the results, even in the case
+of a very well known application, as the pullout test is. The outline of the paper is as follows. First,
+
+2
+
+
+
+the displacement-based and the mixed strain-displacement formulations are introduced. Then, the
+plasticity constitutive model is presented and the Rankine yielding criterion is extended in the case of
+multi-axial loading condition. A regularization of the singular points, useful to avoid indetermination
+issues in the return mapping algorithm, is shown. Finally, numerical simulations of 2D and 3D pullout
+tests are presented: standard and mixed finite element analyses are compared, demonstrating both
+the sensibility to changes on the boundary conditions and the replication of experiments. The results
+show that the mixed ε/u finite element provides reliable and high quality outcomes when compared
+to the standard irreducible formulation.
+
+2 Governing equations
+
+A solid body B occupying the space domain Ω is described by the position X of each point with
+respect to a system of coordinates x, y, z.
+
+On the one hand, every point of such domain has a displacement u and a total strain ε. Both
+displacements and strains are considered small. The compatibility condition relates both fields as:
+
+−ε+∇su = 0 (1)
+
+where ∇s(·) is used to denote the symmetric gradient operator. On the other hand, the equilibrium
+of forces in (quasi-)static conditions states that:
+
+∇ · σ + f = 0 (2)
+
+where σ is the Cauchy stress tensor and f are the external forces applied to the body. The symbol
+∇ · (·) refers to the divergence operator. The total strain ε is decomposed additively in the elastic
+εe and the plastic εp parts. The link between Cauchy’s stress and the total strain is given by the
+constitutive law:
+
+σ = C : εe = C : (ε− εp) (3)
+
+where C is the fourth order elastic constitutive tensor. Recalling Equations (1) and (2), the problem
+reads:
+
+−ε+∇su = 0
+
+∇ · [C : (ε− εp)] + f = 0
+(4)
+
+This set of equations represents the strong form for the mixed problem involving the unknown fields
+of displacements u and total strains ε in the case of plasticity. In order to obtain a symmetric system,
+the first equation is pre-multiplied by the elastic constitutive tensor C:
+
+−C : ε+ C : ∇su = 0
+
+∇ · [C : (ε− εp)] + f = 0
+(5)
+
+The irreducible problem, in terms of the displacement field u only, is recovered substituing the first
+equation into the second, to yield:
+
+∇ · [C : (∇su− εp)] + f = 0 (6)
+
+With proper conditions on the boundary ∂Ω and evolution laws for the plastic strain field [32], both
+irreducible and mixed formulations provide a well posed boundary value problem.
+
+3 Irreducible finite elements
+
+Recalling the strong form in Equation (6), the corresponding weak problem can be written as:∫
+Ω
+v · (∇ · [C : (∇su− εp)]) +
+
+∫
+Ω
+v · f = 0 ∀v ∈ V (7)
+
+3
+
+
+
+where V is the space of test functions which are square integrable. Integrating by parts, the forcing
+terms can be extracted as: ∫
+
+Ω
+∇sv : C : (∇su− εp) = F (v) (8)
+
+where the boundary terms accounting for body forces f on Ω and tractions t on the boundary ∂Ω are
+collected in the term
+
+F (v) =
+
+∫
+Ω
+v · f +
+
+∫
+∂Ω
+
+v · t (9)
+
+The discretized version of Equation (8) is obtained by selecting a finite set of interpolation functions
+for the displacement field as well as the test function as:
+
+u → uh =
+npts∑
+i=1
+
+v
+(i)
+h u
+
+(i)
+h vh ∈ Vh (10)
+
+such that the discrete functional space Vh is a subset of the continuous version V ⊆ H1(Ω)dim. From
+Equation (8), the final discrete system of equations reads:∫
+
+Ω
+∇svh : C : (∇suh − εp) = F (vh) (11)
+
+For the standard finite element interpolation, linear triangles P1 and quadrilateral Q1 are considered
+in this work.
+
+4 Mixed ε− u finite elements
+
+4.1 Galerkin method
+
+The weak form of the set of equations in (5) is:
+
+−
+∫
+Ω
+γ : C : ε+
+
+∫
+Ω
+γ : C : ∇su = 0 ∀γ ∈ G
+
+∫
+Ω
+v · (∇ · σ) +
+
+∫
+Ω
+v · f = 0 ∀v ∈ V
+
+(12)
+
+In this case, besides the functional space V for the test functions v of the displacement field u, it is
+required to introduce the set of test function tensors for the strain ε pertaining to G. Integrating by
+parts the second equation, it can be written:
+
+−
+∫
+Ω
+γ : C : ε+
+
+∫
+Ω
+γ : C : ∇su = 0 ∀γ ∈ G
+
+∫
+Ω
+∇sv : σ = F (v) ∀v ∈ V
+
+(13)
+
+From the mathematical requirements of the problem, V is in the space of square integrable functions
+v which are at least square integrable and have square integrable first derivative, whereas G belongs
+to the set of square integrable symmetric tensors γ.
+
+The discretized version of the weak form in Equation (13) is obtained by approximating the strain
+tensor ε and the displacement field u as
+
+ε → εh =
+npts∑
+i=1
+
+γ
+(i)
+h ε
+
+(i)
+h γh ∈ Gh
+
+u → uh =
+npts∑
+i=1
+
+v
+(i)
+h u
+
+(i)
+h vh ∈ Vh
+
+(14)
+
+4
+
+
+
+The system of equations (13), in its discrete form, reads
+
+−
+∫
+Ω
+γh : C : εh +
+
+∫
+Ω
+γh : C : ∇
+
+suh = 0 ∀γh ∈ Gh
+
+∫
+Ω
+∇svh : σ = F (vh) ∀vh ∈ Vh
+
+(15)
+
+For the mixed finite element method, equal interpolation finite element spaces for displacements and
+strains are considered in this work, and, in particular, the case of linear and bilinear interpolations,
+i.e. P1P1 and Q1Q1 elements. However, the stability of a discrete mixed formulation derived by the
+Galerkin method depends from the choice of the finite element spaces Gh and Vh as stated by the
+Inf-Sup condition [33]. Using equal order of interpolation does not satisfy the previous condition;
+consequently, a Variational Multiscale Stabilization procedure is now introduced.
+
+4.2 Variational Multiscale Stabilization
+
+The Variational Multiscale Stabilization was developed in first instance by Hughes et al. [34] and then
+generalized by Codina [35]. This technique modifies appropriately the variational form of the problem
+in order to provide the required numerical stability (see Benedetti et al. [23], Cervera et al. [26], Badia
+and Codina [36], Codina [37] for details).
+
+The stabilization procedure decomposes the solution of fields (ε, u) into a resolvable scale (εh,uh),
+calculated on the FEM mesh, and an irresolvable one (ε̃, ũ), proper of a finer scale:
+
+ε = εh + ε̃
+u = uh + ũ
+
+(16)
+
+The fine scale variables (also known as subscale variables) and their test functions pertain to their
+respective functional spaces G̃ for the strain subscale and Ṽ for the displacement subscale. This
+decomposition allows to consider extended solution spaces given by G ≈ Gh ⊕ G̃ and V ≈ Vh ⊕ Ṽ.
+The subscale part (ε̃, ũ) can be thought as a high frequency solution that cannot be captured by the
+FEM mesh.
+
+Rewriting the set of equations within this enhanced functional setting, the solution of the subscale
+variables depends on the residuals of the strong form of the equations upon substitution of the FEM
+solution. Defining R1,h and R2,h as the residuals of the strong form equations as:
+
+R1,h = −C : εh + C : ∇suh
+
+R2,h = ∇ · σh + f
+(17)
+
+it is possible to approximate the subscale variables within each element as done in the work of Codina
+[35] with the projection of the residuals on the mesh grid:
+
+ε̃ = τεC−1 : P̃1 (R1,h)
+
+ũ = τu P̃2 (R2,h)
+
+(18)
+
+where P̃1 and P̃2 represent the projection operators. τu and τε are the stabilization parameters
+computed as:
+
+τu = cu
+hL0
+E
+
+and τε = cε
+h
+
+L0
+(19)
+
+In the last expression, cu and cε are arbitrary positive numbers; E is the Young’s modulus, being
+the mechanical parameter of the problem; h is the representative size of the finite element mesh and
+L0 is a characteristic length of the problem. To complete the stabilization method, an appropriate
+projection operator has to be selected in order to be able to compute the subscale variables.
+
+5
+
+
+
+4.2.1 OSGS stabilization
+
+In the Orthogonal Subgrid Scale stabilization [36], the projection operator selected to solve the unre-
+solvable scale variables is the orthogonal projector
+
+P̃ (X) = P̃⊥h (X) = I (X)− Ph (X) (20)
+
+where Ph represents the projection over the finite element mesh. It represents the L
+2 projection of
+
+X, or least square fitting, on the finite element space [38] and it is performed taking advantage of the
+orthogonality condition ∫
+
+Ω
+ηh : (XΠ −X) = 0 ∀ηh ∈ Vh or Gh (21)
+
+where XΠ is the projected value of X on the mesh nodes. Substituting in (18), the subscale variables
+ũ and ε̃ can be approximated as:
+
+ε̃ = τεC−1 : [R1,h − Ph (R1,h)]
+
+ũ = τu [R2,h − Ph (R2,h)]
+(22)
+
+with the residuals R1,h,R2,h defined in (17). Back-substituting in the set of equations of the problem,
+the final set of equations is:
+
+− (1− τε)
+∫
+Ω
+γh : C : (εh −∇
+
+suh)+
+
+−τu
+∫
+Ω
+[∇ · (C : γh)] · [∇ · σh − Ph (∇ · σh)] = 0 ∀γh ∈ Gh
+
+∫
+Ω
+∇svh : C : (εstab − εp) = F (vh) ∀vh ∈ Vh
+
+(23)
+
+In order to compute the projection of stresses at each time step, expression (21) is recalled to write∫
+Ω
+ηh : (Πσ −∇ · σh) = 0 ∀ηh ∈ Gh (24)
+
+and, with the additional projection equation, it reads:
+
+− (1− τε)
+∫
+Ω
+γh : C : (εh −∇
+
+suh)
+
+−τu
+∫
+Ω
+[∇ · (C : γh)] · [∇ · σh −Πσ] = 0 ∀γh ∈ Gh
+
+∫
+Ω
+∇svh : C : [εstab − εp] = F (vh) ∀vh ∈ Vh
+
+∫
+Ω
+ηh : (Πσ −∇ · σh) = 0 ∀ηh ∈ Gh
+
+(25)
+
+4.2.2 ASGS stabilization
+
+In the Algebraic Subgrid Scale stabilization method [36], the projection operator is taken as the
+identity, that is, P̃ (X) = I (X):
+
+ε̃ = τε (−εh +∇suh)
+
+ũ = τu (∇ · σh + f)
+(26)
+
+6
+
+
+
+Substituting in Equation (16) and then in the set of equations (15) and rearranging, the final system
+of equations reads:
+
+− (1− τε)
+∫
+Ω
+γh : C : (εh −∇
+
+suh)
+
+−τu
+∫
+Ω
+[∇ · (C : γh)] · [∇ · σh + f ] = 0 ∀γh ∈ Gh
+
+∫
+Ω
+∇svh : C : [(1− τε) εh + τε∇suh − εp] = F (vh) ∀vh ∈ Vh
+
+(27)
+
+The first term in the first equation represents a projection (smoothing) of the strain field obtained
+by differentiation of the discrete displacement field. This is exactly the same projection operator
+presented in Equation (21). The second additional term is given by the displacement subscale that,
+in turn, depends on the residual of the strong form of the equilibrium equation. The second equation
+is related to the balance of momentum. The set of equations with OSGS stabilization resembles the
+one for the ASGS, except for the second term in the first equation: in fact the Orthogonal Subgrid
+Stabilization scheme is less diffusive than the Algebraic one [39]. However, this comes at the price
+of solving an additional equation; in the implementation details it is shown how this problem can be
+circumvented.
+
+5 Implementation
+
+Both in the standard and the mixed formulations, the presence of the non-linear plastic strains εp =
+εp (σ) requires an iterative procedure to deal with the nonlinearity of the system. One of these
+schemes is the Newton-Raphson method, which ensures quadratic convergence for convex functions.
+In addition, constitutive laws involving plasticity are usually written in terms of rate equations and,
+consequently, the tangent matrices are involved in the resulting algebraic set of equations. Consider
+the nonlinear multidimensional-multivariable problem
+
+F (X) = 0 (28)
+
+where X is the unknown. A non-linear problem of this kind can be solved starting from a Taylor
+approximation around the solution point at iteration i+ 1 in a particular time step n+ 1:
+
+F i+1n+1 ≈ F
+i
+n+1 + J
+
+i
+n+1 δX
+
+i+1 (29)
+
+where the Jacobian matrix J is defined as
+
+J =
+∂F
+
+∂X
+(30)
+
+Assuming that F i+1n+1 = 0, an iterative correction is computed as
+
+δXi+1 = −
+[
+J in+1
+
+]−1
+F in+1 (31)
+
+and the solution vector is updated as
+
+Xi+1 = Xi + δXi+1 (32)
+
+In the irreducible formulation, the unknown vector X corresponds to the displacement field u. The
+Jacobian matrix can be found by differentiating the set of equation with respect to the unknowns
+variable u at iteration i. In particular, it is possible to write the algebraic set of equations necessary
+to find the correction δu at the iteration i+ 1 as:
+
+Kit,n+1δu
+i+1
+n+1 = F
+
+i
+n+1 (33)
+
+7
+
+
+
+where F is the residual force and the tangent stiffness matrix Kt is defined as
+
+Kit = B
+TCiepB (34)
+
+being B the discrete gradient of shape functions and Ciep the algorithmic consistent elastoplastic
+constitutive tensor at iteration i.
+
+Akin to the irreducible FEM implementation, the mixed finite element problem considers the
+unknown variable as X = [ε,u]
+
+T
+. The algebraic system of equations the case of the OSGS implemen-
+
+tation is given by
+
+−
+
+
+ M τ Gτ DTΠDτ Kτ 0
+
+DΠ 0 MΠ
+
+
+i
+n+1
+
+
+ δεhδuh
+
+δΠh
+
+
+i+1
+n+1
+
+=
+
+
+ R1,hR2,h
+
+R3,h
+
+
+i
+n+1
+
+(35)
+
+where (δεh, δuh, δΠh) are the iterative corrections for (εh,uh,Πh) in the Newton-Raphson scheme.
+In the previous expression, M represents a mass-like projection matrix, G a gradient matrix, D a
+divergence matrix and K a stiffness matrix. The subscript τ refers to the fact that those matrices
+incorporate stabilization terms. Differentiating (25), within the hypothesis of plastic strain depending
+only on εh, the previous matrices read:
+
+M τ = − (1− τε)
+∫
+Ω
+Nε
+
+TCNε − τu
+∫
+Ω
+CBBT Cn+1ep (36)
+
+Gτ = (1− τε)
+∫
+Ω
+Nε
+
+TCB (37)
+
+Dτ =
+
+∫
+Ω
+BT
+
+[
+Cn+1ep − τεC
+
+]
+Nu (38)
+
+Kτ = τε
+
+∫
+Ω
+BTCB (39)
+
+where Nε and Nu are the matrices of shape functions of the respective strain and displacement fields
+and B is the matrix of the gradient of those shape functions. The added projection matrices are
+computed as:
+
+MΠ = −
+∫
+Ω
+Nε
+
+TNε (40)
+
+DΠ =
+
+∫
+Ω
+BTNε (41)
+
+Note that the resulting algebraic system of equations is, in general, not symmetric. However, disregard-
+ing the terms due to plasticity, the system matrix is symmetric and it coincides with the one presented
+in Cervera et al. [26, 40]. In order to reduce computational costs, the following approximation can be
+considered:
+
+Πn+1σ = P
+⊥
+h
+
+(
+∇ · σn+1h
+
+)
+≈ P⊥h (∇ · σ
+
+n
+h) (42)
+
+which can be computed at the beginning of time step n+ 1.
+Instead, in the case of the ASGS method, the last algebraic equation is automatically verified and
+
+the Jacobian matrix presents the mathematical structure:
+
+J in+1 =
+
+[
+M τ Gτ
+Dτ Kτ
+
+]i
+n+1
+
+(43)
+
+Matrices M τ ,Gτ ,Dτ ,Kτ are the same in both the presented methods. Details on the differentiation
+of the plastic strain tensor εp with respect to the problem unknown εh are given in the work by
+Benedetti et al. [23].
+
+8
+
+
+
+6 Rankine plasticity model
+
+The Rankine yielding criterion is defined by taking the i-th principal stress, denoted with σi, and
+comparing it to the threshold limit stress r (ξ):
+
+f (σ, q) = σi − r (ξ) (44)
+
+where r (ξ) is
+r (ξ) = σy − q (ξ) (45)
+
+being σy the uniaxial yielding value of stresses and q (ξ) the hardening/softening function. In plasticity,
+the Cauchy’s stress tensor is defined as:
+
+σ = C : εe = C : (ε− εp) (46)
+
+where the total strain tensor ε can be split in elastic strain εe and plastic strain εp. The plastic
+strain-like database is composed of the tensor εp and the isotropic hardening strain-like variable ξ.
+The evolution equations, also known as flow rule, are defined as:
+
+
+ε̇p = γ̇
+
+∂g (σ, q)
+
+∂σ
+
+ξ̇ = γ̇
+∂g (σ, q)
+
+∂q
+
+(47)
+
+where γ̇ is the plastic multiplier and the function g (σ, q) represents the plastic potential. In associated
+plasticity, the plastic potential corresponds with the yielding function f (σ, q).
+
+Such definition of the plastic flow gives to the inelastic deformation a directional character by
+construction. In the case of the Rankine model, the behavior is orthotropic, as the plastic strain
+depends on the stress eigenvalues. This is in contrast with isotropic continuum damage models,
+where the effective stress tensor is scaled isotropically, affecting all eigenvalues in the same manner.
+There exist also orthotropic damage models (see, for instance, Ju [41], Meschke et al. [42], Berto
+et al. [43], Rizzi and Carol [44], Pelà et al. [45]), closely related to the classical smeared crack models
+[24, 46, 47, 48, 49] but they are seldom used in practice, being extremely prone to severe stress-locking.
+In this respect, the mixed formulation can also be used advantageously with these latter models.
+
+In the Haig-Westergaard space, the Rankine criterion appears as the intersection of three planes
+in the first octant, where σ1, σ2, σ3 are positive (Figure 1). The yielding surface loci are also described
+by the following conditions:
+
+Faces: σ1 = r (ξ) or σ2 = r (ξ) or σ3 = r (ξ)
+
+Edges: σ1 = σ2 = r (ξ) or σ2 = σ3 = r (ξ) or σ1 = σ3 = r (ξ)
+
+Apex: σ1 = σ2 = σ3 = r (ξ)
+
+(48)
+
+The edges and apex are singular cases that require special treatment, to avoid ill-definition of the flow
+direction in the case of associated plasticity [50]. One possibility to circumvent this problem is to
+smooth the domain in the vicinity of the corners [51, 52].
+
+The sharp edges are regularized with a quarter of cylindrical surface whereas the apex with an
+eighth of a sphere. In this way, it is possible to join up the three faces in a unique surface, whose radii
+are expressed as fraction c ∈ [0, 1] of the uniaxial threshold:
+
+ρ (c, q (ξ)) = c (σy − q (ξ)) (49)
+
+The Extended Rankine yielding criterion is defined as:
+
+f (c,σ, q (ξ)) =
+
+√
+⟨f1 (c,σ, q (ξ))⟩2 + ⟨f2 (c,σ, q (ξ))⟩2 + ⟨f3 (c,σ, q (ξ))⟩2 − ρ (c, q (ξ)) (50)
+
+9
+
+
+
+σ2
+
+σ1
+
+σ3
+
+σ
+1 =
+
+σ
+2 =
+
+σ
+3
+
+Figure 1: Representation of the yielding surface in the principal stress space
+(
+σ1, σ2, σ3
+
+)
+for c = 0.
+
+The gray area is the admissible stress domain, while the red line represents the hydrostatic axis.
+
+where fi (c,σ, q (ξ)) is the uniaxial yield function defined as:
+
+fi (c,σ, q (ξ)) = σ
+i − (1− c) (σy − q (ξ)) (51)
+
+and ⟨·⟩ is the Macaulay brackets, or ramp function. Two important aspects are peculiar of this
+representation of the yielding function. On the one hand, f (c,σ, q) is the norm of the positive valued
+uniaxial yielding functions in the three principal directions. In fact, if f1 is the only non-negative
+value, the yielding function reduces to the uniaxial original case as in (44):
+
+f (c,σ, q (ξ)) =
+√
+
+f21 (c,σ, q (ξ))− ρ (c, q (ξ)) = σ
+i − (σy − q (ξ)) (52)
+
+On the other hand, the surface is smooth and differentiable at all points. In the case of c = 0 the
+original yielding surface with sharp edges is recovered, whereas, when c = 1, the first octant presents
+a spherical sector.
+
+Defining:
+
+f̄i (σ, q) =
+⟨fi (σ, q)⟩√
+
+f1 (σ, q)
+2
++ f2 (σ, q)
+
+2
++ f3 (σ, q)
+
+2
+(53)
+
+the evolution equations for the continuous case can be compactly written as:
+
+
+ε̇p = γ̇
+
+3∑
+i=1
+
+f̄i (σ, q)Hii
+
+ξ̇ = γ̇
+
+(
+c+ (1− c)
+
+3∑
+i=1
+
+f̄i (σ, q)
+
+) (54)
+
+where the second order tensor Hij = ϕi ⊗ ϕj represents the direction of the plastic flow, being ϕj the
+j-th eigenvector of the stress tensor.
+
+The time variation of the plastic multiplier is computed as [32]:
+
+γ̇ =
+∂f
+∂σ
+
+: C : ε̇
+∂f
+∂σ
+
+: C : ∂f
+∂σ
+
+− ∂f
+∂q
+
+∂q
+∂ξ
+
+∂f
+∂q
+
+(55)
+
+10
+
+
+
+σ3 = r (ξ)
+
+σ 1
+=
+r
+(ξ
+)
+
+σ2 = r (ξ)
+
+σ1
+
+σ3
+
+σ2
+
+f22 + f
+2
+3 = ρ
+
+2
+
+f21 + f
+2
+3 = ρ
+
+2
+
+f21 + f
+2
+2 = ρ
+
+2
+
+f21 + f
+2
+2 + f
+
+2
+3 = ρ
+
+2
+
+Figure 2: Extended Rankine yield surface: the smoothing of the corners is highlighted and each part
+presents its own descriptive equation
+
+The discrete version of Rankine plasticity model follows the closest point projection algorithm,
+where introducing a Backward Euler time scheme, the plastic multiplier ∆γn+1 is computed by finding
+the root of the yield function at the step n+ 1:
+
+fn+1
+(
+σn+1, qn+1
+
+)
+=
+
+√
+f1 (σn+1, qn+1)
+
+2
++ f2 (σn+1, qn+1)
+
+2
++ f3 (σn+1, qn+1)
+
+2 − ρ (q) =
+
+=
+
+[∑nret
+i=1
+
+(
+Hi : σtrial −∆γn+1HiC
+
+∂fn+1
+
+∂σn+1
+− (1− c)
+
+(
+σy − q
+
+(
+ξn +∆γn+1
+
+∂fn+1
+
+∂qn+1
+
+)))2] 12
+−c
+(
+σy − q
+
+(
+ξn +∆γn+1
+
+∂fn+1
+
+∂qn+1
+
+))
+= 0
+
+(56)
+
+where nret is the number of principal stresses to be considered in the return mapping. For linear
+hardening/softening, function q (ξ) reads
+
+q (ξ) =
+
+{
+HS
+σy
+
+ξ for 0 ≤ ξ ≤ σy
+HS
+
+0 for
+σy
+HS
+
+≤ ξ ≤ ∞
+(57)
+
+and the value of ∆γn+1 is explicitly computed from Equation (56). For exponential softening, q (ξ) is
+
+q (ξ) = σy
+
+[
+1− exp
+
+(
+−2HS
+σy
+
+ξ
+
+)]
+for 0 ≤ ξ ≤ ∞ (58)
+
+and a local Newton-Raphson iterative scheme is required to compute ∆γn+1. The update of the stress
+and the hardening function is performed as:
+
+
+σn+1 = C :
+
+[
+εn+1 − εn+1p
+
+]
+= σn+1trial − C : ∆γ
+
+n+1 ∂f
+n+1
+
+∂σn+1
+
+q
+(
+ξn+1
+
+)
+= q
+
+(
+ξn +∆γn+1
+
+∂fn+1
+
+∂qn+1
+
+) (59)
+
+11
+
+
+
+Following standard arguments [32], the continuous elastoplastic constitutive fourth order tensor is:
+
+Cep =
+
+
+C−
+
+(
+C : ∂f
+
+∂σ
+
+)
+⊗
+(
+C : ∂f
+
+∂σ
+
+)
+∂f
+∂σ
+
+: C : ∂f
+∂σ
+
+− ∂f
+∂q
+
+∂q
+∂ξ
+
+∂f
+∂q
+
+
+ (60)
+
+In the discrete time setting, an algorithmic tangent operator is used; this is defined by the change of
+stresses around an admissible equilibrium position (i.e. σn+1) due to a small variation in the strain.
+The i-th column of the approximated constitutive matrix can be computed as:
+
+Cn+1ep êi ≈
+σ (ε+ hêi)− σ (ε− hêi)
+
+2h
+
+∣∣∣∣
+n+1
+
+(61)
+
+where êi is the unit vector of the i-th direction in the reference system. The smaller the perturbation,
+the closer the approximation tends to the original definition of the elastoplastic tensor. However, it
+has to be noted that the lower limit of the value of the perturbation is proportional to the machine
+precision, below which numerical cancellation and instabilities are frequent. Numerical experiments
+justify a perturbation size of h = 10−5 ∥ε∥. First, from the value εn+1, the perturbed strain tensors
+ε + hêi and ε − hêi in the selected direction are computed. Second, the respective stress values are
+evaluated and the return mapping procedure is applied on both of them. Finally, the i-th column
+of Cn+1ep can be approximated as in Equation (61). Further details and alternative approximation
+schemes can be found in the work by Miehe [53], Pérez-Foguet et al. [54], Reps and Rall [55].
+
+Softening behavior
+
+In a softening process, the energy dissipated by inelastic behavior is linked with the fracture energy
+Gf [56], defined by unit surface. When using a plastic model defined in terms of stress and strain, the
+dissipated plastic energy Wp is defined by unit volume. In the discrete FE setting, these two definitions
+are related through a characteristic length lch, connected to the mesh resolution:
+
+Wp =
+Gf
+lch
+
+(62)
+
+On the one hand, this relation enforces mesh-size objectivity of the FE results, and, on the other
+end, it effectively introduces structural size effect in quasi brittle failure [25]. In the plastic model,
+recovering Equation (46) and (54), the rate of plastic work is computed as:
+
+Ẇp = σ : ε̇p = r (ξ) ξ̇ (63)
+
+From expressions (57) and (58), in both the linear and exponential softening cases, the total plastic
+work is calculated then as:
+
+Wp =
+
+∫ t=∞
+t=0
+
+Ẇp dt =
+
+∫ ξ=∞
+ξ=0
+
+r (ξ) ξ̇ =
+σy
+
+2
+
+2HS
+(64)
+
+and this represent the area underlying the r− ξ curve. Now, comparing expressions (62) and (64), the
+parameter HS can be computed as:
+
+HS =
+σy
+
+2
+
+2Gf
+lch = H̄Slch (65)
+
+The parameter H̄S , depends only on material properties, whereas lch depends on the resolution of the
+discretization. In fact, the size of the strain concentration band depends on the finite element technol-
+ogy used, as pointed out by Cervera et al. [26]: irreducible finite elements, due to the discontinuous
+strain field, provide a concentration band within a single element span whereas in the ε−u mixed FE
+formulation, with inter-elemental continuous strain, the slip line spans two elements. Consequently,
+the characteristic length lch is taken accordingly.
+
+12
+
+
+
+7 Numerical Simulations
+
+In the present section, the problem of pullout test of a metal anchor in a concrete block is addressed,
+both in 2D and in 3D. The aim of the pullout test is to evaluate the overall response of embedded
+steel heads in concrete. On the one hand, the experiment provides valuable data about the fracture
+pattern and the quality of the anchorage. On the other hand, the maximum tensile strength and the
+post peak energy dissipation of the concrete can be evaluated with simplified or empiric formulas.
+
+The objective of the following numerical simulations is to demonstrate the advantages of the ε/u
+mixed FEM with respect to the standard irreducible one. These are assessed in two complementary
+aspects: (a) convergence to the appropriate solution, without spurious numerical issues, like mesh-
+size and mesh-bias dependence; (b) enhanced accuracy, able to reproduce optimally the solution for
+a computational mesh of a chosen degree of refinement. These two facts translate in a high-fidelity
+simulation of experimental results obtained for the pullout test, in a way that makes it possible to
+study the sensibility of the data to the variations, desired or not, of the boundary conditions or the
+bracing system.
+
+Computations have been realized using an enhanced version of COMET-Coupled mechanical and
+thermal analysis [57], developed by the authors at the International Center of Numerical Methods in
+Engineering (CIMNE) in Barcelona, Spain. The geometrical models have been created using GiD,
+a pre and post-processing software, also developed by CIMNE. In all the examples, the convergence
+tolerance used for the iterative Newton-Raphson procedure is 10−4 with respect to the residual forces.
+
+7.1 2D Pullout Test
+
+The 2D pullout test under consideration was performed by Dejori [18], later published by Thenier and
+Hofstetter [19]. The test consists of a panel of unreinforced concrete of dimensions 700×500 mm2 in
+which a T-shaped steel flange is embedded. The latter is 80×20 mm2 in the horizontal part, whereas
+the vertical stem has a width of 10 mm (Figure 3).
+
+The experiment, shown in Figure 4(a), is carried out by imposing a vertical displacement to the
+steel component, which translates in a force applied to the concrete in the surrounding of the horizontal
+flange. The consequent displacement/reaction plot of the structure is recorded until failure is reached.
+In order to apply such force to the specimen without suffering of rigid body motions, a bracing system
+is devised on the sides of the steel flange, as shown in Figure 4(b).
+
+Multiple setups of this experiment are reported, in terms of embedding depth and bracing position.
+On the one hand, the steel head is positioned at three different positions (60, 80 and 100 mm) from
+the top surface of the concrete panel. In the present numerical simulations, only the latter case of 100
+mm is considered, following the work by Thenier and Hofstetter [19]. On the other hand, the bracing
+system presents two different dispositions. The first one considers the steel rods centered at a distance
+of 70 mm from the sides. The rods are then connected with a flange of width of 50 mm in contact
+with the top of the panel. Instead, the second setup is reported to reduce the distance of between the
+two bracing systems: “The distance between the vertical supports has been shortened in order to have
+the expected fracture growing in the direction of the supports at an average inclination of 30 degrees”
+[18]. Despite explicit values are not given, the distance of the bracing system to the symmetry axis
+can be computed as
+
+lbr =
+wf
+2
+
++
+
+√
+3
+
+2
+hef (66)
+
+where wf is the flange width equal to 80 mm and hef is the embedding height. Consequently, lbr has
+a value of about 92, 109, 126 mm with respect to the 60, 80, 100 mm deep setups. Additionally, the
+50 mm strip has been substituted by a metal bearing in order to concentrate the load.
+
+Although the experiment appears to be quite straightforward in its description, significant differ-
+ences and unexpected results were reported. Almost independently of the flange depth,it is possible
+to identify two families of failure modes in the experimental series. The first one is quasi-symmetric,
+which implies that the load has been evenly transferred from the steel flange to the specimen. Surely,
+a small amount of sway in the fractures is to be expected due to the accidental misalignment of the
+
+13
+
+
+
+Figure 3: Geometry of the 2D pullout test (from Thenier and Hofstetter [19])
+
+(a) (b)
+
+Figure 4: Detail of the experimental setup and the two different bracing systems used in the 2D pullout
+test [18]
+
+14
+
+
+
+load, as well as the intrinsic heterogeneity of concrete. The symmetric behaviour, even if it is not the
+more frequent, happens for all the setup configurations (Figure 5). The second family of failure modes
+
+(a) (b)
+
+Figure 5: Detail of the symmetric results for the 2D pullout test in the case of 6 centimeters embed
+[18]
+
+is clearly asymmetric. Whilst on one side of the specimen a single fracture line forms and progresses
+upwards to the upper surface (Figure 6 and Figure 7), on the other side a peculiar bifurcation behavior
+appears, with fracture lines that reach the upper and lower part of the concrete panel. It is unclear
+from the reported experimental data if the asymmetry is due to different lateral boundary conditions
+or a sudden change in the force configuration during the test.
+
+The first setup, characterized by spread bracing, results very frequently in the asymmetric mode
+of failure, with an almost straight crack growing in the direction of the upper bearing whereas the
+bifurcation appears around the half-height of the panel, independently of the flange depth (Figure 6).
+
+As far as the second setup is concerned, the effect of the closer bracing as well as of concentrating
+the load with different bearings is evident (Figure 7). The fracture lines form closer to the steel head
+and show a more symmetrical behavior. Nevertheless, the bifurcation pattern appears again, always
+on the side with a more curved crack.
+
+(a) (b) (c)
+
+Figure 6: Asymmetric results for the first experimental setup (distant bracing) [18]
+
+It is clear from this that the distance of the bracing frame plays a major role in the outcome of the
+experiment, as well as the concentration of stresses under the bearings. Not so clear is the dependence
+of the test results on the mechanical characteristics of the rods of the bracing system, which provide
+a different stress state for a similar deformation field. With or without little bracing, the concrete
+panel may be lifted from its base. In addition, little attention has been given to the effect of the
+sequence of cracking. The delay in the formation of cracks could be the main cause of asymmetry
+in the experimental outcomes. In fact, if a fracture has already appeared on one side of the panel,
+the pullout of the anchor provokes a shift of the force scheme resulting in a bending moment in the
+concrete (Figure 8). This fact would easily explain the onset of horizontal tension which results in
+
+15
+
+
+
+(a) (b) (c)
+
+Figure 7: Asymmetric results for the second experimental setup (close bracing) [18]
+
+vertical cracking.
+
+b b
+
+F/2
+
+F
+
+F/2
+
+b
+
+F
+
+(1− α)F
+
+b
+
+αF
+
+Figure 8: Symmetric and asymmetric force configuration for the pullout test. On the right, the
+symmetric case due to the initial uncracked state of the concrete. On the left, when one of the sides
+is cracked, the force shifts to the other side of the specimen and a bending moment equivalent to
+(1− α)2Fb appears (α ≤ 1/2).
+
+In the following, two different case studies are presented. The first one is a pure shear case, where
+a (simplified) analytical solution is compared to the finite element one, to assess the correctness of the
+numerical results. In the second one, the experimental test cases are addressed and the dependency
+of the results on the steel bracing constraint is studied.
+
+In all the examples, the discretized domain represents half of the concrete panel, taking advantage
+of the vertical symmetry line (Figure 9). As shown in the picture, the steel bracing and the top
+constraint are modeled as a strip of elements which connects line FG in the upper surface to the
+line CB in the bottom interface. No other connection or friction is simulated between the bracing
+system and the concrete panel. The thickness of the strip coincides with the resisting area of the metal
+rods. In this way, it is possible to simulate the presence of a vertical elastic constraint, but allowing
+horizontal sliding. The pullout of the steel flange is modeled imposing the vertical displacement of the
+boundary HILM in contact with the head. The complete computational mesh consists of a structured
+grid with 6936 quadrilateral elements and 7105 nodes. The characteristic size of the concrete element
+is 5 mm.
+
+The mechanical properties for the concrete are taken from the cited references. Young’s modulus
+E = 36630 MPa with a Poisson’s ratio ν = 0.2. The tensile strength σy = 3780 kPa and the fracture
+energy Gf = 65 J/m.
+
+16
+
+
+
+S
+y
+m
+m
+etry
+
+a
+x
+is
+
+C ABD
+
+E F G H
+
+IL
+
+M
+O
+
+(a) (b)
+
+Figure 9: Discretization of the 2D pullout problem: (a) the discretized domain and (b) the structured
+mesh used in the analysis for the concrete panel.
+
+17
+
+
+
+7.1.1 Virtual shear test
+
+In the first example, the boundary HILM, representing the contact with the steel flange, is constrained
+to move vertically, but no horizontal restriction is set. Considering the upper part of the panel as
+a semi infinite strip as in Figure 10, the imposed displacement u0 induces a tensional state of pure
+shear, with average value along the line LL’ τ = F/A. This approximation holds for ML/ML’>> 1.
+Locally, a concentration of stresses appears close to the imposed boundary condition (Figure 11(a)).
+The elastic stresses computed in the vicinity of point M are shown in Figure 11(b): the principal
+directions are at 45◦ with respect to the horizontal, with equal value and opposite sign of compression
+and tension. Considering a quasi-brittle material, with a Rankine yielding criterion, the initiation of
+
+L’ H
+
+L
+
+M
+
+I
+u0
+
+τ
+
+B
+
+G
+
+Figure 10: Resultant force scheme for initial loading due to the imposed displacement u0.
+
+(a)
+
+σ1σ2
+
+τ
+
+σ
+
+45◦
+
+(b)
+
+Figure 11: Stress vectors in the elastic case (left) and Mohr’s circle at point M (right). The pure
+shear condition creates a stress state characterized by principal directions inclined at 45◦ with the
+horizontal.
+
+the crack follows the direction orthogonal to the maximum tensile stress. Therefore, a crack initiates
+in M and progresses at 45◦. The force scheme changes as depicted in Figure 12. From the global
+equilibrium of the block M’B’GL’, it is possible then to infer that a new shear stress τ ′, in a similar
+fashion as before. The crack will consequently follow a 45 degree line.
+
+This crack pattern is typical of the symmetric solution in the pullout test. In fact, when the
+imposed displacement is applied in such a way that horizontal forces are very small or lateral reactions
+are equilibrated, the stress state transferred from the steel head is close to pure shear. Whether the
+concrete panel is effectively constrained by a steel bar at the line GB, located far from the applied
+shear, the same solution pattern is expected, with a crack growing diagonally at approximately 45◦.
+Considering Poisson’s effect, normal and shear stress-transfer across the fissured crack makes the
+problem more complex and obtaining an analytical solution is unfeasible. However, the expected
+solution does not depart significantly from the upward crack at approximately 45◦.
+
+Figure 13 and 14 show contours for the equivalent plastic strain and displacements obtained with
+mixed (top row) and standard (bottom row) finite elements in two situations: with (left) and without
+
+18
+
+
+
+L’ H
+
+L
+
+M
+
+I
+
+u0 +∆u
+
+τ ′
+
+M’
+B
+
+B’
+
+G
+
+Figure 12: Forces scheme for the initiated crack
+
+(right) steel rod bracing.
+All the solutions attempt to reproduce a crack that initiates at point M and progresses upward
+
+(Figure 13), inducing the rotation of the detaching part around the tip of the crack (Figure 14).
+However, the results produced by the mixed and the standard formulations are very different.
+
+On the one hand, the mixed finite elements produce results which are: (a) consistent with those
+expected from the (simplified) analytical solution; (b) correctly insensitive to the change in the bracing
+system; (c) correctly insensitive to the mesh alignment.
+
+On the other hand, the standard formulation produces unreliable results that are: (a) not consistent
+with the expected crack at approximately 45◦; (b) spuriously sensitive to the stress state induced by
+the bracing; (c) spuriously sensitive to the alignment of the mesh.
+
+Figure 15 shows the force F versus the vertical displacement u for the four cases. The mixed
+formulation produces very consistent results, with very limited effect of the bracing system in the for-
+mation of the crack. The standard formulation overestimates the peak load and the energy dissipated
+in the formation of the crack.
+
+It has to be noted that the reaction force cannot vanish because the compression stresses are not
+affected by the adopted Rankine criterion. This means that the crack progresses towards the upper
+surface but it can not reach it.
+
+19
+
+
+
+(a) ε/u FEM - Bracing (b) ε/u FEM - No bracing
+
+(c) Std FEM - Bracing (d) Std FEM - No Bracing
+
+Figure 13: Equivalent plastic strain contours with mixed (top row) and the standard (bottom row)
+finite element formulations in the pure shear case.
+
+(a) ε/u FEM - Bracing (b) ε/u FEM - No bracing
+
+(c) Std FEM - Bracing (d) Std FEM - No bracing
+
+Figure 14: Displacements contours with mixed (top row) and the standard (bottom row) finite element
+formulations in the pure shear case.
+
+20
+
+
+
+ 0
+
+ 2
+
+ 4
+
+ 6
+
+ 8
+
+ 10
+
+ 12
+
+ 14
+
+ 16
+
+ 0  0.05  0.1  0.15  0.2  0.25  0.3
+
+R
+e
+a
+c
+ti
+o
+n
+ f
+
+o
+rc
+
+e
+ [
+
+k
+N
+
+]
+
+Vertical displacement [mm]
+
+Comparison of irreducible and mixed formulations
+
+Std FEM - Bracing
+
+Std FEM - No bracing
+
+Mix FEM - Bracing
+
+Mix FEM - No bracing
+
+Figure 15: Force versus vertical displacement curves for the pure shear case.
+
+7.1.2 Simulation of the experimental results
+
+In this section, the horizontal displacement of the embedded steel head is restrained, to simulate the
+high friction between the anchored head and the surrounding concrete. Contrariwise to the cases
+considered in the previous section, in this situation the steel bracing counterbalances the effect of the
+applied pullout vertical force, as it supplies an opposed downward concentrated force. This force is
+proportional to the stiffness of the metal rods and, therefore, the resulting fracture pattern is effectively
+affected by the rigidity of the bracing system.
+
+Figure 16 and 17 show contours for the equivalent plastic strain and displacements obtained with
+mixed (top row) and standard (bottom row) finite elements in the two cases given by stiff or loose
+support frames. For the case for a stiff support, the resulting fracture path is curved, from the base
+of the bolt to the bearing structure (Figure 16(a) and Figure 16(c)). Both mixed and standard finite
+elements are able to capture the displacement of the mass of concrete under bending (Figure 17(a)
+and Figure 17(c)). Even if the two solutions appear similar, it is important to notice two details.
+First, a clear mesh dependency is visible in the standard solution (Figure 16(c)) while this is not the
+case in the mixed formulation, with a defined inclination at the crack tip (Figure 16(a)). Second, the
+proposed formulation produces a crack that turns effectively in the direction of the support, while the
+curvature given by the standard one is reduced, affected by mesh dependence.
+
+In the case of low rigidity, the solution is qualitatively similar in terms of direction of the crack
+between the two methods, but it is possible to observe a bifurcation in the crack path for the mixed
+formulation (Figure 16(b)) which is not captured for the irreducible one (Figure 16(d)). The rotation
+of the detaching part, due primarily to bending effects, is evident also in this case (Figure 17(b) and
+Figure 17(d)).
+
+In Figures 18, 19 and 20, the numerical solutions of the more reliable mixed ε/u finite elements
+are compared with the experimental results. The agreement between numerical solutions and the
+experimental results is remarkably good. This is achieved even if the adopted constitutive model
+(Rankine plasticity under tension) does not include phenomena like compressive crushing or friction
+and dilatation due to grain effects.
+
+In Figure 18, the symmetric pattern (Figure 5) is compared against the solution found in Figure
+13(a). With a distant positioning of the bracing and no horizontal restraint, the result is approximately
+a 45◦ inclined crack. Note that a shallower embedding of the flange favours less horizontal constraint,
+being smaller the vertical reaction (and consequently the frictional forces) of the affected concrete.
+
+In Figure 19, the crack formed with the effective restraint of the steel bracing and zero horizontal
+sliding of the bolt is presented. The numerical simulation, shown in Figure 19(a), considers a ho-
+mogeneous material whereas the intrinsic heterogeneity of concrete, with an internal distribution of
+aggregates, affects the direction of the crack observed in Figure 19(b).
+
+21
+
+
+
+(a) ε/u FEM - High Eb (b) ε/u FEM - Low Eb
+
+(c) Std FEM - High Eb (d) Std FEM - Low Eb
+
+Figure 16: Equivalent plastic strain contours with mixed (top row) and the standard (bottom row)
+finite element formulations in the experimental setup case.
+
+(a) ε/u FEM - High Eb (b) ε/u FEM - Low Eb
+
+(c) Std FEM - High Eb (d) Std FEM - Low Eb
+
+Figure 17: Displacements contours with mixed (top row) and the standard (bottom row) finite element
+formulations in the experimental setup case.
+
+22
+
+
+
+In Figure 20, the bifurcation pattern is shown. This case is due to the low stiffness of the bracing,
+which implies an initial almost horizontal initiation of the crack, followed by a bifurcation. The longer
+the horizontal crack path, the bigger the effect of bending is; the slight curvature before the bifurcation
+point is noticeable. After the bifurcation, the upper part of the crack propagates almost straight to
+the support bracing. The lower fracture is longer than the upper one in both of the pictures. The
+agreement between the two results is remarkable.
+
+In Figure 21, the vertical reaction is plotted against the imposed displacement. Two different cases
+are shown: the first one, corresponding to an effective support action, gives an increasing reaction
+as the experiment progresses; the second one, corresponding to the bifurcation case, with less stiff
+bracing, shows a softening behavior. Comparing those results with the ones shown in Figure 15, it is
+possible to asses the influence of friction and bracing system with respect to the pure shear virtual test.
+In addition, the peaks load and the dissipated energy fall within the experimental ranges discussed in
+Dejori [18].
+
+Thanks to the enhanced accuracy provided by the mixed formulation, it is still possible to discuss
+particular details of the pullout tests, without the need of referring to specific experimental results.
+For example, the starting point of the crack is determined by the effective contact between the steel
+flange and the concrete. With reference to Figure 9, in the case of pure vertical motion (i.e. line LI
+has an imposed displacement, but not LM), the crack starts from point L. Instead, if a slight lateral
+motion of the head presses on line LM, so that friction makes steel and concrete adherent, then the
+crack will start from point M. This small horizontal sliding has found to occur frequently for the
+asymmetric configuration of cracks, where the onset of a first diagonal crack on one side provokes a
+rotation of the other side. This effect is more visible for larger depth of embedding.
+
+Another key aspect is the sequence of cracking; it is statistically impossible to reach failure at the
+same time on both sides of the panel due to the natural imperfections in the positioning of the force and
+in the composition of the concrete. Perturbations largely affect brittle crack propagation and this is
+reflected by the greater percentage of asymmetric results obtained in the experiments. Nevertheless, a
+sound hypothesis on the probable sequence of failure can be outlined thanks to the previous examples.
+The initial cracking is given by a tensile failure as in Figure 18, for the symmetric case, or as in Figure
+19, for the asymmetric one. Then, in the latter case, after the first fracture develops, the loading
+acts unevenly on the two opposite side of the panel and the consequent bifurcating cracks grow in the
+direction of the steel bracing due to bending-like effects.
+
+7.2 3D Pullout Test
+
+3D pullout tests have been considered in many publications treating numerical methods for crack
+propagation. Gasser and Holzapfel [20] analyzed it with the partition of the unity method. Later,
+Areias and Belytschko [21] and Duan et al. [58] studied it using extended finite elements. Recently,
+Kaczmarczyk et al. [59] solved the problem with a configurational mechanics method, consistent with
+Griffith’s theory.
+
+The problem, shown in Figure 22, is axis-symmetric, so that only a quarter is depicted. A steel bolt
+with circular head is placed in a cylindrical concrete anchorage and imposes a vertical displacement to
+the block. To avoid rigid body motion, a metal hoop is placed on top, reacting vertically. In the same
+picture, the mechanical properties are reported as taken from Areias and Belytschko [21]. Vertical
+displacement is imposed, whereas no horizontal displacement is allowed at the contact between the
+bolt and the concrete.
+
+Here, the problem is studied with three different mesh sizes and comparing the results obtained
+with mixed ε/u and standard formulations. The elements used for the discretization are triangular
+prisms, so that a semi-structured mesh is easily built. Figure 23 shows the top face of the quarter
+cylinder composed of triangles, supported by a structured vertical square grid. Table 1 shows the
+average size of the triangles, the number of nodes and elements in three meshes (coarse, medium and
+fine) so that the convergence of the solution with respect to the mesh sizes can be assessed.
+
+In Figure 24 it is possible to see the computed deformed shape along the resulting conical crack
+surface in the case of the mixed finite element with fine meshing. The fields of equivalent plastic strain
+
+23
+
+
+
+(a) (b)
+
+Figure 18: Comparing the symmetric pattern in the case of free horizontal sliding of the steel flange.
+
+(a) (b)
+
+Figure 19: Comparing the symmetric pattern for the case of effective vertical constraint of steel bracing
+and constrained horizontal motion of the steel flange.
+
+(a) (b)
+
+Figure 20: Comparing the bifurcation pattern in the asymmetric case.
+
+ 0
+
+ 5
+
+ 10
+
+ 15
+
+ 20
+
+ 25
+
+ 30
+
+ 35
+
+ 40
+
+ 0  0.05  0.1  0.15  0.2  0.25  0.3
+
+R
+e
+a
+c
+ti
+o
+n
+ f
+
+o
+rc
+
+e
+ [
+
+k
+N
+
+]
+
+Vertical displacement [mm]
+
+Comparison of irreducible and mixed formulations
+
+Std FEM - Stiff bracing
+
+Std FEM - Loose bracing
+
+Mix FEM - Stiff bracing
+
+Mix FEM, Loose bracing
+
+Figure 21: Force versus vertical displacement curves for the experimental case.
+
+24
+
+
+
+Figure 22: Geometry of the problem and mechanical properties of the concrete (from Areias and
+Belytschko [21])
+
+Mesh h Nodes Elements
+
+Coarse 40 mm 4664 7742
+
+Medium 30 mm 11555 20166
+
+Fine 25 mm 20672 36985
+
+Table 1: Characteristic mesh sizes, number of nodes and number of elements for the 3D pullout test
+numerical simulation
+
+for each mesh size are presented in Figure 25. As for the 2D case, the robustness provided by the two
+methods is very different.
+
+The mixed method yields very consistent results throughout the levels of refinement. For the
+three meshes, a conical crack starts at the bolt head and progresses towards the steel bracing. The
+inclination of this crack is defined by the physical geometry of the problem. A secondary, more diffuse,
+vertical crack appears at the top surface. The standard method produces results which are clearly
+affected by the bias of the discretization adopted. This is evident for the primary and, even worse, for
+the secondary cracks.
+
+Figure 26 shows the vertical reaction on the bolt with respect to the imposed displacement. The
+curves from the three different meshes from both methods are presented. It confirms that:
+
+(a) the mixed formulation provides convergent results; even relatively coarse meshes can produce
+fairly accurate results, in good agreement with reported numerical simulations;
+
+(b) the standard formulation is severely affected by the discretization adopted, both qualitatively and
+quantitatively; the corresponding curves show significant over-dissipation.
+
+Finally, it is interesting to observe the similarity in the plots of the reaction forces, between the
+2D test (in Figure 21) and 3D test (Figure 26).
+
+8 Conclusion
+
+High-fidelity simulations of 2D and 3D pullout tests on concrete are presented. An elasto-plastic model
+with Rankine criterion is adopted as constitutive law; details on the formulation and regularization of
+edge and apex are given.
+
+25
+
+
+
+(a) (b) (c)
+
+Figure 23: Discretization meshes for the 3D pullout problem: from left to right, coarse mesh (a),
+medium mesh (b) and fine mesh (c).
+
+(a) (b)
+
+Figure 24: Deformed concrete block with the crack opening (left) and crack conical surface (right)
+resulting from the mixed formulation analysis with fine mesh.
+
+26
+
+
+
+(a) (b) (c)
+
+(d) (e) (f)
+
+Figure 25: Equivalent plastic strains for the mixed (top) and the standard formulations (bottom).
+
+ 0
+
+ 100
+
+ 200
+
+ 300
+
+ 400
+
+ 500
+
+ 600
+
+ 700
+
+ 800
+
+ 900
+
+ 1000
+
+ 0  0.05  0.1  0.15  0.2  0.25  0.3  0.35  0.4
+
+R
+e
+a
+c
+ti
+o
+n
+ f
+
+o
+rc
+
+e
+ [
+
+k
+N
+
+]
+
+Vertical displacement [mm]
+
+Std FEM - Coarse mesh
+
+Std FEM - Medium mesh
+
+Std FEM - Fine mesh
+
+Mix FEM - Coarse mesh
+
+Mix FEM - Medium mesh
+
+Mix FEM - Fine mesh
+
+Figure 26: Reaction versus displacement curve for the 3D pullout test.
+
+27
+
+
+
+A novel mixed strain/displacement formulation is used; the necessary stabilization procedure to
+ensure stability with equal order interpolation spaces is described and implementation issues are cov-
+ered. The enhanced convergence and accuracy properties of the mixed formulation are demonstrated
+through the numerical simulation of plane and axis-symmetrical pullout tests. The mixed method
+yields accurate results, on the one side, showing sensitivity to the physical parameters of the tests,
+and, on the other side, without spurious sensitivity to the mesh adopted.
+
+In all cases, the expected cracks are predicted as plastic-strain localization bands, without the need
+of using ad-hoc auxiliar tracking techniques. Crack bifurcation, in accordance with the experimental
+results, can also be predicted; this is an impossible feat for the local or global tracking algorithm. In
+addition, the mixed formulation demonstrates ability to capture the correct failure mechanism and
+the corresponding peak and post-peak behavior with relative coarse meshes. This is an important
+consideration on the cost-effectiveness of the formulation.
+
+9 Acknowledgments
+
+Financial support from the EC 7th Framework Programme under the MuMoLaDe project - Multi-
+scale Modelling of Landslides and Debris Flows - within the framework of Marie Curie ITN (Initial
+Training Networks) and the Spanish Ministry of Economy and Competitivity under the EACY project
+- Enhanced accuracy computational and experimental framework for strain localization and failure
+mechanisms- within the ”Excellency” Program for Knowledge Generation is gratefully acknowledged.
+
+28
+
+
+
+References
+
+[1] B. Winkler, G. Hofstetter, and G. Niederwanger. Experimental verification of a constitutive model
+for concrete cracking. Proceedings of the Institution of Mechanical Engineers, Part L: Journal of
+Material Design and Applications, 215:75–86, 2001.
+
+[2] B. G. Trunk. Einfluß der Bauteilgröße auf die Bruchenergie von Beton. Ph.D. thesis, ETH -
+Eidgenössischen Technischen Hochschule Zürich, 1999.
+
+[3] G. V. Guinea, J. Planas, and M. Elices. Measurement of the fracture energy using three-point
+bend tests: Part 1 - Influence of experimental procedures. Materials and Structures, 25(4):212–
+218, 1992.
+
+[4] J. C. Gálvez, M. Elices, G. V. Guinea, and J. Planas. Mixed mode fracture of concrete under
+proportional and nonproportional loading. International Journal of Fracture, 94(3):267–284, 1998.
+
+[5] M. B. Nooru-Mohamed. Mixed-mode fracture of concrete: an experimental approach. Ph.D.
+thesis, TU Delft, Delft University of Technology, 1992.
+
+[6] E. Ballatore, A. Carpinteri, G. Ferrara, and G. Melchiorri. Mixed mode fracture energy of
+concrete. Engineering Fracture Mechanics, 35(13):145 – 157, 1990.
+
+[7] R. Berenbaum and I. Brodie. Measurement of the tensile strength of brittle materials. British
+Journal of Applied Physics, 10(6):281, 1959.
+
+[8] D. A. Abrams. Tests of bond between concrete and steel. Number 71. University of Illinois Bulletin
+edition, 1913.
+
+[9] W. A. Slater, F. E. Richart, and G. G. Scofield. Tests of bond resistance between concrete and
+steel. Number 173. Department of Commerce, Technologic papers of the Bureau of Standards
+edition, 1920.
+
+[10] L. Elfgren, C. E. Broms, H. Johansson, and A. Rehnstrom. Anchor Bolts in Reinforced Concrete
+Foundations: Short Time Tests. Lule̊a University of Technology, 1980.
+
+[11] W. H. Peier. Model for pull-out strength of anchors in concrete. Journal of Structural Engineering,
+109(5):1155–1173, 1983.
+
+[12] R. Eligehausen and G. Sawade. A fracture mechanics based description of the pull-out behavior
+of headed studs embedded in concrete. Universitt Stuttgart, 1989.
+
+[13] Z. P. Bažant, J. Ožbolt, and R. Eligehausen. Fracture size effect: review of evidence for concrete
+structures. Journal of structural engineering, 120(8):2377–2398, 1994.
+
+[14] J. Ožbolt, R. Eligehausen, and H.W. Reinhardt. Size effect on the concrete cone pull-out load.
+International Journal of Fracture, 95(1):391–404, 1999.
+
+[15] B. L. Karihaloo. Pull-out of axisymmetric headed anchors. Materials and Structures, 29(3):
+152–157, 1996.
+
+[16] M. Baena, L. Torres, A. Turon, and C. Barris. Experimental study of bond behaviour between
+concrete and FRP bars using a pull-out test. Composites Part B: Engineering, 40(8):784–797,
+2009.
+
+[17] T. Lecompte, A. Perrot, A. Subrianto, A. Le Duigou, and G. Ausias. A novel pull-out device used
+to study the influence of pressure during processing of cement-based material reinforced with coir.
+Construction and Building Materials, 78:224–233, 2015.
+
+29
+
+
+
+[18] M. Dejori. Experimentelle und numerische Traglastanalysen von axial beanspruchten Kopfbolzen
+beim Versagensmechanismus Betonausbruch. Diplomarbeit (Master thesis), University of Inns-
+bruck, 2006.
+
+[19] Y. Thenier and G. Hofstetter. Numerical prediction of crack propagation and crack widths in
+concrete structure. Engineering Structures, 31:1832–1840, 2009.
+
+[20] T. C. Gasser and G. A. Holzapfel. Modeling 3D crack propagation in unreinforced concrete using
+PUFEM. Computer methods in applied mechanics and engineering, 194:2859–2896, 2005.
+
+[21] P. M. A. Areias and T. Belytschko. Analysis of three-dimensional crack initiation and propaga-
+tion using the extended finite element method. International journal for numerical methods in
+engineering, 63:760–788, 2005.
+
+[22] M. Cervera, M. Chiumenti, L. Benedetti, and R. Codina. Mixed stabilized finite element methods
+in nonlinear solid mechanics. Part III: Compressible and Incompressible Plasticity. Computer
+Methods in Applied Mechanics and Engineering, 285:752–775, 2015.
+
+[23] L. Benedetti, M. Cervera, and M. Chiumenti. Stress-accurate Mixed FEM for soil failure under
+shallow foundations involving strain localization in plasticity. Computers and Geotechnics, 64:
+32–47, 2015.
+
+[24] Y. R. Rashid. Ultimate strength analysis of prestressed concrete pressure vessels. Nuclear Engi-
+neering and Design, 7(4):334–344, 1968.
+
+[25] M. Cervera and M. Chiumenti. Size effect and localization in J2 plasticity. International Journal
+of Solids and Structures, 46(17):3301–3312, August 2009.
+
+[26] M. Cervera, M. Chiumenti, and R. Codina. Mixed stabilized finite element methods in nonlin-
+ear solid mechanics. Part II: Strain localization. Computer Methods in Applied Mechanics and
+Engineering, 199(37-40):2571–2589, August 2010.
+
+[27] M. Cervera, M. Chiumenti, and R. Codina. Mesh objective modeling of cracks using continuous
+linear strain and displacement interpolations. International Journal for Numerical Methods in
+Engineering, (87):962–987, 2011.
+
+[28] R. Faria, J. Oliver, and M. Cervera. A strain-based plastic viscous damage model for massive
+concrete structures. International Journal of Solids and Structures, 35(14):1533–1558, 1998.
+
+[29] C. Feist and G. Hofstetter. An embedded strong discontinuity model for cracking of plain concrete.
+Computer Methods in Applied Mechanics and Engineering, 195(52):7115 – 7138, 2006.
+
+[30] P. H. Feenstra and R. de Borst. A plasticity model and algorithm for mode-I cracking in concrete.
+International Journal for Numerical Methods in Engineering, 38:2509–2529, 1995.
+
+[31] B. Winkler, G. Hofstetter, and H. Lehar. Application of a constitutive model for concrete to the
+analysis of a precast segmental tunnel lining. International Journal for Numerical and Analytical
+Methods in Geomechanics, 28:797–819, 2004.
+
+[32] J. C. Simo and T. J. R. Hughes. Computational Inelasticity. Interdisciplinary applied mathemat-
+ics: Mechanics and materials. Springer New York, 1998.
+
+[33] D. Boffi, F. Brezzi, and M. Fortin. Mixed Finite Element Methods and Applications. Springer,
+2013 edition, 7 2013.
+
+[34] T. J. R. Hughes, G. R. Feijóo, L. Mazzei, and J. B. Quincy. The variational multiscale method
+- A paradigm for computational mechanics. Computer Methods in Applied Mechanics and Engi-
+neering, 7825(98), 1998.
+
+30
+
+
+
+[35] R. Codina. Stabilization of incompressibility and convection through orthogonal sub-scales in
+finite element methods. Computer Methods in Applied Mechanics and Engineering, 190:1579–
+1599, 2000.
+
+[36] S. Badia and R. Codina. Unified stabilized finite element formulations for the Stokes and the
+Darcy problems. SIAM Journal on Numerical Analysis, 47(3):1971–2000, 2009.
+
+[37] R. Codina. Finite element approximation of the three-field formulation of the Stokes problem
+using arbitrary interpolations. SIAM Journal on Numerical Analysis, 47(1):699–718, 2009.
+
+[38] M. Cervera, M. Chiumenti, Q. Valverde, and C. Agelet de Saracibar. Mixed linear/linear simplicial
+elements for incompressible elasticity and plasticity. Computer Methods in Applied Mechanics and
+Engineering, 192(49-50):5249–5263, 12 2003.
+
+[39] R. Codina. Analysis of a stabilized finite element approximation of the Oseen equations using
+orthogonal subscales. Applied Numerical Mathematics, 58(3):264 – 283, 2008.
+
+[40] M. Cervera, M. Chiumenti, and R. Codina. Mixed stabilized finite element methods in nonlinear
+solid mechanics. Part I: Formulation. Computer Methods in Applied Mechanics and Engineering,
+199(37-40):2559–2570, August 2010.
+
+[41] J. W. Ju. Isotropic and anisotropic damage variables in continuum damage mechanics. Journal
+of Engineering Mechanics, 116(12):2764–2770, 1990.
+
+[42] G. Meschke, R. Lackner, and H. A. Mang. An anisotropic elastoplastic-damage model for plain
+concrete. International Journal for Numerical Methods in Engineering, 42(4):703–727, 1998.
+
+[43] L. Berto, A. Saetta, R. Scotta, and R. Vitaliani. An orthotropic damage model for masonry
+structures. International Journal for Numerical Methods in Engineering, 55(2):127–157, 2002.
+
+[44] E. Rizzi and I. Carol. Dual orthotropic damageeffect tensors with complementary structures.
+International Journal of Engineering Science, 41(1314):1445 – 1495, 2003.
+
+[45] L. Pelà, M. Cervera, and P. Roca. Continuum damage model for orthotropic materials: Appli-
+cation to masonry. Computer Methods in Applied Mechanics and Engineering, 200(9):917–930,
+2011.
+
+[46] J. G. Rots, P. Nauta, G. M. A. Kuster, and J. Blaauwendraad. Smeared crack approach and
+fracture localization in concrete. HERON, 30 (1), 1985, 1985.
+
+[47] J. Oliver. A consistent characteristic length for smeared cracking models. International Journal
+for Numerical Methods in Engineering, 28(2):461–474, 1989.
+
+[48] M. Cervera, J. Oliver, and R. Faria. Seismic evaluation of concrete dams via continuum damage
+models. Earthquake engineering & structural dynamics, 24(9):1225–1245, 1995.
+
+[49] R. Faria, J. Oliver, and M. Cervera. A strain-based plastic viscous-damage model for massive
+concrete structures. International Journal of Solids and Structures, 35(14):1533–1558, 1998.
+
+[50] R. de Borst. Integration of plasticity equations for singular yield functions. Computers and
+Structures, 26(5):823 – 829, 1987. ISSN 0045-7949.
+
+[51] H. Matsuoka and T. Nakai. Stress-deformation and strength characteristics of soil under three
+different principal stresses. Proc. JSCE, 232:57–70, 1974.
+
+[52] J. M. Gesto, A. Gens, and J. Vaunat. Smoothing of yield surface and a reformulation of multi-
+surface plasticity. In E. Oñate, D. R. J. Owen, D. Peric, and B. Suárez, editors, Proceedings of
+the XI International Conference on Computational Plasticity. Fundamentals and Applications.
+CIMNE - International Center of Numerical Methods in Engineering, 2011.
+
+31
+
+
+
+[53] C. Miehe. Numerical computation of algorithmic (consistent) tangent moduli in large-strain
+computational inelasticity. Computer Methods in Applied Mechanics and Engineering, 134(34):
+223–240, 1996.
+
+[54] A. Pérez-Foguet, A. Rodŕıguez-Ferran, and A. Huerta. Numerical differentiation for local and
+global tangent operators in computational plasticity. Computer Methods in Applied Mechanics
+and Engineering, 189(1):277–296, 2000.
+
+[55] T. W. Reps and L. B. Rall. Computational divided differencing and divided-difference arithmetics.
+Higher-Order and Symbolic Computation, 16(1-2):93–149, 2003. ISSN 1388-3690.
+
+[56] S. Pietruszczak and Z. Mróz. Finite element analysis of deformation of strain-softening materials.
+International Journal for Numerical Methods in Engineering, 17(3):327–334, 1981.
+
+[57] M. Cervera, C. Agelet de Saracibar, and M. Chiumenti. COMET: Coupled Mechanical and
+Thermal analysis. Data Input Manual, Version 5.0, Technical Report IT-308. 2002. URL
+http://www.cimne.com/comet/.
+
+[58] Q. Duan, J.-H. Song, T. Menouillard, and T. Belytschko. Element-local level set method for three-
+dimensional dynamic crack growth. International journal for numerical methdod in engineering,
+80:1520–1543, 2009.
+
+[59] L. Kaczmarczyk, M. M. Nezhad, and C. Pierce. Three dimensional brittle fracture:
+configurational-force-driven crack propagation. International Journal for Numerical Methods in
+Engineering, 97:531–550, 2014.
+
+32
+
+

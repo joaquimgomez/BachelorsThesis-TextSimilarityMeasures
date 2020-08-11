@@ -1,0 +1,5696 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+High-performance model reduction techniques in
+
+computational multiscale homogenization
+
+J.A. Hernándeza,c,∗, J. Olivera,b, A.E. Huespeb,d, M.A. Caicedoa, J.C.
+Cantea,c
+
+aCentre Internacional de Mètodes Numèrics en Enginyeria (CIMNE), Technical
+University of Catalonia, Edificio C1, Campus Norte, Jordi Girona 1-3, Barcelona 08034,
+
+Spain
+bE.T.S. d’Enginyers de Camins, Canals i Ports, Technical University of Catalonia,
+
+Edificio C1, Campus Norte, Jordi Girona 1-3, Barcelona 08034, Spain
+cE.T.S. d’Enginyeries Industrial i Aeronàutica de Terrassa, Technical University of
+
+Catalonia, C/ Colom, 11, Terrassa 08222, Spain
+dCIMEC, CONICET, Güemes 3450, 3000 Santa Fe, Argentina
+
+Abstract
+
+A novel model-order reduction technique for the solution of the fine-scale
+equilibrium problem appearing in computational homogenization is presented.
+The reduced set of empirical shape functions is obtained using a partitioned
+version —that accounts for the elastic/inelastic character of the solution—
+of the Proper Orthogonal Decomposition (POD). On the other hand, it is
+shown that the standard approach of replacing the nonaffine term by an
+interpolant constructed using only POD modes leads to ill-posed formula-
+tions. We demonstrate that this ill-posedness can be avoided by enriching
+the approximation space with the span of the gradient of the empirical shape
+functions. Furthermore, interpolation points are chosen guided, not only by
+accuracy requirements, but also by stability considerations. The approach is
+assessed in the homogenization of a highly complex porous metal material.
+Computed results show that computational complexity is independent of the
+size and geometrical complexity of the representative volume element. The
+speedup factor is over three orders of magnitude —as compared with finite
+element analysis— whereas the maximum error in stresses is less than 10%.
+
+∗Corresponding author
+Email address: jhortega@cimne.upc.edu (J.A. Hernández)
+
+Preprint submitted to Comput. Methods Appl. Mech. Engrg. March 19, 2014
+
+
+
+Keywords: Multiscale, homogenization, model reduction,
+High-Performance reduced-order model, hyperreduction, POD
+
+1. Introduction
+
+1.1. Motivation and goal
+
+The major challenge in the macro-scale continuum description of het-
+erogeneous materials such as composites and polycrystalline metals (that
+exhibit a clear heterogeneous composition at the the micro-, or meso-, scale,
+but that can be regarded, for practical purposes, as homogeneous at the the
+macro-scale) lies in the determination of a constitutive connection, between
+macro-stresses and macro-strains, that accurately reflects the properties and
+geometrical arrangement of the distinct phases at the finer scale. It is well-
+known [34] that, under the hypotheses of either periodicity or statistical ho-
+mogeneity, on the one hand; and scale separation, on the other hand, this
+constitutive link can be systematically established by solving, for each point
+at the coarse scale, a boundary value problem (BVP) on a certain represen-
+tative microscopic subdomain. In a strain-driven formulation of this BVP,
+the macro-strain at a given point acts as “loading parameter”, in the form
+of appropriate essential boundary conditions, whereas the associated macro-
+stress is obtained through volume averaging —i.e., homogenization— of the
+corresponding micro-stress field.
+
+Methods dealing with the solution of this BVP range from purely ana-
+lytical approaches to direct computational methods, such as the two-level, Fi-
+nite Element (FE2) method [29]. Analytical approaches are computationally
+inexpensive, but only valid for certain types of geometrically and constitu-
+tively simple micro-structures. By contrast, direct computational methods
+have no other limitation in scope than the imposed by the aforementioned
+hypotheses of statistical homogeneity and scale separation —in these meth-
+ods, the microscopic BVP at each coarse-scale point is attacked using no
+other approximation than the spatial discretization of the pertinent solution
+strategy, thus, circumventing the need for introducing ad-hoc, simplifying as-
+sumptions regarding the topological arrangement of the micro-phases and/or
+their collective constitutive behavior. Needless to say, the versatility of di-
+rect computational homogenization comes at a significant price: its enormous
+computational cost.
+
+2
+
+
+
+Between these two extremes (purely analytical and direct computational
+methods), there are homogenization strategies that can be termed semi-
+analytical, since they combine analytical results with numerical computa-
+tions. Such is the case of the Transformation Field Analysis (TFA) [25]
+and variants thereof [49, 50, 56, 30], which are based on the pre-computation
+of certain characteristic operators (strain localization and influence tensors)
+using the information obtained from solving a carefully chosen battery of
+fine-scale BPVs. Although these methods have notably widen the scope
+of classical analytical approaches —while maintaining their low computa-
+tional cost—, they are still predicated, to a lesser or greater extent, on
+ad-hoc assumptions connected with the constitutive description of the in-
+volved phases. Consideration of new materials with unstudied compositions
+using semi-analytical approaches, thus, requires additional research efforts
+by specialists in the field and eventual modifications of the corresponding
+mathematical and numerical formulations —in contrast to direct computa-
+tional homogenization approaches, such as the FE2 method, in which the
+formulation is “material-independent”, and hence more versatile.
+
+The current state of affairs in the field of two-scale homogenization seems
+to call, thus, for a unified homogenization approach that combines some-
+what the advantages of direct computational homogenization and analytical
+and semi-analytical techniques. It would be desirable to have a homogeniza-
+tion method with a computational cost virtually independent of the geomet-
+ric complexity of the considered representative volume, as in analytical and
+semi-analytical techniques. At the same time, it would be also interesting to
+arrive at a method whose mathematical formulation dispenses with ad-hoc,
+simplifying assumptions related with the composition of the heterogeneous
+material; i.e, one enjoying the versatility, unrestricted applicability and “user-
+friendliness” —insofar as it would totally relieve the modeler from the often
+exceedingly difficult task of visualizing such assumptions — of direct compu-
+tational homogenization methods. The goal of the present paper is to show
+that these desirable attributes can be achieved, for arbitrarily complex het-
+erogeneous materials well into the inelastic range, by using the so-called [47]
+Reduced-Basis (RB) approximation in the solution of the fine-scale BVPs.
+
+1.2. The reduced-basis method
+
+Generally speaking, the reduced-basis approximation is a class ofGalerkin
+approximation procedure that employs, as opposed to the FE method, but
+
+3
+
+
+
+similarly to classical Rayleigh-Ritz solution techniques [19], globally sup-
+ported basis functions. The main difference with respect to classical Rayleigh-
+Ritz schemes is that these basis functions or modes are not constructed from
+either polynomials or transcendental functions (sines, cosines ...), but rather
+are determined from a larger set of previously computed —using the finite
+element (FE) method or other classical solution techniques— solutions of
+the BVP at appropriately selected values of the input of interest. These
+functions are commonly termed empirical basis functions [41], the qualifier
+empirical meaning “derived from computational experiments”.
+
+1.2.1. Dimensionality reduction
+
+As noted earlier, the input of interest or “loading” parameter in the fine-
+scale problem is the macro-scale strain tensor. Accordingly, the starting
+point for constructing the basis functions consists in solving, using the FE
+method, a battery of BVPs for various, representative macro-strain histories.
+The outcome of these FE calculations is a data set comprising an ensemble of
+hundred or even thousand (depending on the number of time steps into which
+the strain histories are discretized) displacement field solutions (also called
+snapshots). Were all these snapshots barely correlated with each other, the
+dimension of the manifold spanned by them would prove overly high, render-
+ing the entire approach impractical —it would no longer qualify as a truly
+reduced basis method. Fortunately, as we show in the present paper, in gen-
+eral, most of these snapshots do display strong linear correlations between
+each other —i.e., they have redundant information—, and, in addition, con-
+tain deformation modes that are irrelevant to the quality of coarse-scale
+predictions. All that is required to obtain a much lower dimensional repre-
+sentation of the solution data set, and therewith the desired reduced basis, is
+an automatic means to identify and remove this redundant and irrelevant in-
+formation, while preserving, as much as possible, its essential features. The
+problem of removing unnecessary complexity from huge data sets so as to
+uncover dominant patterns is the central concern of disciplines such as dig-
+ital image compression [60] and patter recognition [8], to name but a few,
+and thereby many efficient dimensionality reduction (or data compression,
+in more common parlance) algorithms already exist to deal with it. In the
+present work, we employ one of the simplest and most popular of these di-
+
+4
+
+
+
+mensionality reduction algorithms: the Proper Orthogonal Decomposition1
+
+(POD).
+It may be inferred from the above that the proposed homogenization
+
+method, like analytical and semi-analytical strategies, does introduce sim-
+plifications in solving the fine-scale BVP. However, as opposed to analytical,
+and to a lesser extent, semi-analytical procedures, these simplifications are
+not introduced by the modeler, but rather are automatically carried out by
+the abovementioned dimensionality reduction methods (in an offline stage,
+prior to the overall multiscale analysis). In other words, in the proposed
+method, the task of discerning what is essential and what is not2 is entirely
+delegated to the computer itself, and hence, its success does not depend upon
+the depth of insight, experience, and knowledge base of the modeler —only
+some discretion is to be exercised in choosing appropriate strain paths for
+the offline FE analyses. This feature naturally confers the advantages of
+versatility and “user-friendliness” enjoyed by direct computational methods.
+
+1.2.2. Numerical integration
+
+Once the global shape functions have been determined, the next step
+is to introduce an efficient method for numerically evaluating the integrals
+appearing in the weak form of the cell BVP. Of course one can simply use
+the same Gauss quadrature formulae and the same sampling points (a total
+number of ng = O(n), n being the number of mesh nodes) as the underlying
+finite element model. But this would be akin to integrating, say, a third-
+order polynomial function using thousand of sampling points—a profligate
+waste of computational resources. Since displacement solutions for the cell
+BVP are constrained to lie in a reduced-order space of dimension nu << n,
+it is reasonable to expect that the corresponding stresses, internal forces
+and Jacobians will also reside in reduced-order spaces of dimensions of order
+O(nu), and consequently, only p = O(nu) << ng sampling points would
+suffice in principle to accurately evaluate the corresponding integrals. The
+challenging questions that have to be confronted are where to locate these
+p sampling points and, loosely speaking, how to determine their associated
+
+1By constraining the cell to deform only into the deformation modes determined by
+the POD, one automatically obtains a genuine reduced-order model (ROM) of the cell.
+
+2Discerning what is essential and what is not is, according to M.Ashby [4], the key
+to any successful computational model (i.e., one that strikes the right balance between
+accuracy and simplicity)
+
+5
+
+
+
+weighting functions so that maximum accuracy in the integration is attained.
+Approaches found in the model reduction literature that, directly or indi-
+
+rectly, deal with these fundamental questions can be broadly classified either
+as interpolatory methods [7, 33, 54, 18, 5] or Gauss-type quadrature strategies
+[3, 39]. In both types of approaches, the integrand or part of the integrand is
+approximated by a linear combination of a reduced set of empirical modes.
+In interpolatory approaches, the coefficients in this approximation are ob-
+tained by interpolation at a set of pre-selected sampling points; the criterion
+for choosing the location of such points is the minimization of the interpo-
+lation error over the finite element snapshots. In Gauss-type quadrature
+procedures, on the other hand, the selection of sampling points and the cal-
+culation of the accompanying weighting factors are simultaneously carried
+out, guided by a criterion of minimum integration error over the snapshots.
+
+In the BVP under consideration, the output of interest is the volume av-
+erage of the stresses over the cell domain and, therefore, accuracy is required
+not only in the integration of the equilibrium equation, but also on the ap-
+proximation of the stresses themselves. This is the reason why attention is
+focused here on interpolatory integration strategies, the variable subject to
+spatial interpolation being precisely the stresses.
+
+1.3. Originality of this work
+
+The idea of exploiting the synergistic combination of multiscale model-
+ing and reduced basis approximation is admittedly not new. In the specific
+context of two-scale homogenization, it has been recently explored by Boy-
+aval [10], Yvonnet et al. [62], and Monteiro et al. [51]. Traces of this idea
+can also be found in articles dealing with more general hierarchical multi-
+scale techniques —that do not presuppose either scale separation or peri-
+odicity/statistical homogeneity, or both—, namely, in the multiscale finite
+element method [53, 26, 27], in the heterogeneous multiscale method [2, 1],
+and in multiscale approaches based on the Proper Generalized Decomposi-
+tion (PGD)[21]. However, it should be noted that none of the above cited
+papers confronts the previously described, crucial question of how to effi-
+ciently integrate the resulting reduced-order equations, simply because, in
+most of them [10, 53, 26, 27, 2, 1], integration is not an issue — the fine-scale
+BVPs addressed in these works bear an affine relation with the corresponding
+coarse-scale, input parameter, as in linear elasticity, and, consequently, all
+integrals can be pre-computed, i.e., evaluated offline, with no impact in the
+online computational cost. Thus, the development of reduced-order models
+
+6
+
+
+
+endowed with efficient, mesh-size independent integration schemes —able to
+handle any material composition— is a research area that, to the best of the
+authors’ knowledge, still remains uncharted.
+
+1.3.1. Main original contributions
+
+The theory underlying reduced-order models (ROMs) that incorporate
+efficient interpolatory integration schemes is still at its embryonic stage of
+development —the first general proposal for parametrized BVPs dates back
+to 2004 [7]— and many fundamental issues remain to be addressed. Fore-
+most among these is the crucial question of well-posedness of the resulting
+system of algebraic equations: does the replacement of the integrand, or non-
+affine term in the integrand, by a reduced-order interpolant always lead to
+a well-posed, discrete problem ? Examination of the reduced basis literature
+indicates that apparently no researcher has so far been confronted with ill-
+posed reduced-order equations, a fact that might certainly promote the view
+that uniqueness of solution can be taken for granted whenever the full-order
+model is well-posed. Unfortunately, this is not always so: we demonstrate in
+this paper that the choice of the reduced-order space in which the interpolant
+of the integrand resides has a profound impact on the well-posedness of the
+discrete problem. In particular, we show that, in the case of the fine-scale
+boundary-value problem, the widely adopted [33] approach of determining
+the basis functions for this space from (converged) FE snapshots leads in-
+variably to ill-posed, discrete formulations. The main original contribution
+of the present work to the field of reduced-order modeling is the development
+of an interpolatory integration method that safely overcomes this type of ill-
+posedness. The gist of the method is to expand the interpolation space so
+that it embraces, aside from the span of the POD stress basis functions,
+the space generated —and herein lies the novelty— by the gradient of the
+(reduced-order) shape functions. Furthermore, it is shown that, in contrast
+to the situation encountered when using standard interpolatory schemes in
+other parametrized BVPs [33], in the BVP under consideration, the number
+and particular placement of sampling points within the integration domain
+influence notably the spectral properties (positive definiteness) of the Jaco-
+bian matrix of the governing equation, and therefore, the convergence charac-
+teristics of the accompanying Newton-Raphson solution algorithm. Another
+innovative ingredient of the present paper is a points selection algorithm that
+does acknowledge this peculiarity and chooses the desired sampling points
+guided, not only by accuracy requirements (minimization of the interpolation
+
+7
+
+
+
+error over the FE stress snapshot), but also by stability considerations.
+
+2. RVE equilibrium problem
+
+In this section, we present the variational statement and finite element
+discretization of the fine-scale equilibrium problem, which, recall, is the pa-
+rameterized BVP we wish to efficiently solve using the reduced-basis approx-
+imation.
+
+2.1. Preliminaries
+
+Let Ω ⊂ Rd (d = 2, 3) be a subvolume of characteristic length l << lM
+( lM is the characteristic length of the macro-continuum ΩM , see Figure 1)
+that is representative of the heterogeneous material as a whole. In micro-
+structures that exhibit statistical homogeneity, this domain receives the name
+of Representative Volume Element (RVE), whereas in micro-structures that
+display periodicity, it is commonly known as repeating unit cell (RUC), or
+simply unit cell [24]. In the sequel, the acronym RVE will be used to refer
+to Ω.
+
+M
+W
+
+( )W
+
+M
+l
+
+M
+ε
+
+1
+( )d
+
+V
+M
+
+σ σ x
+
+W
+
+= Wò
+
+M
+l l<<
+
+M
+x
+
+x
+
+( )σ x
+
+Macro-strains (input)
+
+Macro-stresses (output)
+
+RVE or “cell”
+
+Cell equilibrium
+problem
+
+Figure 1: First-order homogenization.
+
+In the homogenization approach adopted in this work —commonly known
+as first-order homogenization [32, 40]—, the strain field ǫ(x) at any point
+x ∈ Ω is assumed to be decomposed into macroscopic and fluctuating contri-
+butions; under the hypothesis of infinitesimal deformations, this decomposi-
+tion can be written as:
+
+ǫ(x) = ǫM +∇su(x). (1)
+
+8
+
+
+
+Here, ǫM stands
+3 for the macroscopic strain tensor (the input parameter in
+
+the problem) and ∇su denotes the symmetric gradient of the displacement
+fluctuation field (this field is, in turn, the basic unknown of the problem).
+
+Implicit in the scale separation assumption is the fact that fine-scale de-
+formations only influence coarse-scale behavior through its volume average
+over the RVE. It can be shown (see, for instance, Ref. [22]) that this im-
+plies that the boundary conditions (BCs) prescribed on the RVE must be
+homogeneous (i.e., A0u = 0 on ∂Ω, A0 being a certain linear operator).
+The natural choice for a repeating unit cell is to employ periodic boundary
+conditions (See Refs. [9, 48] for more details on how to prescribe this type of
+BCs). In statistically homogeneous micro-structures, by contrast, there is a
+certain latitude in the choice of boundary conditions (vanishing fluctuations,
+uniform tractions, quasi-periodic conditions . . . ). In the examples shown
+later, vanishing boundary conditions are used (u = 0 on ∂Ω).
+
+2.2. Variational formulation
+
+2.2.1. Trial and test spaces
+
+The trial space, i.e., the set of kinematically admissible displacement fluc-
+tuation fields, is defined formally as
+
+Vu =
+{
+u ∈ H1(Ω)d | A0u = 0, on ∂Ω
+
+}
+, (2)
+
+where H1(Ω)d stands for the Sobolev space of functions possessing square
+integrable derivatives over Ω. Note that this set forms a vector space. Since
+the test functions η appearing in the variational statement shown in the
+following are kinematically admissible variations (η := u − v, u,v ∈ Vu),
+Vu having structure of vector space implies that, in the RVE equilibrium
+problem, the spaces of trial and test functions coincide.
+
+2.2.2. Formal statement
+
+Consider a time discretization of the interval of interest [t0, tf ] =
+⋃nstp
+
+n=1[tn, tn+1].
+The current value of the microscopic stress tensor σn+1 at each x ∈ Ω is pre-
+sumed to be entirely determined by, on the one hand, the current value of the
+
+3Macroscopic variables will be identified by appending a subscript “M”, while variables
+associated to the fine scale will be designated by bare symbols. For instance, we shall
+write ǫM and ǫ(x) to denote the macroscopic strain tensor and the fine-scale strain field,
+respectively.
+
+9
+
+
+
+microscopic strain tensor ǫn+1(x) = ǫMn+1 +∇sun+1(x), and, on the other
+hand, a set of microscopic internal variables ξn+1 —that encapsulate the his-
+tory of microscopic deformations. The relationship between these variables
+is established by (phenomenological) rate constitutive equations; these equa-
+tions may vary from point to point within the RVE (multiphase materials).
+Likewise, the considered RVE may contain also voids distributed all over the
+domain. The (incremental) RVE equilibrium problem at time tn+1 can be
+stated as follows (see Ref. [22]): given the initial data {un(x), ǫMn, ξn(x)}
+and the prescribed macroscopic strain tensor ǫMn+1, find un+1 ∈ Vu such
+that ∫
+
+Ω
+
+∇sη : σn+1(ǫMn+1 +∇sun+1, ξn+1) dΩ = 0, (3)
+
+for all η ∈ Vu. The actual output of interest in this fine-scale BVP is not
+the displacement fluctuation field per se, but rather the macroscopic stress
+tensor σM |n+1, which is defined as the volume average over the RVE of the
+microscopic stresses:
+
+σM |n+1 :=
+1
+
+V
+
+∫
+
+Ω
+
+σn+1 dΩ, (4)
+
+where V stands for the volume of the RVE. In order to keep the notation
+uncluttered, the superindex “n+1” will be hereafter dropped out and all
+quantities will be assumed to be evaluated at time tn+1; only when confusion
+is apt to show up, the pertinent distinction will be introduced.
+
+2.3. Finite element formulation
+
+Let Ω =
+⋃ne
+
+n=1Ω
+e be a finite element discretization of the RVE. It will
+
+be assumed that this discretization is fine enough to consider the exact and
+FE approximated solutions indistinguishable at the accuracy level of inter-
+est. Let {N1(x), N2(x) . . .Nn(x)} (n denotes the number of nodes of the
+discretization) be a set of shape functions associated to this discretization.
+Now we approximate u ∈ Vu and η ∈ Vu as
+
+u(x; ǫM ) ≈ u(h)(x; ǫM) =
+n
+
+∑
+
+I=1
+
+NI(x)U I(ǫM ), (5)
+
+η(x) ≈ η(h)(x) =
+n
+
+∑
+
+I=1
+
+NI(x)ηI , (6)
+
+10
+
+
+
+where U I ∈ Rd and ηI ∈ Rd (I = 1, 2 . . . n) denote the nodal values of the
+displacement fluctuations and test functions, respectively. Inserting these
+approximations in Eq.(3), and exploiting the arbitrariness of coefficients ηI
+(I = 1, 2 . . . n), one arrives at the following set of discrete equilibrium equa-
+tions (repeated indices implies summation):
+
+∫
+
+Ω
+
+∂NI
+∂xj
+
+σij(ǫM +∇su(h), ξ) dΩ = 0 (i = 1 . . . d; I = 1 . . . n). (7)
+
+Introducing Voigt’s notation4, the above equation can be expressed in matrix
+format as: ∫
+
+Ω
+
+B
+T
+σ(ǫM +BU , ξ) dΩ = 0, (8)
+
+As usual, numerical evaluation of the integral in Eq.(8) is carried out by
+Gaussian quadrature:
+
+∫
+
+Ω
+
+B
+T
+σ dΩ ≈
+
+ng
+∑
+
+g=1
+
+wgB
+T(xg)σ(xg, ; ) = 0. (9)
+
+Here, ng = O(n) stands for the total number of Gauss points of the mesh;
+wg denotes the weight associated to the g − th Gauss point xg (this weight
+includes both the quadrature weight itself and the corresponding Jacobian
+determinant.); and B(xg) and σ(xg, ; ) stand for the B-matrix and the stress
+vector at Gauss point xg, respectively.
+
+3. Computation of reduced basis
+
+A basic, intuitive picture of the strategy for computing the reduced basis
+onto which to project the RVE equilibrium equation (3) was already given
+in the introductory section. In the following, we put the idea behind this
+strategy on a more rigorous footing. We begin by noting that, from a func-
+tional analysis standpoint, the term model reduction is conceptually akin
+
+4Here, it is convenient to use the so-called modified Voigt’s notation rather than the
+standard one. In the modified Voigt’s notation, both stress σ and strain ǫ tensors are
+represented as column vectors ({σ} and {ǫ}, respectively ) in which the shear components
+are multiplied by
+
+√
+2. The advantage of this notation over the conventional, engineering
+
+Voigt’s notation is the equivalence between norms; viz., ‖σ‖ =
+√
+σ : σ = ‖ {σ} ‖ =
+
+√
+
+{σ}T {σ}. The reader is urged to consult [20] for further details on this notation.
+
+11
+
+
+
+to the more common term model discretization, since both connote transi-
+tions from higher-dimensional to lower-dimensional solution spaces. Whereas
+model discretization is used to refer to the (classical) passage from the infinite
+dimensional space Vu to the finite element subspace Vhu ⊂ Vu, model reduction
+denotes a transition from this finite dimensional space Vhu to a significantly
+smaller manifold V∗u ⊂ Vhu —the reduced-order space. This latter transition
+is not carried out directly, but in two sequential steps, namely, sampling of
+the input parameter space and dimensionality reduction.
+
+3.1. Sampling of the input parameter space
+
+In constructing the finite element space of kinematically admissible func-
+tions Vhu , the only restrictions placed on the motion of the mesh nodes are
+those imposed at the boundaries. The finite element solution space, thus,
+does not presuppose any constraint on the motion of the interior nodes of
+the mesh.
+
+However, in actuality, interior nodes cannot fluctuate freely, indepen-
+dently from each other, but they rather move according to deformational
+patterns dictated by the constitutive laws that govern the mechanical behav-
+ior of the distinct phases in the RVE5. This means that the solution of the
+finite element equilibrium equation (3) for given values of the macro-strain
+tensor ǫM actually lives in a smaller subspace Vǫu ⊂ Vhu (in the parlance
+of model reduction [47, 57], Vǫu is the manifold induced by the parametric
+dependence of the BVP on the input variables).
+
+Yet, in general, this subspace cannot be precisely determined; one has to
+be content to construct an approximation of it as the span of the displace-
+ment fluctuation solutions obtained for a judiciously chosen set of nhst input
+strain histories { tǫM 1, tǫM 2, . . . tǫM nhst}. Suppose, for simplicity, that each
+of these strain histories is discretized into equal number of steps nstp, and let
+
+uk(x) = u(x; tǫM j
+i), k = (i− 1)nhst + j (10)
+
+denote the displacement fluctuation solution at the j − th time step of the
+i − th strain history (i = 1, 2 . . . nhst, j = 1, 2 . . . nstp). The approximating
+space for Vǫu, henceforth called the snapshots space, is then defined as:
+
+5As noted by Lubliner [45], constitutive laws can be regarded as internal restrictions
+on the kinds of deformation a body can suffer
+
+12
+
+
+
+Vsnpu = span
+{
+u1(x),u2(x), . . .unsnp(x)
+
+}
+⊆ Vǫu, (11)
+
+nsnp = nstpnhst being the total number of snapshots. The matrix containing,
+in columns, the nodal values of these displacement fluctuations solutions:
+
+Xu =
+[
+U
+
+1
+U
+
+2 · · · Unsnp
+]
+∈ Rn·d×nsnp (12)
+
+will correspondingly be termed the (displacement fluctuations) snapshot ma-
+trix.
+
+3.2. Dimensionality reduction
+
+The next and definitive step in the transition from the high-dimensional
+finite element space Vhu to the desired reduced-order space V∗u —in which
+the fine-scale BVP is to be finally posed— is the dimensionality reduction
+process, in which, as pointed out in the introductory section, the dominant
+deformational patterns of the RVE response are identified and unveiled by
+washing out the “inessentials”. To accomplish this central task, we employ
+here a partitioned version of the Proper Orthogonal Decomposition6.
+
+3.2.1. Elastic/Inelastic reduced basis functions
+
+The Proper Orthogonal Decomposition is nothing but a multidimensional
+data fitting procedure intended to obtain a sequence of orthogonal basis func-
+tions whose span best approximate the space of snapshots. As such, the POD
+is a purely data-driven process —it is “agnostic” to the physical origin of the
+data. For instance, for POD basis construction purposes, it is completely
+immaterial whether a given snapshot corresponds to a purely linear elastic
+solution or to a solution well into the inelastic regime. The task of discrimi-
+nating which features of the RVE response are essential and which are not is
+exclusively guided by statistical considerations: if the elastic response hap-
+pens to be poorly represented within the snapshot ensemble, the POD may
+regard as unimportant the contribution of these snapshots, and, as a conse-
+quence, the basis functions with largest associated singular values —i.e., the
+essential modes— would hardly contain any information of this range. To
+accurately replicate the apparently trivial linear elastic behavior, thus, one
+may be forced to take a relatively large number of basis functions, and this
+
+6See Appendix A for a brief description of the POD.
+
+13
+
+
+
+may translate into a significant increase in the overall online computational
+cost. This fact certainly places the POD-based reduced basis approach at
+a competitive disadvantage compared with semi-analytical homogenization
+approaches such as the Nonlinear Transformation Field Analysis [50], which
+do capture exactly (and effortlessly) the linear elastic response of the RVE.
+
+To eliminate this shortcoming, we propose here a slightly different strat-
+egy for constructing the reduced basis. The essence of the proposal is to
+partition the space of snapshots Vsnpu into elastic (V
+
+snp
+u,el) and inelastic (V
+
+snp
+u,inel)
+
+subspaces:
+Vsnpu = V
+
+snp
+u,el ⊕ V
+
+snp
+u,inel, (13)
+
+(⊕ symbolizes direct sum of subspaces [55]) and then obtain the reduced
+basis as the union of the bases for both subspaces. Below, we describe this
+strategy more in detail.
+
+The first step is to determine an orthogonal basis for Vsnpu,el . One can do this
+by simply performing me independent, linear elastic finite element analysis
+of the RVE (me = 6 for 3D problems
+
+7, and me = 3 for plane strain), and
+then orthonormalizing the resulting displacement fluctuation fields. These
+me elastic modes will be considered as the first me basis functions of the
+reduced basis:
+
+span{Φ1,Φ2, . . . ,Φme} = V
+snp
+u,el . (14)
+
+Once we have at our disposal this set of elastic basis functions, we compute
+the (orthogonal) projection of each snapshot uk onto the orthogonal comple-
+ment of Vsnpu,el (which is precisely the aforementioned inelastic space V
+
+snp
+u,inel):
+
+ukinel := u
+k −
+
+me∑
+
+i=1
+
+〈
+Φi,u
+
+k
+〉
+
+L2(Ω)
+Φi, k = 1, 2 . . . nsnp. (15)
+
+It is now on this ensemble of inelastic snapshots {ukinel}
+nsnp
+k=1 that the pre-
+
+viously described POD is applied to obtain the remaining nu − me basis
+functions. Thus, we finally have:
+
+V∗u = V
+snp
+u,el ⊕ V
+
+snp
+u,inel = span{
+
+Elastic modes
+︷ ︸︸ ︷
+
+Φ1,Φ2, . . . ,Φ6,
+
+“Essential” Inelastic modes
+︷ ︸︸ ︷
+
+Φ7, . . . ,Φnu }. (16)
+
+7Strictly speaking, the proposed decomposition is only valid for materials governed by
+rate-independent constitutive equations.
+
+14
+
+
+
+for 3D problems, and
+
+V∗u = span{
+Elastic modes
+︷ ︸︸ ︷
+
+Φ1,Φ2,Φ3,
+
+“Essential” inelastic modes
+︷ ︸︸ ︷
+
+Φ4, . . . ,Φnu }. (17)
+
+for plane strain. In placing the me elastic modes within the first me posi-
+tions, the reduced-order model is guaranteed to deliver linear elastic solutions
+with the same accuracy as the underlying (full-order) finite element model
+(obviously, provided that nu ≥ me).
+
+Further details concerning the numerical implementation of this appar-
+ently novel —to the best of the authors’ knowledge— basis construction
+strategy can be found in Appendix B.
+
+4. Galerkin projection onto the reduced subspace
+
+We now seek to pose the boundary-value problem represented by Eq.(3) in
+the reduced-order space V∗u ⊆ Vhu spanned by the basis functions {Φ1,Φ2, . . . ,Φnu}.
+To this end, we approximate both test η ∈ Vu and trial u ∈ Vu functions by
+the following linear expansions:
+
+u(x; ǫM ) ≈ u∗(x; ǫM) =
+nu∑
+
+i=1
+
+Φi(x)U
+∗
+i (ǫM ), (18)
+
+η(x) ≈ η∗(x) =
+nu∑
+
+i=1
+
+Φi(x)η
+∗
+i , (19)
+
+u∗(x) and η∗(x) being the low-dimensional approximations of trial and test
+functions, respectively (hereafter, asterisked symbols will be used to denote
+low-dimensional approximations of the associated variables). Inserting Eqs.
+(18) and (19) into Eq.(3), and exploiting the arbitrariness of coefficients η∗i
+(i = 1, 2 . . . nu), we arrive at the following set of nu equilibrium equations:
+
+∫
+
+Ω
+
+∇sΦi(x) : σ(x; ǫM +∇su∗, ξ) dΩ = 0, i = 1, 2 . . . nu. (20)
+
+Expressing now the reduced basis functions in the above equation in terms of
+finite element shape functions (through expression Φi(x) =
+
+∑n
+I=1NI(x)ΦIi),
+
+we get (in Voigt’s notation):
+∫
+
+Ω
+
+B
+∗
+i
+T
+(x)σ(x; ǫM +B
+
+∗
+U
+
+∗, ξ) dΩ = 0, i = 1, 2 . . . nu, (21)
+
+15
+
+
+
+or more compactly:
+
+∫
+
+Ω
+
+B
+∗T(x)σ(x; ǫM +B
+
+∗
+U
+
+∗, ξ) dΩ = 0. (22)
+
+Here, U ∗ =
+[
+U∗1 U
+
+∗
+2 · · · U∗nu
+
+]T ∈ Rnu denotes the vector containing the
+reduced displacement fluctuations —the basic unknowns of the reduced-order
+problem— and B∗ : Ω → Rs×nu stands for the reduced “B-matrix”, defined
+as:
+
+B
+∗(x) := B(x)Φ. (23)
+
+This matrix connects the gradient of the displacement fluctuation field with
+the vector of reduced displacement fluctuations:
+
+∇su∗ =
+nu∑
+
+i=1
+
+B
+∗
+iU
+
+∗
+i =
+
+B
+∗
+
+︷ ︸︸ ︷
+[
+B
+
+∗
+1 B
+
+∗
+2 . . . B
+
+∗
+nu
+
+]
+
+U
+∗
+
+︷ ︸︸ ︷
+
+
+
+
+
+
+U∗1
+U∗2
+...
+
+U∗nu
+
+
+
+
+
+
+
+
+= B∗U ∗ = BΦU ∗.
+
+(24)
+
+For implementational purposes, it is more expedient to express Eq.(23) in
+terms of elemental B−matrices. To this end, we write:
+
+B(x) =
+
+{
+B
+
+e(x), ifx ∈ Ωe
+0, otherwise
+
+(25)
+
+where Be ∈ Rs×d·n̄e denotes the local B-matrix of element Ωe (n̄e, in turn, is
+the number of nodes in Ωe). Thus,
+
+B
+∗(x) = B(x)Φ = Be(x)Φe. (26)
+
+In the above equation, Φe ∈ Rdn̄e×nu represents the block matrix of Φ corre-
+sponding to the n̄e nodes of finite element Ω
+
+e (e = 1, 2 . . . ne).
+
+5. Stress approximation space
+
+To arrive at an efficient, mesh-size independent integration scheme, two
+crucial questions have to be addressed, namely, the determination of the
+
+16
+
+
+
+vector space (hereafter denoted by Vaprσ ) in which the low-dimensional ap-
+proximation of the stress field8 should lie in order to obtain an accurate and
+at the same time well-posed ROM; and the calculation of the optimal loca-
+tion of the sampling or integration points. Attention here and in the next
+section is confined to the aspect related to the stress approximation space;
+the issue related to the selection of sampling points, on the other hand, is
+examined in Section 7.
+
+5.1. The reduced-order subspace of statically admissible stresses (V∗σ)
+At first sight, the problem of constructing a O(nu)-dimensional repre-
+
+sentation of the stress field seems quite similar to the problem addressed in
+Section 3 concerning the reduced basis for the displacement fluctuations: we
+have to find a set of orthogonal basis functions {Ψ 1(x),Ψ 2(x) . . .Ψnσ(x)}
+(nσ = O(nu)) such that its span accurately approximates the set of all possi-
+ble stress solutions —that is, the set of all statically admissible stresses. Ac-
+cordingly, following the procedure described in Section 3, we first compute
+finite element, stress distributions over the RVE for representative macro-
+strain histories9. Then, the elastic/inelastic dimensionality reduction process
+set forth in Section 3.2.1 is applied to the resulting ensemble of stress solu-
+tions {σ1(x),σ2(x) . . .σnsnp(x)}, in order to identify both the elastic and the
+essential inelastic stress modes. The space spanned by these modes will be
+denoted hereafter by V∗σ and termed the reduced-order subspace of statically
+admissible stresses :
+
+V∗σ = span{
+Elastic stress modes
+
+︷ ︸︸ ︷
+
+Ψ 1(x),Ψ 2(x), . . . ,Ψme(x),
+
+“Essential”, inelastic stress modes
+︷ ︸︸ ︷
+
+Ψme+1(x),Ψme+2(x), . . . ,Ψnσ(x)}.
+(27)
+
+8It was mentioned in the introductory section that the central idea of efficient inter-
+polatory approaches for numerical integration of reduced-order BVPs is to replace the
+nonaffine term in the the integrand by low-dimensional interpolants. In our case, a glance
+at the reduced-order equilibrium equation (21) readily reveals that such “offending”, non-
+affine term is the stress field —the reduced B-matrix B∗ = B∗(x) is independent of the
+input parameter ǫM and hence need not be subject to approximation.
+
+9The most practical and somehow consistent choice regarding these strain trajectories
+is to use the same as in the computation of the displacement fluctuations snapshots
+
+17
+
+
+
+5.2. Ill-posedness of the HP-ROM
+
+Let us now try to construct the low-dimensional approximation of the
+stress field, denoted by10 σ∗, as a linear combination of the above described
+stress reduced basis— hence making Vaprσ = V∗σ—; i.e.,
+
+σ(x; ǫM ,U
+∗) ≈ σ∗(x; ǫM ,U ∗) =
+
+nσ∑
+
+i=1
+
+Ψ i(x)ci(ǫM ,U
+∗), (28)
+
+where ci ∈ R (i = 1, 2 . . . nσ). This strategy of approximating the offend-
+ing, nonaffine term in the BVP by a linear combination of pre-computed
+basis functions —obtained, in turn, from samples of the nonaffine term eval-
+uated at the solution— has been successfully applied by several authors, with
+no apparent —or at least not reported— computational pitfalls, to a wide
+gamut of problems: nonlinear monotonic elliptic and nonlinear parabolic
+BPVs [46, 33], nonlinear miscible viscous fingering in porous media [17, 18],
+uncertainty quantification in inverse problems [31], and nonlinear heat con-
+duction problems [5, 6], to cite but a few.
+
+However, a closer examination of the the RVE equilibrium problem reveals
+that, in this case, this “standard” strategy proves completely fruitless, for it
+leads to patently ill-posed reduced-order equations. To show this, let us first
+substitute approximation (28) into Eq.(21):
+
+∫
+
+Ω
+
+B
+∗T (x)σ(x; ǫM ,U
+
+∗) dΩ ≈
+∫
+
+Ω
+
+B
+∗T (x)σ∗(x; ǫM ,U
+
+∗) =
+
+nσ∑
+
+i=1
+
+(∫
+
+Ω
+
+B
+∗T (x)Ψ i(x) dΩ
+
+)
+
+ci(ǫM ,U
+∗) = 0.
+
+(29)
+
+By virtue of Eq.(23), the bracketed integral in the preceding equation can be
+rephrased as:
+
+∫
+
+Ω
+
+B
+∗T (x)Ψ i(x) dΩ = Φ
+
+T
+
+(∫
+
+Ω
+
+B
+T (x)Ψ i(x) dΩ
+
+)
+
+, i = 1, 2 . . . nσ. (30)
+
+Each basis function Ψ i(x) (i = 1, 2 . . . nσ) is, by construction, a linear com-
+bination of the stress snapshots collected during the offline, finite element
+
+10Notice that, in keeping with the notational convention introduced in Section 4, the
+low-dimensional approximation of the stress field is represented by attaching an asterisk
+to the stress symbol.
+
+18
+
+
+
+analysis; thus, we can write Ψ i =
+∑nsnp
+
+j=1 βijσ
+j (i = 1, 2 . . . nσ), βij ∈ R being
+
+the corresponding coefficients in the linear combination. Inserting the above
+equation into Eq.(30) and considering that σj (j = 1, 2 . . . nsnp) are finite
+element stress solutions —and therefore fulfill the finite element equilibrium
+equation (8)—, we finally arrive at:
+
+ΦT
+nsnp
+∑
+
+j=1
+
+βij
+
+=0
+︷ ︸︸ ︷(∫
+
+Ω
+
+B
+T
+σj dΩ
+
+)
+
+= 0, i = 1, 2 . . . nσ, (31)
+
+that is, the integral (30) appearing in the equilibrium equation (29), and
+hence, the left-hand side of the equation itself, vanishes identically regardless
+of the value of the modal coefficients ci ∈ R (i = 1, 2 . . . nσ), and therefore,
+regardless of the value of the reduced displacement fluctuations U ∗—hence
+the ill-posedness.
+
+5.3. Proposed remedy: the expanded space approach
+
+It is clear from the foregoing discussion that the root cause of the ill-
+posedness lies in the fact that the set of all admissible stress fields (Vσ)
+forms a vector space, and, consequently, the POD stress modes Ψ i ∈ Vσ
+(i = 1, 2 . . . nσ) —and any linear combination of them— turn out to be self-
+equilibrated fields. Thus, for the reduced-order problem to be well-posed,
+the approximation space Vaprσ cannot be only formed by statically admissible
+stresses, but it must also include statically inadmissible fields —i.e. stress
+functions that do not satisfy the reduced-order equilibrium equation (21).
+
+One plausible route for determining a low-dimensional approximation
+space that embraces both statically admissible and statically inadmissible
+stresses might be to collect, during the offline finite element calculations, not
+only converged stresses, but also the unconverged ones —i.e., those gener-
+ated during the corresponding iterative algorithm—, and then perform the
+POD-based dimensionality reduction over the whole ensemble of snapshots.
+In the present work, however, we pursue an approach that precludes the ne-
+cessity of undertaking this computationally laborious and in some aspects
+objectionable —there is no guarantee that the span of selected, unconverged
+stress snapshots covers the entire space of statically inadmissible stresses—
+process. The idea behind the employed approach was originally conceived,
+but not fully developed, by the authors in a recent monograph [35]. Here,
+the theory underlying such an idea is further elaborated and cast into the
+formalisms of functional analysis.
+
+19
+
+
+
+5.3.1. Continuum formulation
+
+To originate our considerations from a general standpoint, it proves con-
+venient first to rephrase the left-hand side of the reduced-order equilibrium
+equation Eq.(21) as the action of a certain linear operator G : L2(Ω)
+
+s → Rnu
+on the stress field over the RVE:
+
+∫
+
+Ω
+
+B
+∗
+i
+T
+σ dΩ = 〈B∗i,σ〉L2(Ω) = (G[σ])i i = 1, 2 . . . nu. (32)
+
+Invoking now the orthogonal decomposition of L2(Ω)
+s induced by this oper-
+
+ator, one obtains:
+
+L2(Ω)
+s = N (G)⊕ span{B∗i}
+
+nu
+i=1 , (33)
+
+where N (G) stands for the nullspace of G. Since the RVE equilibrium equa-
+tion has a vanishing right-hand side term, it follows that N (G) is actually
+the space of statically admissible stress fields. Its orthogonal complement,
+span{B∗i}
+
+nu
+i=1, can be therefore construed as the abovementioned space of
+
+statically inadmissible stresses. The key fact here is that such a space is
+inherently nu-dimensional and, thus, there is no need to perform any dimen-
+sionality reduction whatsoever over unconverged snapshots to arrive at the
+desired basis: the strain-displacement functions {B∗1,B∗2. . .B∗nu} themselves
+are linearly independent (albeit not orthogonal) and can thereby serve this
+very purpose.
+
+According to the preceding decomposition, any σ ∈ L2(Ω)s can be re-
+solved as (see Figure 2):
+
+σ = σad + σin, with
+〈
+σ
+
+ad,σin
+〉
+
+L2(Ω)
+= 0, (34)
+
+where σad ∈ N (G) and σin ∈ span{B∗i}
+nu
+i=1 stand for the statically admissible
+
+and statically inadmissible components of σ, respectively. Following the
+standard approach, the statically admissible component σad —i.e., the stress
+solution we wish to calculate for a given input ǫM— is forced to lie in the span
+of the POD modes Ψ i (i = 1, 2 . . . nσ) obtained from converged snapshots:
+
+σad ≈ σ∗ =
+nσ∑
+
+i=1
+
+Ψ ic
+ad
+i , (35)
+
+cadi ∈ R (i = 1, 2 . . . nσ) being the corresponding modal coefficients. The non-
+equilibrated component σin, on the other hand, resides naturally in the span
+
+20
+
+
+
+of the reduced strain-displacement functions, so we can directly write—i.e.,
+without introducing further approximations—:
+
+σin =
+
+nu∑
+
+i=1
+
+B
+∗
+ic
+in
+i , (36)
+
+with cini ∈ R (i = 1, 2 . . . nu). The low-dimensional approximation re-
+quired in the proposed integration method, denoted in what follows by σex∗
+
+(the appended superscript “ex” means “stress approximated in the expanded
+space”), is finally obtained as the sum of Eq.(35) and Eq.(36) :
+
+σex∗ =
+
+nσ∑
+
+i=1
+
+Ψ ic
+ad
+i +
+
+nu∑
+
+j=1
+
+B
+∗
+jc
+in
+j . (37)
+
+Substituting the above approximation into the equilibrium equation, one
+
+* * *
+1 2
+
+span( , ... )
+un
+
+B B B
+
+σ
+
+ad
+σ
+
+in
+σ
+
+1 2
+span( , ... )
+
+n
+Ψ Ψ Ψ
+
+s
+
+(Space of statically
+admissible stresses)
+
+(Space of statically
+inadmissible stresses)
+
+(POD stress modes)
+
+Figure 2: Expanded space approach. The stress approximation space is expanded so that
+it embraces, not only the span of the stress POD modes, but also the span of the reduced
+strain-displacement functions {B∗
+
+1
+,B∗
+
+2
+. . .B∗nu}. The reduced-order RVE equilibrium prob-
+
+lem boils down to find the reduced displacement fluctuations vector U∗ that makes the
+non-equilibrated component σin to vanish (σin(U ∗, ǫM ) = 0 ).
+
+gets:
+∫
+
+Ω
+
+B
+∗
+i
+T
+σ
+
+ex∗ =
+
+nu∑
+
+j=1
+
+(∫
+
+Ω
+
+B
+∗
+i
+T
+B
+
+∗
+jdΩ
+
+)
+
+cinj = 0, i = 1, 2 . . . nu. (38)
+
+Since {B∗1,B∗2. . .B∗nu} are linearly independent functions, it becomes imme-
+diately clear that the above equations holds only if:
+
+cinj (ǫM ,U
+∗) = 0, j = 1, 2 . . . nu, (39)
+
+21
+
+
+
+i.e., if the nu coefficients multiplying B
+∗
+i ∈ L2(Ω)s (i = 1, 2 . . . nu) are identi-
+
+cally zero. In adopting the proposed integration approach, thus, the reduced-
+order RVE equilibrium problem (21) is transformed into the problem of find-
+ing, for a given input macroscopic strain tensor ǫM , the reduced displacement
+fluctuations vector U ∗ ∈ Rnu that makes the non-equilibrated component σin
+(defined in Eq.(36)) to vanish.
+
+In a nutshell, the ill-posedness exhibited by the discrete problem when
+adopting the standard approach of using only POD modes is eliminated by
+expanding the stress approximation space so that it embraces also the span of
+the reduced strain-displacement functions (or strain modes11) B∗i ∈ L2(Ω)s
+(i = 1, 2 . . . nu):
+
+Vaprσ = V∗σ ⊕ span{B∗i}
+nu
+i=1 = span{
+
+nσ stress modes
+︷ ︸︸ ︷
+
+Ψ 1,Ψ 2 . . .Ψnσ ,
+
+nu strain modes
+︷ ︸︸ ︷
+
+B
+∗
+1,B
+
+∗
+2. . .B
+
+∗
+nu
+}. (40)
+
+5.3.2. Discrete formulation
+
+In typical finite element implementations, both stresses and gradients
+of shape functions are only calculated and stored at the Gauss points of
+the underlying spatial discretization. For practical reasons, thus, it proves
+imperative to reformulate the above explained expanded space strategy and
+treat both magnitudes as spatially discrete variables, defined only at such
+Gauss points.
+
+The discrete counterparts of the continuously defined fields σ ∈ L2(Ω)s
+and B∗i ∈ L2(Ω)s (i = 1, 2 . . . nu) will be denoted by S ∈ Rng·s and B∗ =[
+B
+
+∗
+
+1
+B
+
+∗
+
+2
+· · · B∗
+
+nu
+
+]
+∈ Rng·s×nu, and termed the global stress vector, and
+
+the global matrix of strain modes, respectively. The global stress vector S
+is constructed by stacking the stress vectors σ(xg; ·) ∈ Rs (g = 1, 2 . . . ng) at
+the Gauss points of the finite element grid into a single column vector:
+
+S :=
+[
+σT (x1; ·) σT (x2; ·) · · · σT (xng ; ·)
+
+]T
+. (41)
+
+Similarly, the global matrix of strain modes B∗ is constructed as:
+
+B
+∗ :=
+
+[
+
+B
+∗T (x1) B
+
+∗T (x2) · · · B∗T (xng)
+]T
+
+. (42)
+
+11 Indeed, functions B∗i ∈ L2(Ω)s (i = 1, 2 . . . nu) can be viewed as fluctuating strain
+modes, since they are the symmetric gradient of the displacement fluctuation modes, see
+Eq. 23.
+
+22
+
+
+
+Having definitions (41) and (42) at hand, the approximation of Eq.(22)
+by Gauss quadrature can be written as:
+
+∫
+
+Ω
+
+B
+∗
+i
+T
+(x)σ(x; ·) dΩ ≈
+
+ng
+∑
+
+g=1
+
+wgB
+∗
+i
+T
+(xg)σ(xg; ·) = 0
+
+⇒ B∗
+i
+
+T
+WS = 0, i = 1, 2 . . . nu,
+
+(43)
+
+where W is a diagonal matrix containing the weights at each Gauss point:
+
+W :=
+
+
+
+
+
+
+
+
+w1I 0 0 · · · 0
+0 w2I 0 · · · 0
+...
+
+...
+...
+
+...
+...
+
+0 0 0 0 wngI
+
+
+
+
+
+
+
+
+(44)
+
+(here, I denotes the s x s identity matrix). Assuming that wg > 0 (g =
+1, 2 . . . ng) —Gauss quadrature rules with negative weights are excluded from
+our considerations—, and using the Cholesky decomposition of W (W =
+W
+
+1/2
+W
+
+1/2), one can reexpress Eq.(43) as
+
+B
+∗T
+WS = (B∗
+
+T
+W
+
+1/2)(W 1/2S) = 0. (45)
+
+Defining now the weighted global stress vector and weighted matrix of strain
+modes as
+
+Σ := W 1/2S =
+[√
+
+w1σ
+T (x1; ·)
+
+√
+w2σ
+
+T (x2; ·) · · ·
+√
+wngσ
+
+T (xng ; ·)
+]T
+
+,
+(46)
+
+and
+
+B
+∗ := W 1/2B∗ =
+
+[√
+w1B
+
+∗T (x1)
+√
+w2B
+
+∗T (x2) · · ·
+√
+wngB
+
+∗T (xng)
+]T
+
+(47)
+
+respectively, and inserting these definitions into Eq.(41), one finally arrives
+at:
+
+B
+∗TΣ = 0, (48)
+
+or equivalently,
+B
+∗
+i
+T
+Σ = 0, i = 1, 2 . . . nu, (49)
+
+which shows that any statically admissible weighted stress vector is orthog-
+onal, in the sense of the standard euclidean inner product, to the weighted
+strain modes B∗i
+
+T (i = 1, 2 . . . nu).
+
+23
+
+
+
+Comparing Eq.(48) with Eq.(32), it becomes clear that B∗T plays the
+same role as operator G in Eq.(32). In analogy with Eq.(33), thus, we can
+write
+
+R
+ng·s = N (B∗T )⊕ Range(B∗) (50)
+
+where N (B∗T ) and Range(B∗) denote the null space and the range (or column
+space) of B∗T and B∗, respectively, and consequently decompose any Σ ∈
+R
+
+ng·s as
+Σ = Σad +Σin (51)
+
+with Σad ∈ N (B∗T ) and Σin ∈ Range(B∗). As in the continuous case (see
+Eq.(35)), the statically admissible component Σad is now approximated by
+a linear combination of POD basis vectors obtained from converged stress
+snapshots12:
+
+Σad ≈ Σ∗ =
+nσ∑
+
+i=1
+
+cadi Ψi = Ψc
+ad, (52)
+
+where Ψ =
+[
+Ψ1 Ψ2 · · · Ψnσ
+
+]
+denotes the (weighted) stress basis matrix
+
+and cad ∈ Rnσ stands for the vector of modal coefficients associated to such
+a basis matrix. Likewise, since the non-equilibrated component Σin pertains
+to the column space of B∗, we can directly write
+
+Σin = B∗cin, (53)
+
+where cin ∈ Rnu . The low-dimensional (weighted) stress vector Σex∗ required
+in the proposed integration method is finally obtained as the sum of Eq.(53)
+and Eq.(52).
+
+Σ ≈ Σex∗ = Ψcad + B∗cin, (54)
+or in a more compact format:
+
+Σex∗ = Ψexc. (55)
+
+where
+Ψex :=
+
+[
+Ψ B∗
+
+]
+, (56)
+
+12The methodology for obtaining these modes using the SVD is similar to that explained
+in Section 3.2 for the displacement fluctuation modes.
+
+24
+
+
+
+and
+
+c =
+
+[
+cad
+
+cin
+
+]
+
+. (57)
+
+The matrixΨex ∈ Rng·s×(nu+nσ) defined by Eq.(56) will be hereafter called
+the expanded basis matrix for the (weighted) stresses, whereas c ∈ Rnσ+nu
+will be correspondingly termed the expanded vector of modal coefficients.
+Inserting approximation (54) into Eq.(48), and considering that B∗TΨ = 0
+and that B∗T is a full rank matrix, one finally arrives at the same equilibrium
+condition derived in the continuum case (see Eq. 39):
+
+cin(U ∗, ǫM ) = 0. (58)
+
+Once the above equation is solved for U ∗, the desired equilibrated stress
+vector Σ∗ is obtained by evaluating Eq.(52):
+
+Σ∗ = Ψcad(U ∗, ǫM). (59)
+
+6. The High-Performance ROM
+
+The next step in the development of the proposed integration scheme is to
+deduce closed-form expressions for the vectors of modal coefficients cad ∈ Rnσ
+and cin ∈ Rnu in terms of the stress values computed at a set of p = O(nu)
+pre-specified sampling points (to be chosen among the set of Gauss points of
+the underlying finite element mesh). To this end, we need first to introduce
+some notation and terminology.
+
+6.1. Gappy vectors
+
+Let I = {I1, I2 . . .Ip} ⊂ {1, 2 · · ·ng} denote the set of indices of sampling
+points. Notationally, we write Σ̂(I) ∈ Rp·s to designate the subvector of Σ
+containing the rows associated to these sampling points; viz.:
+
+Σ̂(I) :=
+[√
+
+wI1σ
+T (xI1 , ·)
+
+√
+wI2σ
+
+T (xI2, ·) · · ·
+√
+wIpσ
+
+T (xIp, ·)
+]T
+
+(60)
+
+(When confusion is not apt to arise, the parenthetical subscript indicating
+the set of sampling indices will be dropped, and we shall simply write Σ̂).
+It proves conceptually advantageous to regard this restricted or “gappy” —
+a terminology that goes back to the work of Everson et al. [28]— stress
+vector Σ̂(I) as the result of the application of a certain boolean operator
+
+25
+
+
+
+P (I) : R
+ng·s → Rp·s over the full vector Σ (i.e., Σ̂ = P (I)Σ). We call P (I)
+
+the selection operator associated to sampling indices I. This operator can
+be of course applied to any Y ∈ Rng·s×z (z ∈ N). For instance, the restricted
+matrix of weighted strain modes is defined as B̂∗ := P (I)B
+
+∗. Furthermore, it
+is straighforward to show that
+
+P (I)P
+T
+(I) = I, (61)
+
+(here I is the (ng · s)x(ng · s) identity matrix) and that
+P (I)(AY) = (P (I)AP
+
+T
+(I))(P (I)Y) (62)
+
+for any A ∈ Rng·s×ng·s and Y ∈ Rng·s×z.
+
+6.2. Least-squares fit
+
+In the spirit of classical polynomial quadrature, such as Newton-Cotes
+formulae [36], the modal coefficients cad ∈ Rnσ and cin ∈ Rnu are determined
+by fitting the low-dimensional approximation (54) to the weighted stresses
+calculated at the pre-specified sampling points. It should be noticed that,
+the variable subject to approximation —the stress— being a vector-valued
+function, the total number of discrete points to be fitted does not coincide
+with the number of spatial sampling points (p), but rather is equal to the
+product of such a number times the number of stress components (s). The
+well-posedness of the fitting problem, thus, demands that p ·s ≥ nσ+nu, i.e.,
+the number of discrete points must be equal or greater than the number of
+parameters to be adjusted. For the equality to hold, both nσ+nu and p have
+to be multiple of s; thus, an exact fit is in general not possible for arbitrary
+values of nσ and nu, and recourse to an approximate fit is to be made. In
+this respect, we follow here the standard approach of using a least-squares,
+best-fit criterion, i.e., minimization of the squares of the deviations between
+“observed” (Σ̂) and fitted (Σ̂
+
+ex∗
+= Ψ̂a + B̂∗b) values (in our context, “ob-
+
+served” signifies “calculated through the pertinent constitutive equation”).
+This minimization problem can be stated as:
+
+c =
+
+[
+cad
+
+cin
+
+]
+
+= arg min
+a∈Rnσ ,b∈Rnu
+
+‖Σ̂−
+(
+
+Ψ̂a+ B̂∗b
+)
+
+‖ (63)
+
+where ‖ · ‖ stands for the standard euclidean norm. Let Ψ̂ex = P (I)Ψex =
+[Ψ̂ B̂∗] be the gappy expanded basis matrix, and suppose that the sampling
+indices I have been chosen so that Ψ̂ex has full rank, i.e.:
+
+rank(Ψ̂ex) = rank([Ψ̂ B̂∗]) = nσ + nu. (64)
+
+26
+
+
+
+Then, it can be shown (see, for instance, Ref. [23]) that the solution of
+this standard, least-squares problem is provided by the following vector of
+coefficients:
+
+c =
+
+[
+cad
+
+cin
+
+]
+
+= Ψ̂
+ex†
+
+Σ̂, (65)
+
+where
+
+Ψ̂
+ex†
+
+:=
+
+M̂
+−1
+
+︷ ︸︸ ︷
+
+(Ψ̂ex
+T
+Ψ̂ex)−1 Ψ̂ex
+
+T
+(66)
+
+is the so-called pseudo-inverse of matrix Ψ̂ex.
+Recall that our ultimate aim is to derive closed-form expressions for cin
+
+and cad as functions of Σ̂. Thus, it remains to extricate these two sub-
+vectors from expression (65). This can be done by first partitioning both
+
+M̂ = Ψ̂ex
+T
+Ψ̂ex and Ψ̂ex
+
+T
+in terms of the gappy stress basis matrix Ψ̂ and
+
+the gappy matrix of strain modes B̂∗:
+
+c =
+
+[
+cad
+
+cin
+
+]
+
+=
+
+[
+
+Ψ̂
+T
+Ψ̂ Ψ̂
+
+T
+B̂
+∗
+
+B̂
+∗T Ψ̂ B̂∗
+
+T
+
+B̂
+∗
+
+]−1 [
+
+Ψ̂
+T
+
+B̂
+∗T
+
+]
+
+Σ̂. (67)
+
+Invoking the blockwise inverse formula for 2x2 block symmetric matrices [11],
+and upon tedious algebra —that has been relegated to Appendix C— one
+finally arrives at the following expressions for cad and cin
+
+c
+ad = Ψ̂
+
+†
+(Σ̂− B̂∗cin), (68)
+
+cin = S−1B̂∗
+T
+(
+
+I − Ψ̂Ψ̂†
+)
+
+Σ̂, (69)
+
+where Ψ̂
+†
+denotes the pseudoinverse of the gappy stress basis matrix Ψ̂:
+
+Ψ̂
+†
+= (Ψ̂
+
+T
+Ψ̂)−1Ψ̂
+
+T
+(70)
+
+and S := B̂∗
+T
+
+(I−Ψ̂Ψ̂†) (note that S is invertible by virtue of the hypothesis
+represented by Eq.(64)).
+
+6.2.1. Reconstruction matrix
+
+Let us first examine expression (68) for the modal coefficients cad —those
+that multiply the statically admissible component of the global stress vector.
+
+27
+
+
+
+Since, at the solution, cin = 0, we have that:
+
+cad = Ψ̂
+†
+(Σ̂− B̂∗
+
+=0
+︷︸︸︷
+
+cin ) = Ψ̂
+†
+Σ̂.
+
+(71)
+
+(Notice that this result can also be obtained by directly solving minimization
+problem (63) with b = 0). Substitution of this equation into Eq.(59) yields:
+
+Σ∗ = Ψcad =
+
+R
+︷ ︸︸ ︷
+
+ΨΨ̂
+†
+Σ̂ = R Σ̂, (72)
+
+where
+R := ΨΨ̂
+
+†
+= Ψ(Ψ̂
+
+T
+Ψ̂)−1Ψ̂
+
+T
+. (73)
+
+Inspection of Eq.(72) reveals that the matrix R ∈ Rng·s×p·s defined above is
+the operator that allows one to reconstruct the (weighted) statically admissi-
+ble stress vector Σ∗ ∈ Rng·s using only the (weighted) stress values (Σ̂ ∈ Rp·s)
+calculated at the pre-selected sampling points I. For this reason, we shall use
+the term weighted reconstruction matrix (or simply reconstruction matrix)
+to refer to this operator. It must be emphasized here that this matrix only
+depends on the POD stress basis matrix Ψ and on the selected sampling
+indices I —i.e., it is independent of the input parameter, the macro-strain
+ǫM—and, therefore, it can be pre-computed offline.
+
+6.3. “Hyperreduced” RVE equilibrium equation
+
+As for the expression for the set of “statically inadmissible” coefficients
+cin ∈ Rnu, we know that, at the solution, these coefficients must vanish; thus,
+from Eq.(69), we have
+
+c
+in(U ∗, ǫM) = S
+
+−1
+B̂
+∗T
+
+(
+
+I − Ψ̂Ψ̂†
+)
+
+Σ̂(U ∗, ǫM ) = 0. (74)
+
+Since S is a nonsingular matrix, the above condition is equivalent to
+
+B̂
+∗T
+
+(
+
+I − Ψ̂Ψ̂†
+)
+
+Σ̂(U ∗, ǫM) = 0. (75)
+
+Furthermore, examination of Eq.(73) and Eq.(75) readily shows that the
+
+bracketed term Ψ̂Ψ̂
+†
+in Eq.(75) is nothing but the submatrix of the recon-
+
+struction matrix R formed by the rows associated to sampling points I, i.e.:
+
+Ψ̂Ψ̂
+†
+= P (I)(ΨΨ̂
+
+†
+) = P (I)R = R̂. (76)
+
+28
+
+
+
+Substitution of expression (76) into Eq.(75) finally leads to:
+
+B̂
+∗T (I − R̂)Σ̂(U ∗, ǫM) = 0. (77)
+
+As previously noted (see Figure 2), the purpose of enforcing condition
+cin(U ∗, ǫM ) = 0 is to ensure that the stress solution lies entirely in the
+space of equilibrated stresses. Equation (77) can be viewed, thus, as the
+“hyperreduced” form of the original RVE equilibrium equation.
+
+Observation 6.1. The “hyperreduced” qualifier —coined by D. Ryckelynck
+[58, 59]— is used here to indicate that Eq.(77) is the result of two subsequent
+steps of complexity reduction: firstly, in the number of degrees of freedom
+(when passing from the finite element model to the ROM that employs stan-
+dard Gauss quadrature), and, secondly, in the number of integration points
+(when passing from this standard ROM to what we have baptized13 “High-
+Performance” ROM ). This double complexity reduction can be better appre-
+ciated by rephrasing both Eq.(77) and the FE equation (9) in a format similar
+to that of Eq.(48), viz.:
+
+B̂
+∗∗
+
+T
+
+︷ ︸︸ ︷
+
+B̂
+∗T (I − R̂) Σ̂ = B̂∗∗T Σ̂ = 0, (78)
+
+and
+ng
+∑
+
+g=1
+
+wgB
+T(xg)σ(xg, ; ) = B
+
+TΣ = 0, (79)
+
+respectively (here, B ∈ Rng·s×n·d is the finite element counterpart of B∗, de-
+fined in Eq.(42)). With Eq.(79), Eq.(48) and Eq.(78) at our disposal, the
+abovementioned process of complexity reduction can be symbolically repre-
+sented as
+
+FEM
+︷ ︸︸ ︷
+
+B
+TΣ = 0
+
+1streduc.
+n · d → nu
+
+=⇒
+Stand. ROM
+︷ ︸︸ ︷
+
+B
+∗TΣ = 0
+
+2ndreduc.
+ng → p
+=⇒
+
+HP-ROM
+︷ ︸︸ ︷
+
+B̂
+∗∗T Σ̂ = 0, (80)
+
+13 The term High-Performance, Reduced-Order Model (HP-ROM) is used to highlight
+the tremendous gains in performance that affords this model over the standard ROM, let
+alone over the full-order, finite model. In the numerical example shown in Section 9, we
+report speedup factors of above three order of magnitudes.
+
+29
+
+
+
+the relation between B ∈ Rng·s×n·d, B∗ ∈ Rng·s×nu and B̂∗∗ ∈ Rp·s×nu being
+B
+∗ = BΦ and
+
+B̂
+∗∗ := (I − R̂)B̂∗ = (I − R̂)P (I)B∗, (81)
+
+with p = O(nu) << ng = O(n). It is interesting to see how the reduction
+in complexity of the RVE equilibrium equation is reflected in the gradual
+reduction of the dimensions of the “B” operators that act on the weighted
+vector of stresses.
+
+6.3.1. Physical interpretation
+
+Aside from a “compressed” version of the original, full-order cell condi-
+tion, the hyperreduced equation (77) can be alternatively interpreted as a
+balance between “observed” and “fitted” internal forces at the selected sam-
+pling points. Such an interpretation becomes readily identifiable by realizing
+that the product R̂Σ̂ appearing in Eq.(77) is but the (weighted) vector of
+fitted stresses at the selected sampling points. Indeed, by virtue of Eq.(72)
+and, considering the properties of the selection operator P (I), we have that
+
+R̂Σ̂ = P (I)(RΣ̂) = P (I)Σ
+∗ = Σ̂
+
+∗
+. (82)
+
+Using the above equality, Eq.(77) is expressible as B̂∗
+T
+
+Σ̂ = B̂∗
+T
+
+Σ̂
+∗
+, or, re-
+
+verting to the original, summation notation as
+∑
+
+j∈I
+
+wjB
+∗T(xj)σ(xj ; ·) =
+
+∑
+
+j∈I
+
+wjB
+∗T(xj)σ
+
+∗(xj ; ·). (83)
+
+Note that both sides of the above equation represent the same physical
+quantity, namely, the sum of internal forces, in reduced coordinates, at the
+sampling Gauss points {xI1 ,xI2 · · ·xIp}. The difference lies in the stresses
+employed for computing these internal forces. In the left-hand side, they are
+calculated using “observed” stresses σ —stresses that arises directly from
+evaluating the corresponding constitutive equation—, whereas, in the right-
+hand side, “fitted” stresses σ∗ are used —that is, stresses obtained from
+fitting the approximation constructed using the POD stress basis functions
+Ψ1,Ψ2 . . .Ψnσ to the observed data. Thus, the HP-ROM equilibrium con-
+dition (83) is telling us that, at the solution, the sum of internal forces —at
+the pre-selected sampling points— computed using either observed or fitted
+stresses14 must coincide.
+
+14It should be mentioned in this respect that, in general, σ∗(xj ; ·) 6= σ(xj ; ·) since the
+
+30
+
+
+
+6.4. Jacobian matrix
+
+Needless to say, the dependence of the stresses on the reduced vector of
+reduced displacement fluctuations U ∗ is in general non-linear, and, thereby,
+an iterative method is required for solving Eq.(77). Here we employ the stan-
+dard Newton-Raphson procedure. The iterative scheme corresponding to this
+procedure is given by the following expression (the parenthetical superscript
+indicates iteration number):
+
+U
+∗(k+1) = U ∗
+
+(k) −K∗(k)−1F ∗(k), (84)
+
+where
+F
+
+∗(k) = B̂∗
+T
+
+(I − R̂) Σ̂(ǫM ,U ∗(k)) (85)
+and
+
+K
+∗(k) = B̂∗
+
+T
+
+(I − R̂) Ĉ(ǫM ,U∗(k)) B̂∗. (86)
+
+In the above equation, Ĉ ∈ Rp·s×p·s denotes a block diagonal matrix contain-
+ing the algorithmic, constitutive tangent matrices at each sampling point:
+
+Ĉ :=
+
+
+
+
+
+
+
+
+C(xI1; ·) 0 0 · · · 0
+0 C(xI2 ; ·) 0 · · · 0
+...
+
+...
+...
+
+...
+...
+
+0 0 0 0 C(xIp; ·)
+
+
+
+
+
+
+
+. (87)
+
+6.4.1. Positive definiteness
+
+Because of its relevance in the overall robustness of the proposed method,
+it is worthwhile at this point to digress and discuss thoroughly the spectral
+properties of the Jacobian matrix represented by Eq.(86). In particular, it
+would be interesting to ascertain whether positive definiteness of the algorith-
+mic tangent matrices C(xI1 ; ·), C(xI2 ; ·), · · ·C(xIp) at the selected sampling
+points, and thus of matrix Ĉ, ensures positive definiteness of the Jacobian
+matrix K∗ —as it occurs when using classical Gauss quadrature rules with
+positive weights—, and, if not, which remedies can be applied to obtain such
+desirable property.
+
+number of data items to be fitted (p · s) is always greater than the number of stress modes
+(nσ). Observed and fitted stresses coincide only when the stress vector Σ one wishes to
+approximate pertains to the column space of the stress basis matrix Ψ
+
+31
+
+
+
+Positive definiteness of the Jacobian matrix (86) requires that the function
+defined as
+
+F (U) = UTK∗U = (B̂∗U)T(I − R̂) Ĉ(B̂∗U) (88)
+
+be positive for all non-zero U ∈ Rnu . Since B̂∗ is a full rank matrix —by
+virtue of Eq.(64)—, condition F (U) > 0 is equivalent to:
+
+G(V) = VT(I − R̂) ĈV > 0 (89)
+
+for all non-zero V ∈ Range(B̂∗).
+To go further, we need to demonstrate that R̂ ∈ Rng·s×ng·s —recall that
+
+R̂ is the matrix that maps the vector of “observed” stresses Σ̂ to the vector
+of fitted stresses Σ̂
+
+∗
+— actually represents an orthogonal projection15 onto
+
+the column space of the gappy stress basis matrix Ψ̂. This can be shown by
+simply noting that R̂ is, on the one hand, symmetric:
+
+R̂
+T
+= (Ψ̂(Ψ̂
+
+T
+Ψ̂)−1Ψ̂
+
+T
+)T = Ψ̂(Ψ̂
+
+T
+Ψ̂)−T Ψ̂
+
+T
+= R̂ (90)
+
+and, on the other hand, idempotent:
+
+R̂
+2
+= (Ψ̂Ψ̂
+
+†
+)2 = Ψ̂
+
+=I
+︷ ︸︸ ︷
+
+(Ψ̂
+T
+Ψ̂)−1Ψ̂
+
+T
+Ψ̂(Ψ̂
+
+T
+Ψ̂)−1Ψ̂
+
+T
+= Ψ̂(Ψ̂
+
+T
+Ψ̂)−1Ψ̂
+
+T
+= R̂.
+
+(91)
+With this property at hand, we can decompose any V ∈ Range(B̂∗) as
+
+V = V|| +V⊥ (92)
+
+where V|| = R̂V ∈ Range(Ψ̂) —the component of V along the column space
+of Ψ̂— and V⊥ = (I − R̂)V —the component of V along the orthogonal
+complement of Range(Ψ̂). Introducing the above decomposition into Eq.(89),
+we arrive at
+
+G = V⊥
+T
+ĈV⊥ +V⊥
+
+T
+ĈV||. (93)
+
+While the first term V⊥
+T
+ĈV⊥ in the preceding equation is, in virtue of
+
+the positive definiteness of Ĉ, eminently positive for all nonzero V⊥ ∈ Rp·s,
+nothing can be said in principle about the second term V⊥
+
+T
+ĈV||: numerical
+
+experience shows that the sign and relative magnitude of this term depends
+further on the chosen set of sampling indices I.
+
+15 R̂ is the so-called “hat” matrix of linear regression models [52].
+
+32
+
+
+
+Remark 6.1. From the above observation, it follows that the positive defi-
+niteness of the Jacobian matrix K∗ is determined, not only by the spectral
+properties of Ĉ, but —not surprisingly— also by the number and the location
+within the RVE of the sampling points employed in the integration.
+
+The foregoing remark naturally leads to wonder whether it is possible
+to select the sampling indices I so as to ensure the positive definiteness of
+K
+
+∗ (assuming, obviously, that Ĉ enjoys this property). To shed light on this
+
+question, let us first divide Eq.(93) by V⊥
+T
+ĈV⊥ (notice that hypothesis (64)
+
+precludes the possibility of V⊥ being zero)
+
+Ḡ =
+G
+
+V⊥
+T
+ĈV⊥
+
+= 1 +
+V⊥
+
+T
+ĈV||
+
+V⊥
+T
+ĈV⊥
+
+. (94)
+
+Suppose now, for the sake of argument, that Ĉ is also symmetric. Such being
+the case, the above equation can be legitimately rewritten as:
+
+Ḡ = 1 + cos(V⊥,V||)
+Ĉ
+
+‖V||‖
+Ĉ
+
+‖V⊥‖
+Ĉ
+
+, (95)
+
+where
+
+cos(V⊥,V||)
+Ĉ
+=
+
+〈
+V⊥,V||
+
+〉
+
+Ĉ
+
+‖V⊥‖
+Ĉ
+‖V||‖
+
+Ĉ
+
+. (96)
+
+In the above equation, 〈·, ·〉
+Ĉ
+symbolizes the inner product defined by Ĉ (i.e.,
+
+〈x,y〉
+Ĉ
+= xTĈy), whereas ‖ · ‖
+
+Ĉ
+denotes the norm associated to such an
+
+inner product (‖x‖2
+Ĉ
+= 〈x,x〉
+
+Ĉ
+). From Eq.(94), it can be deduced that a
+
+sufficient (yet not necessary) condition for Ḡ > 0, and thus for K∗ to be
+positive definite, is that
+
+‖V||‖
+Ĉ
+
+‖V⊥‖
+Ĉ
+
+< 1 (97)
+
+for all nonzero V ∈ Range(B̂∗), or equivalently (setting V = B̂∗U):
+
+‖R̂B̂∗U‖
+Ĉ
+
+‖(I − R̂)B̂∗U‖
+Ĉ
+
+< 1 (98)
+
+for all nonzero U ∈ Rnu .
+
+33
+
+
+
+Useful guidelines on how to choose I so as to make positive definite the
+Jacobian matrix K∗ can be inferred from inequality (98). Firstly, given a
+fixed number of sampling points p, expression (98) indicates that such points
+should be selected so that the columns of the gappy strain basis matrix B̂∗ =
+P (I)B
+
+∗ = [B̂∗1 B̂
+∗
+2 . . . B̂
+
+∗
+nu
+] are, loosely speaking, “as orthogonal as possible” to
+
+Range(R̂) = Range(Ψ̂) —the column space of the gappy stress basis matrix
+Ψ̂ = P (I)Ψ. In so doing, the factor defined as
+
+f
+Ĉ
+:=
+
+√
+nu∑
+
+i=1
+
+‖R̂B̂∗i ‖2Ĉ
+√
+
+nu∑
+
+i=1
+
+‖(I − R̂)B̂∗i ‖2Ĉ
+
+, (99)
+
+would diminish, and so would, consequently, the left-hand side of inequality
+Eq.(98). In practice, however, factor f
+
+Ĉ
+cannot be used as a criterion for
+
+guiding the selection of sampling points, simply because it is defined in terms
+of the norm induced by Ĉ, and this matrix virtually changes at every time
+step and iteration. One has to be content to estimate this factor using other
+norm; for instance, employing the standard euclidean norm ‖ · ‖, one gets
+
+f
+Ĉ
+∼ fF :=
+
+√
+nu∑
+
+i=1
+
+‖R̂B̂∗i ‖2
+
+√
+nu∑
+
+i=1
+
+‖(I − R̂)B̂∗i ‖2
+=
+
+‖R̂B̂∗‖F
+‖(I − R̂)B̂∗‖F
+
+, (100)
+
+where ‖ · ‖F stands for the Frobenius norm.
+Aside from seeking orthogonality between B̂∗ and R̂, expression (99) sug-
+
+gests that another way of lowering factor fF may be to reduce the ratio
+defined as
+
+βF :=
+‖R̂‖F
+
+‖I − R̂‖F
+. (101)
+
+Since R̂ and, consequently, I−R̂ are matrices representing orthogonal projec-
+tions, we have that ‖R̂‖F =
+
+√
+
+rank(R̂) =
+√
+nσ and ‖I−R̂‖F =
+
+√
+p · s− nσ.
+
+Therefore,
+
+βF =
+
+√
+nσ
+
+p · s− nσ
+. (102)
+
+34
+
+
+
+Observation 6.2. From the above expression, thus, one can conclude that
+increasing the number of sampling points p while keeping the number of
+stress modes nσ constant also contributes to reduce factor fF in Eq.(98),
+and, hence, to improve the spectral properties (positive defineteness) of the
+Jacobian matrix K∗. Notice that this property is totally consistent with the
+fact that, in the limiting case of taking all Gauss points (p = ng), the reduced
+
+matrices R̂ and B̂∗ degenerate into their full order counterparts R and B∗, for
+which the condition RB∗ = 0 holds —they span subspaces that are mutually
+orthogonal—, hence making fF = fĈ = 0.
+
+7. Selection of sampling points
+
+The last theoretical issue to be discussed in the present work is the se-
+lection —among the full set of Gauss points of the underlying finite element
+mesh— of appropriate sampling or interpolation points. At the very least,
+the set of sampling indices I = {i1, i2 . . . ip} must be chosen so that the gappy
+expanded basis matrix has full rank (see section 6.2):
+
+rank(Ψ̂
+ex
+
+(I)) = rank([Ψ̂(I) B̂
+∗
+(I)]) = nσ + nu. (103)
+
+Any set of sampling indices fulfilling this necessary condition is said to be
+admissible.
+
+7.1. Optimality criteria
+
+7.1.1. Accuracy
+
+As in any other model reduction problem, the overriding concern when
+choosing the sampling points is the accuracy of the approximation: we would
+like to position such points so that maximum similarity between the “high-
+fidelity”, finite element solution and its reduced-order counterpart is ob-
+tained. More specifically, since the output of interest in our BVP is the
+macroscopic stress response, the aim is to find the set of sampling points I
+that minimizes the following error estimate:
+
+EM,σ(Ψ, I) :=
+
+√
+√
+√
+√
+
+nsnp
+∑
+
+i=1
+
+‖σM i − σM ∗ i(Ψ, I)‖2, (104)
+
+where σM
+i = σM (
+
+tǫM k
+j) denotes the finite element, macroscopic stress
+
+response corresponding to the the k − th (k = 1, 2 . . . nstp) time step of the
+
+35
+
+
+
+“training”16 strain trajectory tǫM
+j (j = 1, 2 . . . nhst); and σM
+
+∗ i(Ψ, I) its
+low-dimensional approximation.
+
+Using the Cauchy-Schwarz inequality, and approximating the pertinent
+integrals by Gauss quadrature, we can write
+
+EM,σ
+2 ≤ 1
+
+V
+
+nsnp
+∑
+
+i=1
+
+∫
+
+Ω
+
+‖σi(x)− σ∗i(x;Ψ, I)‖2 dΩ
+
+≈ 1
+V
+
+nsnp
+∑
+
+i=1
+
+ng
+∑
+
+g=1
+
+‖√wgσi(xg)−
+√
+wgσ
+
+∗i(xg;Ψ, I)‖2
+
+=
+1
+
+V
+
+nsnp
+∑
+
+i=1
+
+‖Σi −Σ∗ i(Ψ, I)‖22 = 1
+V
+‖X −X∗(Ψ, I)‖2F
+
+(105)
+
+where X =
+[
+Σ1 Σ2 · · · Σnsnp
+
+]
+and X∗(Ψ, I) = R(I)(P (I)X). The error
+
+estimate for the macroscopic stresses defined in Eq.(104) is, thus, bounded
+above by the Frobenius norm of the difference between the (weighted) stress
+snapshot matrix X and its oblique projection, X∗, onto Range(Ψ). This
+bound, hereafter designated by eσ, admits the following decomposition
+
+17
+
+eσ
+2 =
+
+1
+
+V
+‖X −X∗⊥(Ψ)‖2F +
+
+1
+
+V
+‖X∗⊥(Ψ)−X∗(Ψ, I)‖2F , (106)
+
+X
+∗⊥ being the orthogonal projection of X onto the range of Ψ, i.e., X∗⊥ =
+
+ΨΨTX. Note that the first term of the right-hand side of Eq.(106) only
+depends on the stress basis matrix, but not on the employed sampling indices;
+it provides, thus, an estimate of the stress truncation error. The term that
+actually measures the quality, in terms of accuracy, of a given set of admissible
+sampling points is the second one—it provides an (a priori) estimate of the
+stress reconstruction error. We shall denote this term by erecσ :
+
+erecσ :=
+1
+
+V
+‖X∗⊥(Ψ)−X∗(Ψ, I)‖F . (107)
+
+For this reason —and also because the cost of evaluating expression Eq.(107)
+
+16The term “training”, which, incidentally, is borrowed from the neural network litera-
+ture [38], is used throughout the text to refer to the offline generation of snapshots.
+
+17This decomposition follows easily from the Pythagorean theorem (just notice that
+Ψ
+
+T (X −X∗⊥) = 0 ).
+
+36
+
+
+
+is independent of the number of Gauss points18, and therefore significantly
+lower than in the case of the original error estimate EM,σ—, we shall use
+in what follows erecσ as error estimator for guiding the selection of sampling
+points.
+
+7.1.2. Spectral properties
+
+Yet the optimality of a given set of sampling points cannot be measured
+only in terms of accuracy of the approximation. As demonstrated in Sec-
+tion 6.4, the number and particular placement of such points influence also
+the spectral properties (positive definiteness) of the Jacobian matrix of the
+equilibrium equation, and therefore, the convergence characteristics of the
+accompanying Newton-Raphson algorithm. We saw that, to preserve the
+positive definiteness of the full-order Jacobian matrix, one should strive to
+choose the sampling indices I so as to make the factor —defined previously
+in Eq.(100)—:
+
+fF (Ψ,B
+∗, I) =
+
+‖R̂(I)B̂∗(I)‖F
+‖(I − R̂(I))B̂∗(I)‖F
+
+(108)
+
+as small as possible.
+
+7.2. Optimization approach: basic and stabilizing sampling points
+
+Unfortunately, the minimization of the approximation error represented
+by expression Eq.(107) and the minimization of Eq.(108) are in general con-
+flicting goals. For instance, numerical experiments show that when the selec-
+tion is driven exclusively by accuracy considerations, the resulting Jacobian
+matrix becomes indefinite at certain states of deformation —especially when
+inelastic deformations are severe—, leading occasionally to convergence fail-
+ures. These goals must be therefore balanced in order to arrive at an accurate
+and at the same time robust solution scheme.
+
+To accomodate these conflicting requirements, we propose here a heuristic
+strategy that basically consists in treating the minimization of Eq.(107) and
+
+18Indeed, since Ψ is column-wise orthogonal, minimizing Eq.(107) is equivalent to min-
+imizing the difference between the coefficients of the respective projections. The number
+of coefficients is equal to the number of snapshots, which is normally much lower than the
+number of Gauss points.
+
+37
+
+
+
+Eq.(108) as two separated, sequential problems —in the spirit of the so-
+called “greedy” optimization algorithms19 [44]. The set of sampling points is
+assumed to be divided into two disjoint subsets Iσ and IB:
+
+I = Iσ ∪ IB. (109)
+
+The first subset Iσ = {i1, i2, · · · ipσ} is obtained as the minimizer of the error
+estimation given in Eq.(107), viz.:
+
+Iσ = arg min
+K⊆{1,2...ng}
+
+erecσ (Ψ,K). (110)
+
+Once the set Iσ is determined, the remaining sampling indices IB = {j1, j2 · · · jpB}
+(pσ + pB = p) are calculated as
+
+IB = arg min
+K⊆{1,2...ng}
+
+fF (Ψ,B
+∗, Iσ ∪ K). (111)
+
+Remark 7.1. It must be noted here that the minimization problem repre-
+sented by Eq.(110) is in essence the same problem addressed in (standard)
+interpolatory-based, model reduction approaches for determining, given a set
+of empirical basis functions, the optimal location of associated interpolations
+points. For this reason, we shall refer to the set of points arising from solving
+this minimization problem as the standard or basic sampling points —these
+are the Best Interpolation Points of Nguyen et al. [54], or the “magic points”
+of Maday et al. [46].. By contrast, the necessity of introducing points that
+attempt to solve problem (111) is a consequence of expanding the stress ap-
+proximation space in the first place —the main innovative feature of our
+approach—, and it is therefore not present in other model reduction strate-
+gies. We shall call {xIB(1), xIB(2) . . .xIB(pB)} the set of stabilizing sampling
+points.
+
+The number of basic sampling points must satisfy the necessary condition
+pσ ≥ nσ/s. In general, taking pσ = nσ suffices to ensure highly satisfactory
+approximations. How many, on the other hand, stabilizing sampling points
+have to be added to safely render positive definite the Jacobian matrix —
+for at least a representative range of macroscopic state deformations— is a
+
+19A greedy method is any algorithm that solves the problem by making the locally
+optimal choice at each step with the hope of finding the global optimum.
+
+38
+
+
+
+question that can only be answered empirically. In the examples presented
+in the next section, it has been found that a conservative answer is to use as
+many stabilizing sampling points as displacement basis modes (pB = nu).
+
+To deal with the discrete minimization problem (110), we have used here
+the Hierarchical Interpolation Points (HPI) method proposed by Nguyen et
+al. [54]. The essence of this method is to construct, in a greedy fashion, the set
+of indices by solving a sequence of one-dimensional minimization problems.
+The minimization problem (111) is also addressed using a heuristic based
+on the greedy paradigm. In particular, the k − th (k = 1, 2 . . . pB) index is
+selected by solving the following, one-dimensional minimization problem:
+
+IB(k) = arg min
+j∈{1,2...ng}
+
+fF (Ψ,B
+∗,K(j)) (112a)
+
+K = Iσ ∪ {IB(1), IB(2) · · · IB(k − 1), j}. (112b)
+
+8. Summary
+
+Lastly, for the reader’s convenience and easy reference, the online reduced-
+order problem, along with the offline steps that leads to the the hyperreduced
+operators appearing in the online problem, are summarized in Boxes 8.1 and
+8.2.
+
+9. Numerical results
+
+This section is intended to illustrate the performance and assess the effi-
+ciency of the proposed model reduction strategy in solving the fine scale BVP
+corresponding to a porous metal material under plane strain conditions.
+
+9.1. Microstructure description
+
+The voids are elliptical in shape (with eccentricity equal to 0.3), randomly
+distributed (with porosity equal to 0.3), and have aligned major axes ranging
+in length —according to the cumulative probability distribution displayed in
+figure 3.b— from 0.2 to 1.5 mm. The mechanical behavior of the metal matrix
+is modeled by a rate-independent, Von Mises elastoplastic model endowed
+with the following non-linear, isotropic hardening saturation law (consult
+Ref. [61] for details on the implementation of this elastoplastic model):
+
+σu(α) = σ0 + H̄α + (σ∞ − σ0)(1− exp(−αδ)). (118)
+
+39
+
+
+
+1. Compute FE displacement fluctuations and stress snaphots for repre-
+sentative, input macro-strain histories. Apply —see Appendix B— the
+elastic/inelastic POD to the resulting snapshot matrices to obtain the
+displacement fluctuation and stress basis matrices (Φ ∈ Rn·d×nu and
+Ψ ∈ Rng·s×nσ , respectively).
+
+2. Calculate the weighted matrix of fluctuating strain modes B∗ ∈
+R
+
+ng·s×nσ using Eqs. (26) and (47).
+
+3. Select a set I of sampling indices optimal for the basis matrices Ψ and
+B
+∗ following the procedure sketched in Section 7.
+
+4. Finally, using Ψ, B∗ and I, construct the hyperreduced -order matrices
+B̂
+∗∗ ∈ Rp·s×nu and T ∈ Rs×p·s; the expressions for these matrices read:
+
+B̂
+∗∗ = (I − R̂)B̂∗ = (I −P (I)R)(P (I)B∗) (113)
+
+and
+
+T :=
+1
+
+V
+
+[√
+w1I
+
+√
+w2I · · ·
+
+√
+wngI
+
+]
+R (114)
+
+where R = Ψ(Ψ̂
+T
+Ψ̂)−1Ψ̂
+
+T
+and Ψ̂ = P (I)Ψ.
+
+Box 8.1: Offline stage. Pre-computation of reduced basis and hyperreduced
+operators.
+
+Here, σu stands for the yield stress, α ≥ 0 denotes the equivalent plastic
+strain; and σ0 = 75.0 MPa, σ∞ = 100.0 MPa, δ = 2500.0 and H̄ = 5000
+MPa are material constants. The Young’s modulus and Poisson’s coefficient,
+on the other hand, are equal to Em = 75GPa and νm = 0.3, respectively
+(these material constants corresponds approximately to Aluminum).
+
+9.2. RVE and finite element discretization
+
+The size of the RVE was determined by conducting finite element anal-
+yses on square domains of increasing size subject to vanishing displacement
+fluctuations boundary conditions. It was found that the macroscopic stress
+responses calculated under representative macroscopic strain paths (stretch-
+ing along the longitudinal and transversal directions, and shearing) of all
+samples above 20x20 mm2 were practically indistinguishable. This fact indi-
+cates that any subvolume of 20x20 mm2 (or greater) can be considered as a
+Representative Volume Element (RVE) of the porous material under study.
+
+40
+
+
+
+1. Initial data: U ∗n ∈ Rnu (reduced vector of displacement fluc-
+tuations at tn), ǫMn (macroscopic strain vector at tn), and
+{ξn(xI1), ξn(xI2), . . .ξn(xIp)} (internal variables at tn at the selected
+sampling points).
+
+2. Input data: ǫMn+1 (macroscopic strain vector at tn+1)
+
+3. Given the above initial and input data, find U ∗n+1 ∈ Rnu such that
+
+B̂
+∗∗T Σ̂(ǫMn+1,U
+
+∗
+n+1) = 0, (115)
+
+where
+
+Σ̂ =
+[√
+
+wI1σ
+T (xI1, ·)
+
+√
+wI2σ
+
+T (xI2 , ·) · · · wIpσT (xIp, ·)
+]T
+
+(116)
+
+(here, σ(xIi, ·) denotes the stress vector evaluated at the i−th sampling
+point through the corresponding constitutive equation).
+
+4. Output data: Once Eq.(116) has been solved for U ∗n+1, update the
+macroscopic stress vector as
+
+σM |n+1 = T Σ̂(ǫMn+1,U
+∗
+n+1). (117)
+
+Box 8.2: Online stage (solution of the hyperreduced-order RVE equilibrium
+problem for given macroscopic strains).
+
+The finite element discretization corresponding to the particular 20x20
+mm2 RVE employed in the ensuing simulations is shown in figure 3.a. The
+number of (four-node bilinear) elements is ne = 9746, and the number of
+nodes n = 11825. The employed quadrature formula, on the other hand,
+is the standard 2x2 Gauss rule, the total number of Gauss points amount-
+ing thus to ng = 4ne = 38984. To overcome incompressibility issues while
+maintaining the displacement-based formulation presented in the preceding
+sections, the commonly known as “B-bar” approach is adopted20. The con-
+stitutive differential equations are integrated in time using the classical (fully
+
+20This means that, in this case, the reduced “B-matrix” B∗(x) appearing in the for-
+mulation of the HP-ROM is not constructed using the gradients of the shape functions,
+as indicated by Eq.(23), but rather using the modified “B-matrix” emanating from the
+three-field Hu-Washizu variational principle [61]
+
+41
+
+
+
+0 0.2 0.4 0.6 0.8 1 1.2 1.4 1.6 1.8
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0.9
+
+1
+
+Pore major axis (mm)
+
+C
+u
+m
+
+u
+la
+
+ti
+v
+e
+ p
+
+ro
+b
+a
+b
+il
+it
+y
+
+Figure 3: a) Finite element mesh of the RVE corresponding to the porous metal material.
+b) Cumulative probability distribution followed by the length of the pore major axes.
+
+implicit) backward-Euler scheme.
+
+9.3. Sampling of parameter space
+
+0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+x 10
+
+-3
+
+(50 snaphots)
+
+Longitudinal  stretching Transversal stretching Shear
+
+M
+a
+c
+ro
+
+s
+c
+o
+
+p
+ic
+
+ s
+tr
+
+a
+in
+
+Time step
+
+(50 snaphots) (50 snaphots)
+
+( )
+xM
+
+ε ( ) yMε ( )
+xyM
+
+ε
+( ) 0
+
+yM
+ε =
+
+( ) 0
+xM
+
+ε =
+( ) 0
+
+xM
+ε =( ) 0
+
+xyM
+ε =
+
+( ) 0
+xyM
+
+ε =
+( ) 0
+
+yM
+ε =
+
+Figure 4: Macro-strain trajectories used for generating the displacement and stress snap-
+shots.
+
+42
+
+
+
+The first step in the process of constructing the reduced basis is the
+sampling of the input parameter space; we saw in Section 3.1 that, in the
+fine-scale BVP, this process amounts to select representative macroscopic
+strain histories. The three macroscopic strain histories (nhst = 3) used in the
+case under study are depicted in figure 4. In each of these strain trajectories,
+one of the (independent) strain components follows a linear ascending path
+while the magnitude of the other two components is set to zero. The time
+domain for each strain history is discretized into nstp = 50 equally spaced
+steps, resulting in a total number of nsnp = nhst · nstp = 150 snapshots.
+
+Remark 9.1. The task of sampling the input parameter space is somehow
+akin to the experimental process whereby material parameters of standard
+phenomenological models are calibrated in a laboratory. In this analogy, the
+RVE plays the role of the corresponding experimental specimen, whereas the
+macro-strain training trajectories represent the loading paths of the pertinent
+calibration tests. Hindsight and elementary physical considerations can there-
+fore aid in restricting the number of strain histories (and hence of snapshots)
+necessary to characterize the response. For instance, if the behavior of the
+materials that compose the RVE is governed by rate-independent constitutive
+models (as in the case at hand), we know beforehand that it is not necessary
+to study the response under varying rates of deformation.
+
+Strategies for efficiently sampling the input parameter space in general
+model reduction contexts can be found in Refs. [12, 13, 15, 42].
+
+9.4. Dimensionality reduction: a priori error analysis
+
+The finite element displacement fluctuation and stress fields computed at
+each time step of the input strain trajectories shown above are multiplied
+by their corresponding weighting matrices (M̄ and W 1/2) and stored, in
+the snapshot matrices X̄u ∈ Rn·d×nsnp (n · d = 11825 · 2 = 23650) and
+X ∈ Rng·s×nsnp (ng · s = 38984 · 4 = 155936), respectively. Then, these
+matrices are subjected to the SVD-based, elastic/inelastic dimensionality
+reduction process sketched in Section 3.2.1 —and described more in detail in
+Appendix B— in order to generate an optimal set of basis vectors for both
+the displacements fluctuation and stress solution spaces.
+
+To elucidate which of these basis vectors constitute the “essential” modes
+of the response, we plot in Figure 5 the dimensionless POD truncation error
+estimates defined, for the displacement fluctuations, as:
+
+43
+
+
+
+1 3 5 7 9 11 13 15 17 19
+0
+
+10
+
+20
+
+30
+
+40
+
+50
+
+60
+
+70
+
+Number of basis vectors
+
+Elastic
+modes
+
+Inelastic
+modes
+
+P
+O
+
+D
+ t
+ru
+
+n
+c
+a
+ti
+o
+n
+ e
+
+rr
+o
+r 
+
+(%
+)
+
+Displacement fluctuations
+
+Stresses
+
+( , )un ns
+
+( )
+u
+
+e%
+
+( )
+trun
+
+es%
+
+6 7 8 9 10 11
+0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+Figure 5: POD truncation error estimates ẽu (for the displacement fluctuations, see
+Eq.(119)) and ẽtrunσ (for the stresses, see Eq.(120)) versus number of basis vectors em-
+ployed in the approximation (nu and nσ, respectively). The portion between 6 and 11
+modes is shown in magnified form.
+
+ẽu(nu) :=
+‖X̄u − X̄
+
+∗
+u(nu)‖F
+
+‖X̄u‖F
+, (119)
+
+and for the stresses:
+
+ẽtrunσ (nσ) :=
+‖X −X∗⊥(nσ)‖F
+
+‖X‖F
+, (120)
+
+X̄
+∗
+u(nu) and X
+
+∗⊥(nσ) being the orthogonal projection of X̄u and X onto
+the span of the first nu and nσ basis vectors, respectively. It can be ob-
+served in Figure 5 that both error measures decrease monotonically with
+increasing order of truncation —this is a mere consequence of the optimality
+properties of the SVD—, and at approximately the same rate; the decay is
+more pronounced from 1 to 6 modes, and becomes more gradual thereafter,
+tending asymptotically to zero as the number of modes increases. The trun-
+cation error for both stresses and displacement fluctuations at nσ = nu = 6
+is around 5%. In terms of dimensionality reduction, this means that the
+data contained in the snapshot matrices can be “compressed” to a factor of
+(nu/nsnp) · 100 = (6/150) · 100 = 4% and still retain 95% of the informa-
+tion —the essential information. The first 6 basis functions (3 elastic and
+3 inelastic) for both stresses and displacement fluctuations, therefore, are
+to be regarded as essential modes in the characterization of the mechanical
+
+44
+
+
+
+b) 2nd basis c) 3rd basis
+
+d) 4th basis e) 5th basis f) 6th basis
+
+a) 1st basis
+
+Figure 6: Contour plots of the euclidean norm of the first 6 displacement fluctuations
+modes (‖Φi‖, i = 1, 2 . . .5). Deformed shapes are scaled up by a factor of 15.
+
+response of the concerned RVE. By way of illustration, we plot in Figure
+6 the contour plots of the euclidean norm of such 6 essential displacement
+fluctuations modes (‖Φi‖, i = 1, 2 . . . 6).
+
+9.5. Sampling points
+
+9.5.1. Basic sampling points
+
+Once the stress and displacement fluctuation basis vectors have been de-
+termined, the next offline step consists in the selection —among the full set
+of finite element Gauss points—of an optimal set of sampling points. Fol-
+lowing the strategy described in Section 7.2, we carry out such a selection
+by first computing the location of what we have called basic sampling points
+{xIσ(1),xIσ(2) . . .xIσ(pσ)}. To assess the efficiency of the employed Hierar-
+chical Interpolation Points Method, abbreviated HIPM, we plot in Figure 7
+the estimates for both the POD truncation (shown previously in Figure 5)
+and total stress error versus the number of stress modes nσ (in using this
+algorithm, it is assumed that pσ = nσ). The total stress error estimate is
+
+45
+
+
+
+1 3 5 7 9 11 13 15 17 19
+0
+
+10
+
+20
+
+30
+
+40
+
+50
+
+60
+
+Truncation error
+
+Total error (using
+only basic
+sampling points)
+
+Number of stress basis vectors
+
+S
+tr
+
+e
+s
+s
+ a
+
+p
+p
+
+ro
+x
+im
+
+a
+ti
+o
+
+n
+ e
+
+rr
+o
+
+r 
+(%
+
+)
+
+( )ns
+
+6 7 8 9 10 11
+0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+Figure 7: Estimates for the POD truncation (ẽtrunσ , see Eq.(120)) and total (ẽσ, see
+Eq.(121)) stress error versus number of basis vectors employed in the approximation (nσ).
+The total error estimate is computed using only the set of basic sampling points (ẽσ =
+ẽσ(nσ, Iσ), with pσ = nσ). The portion between 6 and 11 modes is shown in magnified
+form.
+
+defined as
+
+ẽσ(nσ, Iσ) :=
+‖X −X∗(nσ, Iσ)‖F
+
+‖X‖F
+(121)
+
+where X∗(nσ, Iσ) denotes the oblique projection (calculated using sampling
+points Iσ) of X onto the span of the first nσ basis vectors (Ψ1,Ψ2 . . .Ψnσ).
+It can be appreciated in Figure 7 that both the total error and the trun-
+cation error curves are practically coincident, a fact that indicates that the
+contribution of the reconstruction error :
+
+ẽrecσ =
+√
+
+ẽ2σ − ẽtrun 2σ =
+‖X∗⊥(nσ)−X∗(nσ, Iσ)‖F
+
+‖X‖F
+(122)
+
+( the error introduced as a result of using only pσ sampling points instead of
+the entire set of finite element Gauss points, see Section 7.1.1) is negligible
+in comparison to the discrepancies due to truncation of the POD basis. For
+nσ = pσ = 6, for instance, the reconstruction error is less than 3% of the
+total stress error. In view of these results, it becomes clear that further
+refinements in the algorithm for selecting the basic sampling points are in
+principle not necessary: the employed HIPM optimization algorithm, however
+
+46
+
+
+
+heuristic, satisfactorily fulfills this purpose. If one wishes to lower the stress
+approximation error, it is far more effective to simply increase the level of
+truncation.
+
+9.5.2. Stabilizing sampling points
+
+( )
+B
+
+p
+
+4ps =
+
+4ps =
+
+5ps =
+
+5ps =
+
+6ps =
+
+6ps =
+
+7ps =
+
+7ps =
+
+8ps =
+
+8ps =
+
+9ps =
+
+9ps =
+
+10ps =
+
+10ps =
+
+11ps =
+
+( )
+u
+
+p n ns s= =
+
+( )
+u
+
+p n ns s= =
+
+11ps =
+
+( )
+B
+
+p
+
+Indefinite jacobian matrix
+
+Definite positive jacobian matrix
+
+0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
+-0.2
+
+-0.15
+
+-0.1
+
+-0.05
+
+0
+
+0.05
+
+0.1
+
+0.15
+
+Number of sampling pointsstabilizing
+
+M
+in
+
+im
+u
+m
+
+ e
+ig
+
+e
+n
+v
+a
+lu
+
+e
+ o
+
+f 
+s
+y
+m
+
+(K
+ )
+
+0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+Number of stabilizing sampling points
+
+(a)
+
+f F
+
+(b)
+
+*
+
+m
+K m
+
+in
+,
+
+Figure 8: a) Factor fF (defined in Eq.(99)) versus number of stabilizing sampling points
+pB for varying numbers of basic sampling points pσ (with pσ = nσ = nu). b) Minimum
+eigenvalue µKmin (over all time steps and iterations for each pσ) of the symmetric part of
+the reduced-order Jacobian matrix K∗ versus number of stabilizing sampling points pB.
+
+Concerning what we have termed “stabilizing sampling points”, Figure
+8.a contains the graphs, for varying levels of truncation, of factor fF defined
+
+47
+
+
+
+in Eq.(100) as a function of the number of stabilizing sampling points pB.
+To study the influence of including such points on the spectral properties —
+positive defineteness— of the stiffness matrix, these graphs are accompanied,
+see figure 8.b, by the plots of the minimum eigenvalue µKmin (over all time steps
+and iterations for each case) of the symmetric part of the reduced-order Ja-
+cobian matrix K∗ versus pB. It can be seen that fF decreases monotonically
+as the number of stabilizing sampling points increases, and such a decrease is
+reflected, as theoretically anticipated in Section 6.4.1, in the improvement of
+the spectral properties of the reduced-order Jacobian matrix (higher µKmin as
+pB raises). For clarity, the minimum number of stabilizing sampling points
+required, for each level of truncation, to render positive definite K∗ is plot-
+ted in Figure 9. From this plot, it can be gleaned that, roughly, the higher
+
+( )ns
+
+4 5 6 7 8 9 10 11
+0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+Level of truncation
+
+N
+o
+. 
+o
+f 
+s
+ta
+
+b
+. 
+s
+a
+m
+
+p
+. 
+p
+o
+in
+
+ts
+
+Figure 9: Minimum number of stabilizing sampling points required to make the Jacobian
+matrix K∗ definite positive for each level of truncation nσ = nu = pσ (deduced from
+Figure 8).
+
+the level of truncation (and thus the number of basic sampling points), the
+more stabilizing sampling points appear to be needed to ensure the positive
+definiteness of K∗. For nσ = pσ = 6, adding just one stabilizing sampling
+points suffices, while for nσ = pσ = 11, 7 points are required.
+
+Observation 9.1. The values shown in Figure 9 correspond to the minimum
+pB that leads to positive definite K
+
+∗ when the prescribed strain path coincides
+with any of the “training” strain trajectory (displayed in Figure 4 ). Unfor-
+tunately, there is no guarantee that the Jacobian matrix will also exhibit this
+desirable property for prescribed strain histories different from the training
+ones. Thus, in view of such uncertainty, and in the interest of robustness,
+it is preferable to stay on the side of “caution” in this regard and use more
+
+48
+
+
+
+1st point
+
+1st point
+
+2nd point
+
+2nd point
+
+4th point
+
+3rd point
+
+3rd point
+
+4th point
+
+5th point
+
+a) Basic sampling points b) Stabilizing sampling points
+
+5th point
+
+6th point
+
+6th point
+
+Figure 10: Location within the RVE of the finite elements (marked in red) that contains
+the first pσ = pB = 6 basic and stabilizing sampling points.
+
+stabilizing sampling points that the minimum number indicated by the analy-
+sis based on the training strain trajectories. It is the authors’ experience that
+a “safe” estimate for pB is to simply take pB = pσ —that is, equal number
+of basic and stabilizing sampling points. In adopting such a rule, the au-
+thors have not observed any convergence failures whatsoever, neither in the
+example under consideration nor in other cases not shown here.
+
+The location of the first pσ = 6 basic sampling points and the correspond-
+ing pB = 6 stabilizing sampling points is depicted in Figure 10.
+
+9.6. A posteriori errors: consistency analysis
+
+The error measures displayed previously in Figures 5 and 7 only depend
+on the outcome of the SVD of the snapshot matrices; they can be calculated,
+thus, before actually constructing the reduced-order model. Error analyses
+based on such measures serve the useful purpose of providing a first hint
+of how many stress and displacement fluctuations modes are needed to sat-
+isfactorily replicate the full-order, finite element solution, and thereby, of
+prospectively evaluating the viability of the reduced basis approach itself.
+
+However, these a priori error estimates do not tell the whole story. Ex-
+pression (121) for the stress approximation error presumes that the stress
+
+49
+
+
+
+solution at the chosen sampling points is the one provided by the finite ele-
+ment model, thus ignoring the fact that, actually, in the reduced-order model,
+and for the general case of nonlinear, dissipative materials, the stress infor-
+mation at such points at a given time step is already polluted by truncation
+(in displacement fluctuations and stresses) and reconstruction (in stresses)
+errors originated in previous time steps. To quantify the extent to which
+this amalgam of accumulated errors affects the predictions furnished by the
+HP-ROM, it is necessary to perform a consistency analysis.
+
+Generally speaking, a reduced basis approximation is said to be consistent
+if, in the limit of no truncation, it introduces no additional error in the
+solution of the same problem for which the data used in constructing the
+basis functions were acquired [14]. In the BVP under consideration, thus,
+consistency implies that, when using as input macro-strain paths the same
+trajectories employed in the “training” process, results obtained with the
+HP-ROM should converge, as nσ and nu increase, to the solution furnished
+by the full-order, finite element model. This condition can be checked by
+
+D
+is
+
+p
+. 
+
+fl
+u
+
+c
+tu
+
+a
+ti
+o
+
+n
+ e
+
+rr
+o
+
+r 
+(%
+
+)
+
+S
+tr
+
+e
+s
+s
+ e
+
+rr
+o
+
+r 
+(%
+
+)
+
+Level of truncation
+
+(a) (b)
+
+A priori estimation
+
+A posteriori estimation
+
+( )
+u
+
+n ns=
+
+)( ue%
+
+)(
+ROM
+
+u
+e%
+
+6 10 14 18 22 26 30 34
+0
+
+5
+
+10
+
+15
+
+20
+
+25
+
+30
+
+6 10 14 18 22 26 30 34
+0
+
+5
+
+10
+
+15
+
+20
+
+25
+
+30
+
+35
+
+40
+
+Level of truncation ( )un ns=
+
+A priori estimation
+
+A posteriori estimation
+
+)(es%
+
+)(
+ROM
+
+es%
+
+Figure 11: Comparison of the evolution of a priori and a posteriori error measures versus
+the level of truncation (using nu = nσ = pσ = pB). a) Displacement fluctuations (see Eqs.
+119 and 123). b) Stresses (see Eqs. 121 and 124)
+
+studying the evolution of the error measures defined as
+
+ẽROMu (nu, nσ, I) :=
+‖X̄u − X̄
+
+∗ROM
+u (nu, nσ, I)‖F
+‖X̄u‖F
+
+, (123)
+
+for the displacement fluctuations, and
+
+ẽROMσ (nu, nσ, Iσ) :=
+‖X −X∗ROM(nu, nσ, Iσ)‖F
+
+‖X‖F
+, (124)
+
+50
+
+
+
+Level of truncation ( )un ns=
+
+4 8 12 16 20 24 28 32 34
+1
+
+1.5
+
+2
+
+2.5
+
+/
+ROM
+
+e es s% %
+
+Figure 12: Ratio ẽROMσ /ẽσ between the a posteriori and a priori measures for the stress
+approximation error against the level of truncation (using nu = nσ = pσ = pB).
+
+for the stresses. ( The superscript “ROM” is appended to highlight that,
+
+unlike X̄
+∗
+u and X
+
+∗ in Eqs. (119) and (121), X̄
+∗ROM
+u and X
+
+∗ROM are matrices
+of displacement fluctuation and stress snapshots computed using the HP-
+ROM). Figures 11.a and 11.b contain the graphs of these a posteriori error
+measures, along with their respective a priori counterparts ẽu (Eq. 119) and
+ẽσ (Eq. 121), versus the level of truncation. It becomes clear from these
+graphs that consistency, in the sense given above, is observed in terms of
+both displacement fluctuations and stresses: the a posteriori error measures
+ẽROMu and ẽ
+
+ROM
+σ mimic essentially the decreasing tendency of their a priori
+
+counterparts ẽu and ẽσ, respectively. It can be seen also that the a priori
+error estimations ẽu and ẽσ constitute (rather tight) lower bounds for their
+a posteriori counterparts ẽROMu and ẽ
+
+ROM
+σ , respectively. This can be better
+
+appreciated, for the stresses, in Figure 12, where the ratio ẽROMσ /ẽσ versus
+the level of truncation is plotted.
+
+The degree of approximation that can be achieved using the proposed
+HP-ROM is quantified in a more “engineering” fashion in Figure 13, where
+we plot, for the case of the first training strain history (stretching in the
+longitudinal direction), the longitudinal, macroscopic stress-strain curves
+computed using the FE model, on the one hand, and the HP-ROM with
+nu = nσ = 6, 7, 8 modes, on the other hand. Observe that the maximum de-
+viation from the FE response when using 6 modes (3 elastic and 3 inelastic)
+takes place at the onset of plastic yielding and is below 8%; remarkably, as
+deformation continues, this deviation gradually diminishes, being practically
+
+51
+
+
+
+Finite element m.
+
+HP-ROM, 6ns =
+
+( )
+xM
+
+ε
+
+HP-ROM, 7ns =
+HP-ROM, 8ns =
+
+M
+a
+c
+ro
+
+s
+c
+o
+p
+ic
+
+ l
+o
+n
+g
+it
+u
+d
+in
+
+a
+l 
+s
+tr
+
+e
+s
+s
+ (
+
+M
+p
+a
+)
+
+Macroscopic longitudinal strain
+
+0 1 2 3 4 5 6
+x 10
+
+-3
+0
+
+25
+
+50
+
+75
+
+100
+
+125
+
+150
+
+Figure 13: Longitudinal macroscopic stress versus longitudinal macroscopic strain com-
+puted using FEM and HP-ROM with nσ = nu = 6, 7, 8.
+
+a) Finite element model b) HP-ROM ( 6)
+u
+
+n ns = =
+
+( ) ( )
+y
+
+MPa
+M
+
+σ
+
+Figure 14: Contour plot of transversal stresses computed at the end of the first “training”
+strain history using a) FEM (b) HP-ROM with nσ = nu = 6. Deformed shapes are
+exaggerated (by a factor of 20).
+
+negligible at the end of the process. Furthermore, by just increasing the or-
+der of truncation to nσ = nu = 8, differences between the HP-ROM and the
+FEM responses become virtually imperceptible at all levels of deformation.
+
+52
+
+
+
+Resemblance between HP-ROM and FEM results can also be appreciated in
+terms of stress distribution in the contour plots shown in Figure 14. Visually,
+there are no discernible differences between the two contour plots.
+
+9.7. “Training” errors
+
+The studies presented in the preceding subsections were aimed at exam-
+ining the errors incurred in approximating the snapshot solution space Vsnpu
+by the reduced-order subspace V∗u ∈ Vsnpu spanned by the POD basis vectors
+—in the terminology of Section 3.1—, and to check that when V∗u → Vsnpu , the
+solution provided by the HP-ROM converges to that obtained with the FEM.
+But recall that the snapshot space Vsnpu is but a (presumably representative)
+subspace of Vǫu, the manifold of Vhu induced by the parametric dependence
+of the fine-scale BVP on the prescribed macroscopic strain history. Conse-
+quently, in general —for an arbitrary input strain trajectory— the HP-ROM
+solution will not converge to the solution provided by the FEM. To complete
+the error assessment analysis, thus, it is necessary to estimate also the errors
+inherent to the sampling of the parameter space —we call them training er-
+rors— and judge whether the selected training strain trajectories generate
+a snapshot subspace that is indeed representative of such a solution space21
+
+Vǫu.
+Ideally, one should carry out this error assessment by picking up, guided
+
+by some sound, statistically-based procedure, a sufficiently large set of strain
+paths and by comparing the solutions computed by the FEM and HP-ROM
+under such input strain paths for varying levels of truncation. Such a degree
+of rigor, however, is beyond the scope of the present work. Here, we limit
+ourselves here to analyze the quality of the HP-ROM approximation obtained
+for two different input strain histories, namely, a uniaxial compression test,
+and a biaxial loading/unloading test.
+
+21To put it in less mathematical terms —by appealing to the the analogy, introduced
+in Remark 9.1, between the training of the RVE reduced-order model and the calibra-
+tion of standard phenomenological models— we have “calibrated” our HP-ROM using the
+training tests displayed previously in Figure 4, and we have shown that the model is able
+to exactly replicate the behavior of the RVE in these tests when nu = nσ is sufficiently
+large. Similarly to the situation encountered when dealing with standard phenomenolog-
+ical models, it remains now to assess the capability of the proposed HP-ROM to predict
+the behavior of the RVE under conditions different from those used in the “calibration”
+(training) process.
+
+53
+
+
+
+( )
+yM
+
+ε
+
+( ) 0
+xM
+
+ε =
+
+( ) 0
+xyM
+
+ε =
+
+Level of truncation
+M
+
+a
+c
+ro
+
+s
+c
+o
+
+p
+. 
+
+s
+tr
+
+e
+s
+s
+ e
+
+rr
+o
+
+r 
+(%
+
+)
+( )
+
+u
+n ns=
+
+4 6 8 10 12 14 16 18 20 22 24 26 28 30
+
+10
+
+0
+
+20
+
+30
+
+40
+
+50
+
+60
+
+101 20
+
+Time step
+
+a) b)
+
+M
+a
+
+c
+ro
+
+. 
+s
+tr
+
+a
+in
+
+30 40 50
+
+-6
+
+-4
+
+-2
+
+0
+x 10
+
+-3
+
+Figure 15: a) First strain trajectory employed for assessing training errors. b) Plot of the
+macroscopic error estimator ẼROMσ,M (see Eq.(125)) corresponding to this testing trajectory
+versus level of truncation (nσ = nu)
+
+9.7.1. Uniaxial compression
+
+The first strain path employed for the assessment is displayed in Figure
+15.a; it represents a monotonic compression in the transversal direction (the
+model, see Figure 4, was trained using only stretching and shear, but not com-
+pression, tests). For purposes of evaluating the quality of the HP-ROM ap-
+proximation, it is convenient to introduce the following macroscopic22 stress
+error estimate:
+
+ẼROMσ,M :=
+
+√
+√
+√
+√
+
+∑ntstp
+i=1 ‖σM i − σ
+
+∗ i,ROM
+M (nσ, nu, I)‖2
+
+∑ntstp
+i=1 ‖σM i‖2
+
+, (125)
+
+where σM
+i and σ
+
+∗ i,ROM
+M denote the macroscopic stress at the i−th time step
+
+computed by the FEM and the HP-ROM, respectively. This error estimate
+is plotted in Figure 15.b versus the level of truncation nu = nσ. Observe
+that the error goes to zero as the number of employed modes increase. In
+this particular case, thus, there is no additional error due to sampling of the
+
+22Recall that the output of interest in solving the fine-scale BVP is the macroscopic
+stress tensor; thus, the error estimate defined in Eq.(125) (ẼROMσ,M ) provides a more mean-
+ingful indication of the quality of the approximation than the stress error measure defined
+previously in Eq.(124) (ẽROMσ ). The latter is more suited for examining convergence prop-
+erties of the HP-ROM approximation, since the minimization problem that underlies the
+SVD is posed in terms of the Frobenis norm.
+
+54
+
+
+
+parameter space.
+
+Remark 9.2. This simple example fittingly illustrates one of the acclaimed
+advantages of POD/Galerkin reduced-order approaches over “black box” meth-
+ods such as artificial neural networks —that are also based on the partitioned
+offline-online computational paradigm—: POD/Galerkin reduced-order ap-
+proaches preserve the “physics” of the problem one wishes to model and, as a
+consequence, are able to make physically-based extrapolations. For instance,
+in this case, the reduced-order model is able to exactly replicate (for suffi-
+ciently large nu = nσ) the macroscopic compressive behavior of the RVE, even
+though no information regarding this deformational state has been supplied
+to the model in the calibration (training) phase; the HP-ROM is “aware”,
+figuratively speaking, that the matrix material in the RVE exhibits similar
+behavior in tension and compression (J2 plasticity).
+
+9.7.2. Biaxil loading/unloading test
+
+( )
+xM
+
+ε
+
+0 20 40 60 80 100 120 140 160 180 200
+-4
+
+-3
+
+-2
+
+-1
+
+0
+
+1
+
+2
+
+3
+
+4
+x 10
+
+-3
+
+Time step
+
+M
+a
+c
+ro
+
+s
+c
+o
+p
+ic
+
+ s
+tr
+
+a
+in
+
+( )
+yM
+
+ε
+
+( )
+xyM
+
+ε
+
+Figure 16: Second strain trajectory employed for assessing training errors.
+
+A more severe test for assessing errors associated to the training process is
+provided by the strain trajectory shown in Figure 16. Indeed, while the train-
+ing strain histories of Figure 4 only included monotonic, uniaxial stretching,
+the strain history displayed in Figure 16 consists of a cycle of biaxial, load-
+ing/unloading stretching (time steps 1 to 100) and biaxial loading/unloading
+
+55
+
+
+
+0
+
+3
+
+6
+
+9
+
+12
+
+15
+
+18
+
+21
+
+24
+
+4 6 8 10 12 14 16 18 20 22 24 26 28 30
+500
+
+1500
+
+2500
+
+3500
+
+4500
+
+5500
+
+4 6 8 10 12 14 16 18 20 22 24 26 28 30
+
+Level of truncation
+
+Actual
+
+( )
+u
+
+n ns=
+
+2
+
+g g
+
+u
+
+n n
+
+p n
+
+æ ö
+=ç ÷
+
+è ø
+
+Level of truncation
+
+(a)
+
+( )
+u
+
+n ns=
+
+M
+a
+c
+ro
+
+s
+c
+o
+p
+. 
+s
+tr
+
+e
+s
+s
+ e
+
+rr
+o
+r 
+
+(%
+)
+
+L
+o
+c
+a
+l 
+s
+p
+e
+e
+d
+u
+p
+ f
+a
+c
+to
+
+r
+
+(b)
+
+Estimated
+
+Figure 17: a) Macroscopic error estimator ẼROMσ,M (see Eq.(125)) versus level of truncation
+(nσ = nu) for the case of testing trajectory shown in Figure 16,. b) Local speedup factor
+Sloc (defined in Eq.(126)) reported for this case versus level of truncation. This plot is
+accompanied by the graph of the ratio ng/p, where ng = 38984 is the total number of
+Gauss points of the finite element mesh, and p = 2nσ the number of sampling points
+employed for numerically integrating the HP-ROM.
+
+compression (time steps 101 to 200). The graph of the macroscopic error esti-
+mator (125) corresponding to this input strain path as a function of the level
+of truncation is represented in Figure 17.a. It can be readily perceived that,
+in this case, and in contrast to the situation encountered in the previously
+discussed input strain trajectory, the macroscopic stress does not go to zero
+as the number of POD modes included in the basis increases. Rather, the
+graph drops sharply from 24% to approximately 5% at nσ = nu = 5 (second
+inelastic mode), and then fluctuates erratically, with no apparent trend, be-
+tween 3% and 10% —a level of accuracy that, nevertheless, may be deemed
+
+56
+
+
+
+macro
+
+y
+(HP-ROM, 6)nss =
+
+macro
+
+y
+(finite element m.)s
+
+macro
+
+x
+(HP-ROM, 6)nss =
+
+macro
+
+x
+(finite element m.)s
+
+( )
+x
+
+e
+
+M
+a
+
+c
+ro
+
+s
+c
+o
+
+p
+ic
+
+ s
+tr
+
+e
+s
+s
+ (
+
+M
+P
+
+A
+)
+
+Macroscopic longitudinal strain
+
+-3.5 -3 -2.5 -2 -1.5 -1 -0.5 0 0.5 1 1.5 2 2.5 3 3.5
+
+-150
+
+-100
+
+-50
+
+0
+
+50
+
+100
+
+150
+
+3
+x 10
+
+-
+
+Figure 18: Longitudinal and transversal macroscopic stress versus longitudinal macro-
+scopic strain computed using the FEM and the HP-ROM with nσ = nu = 6 (for the case
+of the testing trajectory shown in Figure 16)
+
+.
+
+more than acceptable in most practical applications. A more clear picture
+of the accuracy of the approximation for the particular case of nσ = nu = 6
+can be obtained from the stress-strain diagrams shown in figure 18.
+
+9.8. Speedup analysis
+
+Lastly, we turn our attention to one of the main concerns of the present
+work: the issue of computational efficiency. For a given error level, how
+many times can the proposed HP-ROM speed up the calculation of the RVE
+response with respect to the reference finite element model? Let us define
+the local speedup factor as the ratio
+
+Sloc :=
+tFE(n, ng)
+
+tROM(nσ, nu, p)
+, (126)
+
+where tFE and tROM denote the CPU times required to compute the FE
+and HP-ROM macro-stress responses, respectively, induced by a given input
+strain history23 In Figure 17.b, we show the graph of the speedup factor
+
+23The computational cost associated to the offline stage —generation of snapshots plus
+the comparatively negligible expenses of applying the POD and selecting the sampling
+
+57
+
+
+
+reported in the the case of the input strain path of Figure 16 as a function
+of the number of POD modes included in the analysis (recall in this respect
+that nu = nσ = p/2). We plot also in Figure 17.b the ratio ng/p, i.e., the
+relation between the total number of integration points in the finite element
+model ( ng = 38984) and in the reduced order model (p). It can be gleaned
+from Figure 17.b that the reported speedup factors are of the same order of
+magnitude as the ratio ng/p; i.e.:
+
+Sloc ∼
+ng
+p
+
+=
+ng
+2nσ
+
+, (127)
+
+(this indicates that the evaluation of the stresses at the integration points
+dominates the total computational cost). Although these results are no doubt
+influenced and biased by the particular programming language and coding
+style employed —we use an in-house, non-vectorized Matlab program operat-
+ing in a Linux platform—, and, consequently, this trend may not be exactly
+observed when using other programming languages and/or platforms, they
+serve to provide an idea of the tremendous gains in performance that can be
+achieved using the proposed ROM; for nσ = p = 6 modes, for instance, the
+computational cost is reduced by a factor above 3600, while still capturing
+95% of the full-order, high-fidelity information —the essential information.
+
+10. Concluding remarks
+
+One of the the most striking features of the proposed reduced-order model
+is perhaps the conceptual simplicity of the RVE equilibrium equation in its
+hyperreduced-order form: the sum of (reduced) internal forces at the pre-
+selected sampling points must give identical result either calculated using
+observed stresses or fitted stresses. Although this condition appears, in hind-
+sight, rather reasonable, even obvious —it ensures maximum resemblance
+between reduced-order and full-order responses at the sampling points— it
+seems difficult to arrive at it without the benefit of the integration procedure
+—based on the notion of expanded approximation space— advocated in the
+present paper.
+
+points—has been deliberately ruled out from this speedup analysis because, in two-scale
+homogenization contexts, the RVE equilibrium problem is to be solved a sheer number of
+times and, consequently, this overhead cost is quickly amortized.
+
+58
+
+
+
+The hyperreduced form of the RVE equilibrium equation excels not only
+in its conceptual simplicity; the corresponding solution scheme is also very
+simple to implement. Taking as departure point an existing FE code, one
+only has to replace the typical loop over elements in the FE code by a loop
+over the pre-selected sampling points {xI1 ,xI2, . . .xIp}. The stress vectors
+and corresponding constitutive tangent matrices obtained at each stage of the
+loop are stored in the gappy weighted vector Σ̂ and the matrix Ĉ, respec-
+tively, and, then the residual vector and the Jacobian matrix are computed as
+B̂
+∗∗T Σ̂ and B̂∗∗
+
+T
+
+Ĉ B̂
+∗, respectively. Notice that no assembly process is needed,
+
+nor has one to worry about imposing boundary conditions. Once convergence
+is achieved, the macroscopic stress value is simply calculated as σM = TΣ̂.
+It should be emphasized again that the operation count in both solving this
+hyperreduced RVE equation and updating the macroscopic stress vector de-
+pends exclusively on the reduced dimensions nu and p (number of fluctuation
+modes and number of sampling points, respectively). Likewise, storage of
+history data (internal variables) is only required at the pre-selected sampling
+points. Computational savings accrue, thus, not only in terms of number of
+operations, but also in terms of memory requirements.
+
+The success of the proposed homogenization strategy is predicated on the
+assumption that displacement and stress fields induced by the parametric
+dependence on the input macroscopic strain can be approximated by (rela-
+tively) low-dimensional functions. Numerical results shown in the preceding
+section seem to suggest that, in general, this assumption may be expected
+to hold in the case of materials governed by strain hardening laws in the
+small strain regime —regardless of the geometrical complexity, number and
+distribution of heterogeneities within the RVE. However, it is by no means
+apparent that this conclusion can be easily extended to more (kinematically
+and phenomenologically) complex scenarios, involving large deformations,
+strain localization, decohesion, etc. For instance, can the deformational be-
+havior of an RVE affected by multiple propagating cracks be represented
+also in a parsimonious manner, as in the case of strain hardening? Or will
+the number of modes necessary to accurately replicate its response combi-
+natorially increase with the number of potential crack paths (i.e., with the
+geometrical complexity of the RVE)? Undoubtedly, in these complex, non-
+linear scenarios, the task of sampling the parameter space —i.e., of choosing
+the macro-strain histories at which to obtain the snapshots— will become
+quite complicated, due to the richness of possible deformational patterns
+(void closure, propagating discontinuities ...), and thus difficult to carry out
+
+59
+
+
+
+on intuitive basis (as it has been done in the present paper). Therefore, it
+would be desirable to systematize this crucial task, as well as to provide some
+statistical means to certify, so to speak, the representativeness of the chosen
+snapshots. Likewise, topological variations caused by these phenomena may
+render POD-based compression algorithms inappropriate for collapsing the
+dimensions of the snapshots space; in such cases, nonlinear dimensionality
+reduction methods such as the Isomap algorithm [43] may be more suitable.
+Research in these fronts is currently in progress and will be reported in forth-
+coming publications.
+
+Acknowledgements
+
+The research leading to these results has received funding from, on the one
+hand, the European Research Council under the European Union’s Seventh
+Framework Programme (FP/2007-2013) / ERC Grant Agreement n. 320815,
+Advanced Grant Project COMP-DES-MAT, and, on the other hand, the
+Spanish Ministry of Science and Innovation under grant BIA2011-24258.
+
+A. Proper Orthogonal Decomposition
+
+The formal statement of the POD problem goes as follows: given the
+ensemble of snapshots {u1,u2, . . .unsnp}, find a set of nu < nsnp orthogonal
+basis functions {Φ1,Φ2, . . .Φnu} (Φi ∈ Vsnpu ) such that the error defined as
+
+eu(nu) :=
+
+√
+√
+√
+√
+
+nsnp
+∑
+
+k=1
+
+‖uk −P∗uk‖2L2(Ω) (128)
+
+is minimized. Here, P∗uk represents the projection of uk onto the subspace
+spanned by the basis functions {Φi}nui=1, and ‖·‖L2(Ω) symbolizes the L2 norm.
+We shall denote by Φi (i = 1, 2 . . . nu) the column vector containing the
+values of basis function Φi at the nodes of the underlying finite element mesh.
+Likewise, the matrix formed by such vectors, Φ =
+
+[
+Φ1 Φ2 · · ·
+
+]
+∈ Rn·d×nu ,
+
+will be hereafter called the reduced basis matrix.
+The reduced basis matrix Φ can be computed from the snapshot matrix
+
+Xu by means of the Singular Value Decomposition (SVD) as follows (see
+
+60
+
+
+
+Ref. [16] for more details). We first define the matrix24
+
+MIJ :=
+
+∫
+
+Ω
+
+NI(x)NJ(x) dΩ I, J = 1, 2 . . . n. (129)
+
+Let M = M̄
+T
+M̄ be the Cholesky decomposition of M, and let X̄u denote
+
+the matrix defined as:
+X̄u := M̄Xu. (130)
+
+Then, we compute the reduced SVD [37] of X̄u, that is, the factorization
+
+X̄u = Ū S̄V̄
+T
+, (131)
+
+where V̄ ∈ Rnsnp×r (r is the rank of X̄u) and Ū ∈ Rn·d×r stand for the
+matrices of right and left singular vectors, respectively; and S̄ ∈ Rr×r is a
+diagonal matrix containing the singular values of Xu. The i− th column of
+the reduced basis matrix Φ is finally related to the i− th left singular vector
+of X̄u through expression
+
+Φi = M̄
+−1
+Ū i, i = 1, 2 . . . nu. (132)
+
+B. Elastic/Inelastic reduced basis matrix
+
+This appendix is devoted to provide further details concerning the actual
+numerical implementation of the elastic/inelastic partitioned strategy, pre-
+sented in Section 3.2.1, for the computation of the reduced basis matrices Φ
+(displacement fluctuations). The steps to arrive at the desired matrix basis
+Φ are summarized in the following.
+
+1. Compute finite element stress solutions for representative, input macro-
+strain histories.
+
+2. Store the displacement fluctuation solutions computed at each time
+step of these macro-strain trajectories in the displacement fluctuations
+snapshot matrix Xu ∈ Rn·d×nsnp:
+
+Xu =
+[
+U 1 U 2 · · · Unsnp
+
+]
+(133)
+
+24 Note that, except for the density factor, this matrixM is similar to the “mass matrix”
+appearing in finite element implementations of dynamical problems. For implementational
+purposes, one can simply use a lumped version of such a matrix.
+
+61
+
+
+
+3. Pick up from Xu a minimum of me (me = 6 for 3D problems, and
+me = 3 for plane strain) linearly independent columns corresponding
+to purely elastic solutions. Store these columns in a matrix Zelu .
+
+4. Perform the reduced singular value decomposition (SVD) of the matrix
+defined as
+
+Z̄
+el
+u := M̄Z
+
+el
+u (134)
+
+where M̄ is the matrix of the Cholesky factorization of M ( M =
+
+M̄
+T
+M̄). A basis matrix for Range(Zelu ) is finally obtained as
+
+D
+el := M̄
+
+−1
+D̄
+
+el
+(135)
+
+D̄
+el ∈ Rn·d×me being the matrix of left singular vectors arising from the
+
+SVD of Z̄
+el
+u . In principle, D
+
+el may be used as the desired elastic basis
+matrix Φel. However, Del does not enjoy any optimality property with
+respect to Xu—it is only optimal with respect to the matrix Z
+
+el
+u of
+
+chosen elastic snapshots.
+
+5. For consistency in the approximation, thus, it is preferable to derive Φel
+
+from the the “elastic component” of Xu —the orthogonal projection
+of Xu onto Range(D
+
+el)—; the expression for this projection reads:
+
+X
+el
+u = D
+
+el(Del
+T
+MXu) (136)
+
+The elastic basis matrix can be finally calculated from Xelu as:
+
+Φel := M̄
+−1
+Φ̄
+
+el
+. (137)
+
+where Φ̄
+el
+is the matrix of left singular vectors emerging from the re-
+
+duced SVD of X̄
+el
+u := M̄X
+
+el
+u ; i.e X̄
+
+el
+u = Φ̄
+
+el
+S̄
+
+el
+u V̄
+
+el
+u
+
+T
+.
+
+6. Calculate the “inelastic component” X inu of the snapshot matrix Xu
+as:
+
+X
+in
+u = Xu −Xelu ; (138)
+
+that is, X inu is the orthogonal projection of Xu onto the orthogonal
+complement, in Range(Xu), of Range(Φ
+
+el).
+
+7. It is now on this inelastic snapshot matrix X inu that we apply the POD
+in order to identify and unveil the essential or most “energetic” inelastic
+fluctuation modes. This is done by first carrying out the reduced SVD
+of X̄
+
+in
+u = M̄X
+
+in
+u :
+
+X̄
+in
+u = D̄
+
+in
+S̄
+
+in
+u V̄
+
+in
+u
+
+T
+. (139)
+
+62
+
+
+
+The i− th POD basis vector of X inu is then given by:
+Φini = M̄
+
+−1
+D̄
+
+in
+i , i = 1, 2 . . . nu −me. (140)
+
+8. The desired basis matrix Φ ∈ Rn·d×nu adopts finally the form:
+
+Φ = [Φel Φin] = [
+
+Elastic modes
+︷ ︸︸ ︷
+
+Φel1 Φ
+el
+2 · · · Φelme
+
+Essential inelastic modes
+︷ ︸︸ ︷
+
+Φin1 Φ
+in
+2 · · · Φinnu−me ] (141)
+
+C. Block matrix pseudoinverse of the expanded basis matrix
+
+The inverse of a 2x2 symmetric block matrix is given by the following
+expression (see, for instance, Ref. [11]):
+
+M−1 =
+
+[
+A B
+BT C
+
+]−1
+
+=
+
+[
+A−1 +A−1BS−1BTA−1 −A−1BS−1
+
+−S−1BTA−1 S−1
+]
+
+(142)
+
+where
+S = C−BTA−1B (143)
+
+is the so-called Schur complement of A in M. This formula can be used
+to derive closed-form expressions for the modal coefficients cad and cin (see
+Section 6.2). The departure point is equation Eq.(67):
+
+[
+cad
+
+cin
+
+]
+
+= ([Ψ̂ B̂∗])†Σ̂ =
+
+[
+
+Ψ̂
+T
+Ψ̂ Ψ̂
+
+T
+B̂
+∗
+
+B̂
+∗T Ψ̂ B̂∗
+
+T
+
+B̂
+∗
+
+]−1 [
+
+Ψ̂
+T
+
+B̂
+∗T
+
+]
+
+Σ̂, (144)
+
+where ([Ψ̂ B̂∗])† designates the pseudo-inverse of the gappy expanded basis
+matrix. By setting:
+
+A = Ψ̂
+T
+Ψ̂, B = Ψ̂
+
+T
+B̂
+∗, C = B̂∗
+
+T
+
+B̂
+∗, (145)
+
+and by inserting Eq.(142) into Eq.(144), one obtains upon expansion:
+
+cin = S−1
+(
+
+−BTA−1Ψ̂T + B̂∗T
+)
+
+Σ̂ (146)
+
+and
+
+cad =
+(
+(
+A−1 +A−1BS−1BTA−1
+
+)
+Ψ̂
+
+T −A−1BS−1B̂∗T
+)
+
+Σ̂
+
+= A−1Ψ̂
+T
+Σ̂+A−1B
+
+c
+in
+
+︷ ︸︸ ︷
+
+S−1
+(
+
+−BTA−1Ψ̂T + B̂∗T
+)
+
+Σ̂
+
+= A−1Ψ̂
+T
+Σ̂+A−1Bcin.
+
+(147)
+
+63
+
+
+
+By substituting back Eq.(145) into the above equation, and taking into ac-
+count that:
+
+Ψ̂
+†
+= (Ψ̂
+
+T
+Ψ̂)−1Ψ̂
+
+T
+(148)
+
+one finally gets:
+
+c
+ad = Ψ̂
+
+†
+(Σ̂− B̂∗cin), (149)
+
+cin = S−1B̂∗
+T
+(
+
+I − Ψ̂Ψ̂†
+)
+
+Σ̂, (150)
+
+where
+S = B̂∗
+
+T
+
+(I − Ψ̂Ψ̂†)B̂∗. (151)
+
+References
+
+[1] Abdulle, A., Bai, Y., 2012. Adaptive reduced basis finite element het-
+erogeneous multiscale method.
+
+[2] Abdulle, A., Bai, Y., 2012. Reduced basis finite element heterogeneous
+multiscale method for high-order discretizations of elliptic homogeniza-
+tion problems. Journal of Computational Physics.
+
+[3] An, S., Kim, T., James, D., 2009. Optimizing cubature for efficient
+integration of subspace deformations. ACM transactions on graphics
+27 (5), 165.
+
+[4] Ashby, M., 1992. Physical modelling of materials problems. Materials
+Science and Technology 8 (2), 102–111.
+
+[5] Astrid, P., 2004. Reduction of process simulation models: a proper or-
+thogonal decomposition approach. Technische Universiteit Eindhoven.
+
+[6] Astrid, P., Weiland, S., Willcox, K., Backx, T., 2008. Missing point
+estimation in models described by proper orthogonal decomposition.
+Automatic Control, IEEE Transactions on 53 (10), 2237–2251.
+
+[7] Barrault, M., Maday, Y., Nguyen, N., Patera, A., 2004. An empirical
+interpolation’method: application to efficient reduced-basis discretiza-
+tion of partial differential equations. Comptes Rendus Mathematique
+339 (9), 667–672.
+
+64
+
+
+
+[8] Bishop, C., en ligne), S. S., 2006. Pattern recognition and machine learn-
+ing. Vol. 4. springer New York.
+
+[9] Bohm, H., 1998. A short introduction to basic aspects of continuum
+micromechanics. CDL-FMD Report 3.
+
+[10] Boyaval, S., 2007. Reduced-basis approach for homogenization beyond
+the periodic setting. Arxiv preprint math/0702674.
+
+[11] Boyd, S., Vandenberghe, L., 2004. Convex optimization. Cambridge
+Univ Pr.
+
+[12] Bui-Thanh, T., 2007. Model-constrained optimization methods for re-
+duction of parameterized large-scale systems. Ph.D. thesis, Citeseer.
+
+[13] Bui-Thanh, T., Willcox, K., Ghattas, O., 2008. Model reduction for
+large-scale systems with high-dimensional parametric input space. SIAM
+Journal on Scientific Computing 30 (6), 3270–3288.
+
+[14] Carlberg, K., Bou-Mosleh, C., Farhat, C., 2011. Efficient non-linear
+model reduction via a least-squares petrov–galerkin projection and com-
+pressive tensor approximations. International Journal for Numerical
+Methods in Engineering 86 (2), 155–181.
+
+[15] Carlberg, K., Farhat, C., 2008. A Compact Proper Orthogonal Decom-
+position Basis for Optimization-Oriented Reduced-Order Models. AIAA
+Paper 5964, 10–12.
+
+[16] Carlberg, K., Farhat, C., 2011. A low-cost, goal-oriented compact proper
+orthogonal decompositionbasis for model reduction of static systems.
+International Journal for Numerical Methods in Engineering 86 (3), 381–
+402.
+
+[17] Chaturantabut, S., Sorensen, D., 2009. Application of POD and DEIM
+on Dimension Reduction of Nonlinear Miscible Viscous Fingering in
+Porous Media.
+
+[18] Chaturantabut, S., Sorensen, D., 2010. Discrete empirical interpola-
+tion for nonlinear model reduction. In: Decision and Control, 2009 held
+jointly with the 2009 28th Chinese Control Conference. CDC/CCC 2009.
+Proceedings of the 48th IEEE Conference on. IEEE, pp. 4316–4321.
+
+65
+
+
+
+[19] Cook, R., 1995. Finite element modeling for stress analysis. John Wiley
+and Sons., New York.
+
+[20] Couégnat, G., 2008. Approche multiéchelle du comportement mécanique
+de matériaux composites à renfort tissé. Ph.D. thesis, Université Sciences
+et Technologies-Bordeaux I.
+
+[21] Cremonesi, M., Néron, D., Guidault, P.-A., Ladevèze, P., 2013. A pgd-
+based homogenization technique for the resolution of nonlinear multi-
+scale problems. Computer Methods in Applied Mechanics and Engineer-
+ing 267, 275–292.
+
+[22] de Souza Neto, E., Feijóo, R., 2006. Variational foundations of multi-
+scale constitutive models of solid: small and large strain kinematical
+formulation. LNCC Research & Development Report 16.
+
+[23] DeVore, R., Iserles, A., Suli, E., 2001. Foundations of computational
+mathematics. Cambridge Univ Pr.
+
+[24] Drago, A., Pindera, M., 2007. Micro-macromechanical analysis of het-
+erogeneous materials: Macroscopically homogeneous vs periodic mi-
+crostructures. Composites science and technology 67 (6), 1243–1263.
+
+[25] Dvorak, G., Wafa, A., Bahei-El-Din, Y., 1994. Implementation of the
+transformation field analysis for inelastic composite materials. Compu-
+tational Mechanics 14 (3), 201–228.
+
+[26] Efendiev, Y., Galvis, J., Gildin, E., 2012. Local-global multiscale model
+reduction for flows in high-contrast heterogeneous media. Journal of
+Computational Physics.
+
+[27] Efendiev, Y., Galvis, J., Thomines, F., 2012. A systematic coarse-scale
+model reduction technique for parameter-dependent flows in highly het-
+erogeneous media and its applications.
+
+[28] Everson, R., Sirovich, L., 1995. Karhunen–Loeve procedure for gappy
+data. Journal of the Optical Society of America A 12 (8), 1657–1664.
+
+[29] Feyel, F., Chaboche, J., 2000. Fe-2 multiscale approach for modelling
+the elastoviscoplastic behaviour of long fibre sic/ti composite materials.
+Computer methods in applied mechanics and engineering 183 (3), 309–
+330.
+
+66
+
+
+
+[30] Fish, J., Shek, K., Pandheeradi, M., Shephard, M., 1997. Computational
+plasticity for composite structures based on mathematical homogeniza-
+tion: Theory and practice. Computer Methods in Applied Mechanics
+and Engineering 148 (1-2), 53–73.
+
+[31] Galbally, D., Fidkowski, K., Willcox, K., Ghattas, O., 2010. Non-linear
+model reduction for uncertainty quantification in large-scale inverse
+problems. International Journal for Numerical Methods in Engineering
+81 (12), 1581–1608.
+
+[32] Geers, M., Kouznetsova, V., Brekelmans, W., 2010. Multi-scale compu-
+tational homogenization: Trends and challenges. Journal of computa-
+tional and applied mathematics 234 (7), 2175–2182.
+
+[33] Grepl, M., Maday, Y., Nguyen, N., Patera, A., 2007. Efficient reduced-
+basis treatment of nonaffine and nonlinear partial differential equations.
+Mathematical Modelling and Numerical Analysis 41 (3), 575–605.
+
+[34] Gross, D., Seelig, T., 2011. Fracture mechanics: with an introduction to
+micromechanics. Springer.
+
+[35] Hernández, J. A., Oliver, J., Huespe, A., Caicedo, M., 2012. High-
+performance model reduction procedures in multiscale simulations.
+Monograph CIMNE (ISBN:978-84-9939640-6-1).
+URL http://centrovnet.cimne.upc.edu/cvdata/cntr7/dtos/img/mdia/Downloads/MONOG
+
+[36] Hoffman, J. D., 2001. Numerical Methods for Engineers and Scientists.
+Marcel Dekker.
+
+[37] Hogben, L., 2006. Handbook of linear algebra. Chapman & Hall/CRC.
+
+[38] Hu, Y., Hwang, J., Perry, S., 2002. Handbook of neural network signal
+processing. The Journal of the Acoustical Society of America 111, 2525.
+
+[39] Kim, T., James, D., 2009. Skipping steps in deformable simulation with
+online model reduction. In: ACM SIGGRAPH Asia 2009 papers. ACM,
+pp. 1–9.
+
+[40] Kouznetsova, V., 2002. Computational homogenization for the multi-
+scale analysis of multi-phase materials.
+
+67
+
+http://centrovnet.cimne.upc.edu/cvdata/cntr7/dtos/img/mdia/Downloads/MONOGRAFIA-PUBLICADA.pdf
+
+
+[41] Krysl, P., Lall, S., Marsden, J., 2001. Dimensional model reduction in
+non-linear finite element dynamics of solids and structures. International
+Journal for Numerical Methods in Engineering 51 (4), 479–504.
+
+[42] Kunisch, K., Volkwein, S., 2010. Optimal snapshot location for comput-
+ing pod basis functions. ESAIM: Mathematical Modelling and Numeri-
+cal Analysis 44 (3), 509.
+
+[43] Li, Z., Wen, B., Zabaras, N., 2010. Computing mechanical response
+variability of polycrystalline microstructures through dimensionality re-
+duction techniques. Computational Materials Science 49 (3), 568–581.
+
+[44] Lovasz, L., Pelikan, J., Vesztergombi, K., 2003. Discrete Mathematics:
+Elementary and Beyond. Springer.
+
+[45] Lubliner, J., 1990. Plasticity Theory. McMillan, New York.
+
+[46] Maday, Y., Nguyen, N., Patera, A., Pau, G., 2007. A general, multipur-
+pose interpolation procedure: the magic points.
+
+[47] Maday, Y., Patera, A., Turinici, G., 2002. Reliable real-time solution of
+parametrized partial differential equations: Reduced-basis output bound
+methods.
+
+[48] Michel, J., Moulinec, H., Suquet, P., 1999. Effective properties of com-
+posite materials with periodic microstructure: a computational ap-
+proach. Computer methods in applied mechanics and engineering 172 (1-
+4), 109–143.
+
+[49] Michel, J., Suquet, P., 2003. Nonuniform transformation field analysis.
+International journal of solids and structures 40 (25), 6937–6955.
+
+[50] Michel, J., Suquet, P., 2004. Computational analysis of nonlinear com-
+posite structures using the nonuniform transformation field analysis.
+Computer methods in applied mechanics and engineering 193 (48-51),
+5477–5502.
+
+[51] Monteiro, E., Yvonnet, J., He, Q., 2008. Computational homogeniza-
+tion for nonlinear conduction in heterogeneous materials using model
+reduction. Computational Materials Science 42 (4), 704–712.
+
+68
+
+
+
+[52] Montgomery, D., Runger, G., 2010. Applied statistics and probability
+for engineers. Wiley.
+
+[53] Nguyen, N., 2008. A multiscale reduced-basis method for parametrized
+elliptic partial differential equations with multiple scales. Journal of
+Computational Physics 227 (23), 9807–9822.
+
+[54] Nguyen, N., Patera, A., Peraire, J., 2008. A best points interpolation
+method for efficient approximation of parametrized functions. Int. J.
+Numer. Meth. Engng 73, 521–543.
+
+[55] Quarteroni, A., Sacco, R., Saleri, F., 2000. Numerical Mathematics.
+Springer, New York.
+
+[56] Roussette, S., Michel, J., Suquet, P., 2009. Nonuniform transformation
+field analysis of elastic-viscoplastic composites. Composites Science and
+Technology 69 (1), 22–27.
+
+[57] Rozza, G., 2009. Reduced basis methods for stokes equations in domains
+with non-affine parameter dependence. Computing and Visualization in
+Science 12 (1), 23–35.
+
+[58] Ryckelynck, D., 2005. A priori hyperreduction method: an adaptive
+approach. Journal of computational physics 202 (1), 346–366.
+
+[59] Ryckelynck, D., 2009. Hyper-reduction of mechanical models involving
+internal variables. International Journal for Numerical Methods in En-
+gineering 77 (1), 75–89.
+
+[60] Salomon, D., 2004. Data compression: the complete reference. Springer-
+Verlag New York Incorporated.
+
+[61] Simo, J. C., Hughes, T. J. R., 1998. Computational inelasticity. Springer,
+New York.
+
+[62] Yvonnet, J., He, Q., 2007. The reduced model multiscale method (R3M)
+for the non-linear homogenization of hyperelastic media at finite strains.
+Journal of Computational Physics 223 (1), 341–368.
+
+69
+
+
+	Introduction
+	Motivation and goal
+	The reduced-basis method
+	Dimensionality reduction
+	Numerical integration
+
+	Originality of this work
+	Main original contributions
+
+
+	RVE equilibrium problem
+	Preliminaries
+	Variational formulation
+	Trial and test spaces
+	Formal statement
+
+	Finite element formulation
+
+	Computation of reduced basis
+	Sampling of the input parameter space
+	Dimensionality reduction
+	Elastic/Inelastic reduced basis functions
+
+
+	Galerkin projection onto the reduced subspace
+	Stress approximation space
+	The reduced-order subspace of statically admissible stresses (V*)
+	Ill-posedness of the HP-ROM
+	Proposed remedy: the expanded space approach
+	Continuum formulation
+	Discrete formulation
+
+
+	The High-Performance ROM
+	Gappy vectors
+	Least-squares fit
+	Reconstruction matrix
+
+	``Hyperreduced'' RVE equilibrium equation
+	Physical interpretation
+
+	Jacobian matrix
+	Positive definiteness
+
+
+	Selection of sampling points
+	Optimality criteria
+	Accuracy
+	Spectral properties
+
+	Optimization approach: basic and stabilizing sampling points
+
+	Summary
+	Numerical results
+	Microstructure description
+	RVE and finite element discretization
+	Sampling of parameter space
+	Dimensionality reduction: a priori error analysis
+	Sampling points
+	Basic sampling points
+	Stabilizing sampling points
+
+	A posteriori errors: consistency analysis
+	``Training'' errors
+	Uniaxial compression
+	Biaxil loading/unloading test
+
+	Speedup analysis
+
+	Concluding remarks
+	Proper Orthogonal Decomposition
+	Elastic/Inelastic reduced basis matrix
+	Block matrix pseudoinverse of the expanded basis matrix
+

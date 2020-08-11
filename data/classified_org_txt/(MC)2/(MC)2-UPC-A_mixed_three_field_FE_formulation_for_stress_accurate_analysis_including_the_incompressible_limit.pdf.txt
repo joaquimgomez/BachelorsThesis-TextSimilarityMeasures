@@ -1,0 +1,2146 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+A mixed three-�eld FE formulation for stress accurate analysis
+including the incompressible limit
+
+M. Chiumenti, M. Cervera and R. Codina
+International Center for Numerical Methods in Engineering (CIMNE)
+
+Universidad Politécnica de Cataluña (UPC)
+Edi�cio C1, Campus Norte, Gran Capitán s/n, 08034 Barcelona Spain.
+
+e-mail: michele@cimne.upc.edu, web page: http://www.cimne.com
+
+Keywords: Stress accurate, incompressible limit, Mixed three-�eld �nite element technology,
+Variational Multi Scale (VMS) stabilization.
+
+Abstract
+
+In previous works, the authors have presented the stabilized mixed displacement/pressure
+formulation to deal with the incompressibility constraint. More recently, the authors have
+derived stable mixed stress/displ-acement formulations using linear/linear interpolations to en-
+hance stress accuracy in both linear and non-linear problems. In both cases, the Variational
+Multi Scale (VMS) stabilization technique and, in particular, the Orthogonal Subgrid Scale
+(OSS) method allows the use of linear/linear interpolations for triangular and tetrahedral ele-
+ments bypassing the strictness of the Inf-Sup condition on the choice of the interpolation spaces.
+These stabilization procedures lead to discrete problems which are fully stable, free of volumetric
+locking or stress oscillations.
+This work exploits the concept of mixed �nite element methods to formulate stable displace-
+
+ment/stress/pressure �nite elements aimed for the solution of nonlinear problems for both solid
+and �uid �nite element (FE) analyses. The �nal goal is to design a �nite element technology
+able to tackle simultaneously problems which may involve isochoric behaviour (preserve the
+original volume) of the strain �eld together with high degree of accuracy of the stress �eld.
+These two features are crucial in nonlinear solid and �uid mechanics, as used in most numerical
+simulations of industrial manufacturing processes.
+Numerical benchmarks show that the results obtained compare very favourably with those
+
+obtained with the corresponding mixed displacement/pressure formulation.
+
+1
+
+
+
+1 Introduction
+
+This work presents a novel �nite element technology with enhanced stress accuracy and, at the
+same time, able to deal with the fully incompressible behavior. Stress accuracy and performance in
+the incompressible limit are two requirements which often coexist when addressing the numerical
+simulation of di¤erent industrial manufacturing processes such as metal forming, forging, extrusion,
+friction stir welding, cutting or machining operations, among many others. The accuracy of the
+solution obtained by the numerical simulation of such industrial processes is directly related to the
+ability of the �nite element technology adopted to deal with complex phenomena such as strain
+localization, the formation of shear bands, the prediction of crack propagation or the isochoric
+behavior of the inelastic (plastic) strains (fully deviatoric response of metallic materials under large
+deformations).
+
+In the literature, the incompressible limit case and stress accuracy enhancement are generally
+treated separately. The problem posed by the incompressibility is to avoid the so called volumetric
+locking, an undesirable e¤ect exhibited by �nite element approximations based on the standard
+Galerkin approach. Successful strategies to avoid volumetric locking based on mixed formulations
+([29], [2]), enhanced assumed strain methods ([33], [34], [7], [32], [28]) and nodal pressure and strain
+averaging ([24], [8], [9], [10], [35]) can be found in the literature.
+
+Techniques based on the Variational Multi Scale (VMS) approach proposed by Hughes [26]
+have been applied in the context of solid mechanics in strain localization problems (see [27]). More
+recently, a method based on the mixed displacement/pressure formulation with Orthogonal Sub
+Scales (OSS) stabilization technique, introduced by Codina [22], has been applied to incompressible
+elasticity by the authors (see [20]). E¤ectiveness and robustness of this mixed displacement/pressure
+technique encouraged the authors to extend this approach to non-linear problems (see [13], [21] and
+[1]) and to strain localization analysis using both J2 plasticity and J2 damage constitutive models
+([14], [15] and [16]). This FE technology has shown a good performance in the case of softening
+behavior of the material once the elastic limit is reached. In this case, strains concentrate into
+slip-lines allowing for sliding movements and the mixed formulation is able to capture such strain
+localization with practically mesh independent solutions.
+
+However, even if the incompressible limit has been successfully tackled, the accuracy of the
+stress �eld approximation was still an open issue solved by local mesh re�nement (see [31]).
+
+Lately, the authors have proposed a mixed stress/displacement formulation which uses lin-
+ear/linear interpolations for both master �elds. Also in this case, the strictness of the inf-sup
+condition [11], when the standard Galerkin method is applied to mixed elements, imposes severe
+restrictions on the compatibility of the interpolations used for the displacement and the stress �elds
+(see [30] and [3, 4] for the analysis of admissible elements in linear elasticity). This di¢ culty can
+be circumvented again adopting a VMS approach which adds a consistent (reduced upon mesh
+re�nement) residual-based stabilization to the original problem. This mixed stress/displacement
+�nite element technology has demonstrated enhanced stress accuracy in both linear and non-linear
+analysis as well as the ability to capture stress concentrations and strain localizations with the
+guarantee of stress convergence upon mesh re�nement. This is an essential requirement which
+cannot be accomplished in a point-wise manner using the standard Galerkin displacement-based
+formulation. An accurate estimation of the stress �eld even in the strain localization zone drives
+the crack propagation without the help of ad-hoc tracking algorithms.
+
+2
+
+
+
+The present work makes a step forward introducing a mixed three-�eld formulation based on dis-
+placement/stress/pressure elements with linear (or, in general, equal) interpolations for all master
+�elds. The only requirement is the split of the constitutive equation into volumetric and deviatoric
+parts (more details in Section 3). Once more, the stabilization technique to overcome the Inf-sup
+condition is presented in terms of the VMS method. The di¤erent assumptions and approxima-
+tions used to derive this novel �nite element technology are proposed in a very general format,
+applicable to 2D and 3D problems. Section 4 deals with the implementation and computational
+aspects. Finally, Section 5 shows the performance of the proposed formulation comparing with the
+well established mixed displacement-pressure formulation.
+
+2 The continuum problem statement
+
+Let us denote by 
+ an open and bounded domain in Rndim where ndim is the number of dimensions of
+the space, and @
+ its boundary. The boundary @
+ is split into @
+u and @
+t, being @
+ = @
+u[@
+t
+such that the prescribed displacements, u, are speci�ed on @
+u (Dirichlet boundary conditions)
+and the prescribed tractions, �t, are applied on @
+t (Neumann boundary conditions).
+
+The continuum mechanical problem of linear elasticity to be considered is de�ned by the fol-
+
+lowing system of equations:
+
+r � � + b = 0 (1)
+� � C : " = 0 (2)
+"�rsu = 0 (3)
+
+These are 3 equations with 3 unknown �elds: the displacements, u (x) and both the stress and
+the strain �elds, � (x) and " (x), respectively, de�ned at each point, x, of the continuum.
+
+Eq. (1) is the balance of momentum equation, where b represents the external load per unit
+of volume and r � (�) is the divergence operator. Eq. (2) is the constitutive equation for linear
+elasticity. Note that Eq. (2) may also correspond to the secant form of a non-linear constitutive
+equation, where C is the 4th order (secant) constitutive tensor. Finally, Eq. (3) is the kinematic
+equation (in the hypothesis of in�nitesimal strains), where rs (�) = 1
+
+2
+
+h
+r (�) +r (�)T
+
+i
+denotes the
+
+symmetric gradient operator and r (�) is the gradient operator.
+There are di¤erent alternatives to solve problem (1� 3) with the corresponding appropriate
+
+boundary conditions described.
+The classical displacement-based formulation is obtained by substituting Eqs. (2) and (3) into
+
+Eq. (1). The result is Navier�s equation
+
+r � (C : rsu) + b = 0 (4)
+
+which is written in terms of the displacement �eld only.
+Alternatively, the mixed u=� formulation uses both stresses and displacements as master �elds
+
+as:
+
+r � � + b = 0 (5)
+� � C : rsu = 0 (6)
+
+obtained by substituting Eq.(3) into Eq.(2).
+
+3
+
+
+
+3 The volumetric/deviatoric split
+
+The objective of this section is the split of the constitutive equation (2) into its volumetric and
+deviatoric parts. This is possible in the cases of linear elasticity (compressible or incompress-
+ible), J2-plasticity (both small and large strain hypotheses), isotropic damage, Newtonian and
+non-Newtonian �ows as Norton-Ho¤, Sheppard-Wright, Bingham visco-plastic �ow, among others.
+The volumetric/deviatoric split is the starting point to develop a formulation able to tackle the
+incompressible limit.
+
+3.1 Volumetric and deviatoric operators
+
+Let us de�ne the 4th rank volumetric and deviatoric tensors, V and P, as follows:
+
+V =
+1
+
+3
+(I
+ I) (7)
+
+P = I�
+1
+
+3
+(I
+ I) (8)
+
+P+ V = I (9)
+
+where I = [�ij�kl] and I = [�ij ] are the 4th rank and the 2nd rank identity tensors, respectively (�ij
+is Kronecker�s delta). V and P can be also thought as operators acting on second order tensors by
+taking double contraction with them. In this case, V and P are orthogonal projectors, that is:
+
+V : P = P : V = 0 (10)
+P : P = P (11)
+V : V = V (12)
+
+3.2 Split of stress and strain tensors
+
+Using V and P operators, it is possible to extract the spheric and the deviatoric parts of a generic
+2nd order tensor. Particularly, when applied to the stress tensor, �, the result is:
+
+V : � =
+1
+
+3
+(I
+ I) : � = p I (13)
+
+P : � =
+�
+I�
+
+1
+
+3
+(I
+ I)
+
+�
+: � = � � p I = s (14)
+
+where p (�) = 1
+3
+(� : I) = 1
+
+3
+tr (�) is the pressure and s (�) = P : � = dev (�) are the deviatoric
+
+stresses. On one hand, the stress tensor, �, is symmetric and consists of 6 independent components.
+On the other hand, the deviatoric stress tensor, s, is also de�ned by 6 components but only 5 of
+them are independent, as the deviatoric stresses must respect the constraint: tr (s) = 0. This poses
+the question of how to select a frame independent (not unique) basis for the deviatoric stress tensor.
+
+This given, the stress tensor can be rebuilt adding both components of the split as:
+
+� = p I+ s (15)
+
+In a similar way, it is possible to split the strain tensor, ", as:
+
+4
+
+
+
+V : " =
+1
+
+3
+(I
+ I) : " =
+
+1
+
+3
+evol I (16)
+
+P : " =
+�
+I�
+
+1
+
+3
+(I
+ I)
+
+�
+: " = "�
+
+1
+
+3
+evol I = e (17)
+
+where evol = tr (") is the volumetric deformation and e = dev (") accounts for the distortions. The
+resulting split format of the strain tensor is:
+
+" =
+1
+
+3
+evol I+ e (18)
+
+3.3 Split of the kinematic equation
+
+Within the hypothesis of in�nitesimal strains the kinematic equation is expressed as:
+
+" = rsu (19)
+
+Applying the volumetric/deviatoric operators, equation (19) is split as follows:
+
+evol = r � u (20)
+
+e = P : rsu = rsu�
+1
+
+3
+(r � u) I (21)
+
+Adding the volumetric and the deviatoric components, the kinematic equation is rebuilt as:
+
+" =
+1
+
+3
+(r � u) I+ P : rsu (22)
+
+3.4 Split of the constitutive equation
+
+Let us assume that the constitutive relationship between stresses and strains can be expressed, in
+secant form, as:
+
+� = C : " (23)
+
+Then the spheric and the deviatoric parts of the constitutive tensor, Cvol and Cdev, respectively,
+are obtained as:
+
+Cvol = V : C (24)
+Cdev = P : C (25)
+C = Cvol + Cdev (26)
+
+Introducing the split of stresses and strains ((15) and (18), respectively), the constitutive rela-
+tionship in (23) can be written as:
+
+(p I+ s) =
+�
+Cvol + Cdev
+
+�
+:
+
+�
+1
+
+3
+evol I+ e
+
+�
+(27)
+
+5
+
+
+
+that is:
+
+p = Cvol evol (28)
+
+s = Cdev : e (29)
+
+which are the volumetric and the deviatoric counterparts of the original constitutive equation, being
+Cvol = 1
+
+9
+I : Cvol : I the bulk modulus of the material.
+
+Particularizing to linear isotropic elasticity, the constitutive tensor is given by:
+
+C = K (I
+ I) + 2G
+�
+I�
+
+1
+
+3
+(I
+ I)
+
+�
+(30)
+
+where K is the (elastic) bulk modulus and G is the (elastic) shear modulus. Therefore, the spheric
+and the deviatoric parts of the elastic constitutive tensor (30) are:
+
+Cvol = V : C = 3K V = K (I
+ I) (31)
+
+Cdev = P : C = 2G P = 2G
+�
+I�
+
+1
+
+3
+(I
+ I)
+
+�
+(32)
+
+and Cvol = K.
+Making use of the compliance (�exibility) tensor, D = C�1, it is possible to express the strains
+
+in terms of the stresses as:
+" = D : � (33)
+
+Therefore, the spheric and the deviatoric components of the �exibility tensor (particularized to
+linear elasticity) are:
+
+Dvol = V : D =
+1
+
+3K
+V (34)
+
+Ddev = P : D =
+1
+
+2G
+P (35)
+
+D = Dvol + Ddev (36)
+
+Introducing the split format of the stresses (Eq. (15)), the strains (Eq. (18)) and the split of
+the �exibility tensor (Eq. (36)) into Eq. (33), the result is:�
+
+1
+
+3
+evol I+ e
+
+�
+=
+�
+Dvol + Ddev
+
+�
+: (p I+ s) (37)
+
+where it is possible to identify the volumetric and the deviatoric expressions of the original consti-
+tutive equation (33):
+
+evol = D
+vol p (38)
+
+e = Ddev : s (39)
+
+being Dvol = I : Dvol : I the compressibility modulus.
+
+6
+
+
+
+Finally, making use of the kinematic equations (20) and (21), the previous relations translate
+into:
+
+r � u = Dvol p (40)
+P : rsu = Ddev : s (41)
+
+and, in the incompressible limit Dvol ! 0, they reduce to:
+
+r � u = 0 (42)
+P : rsu = Ddev : s (43)
+
+Observe that the constitutive relationship in the split format above consists of 6 equations (the
+same as for equation (27)). In fact (28) is a single equation while (29) develops into 5 equations.
+
+The particularization to linear elasticity is:
+
+r � u =
+p
+
+K
+(44)
+
+P : rsu =
+1
+
+2G
+s (45)
+
+and, in the incompressible limit, K !1, they reduce to:
+
+r � u = 0 (46)
+
+P : rsu =
+1
+
+2G
+s (47)
+
+4 The u=s=p three-�eld formulation
+
+In this section, a novel three-�eld formulation is introduced. The objective is the de�nition of
+a general framework, which includes the well-known mixed u=p formulation and the mixed u=�
+formulation as particular cases. To this end, let us de�ne the mixed u=s=p formulation, which uses
+the displacement �eld, u, together with the deviatoric component of the stresses, s, and the pressure
+�eld, p, as independent variables. Hence, the governing equations of the problem are rewritten as:
+
+r � s+rp+ b = 0 (48)
+P : rsu� Ddev : s = 0 (49)
+r � u�Dvol p = 0 (50)
+
+where Eq.(48) is the balance of momentum equation in mixed form. The 5 equations in (49)
+together with the scalar equation in (50) are the deviatoric and the volumetric counterparts of a
+generic constitutive equation as presented in (41� 40).
+
+The weak form of the mixed u=s=p formulation reads:
+
+(v;r � s) + (v;rp) + (v;b) = 0 in 
+ (51)
+
+(�;P : rsu)�
+�
+�;Ddev : s
+
+�
+= 0 in 
+ (52)
+
+(q;r � u)�Dvol (q; p) = 0 in 
+ (53)
+
+7
+
+
+
+where v (vector), q (scalar) and � (a tensorial �eld of 5 independent components) are the variations
+of the displacement, the pressure �eld and the deviatoric stresses, respectively, and (�; �)D denotes
+the integral of the product of two functions in a domain D, which is omitted when D � 
+.
+Integrating Eq.(51) by parts and taking v = 0 on @
+u, the problem can be written as:
+
+0 + (rsv; s) + (r � v; p) = F (v)
+
+(�;P : rsu) �
+�
+�;Ddev : s
+
+�
++ 0 = 0
+
+(q;r � u) + 0 � Dvol (q; p) = 0
+
+(54)
+
+where
+F (v) = (v;b) + (v;�t)@
+t (55)
+
+is the work of the external loads.
+Problem (54) involves the �rst derivatives of u (x). Hence, the natural space for the continuum
+
+displacements �eld is: u (x) 2 V = H1 (
+)ndim . Hm (
+) denotes the space of functions whose
+derivatives (up to order m � 0) belong to L2 (
+). The corresponding variations are de�ned in:
+v (x) 2 V0 = fv (x) 2 V j v = 0 for 8x 2 @
+ug.
+
+The pressure �eld, p, and its variation, q, belong to space Q = L2 (
+), while the natural
+space for deviatoric part of the stress �eld, s, and its variations, �, is bS = fs (x) = [sij (x)] ;
+sij = sji 2 L2 (
+) j tr (s) = 0
+
+	
+for x 2 
+. Other functional settings could be considered by chang-
+
+ing the terms integrated by parts. In fact, the formulation that yields optimal stress convergence
+for equal interpolation for all the unknowns requires more regularity on the stresses. We will not
+treat this issue in this work (see [5] for similar ideas in the context of Darcy�s problem).
+
+Problem (54) is complemented by the Dirichlet boundary conditions in terms of the prescribed
+displacements, u.
+
+Remark 1 To achieve symmetry, it is possible to substitute the second term in the �rst equation,
+(rsv; s), by the equivalent term: (P : rsv; s). Then, problem (54) reads:
+
+0 + (P : rsv; s) + (r � v; p) = F (v)
+
+(�;P : rsu) �
+�
+�;Ddev : s
+
+�
++ 0 = 0
+
+(q;r � u) + 0 � Dvol (q; p) = 0
+
+(56)
+
+Remark 2 Alternatively, the second equation in (56) can be tested using the test functions,  =
+q I+ � with q 2 Q and � 2 bS, in the form:
+
+(;P : rsu)�
+�
+;Ddev : s
+
+�
+= 0 (57)
+
+This equation is equivalent to the original one because the extra terms, (q I;P : rsu) and
+�
+q I;Ddev : s
+
+�
+,
+
+are null by construction. However, Eq.(57) develops into 6 scalar equations being only 5 of them
+linearly independent. Eq.(57) admits as a solution a stress �eld, ŝ, where tr (̂s) 6= 0 is not de�ned.
+
+8
+
+
+
+To overcome this inconvenient, it is necessary to prescribe the volumetric part of the stress �eld ŝ.
+One possibility is to add the term
+
+�
+;Dvol : ŝ
+
+�
+to Eq. (57), which corresponds to the weak form of
+
+the constraint: tr (̂s) = 0. The result is the following equation:
+
+(;P : rsu)� (;D : ŝ) = 0 (58)
+
+and problem (56) can be reformulated as:
+
+0 + (P : rsv; ŝ) + (r � v; p) = F (v)
+
+(;P : rsu) � (;D : ŝ) + 0 = 0
+
+(q;r � u) + 0 � Dvol (q; p) = 0
+
+(59)
+
+where the stress �eld, ŝ, is deviatoric in a weak sense only.
+
+5 Discrete approximation for the three-�eld formulation
+
+5.1 Galerkin approach
+
+Let us now de�ne the discrete Galerkin �nite element counterpart of problem (56) as:
+
+0 + (P : rsvh; sh) + (r � vh; ph) = F (vh)
+
+(�h;P : rsuh) �
+�
+�h;D
+
+dev : s
+�
+
++ 0 = 0
+
+(qh;r � uh) + 0 � Dvol (qh; ph) = 0
+
+(60)
+
+where the discrete displacements, uh, and the corresponding test functions, vh, are de�ned in the
+�nite-dimensional subspaces Vh � V and V0;h � V0, respectively. The approximate counterpart of
+the stress �eld, sh and the pressure �eld, ph, together with their variations, �h and qh, belong to
+the �nite element spaces bSh � bS and Qh � Q, respectively. Standard conforming approximations
+are considered.
+
+In the following, we will be interested in continuous �nite element spaces Vh, bSh and Qh and,
+more speci�cally, in equal interpolation for displacements, stresses and pressures.
+
+From the computational point of view, it is interesting to adopt Voigt�s notation, which trans-
+forms the tensorial format of a generic symmetric tensor into a 6�dimensional vector. In the
+Cartesian system, the stress and strain tensors are expressed using Voigt�s notation as:
+
+s =
+�
+sxx syy szz sxy sxz syz
+
+�
+= [si] (61)
+
+" =
+�
+"xx "yy "zz xy xz yz
+
+�
+= ["i] (62)
+
+where ij = 2"ij are the so-called engineering strains.
+Let nnod be the number of nodes per element of the �nite element partition. Then, Uh =
+
+�
+UAi
+�
+
+is an array of dimension 3nnod with 3 components (lower subindex, i) of displacements at each
+node (upper subindex A) of the �nite element. Similarly, Sh =
+
+�
+SAi
+�
+is an array of dimension 6nnod
+
+9
+
+
+
+with the 6 components of the deviatoric stresses per node. Finally, Ph =
+�
+PA
+�
+is the array with
+
+the nodal values of the pressure �eld. The approximations of the master �elds within each element
+result in:
+
+uh = NuUh =
+�
+NAI(3�3)ijU
+
+A
+j
+
+�
+(63)
+
+sh = NsSh =
+�
+NAI(6�6)ijS
+
+A
+j
+
+�
+(64)
+
+ph = NpPh =
+�
+NAPA
+
+�
+(65)
+
+where, denoting by NA the shape functions of the selected element type used in the FE partition,
+Nu is a 3 � 3nnod matrix made of nnod blocks of the form NAI(3�3). Similarly, Ns is a 6 � 6nnod
+matrix made of nnod blocks of the form N
+
+AI(6�6) and Np =
+�
+NA
+
+�
+, with A running from 1 to nnod.
+
+The components of the deviatoric stress tensor Sh are not independent, as the trace of the
+
+tensor is null. This condition can be imposed through a linear dependency matrix, H =
+h
+HABij
+
+i
+,
+
+(6nnod � 5nnod), so that Sh = HbSh. This given, bSh = hbSAi i results in an array of dimension 5nnod
+with 5 independent components of the deviatoric stress tensor at each node of the �nite element:
+
+sh = NsSh = Ns
+
+�
+HbSh� = (NsH) bSh = bNsbSh (66)
+
+where bNs = NsH.
+Remark 3 Taking into account that tr
+
+�
+SA
+�
+= 0, one of the normal components of the deviatoric
+
+tensor may be selected as redundant. For instance, it may be written that SAzz = �SAxx � SAyy. This
+leads to a dependency matrix de�ned by nnod � nnod identical blocks of the form:
+
+HAB =
+
+2
+664
+
+1 0
+0 1
+�1 �1
+
+03�3
+
+03�2 I3�3
+
+3
+775 (67)
+
+Note that the selection of the redundant normal deviatoric stress component is arbitrary.
+
+The following arrays are also introduced (for the 3D case):
+
+GA =
+h
+@NA
+
+@X
+@NA
+
+@Y
+@NA
+
+@Z
+
+iT
+(68)
+
+BA =
+
+2
+64
+
+@NA
+
+@X
+0 0 @N
+
+A
+
+@Y
+@NA
+
+@Z
+0
+
+0 @N
+A
+
+@Y
+0 @N
+
+A
+
+@X
+0 @N
+
+A
+
+@Z
+
+0 0 @N
+A
+
+@Z
+0 @N
+
+A
+
+@X
+@NA
+
+@Y
+
+3
+75
+T
+
+(69)
+
+On one side, G =
+�
+GAi
+�
+and GT are the (discrete) gradient and divergence operators, respec-
+
+tively. On the other side, B =
+h
+BAij
+
+i
+and BT stand for the (discrete) symmetric gradient and
+
+divergence (of a tensor �eld expressed in Voigt�s notation) operators, respectively.
+The elemental sti¤ness matrix (upper subindex (e) denotes a generic element of the FE dis-
+
+cretization) of the algebraic form of problem (60) is:
+
+10
+
+
+
+K(e)h =
+Z
+
+(e)
+
+2
+664
+
+[0]
+h
+BTP bNsi [GNp]h bNTs PBi � h bNTsDdev bNsi [0]�
+
+NTpG
+T
+�
+
+[0] �Dvol
+�
+NTpNp
+
+�
+3
+775 d
+ (70)
+
+where according to the Galerkin method, the same span of interpolation (shape) functions are used
+as weight functions.
+
+The deviatoric operator P has been replaced by the 6� 6 matrix P = I� 1
+3
+(1
+ 1), that is an
+
+operator of rank two used to extract the deviatoric component of a symmetric tensor (expressed in
+Voigt�s notation), being 1 =
+
+�
+1 1 1 0 0 0
+
+�
+.
+
+Remark 4 The elemental sti¤ness matrix coming from the discrete counterpart of the alternative
+format of the three-�eld problem (59) is:
+
+K(e)h =
+Z
+
+(e)
+
+2
+4 [0]
+
+�
+BTPNs
+
+�
+[GNp]�
+
+NTs PB
+�
+�
+�
+NTsDNs
+
+�
+[0]�
+
+NTpG
+T
+�
+
+[0] �Dvol
+�
+NTpNp
+
+�
+3
+5 d
+ (71)
+
+where now the nodal stresses are Sh =
+�
+SAi
+�
+with the corresponding interpolation functions Ns.
+
+Observe that the stress tensor at each node of the element, SA, is deviatoric in weak sense only.
+
+5.2 Variational-Multi-Scale Stabilization technique
+
+The stability of the discrete formulation depends on compatibility restrictions on the interpolation
+functions chosen for the displacement, stress and pressure �elds, as stated by the appropriate inf-sup
+condition (see [11]). According to these restrictions, mixed elements with continuous equal order
+linear interpolation for all �elds are not stable. However, the inf-sup condition can be circumvented
+by using a stabilization technique.
+
+In this work, the Variational-Multi-Scale (VMS) method is introduced to stabilize the discrete
+formulation of the mixed problem allowing for the use of linear interpolations for all master �elds.
+
+The basic idea of the VMS approach is to enlarge Galerkin�s space of approximation, Wh =
+Vh � Sh �Qh, adding a �ner resolution space, fW = eV0 � eS � eQ, referred to as the sub-grid scale.
+Subindex (�)0 means that the sub-grid scale de�ned for the displacement �eld, (de�ned at element
+level) vanishes at all the element boundaries.
+
+Therefore, the enhanced approximation space is de�ned as:
+
+W 'Wh �fW !
+8<
+:
+u ' uh + eu
+s ' sh + es
+p ' ph + ep (72)
+
+where Wh and fW represent two di¤erent levels of resolution: one coarse and a �ner one.
+In order to ensure consistency of the stabilized mixed formulation, so that the discrete solution
+
+converges to the continuous solution on mesh re�nement, the sub-grid scale is expressed in terms
+
+11
+
+
+
+of the residual of the projected (Galerkin) counterpart of Eqs.(48� 50), (see [23] for motivation)
+
+eu = e�u Rhu = e�u [r � sh +rph + b] (73)es = e� s Rhs = e� s : hP : rsuh � Ddev : shi (74)
+ep = e�p Rhp = e�p hr � uh �Dvolphi (75)
+
+In the incompressible limit, Dvol ! 0 so that Rhp = r � uh and the pressure subscale reduces
+to: ep = e�p Rhp = e�p [r � uh] (76)
+
+The stabilization parameters:
+
+e�u = �u I3�3  �u = cu Lh
+2 bGe� s = � s Cdev  � s = cs hLe�p = �p eCvol  �p = cp hL
+
+(77)
+
+are expressed in terms of a characteristic length of the problem, L, the element size, h, and the
+secant shear modulus 2 bG = kshk = kehk. Coe¢ cient cu, cs and cp are constants to be chosen. The
+de�nition of the stabilization parameters (77) is optimal when equal interpolation is adopted for
+all the master �elds (see [5] and the discussion in [17] for the mixed u=� approach).eCvol = min �K; 2
+
+3
+G
+�
+is the compressible parameter (only) used for the stabilization: for the
+
+elastic problem eCvol = Cvol = K (compressible analysis, K 5 2
+3
+G) and eCvol = 2
+
+3
+G (incompressible
+
+limit, K > 2
+3
+G).
+
+This given, the solution of the compressible problem is approximated as:
+
+u ' uh + eu = uh + �u [r � sh +rph + b] (78)
+s ' sh + es = (1� � s) sh + � s hCdev : rsuhi (79)
+p ' ph + ep = (1� �p) ph + �p hCvolr � uhi (80)
+
+while in the incompressible limit, equation (80) reduces to:
+
+p ' ph + ep = ph + �p h eCvolr � uhi (81)
+Remark 5 The sub-grid scale contributions are discontinuous but, even if they are computed
+element-wise, they cannot be condensed at element level, because [eu;es; ep] depend on the �elds
+[uh; sh; ph], which are interelement continuous.
+
+Remark 6 The magnitude of the sub-grid scales decreases upon mesh re�nement: as the �nite
+element scale becomes �ner, the residuals reduce. In other words, the sub-grid scales [eu;es; ep] are
+�small� compared to the �nite element �elds [uh; sh; ph].
+
+Remark 7 It is interesting to observe that both the volumetric and the deviatoric components
+of the stress �eld are expressed as the "blending" of the continuous �elds (sh and ph) with the
+element-by-element discontinuous stress components, Cdev : rsuh and eCvol (r � uh), respectively.
+The stability of the solution is ensured by adding those �small� discontinuous contributions to the
+continuous �elds.
+
+12
+
+
+
+Introducing the approximate �elds (78� 80) into the original problem (59), the VMS stabilized
+formulation for of the compressible problem is obtained:�
+
+�pC
+vol (r � vh;r � uh)+
+
+� s
+�
+rsvh;Cdev : rsuh
+
+� � + (1� � s) (P : rsvh; sh) + (1� �p) (r � vh; ph) = F (vh)
+(1� � s) (h;P : rsuh) �
+
+�
+(1� � s) (h;D : sh)+
+�u (r � h;r � sh)
+
+�
+� �u (r � h;rph) = 0
+
+(1� �p) (qh;r � uh) � �u (rqh;r � sh) �
+�
+(1� �p)Dvol (qh; ph)+
+
+�u (rqh;rph)
+
+�
+= 0
+
+(82)
+The elemental sti¤ness matrix of problem (82) is expressed as:
+
+K(e) = K(e)h � �
+(e)
+u K
+
+(e)
+�u
+� � (e)s K
+
+(e)
+�s
+� � (e)p K
+
+(e)
+�p
+
+(83)
+
+which shows that there exist 3 di¤erent contributions adding stability to the original problem. The
+matrix form of these terms is:
+
+K(e)�u =
+Z
+
+(e)
+
+2
+4 [0] [0] [0][0] �BBT � [BG]
+[0]
+
+�
+GTBT
+
+� �
+GTG
+
+�
+3
+5 d
+ (84)
+
+K(e)�s =
+Z
+
+(e)
+
+2
+4 �
+
+�
+BTCdevB
+
+� �
+BTPNs
+
+�
+[0]�
+
+NTs PB
+�
+
+�
+�
+NTsDNs
+
+�
+[0]
+
+[0] [0] [0]
+
+3
+5 d
+ (85)
+
+K(e)�p =
+Z
+
+(e)
+
+2
+4 �Cvol
+
+�
+GGT
+
+�
+[0] [GNp]
+
+[0] [0] [0]�
+NTpG
+
+T
+�
+
+[0] �Dvol
+�
+NTpNp
+
+�
+3
+5 d
+ (86)
+
+Observe that in the compressible case, taking �p = � s, the sub-matrix Kuu, coming from the
+stabilization terms, can be re-written as:
+
+Kuu = � s CvolGGT + � s BTCdevB = � s BTCB (87)
+
+being the constitutive tensor (in Voigt�s notation) de�ned by:
+
+C = Cvol (1
+ 1) +Cdev (88)
+
+Remark 8 Problem (82) is symmetric and de�nite even in the incompressible limit case. In this
+case, problem (82) reduces to:�
+
+�p eCvol (r � vh;r � uh)+
+� s
+�
+rsvh;Cdev : rsuh
+
+� � + (1� � s) (P : rsvh; sh) + (r � vh; ph) = F (vh)
+(1� � s) (h;P : rsuh) �
+
+�
+(1� � s)
+
+�
+h;D
+
+dev : sh
+�
++
+
+�u (r � h;r � sh)
+
+�
+� �u (r � h;rph) = 0
+
+(qh;r � uh) � �u (rqh;r � sh) � �u (rqh;rph) = 0
+(89)
+
+13
+
+
+
+which is symmetric and de�nite. Taking �p = � s, the sub-matrix Kuu , can be re-written (for the
+linear elastic problem) as:
+
+Kuu = � s eCvolGGT + � s BTCdevB = � s 2G BTB (90)
+6 The mixed u=� formulation: the incompressible limit
+
+The three-�eld formulation assumes the pressure �eld as an independent variable of the problem.
+Doing this, the volumetric and the deviatoric components of the constitutive equation can be
+treated independently. The pressure �eld is interpolated separately from the deviatoric part of the
+stress tensor. This is particularly appealing in the incompressible limit, when the volumetric part
+of the constitutive equation transforms into a purely kinematic constraint of the problem, while
+conserving the accuracy induced by the nodal interpolation of the (deviatoric) stress �eld.
+
+In this Section, the mixed u=� formulation is re-written to accomplish the incompressibility
+constraint. Staring from the strong format of the u=� formulation in (5� 6), and taking advantage
+from the split of the �exibility tensor into its volumetric and deviatoric components (see Eq. (36)),
+the result is:
+
+r � � + b = 0 (91)
+
+rsu�
+�
+Dvol + Ddev
+
+�
+: � = 0 (92)
+
+The corresponding weak form is:
+
+0 + (rsv;�) = F (v)
+
+(;rsu) �
+�
+tr ()
+
+3
+; Dvol
+
+tr (�)
+
+3
+
+�
+�
+�
+;Ddev : �
+
+�
+= 0
+
+(93)
+
+where Ddev : (P : �) = Ddev : � because P is an idempotent operator.
+Compared to the three-�eld formulation, here the pressure is computed as a function of the
+
+stress �eld as
+tr (�)
+
+3
+, so that:
+
+� = V : � + P : � =
+tr (�)
+
+3
+I+ s (�) (94)
+
+The format in (93) is particularly convenient in the incompressible limit
+�
+Dvol ! 0
+
+�
+. In this
+
+case, the problem reduces to:
+
+0 + (rsv;�) = F (v)
+(;rsu) �
+
+�
+;Ddev : �
+
+�
+= 0
+
+(95)
+
+Remark 9 The second term in the second equation of (95) is deviatoric so that this equation can
+be rewritten grouping the spheric and the deviatoric terms:�
+
+;
+1
+
+3
+(r � u) I
+
+�
++
+�
+;P : rsu� Ddev : �
+
+�
+= 0 (96)
+
+14
+
+
+
+As a consequence, the above equation is enforcing (in weak form) the deviatoric part of the consti-
+tutive equation as well as the incompressibility constraint, that is:
+
+P : rsu� Ddev : � = 0 (97)
+r � u = 0 (98)
+
+Remark 10 In problem (95), the volumetric part of the stress tensor, tr (�), is determined up to
+a constant that need to be �xed through Neumann�s boundary conditions.
+
+Remark 11 The particularization to linear elasticity reads:
+
+0 + (rsv;�) = F (v)
+(;rsu) �
+
+�
+;
+� V
+3K
++ P
+
+2G
+
+�
+: �
+�
+= 0
+
+(99)
+
+and in the incompressible limit (K !1), it reduces to:
+
+0 + (rsv;�) = F (v)
+(;rsu) �
+
+�
+; P
+2G
+: �
+�
+= 0
+
+(100)
+
+The discrete Galerkin �nite element sti¤ness matrix is:
+
+K(e)h =
+Z
+
+(e)
+
+�
+[0]
+
+�
+BTN�
+
+��
+NT�B
+
+�
+�
+�
+NT�DN�
+
+� � d
+ (101)
+where N� is a 6 � 6nnod matrix made of nnod bocks of the form NAI6�6, being NA the shape
+functions of the selected element type of the FE discretization.
+
+In the incompressible limit the element sti¤ness matrix reduces to:
+
+K(e)h =
+Z
+
+(e)
+
+�
+[0]
+
+�
+BTN�
+
+��
+NT�B
+
+�
+�
+�
+NT�D
+
+devN�
+� � d
+ (102)
+
+Remark 12 Both matrix formats (101) and (102) can be (formally) obtained summing the second
+and third rows and columns in (70) for the compressible and incompressible cases, respectively,
+when assuming the same (discrete) interpolation functions for both the pressure and the deviatoric
+stress �elds.
+
+Within the framework of the VMS method, the sub-grid scales for the displacement and stress
+�elds are chosen as:
+
+eu = e�u Rhu = e�u [r � �h + b] (103)
+e� = e� � Rhs = � e� � : [rsuh � D : �h] Compressible casee� � : �rsuh � Ddev : �h� Incompressible limit �Dvol ! 0� (104)
+
+where the stabilization parameters are de�ned as:
+
+e�u = �u I3�3  �u = cu Lh
+2 bGe� � = �� eC  �� = c� hL (105)
+
+15
+
+
+
+Tensor eC = eCvol + Cdev (only used for stabilization purposes) is de�ned as:
+eC = eCvol (I
+ I) + Cdev =
+
+8<
+: C Compressible case
+
+� eCvol = Cvol = K�
+2G I Incompressible limit
+
+� eCvol = 2
+3
+G
+� (106)
+
+This given, the solution of the problem is approximated as:
+
+u ' uh + eu = uh + �u [r � �h + b] (107)
+� ' �h + e� = � (1� ��) �h + �� [C : rsuh] Compressible case
+
+(1� ��) �h + �� [2G rsuh] Incompressible limit
+(108)
+
+and the corresponding stabilized problem for the compressible case is:
+
+�� (rsvh;C : rsuh) + (1� ��) (rsvh;�h) = F (vh)
+
+(1� ��) (h;rsuh) �
+�
+(1� ��) (h;D : �h)+
+�u (r � h;r � �h)
+
+�
+= 0
+
+(109)
+
+The elemental sti¤ness matrix can be expressed as:
+
+K(e) = K(e)h � �
+(e)
+u K
+
+(e)
+�u
+� � (e)� K
+
+(e)
+�� (110)
+
+which shows that there exist two di¤erent contributions adding stability to the original Galerkin�s
+problem. These contributions are:
+
+K(e)�u =
+Z
+
+(e)
+
+�
+[0] [0]
+
+[0]
+�
+BBT
+
+� � d
+ (111)
+K(e)�� =
+
+Z
+
+(e)
+
+�
+�
+�
+BTCB
+
+� �
+BTN�
+
+��
+NT�B
+
+�
+�
+�
+NT�DN�
+
+� � d
+ (112)
+In the incompressible limit, the stabilized problem reads:
+
+�� 2G (rsvh;rsuh) + (1� ��) (rsvh;�h) = F (vh)
+
+(1� ��) (h;rsuh) �
+�
+(1� ��)
+
+�
+h;D
+
+dev : �h
+�
++
+
+�u (r � h;r � �h)
+
+�
+= 0
+
+(113)
+
+and the corresponding stabilization matrices are:
+
+K(e)�u =
+Z
+
+(e)
+
+�
+[0] [0]
+
+[0]
+�
+BBT
+
+� � d
+ (114)
+K(e)�� =
+
+Z
+
+(e)
+
+�
+�2G
+
+�
+BTB
+
+� �
+BTN
+
+��
+NTB
+
+�
+�
+�
+NTDdevN
+
+� � d
+ (115)
+16
+
+
+
+Remark 13 The stabilization matrices for both the compressible and incompressible cases can be
+(formally) obtained summing the second and third rows and columns of the corresponding matrices
+de�ned for the three-�eld formulation, and assuming the same (discrete) interpolation functions
+for both the pressure and the deviatoric stress �elds as well as the same stabilization parameters:
+�� = � s = �p. Thus, the u=� formulation can be considered a particular case of the u=s=p
+formulation. The latter allows one to approximate independently the deviatoric and volumetric
+parts of the stress, whereas in the former they are limited by the stress approximation chosen.
+
+7 Numerical results
+
+In this section, the mixed three-�eld formulation presented in this work is tested in a number of
+numerical benchmarks. The objective is to show the performance of the proposed �nite element
+technology in terms of both displacement and stress �eld accuracy and its rate of convergence upon
+mesh re�nement.
+
+For the sake of brevity, the incompressible linear elasticity case is studied, although the results
+can be extended to more complex non-linear constitutive behaviors (allowing for the volumet-
+ric/deviator split).
+
+Full incompressibility (Poisson�s ratio: � = 0:5) is assumed for the di¤erent numerical tests.
+The performance of the proposed method is compared with the behavior of the mixed displace-
+ment/pressure formulation (see [20]). The same displacement sub-grid scale stabilization (�u =
+cu
+
+h2
+
+2G
+with cu = 1:0) is adopted for both the u=p and u=s=p formulations, while the stress sub-grid
+
+has been introduced in the u=s=p formulation assuming: � s = cs
+h
+L
+with cs = 1 and �p = 0.
+
+Calculations have been performed with an enhanced version of the �nite element code COMET
+(see [12]) developed by the authors at the International Center for Numerical Methods in Engi-
+neering (CIMNE).
+
+7.1 Plane strain Cook�s membrane problem
+
+The Cook�s membrane problem is a bending dominated benchmark used by many authors to test
+their element formulations (see [34], [19], among others). The problem consists of a tapered panel,
+clamped on the left hand side and subjected to a shearing load (f = 1) at the right end. Initial
+geometry of this plane strain problem is shown in Figure 1. Material data have been assigned
+in terms of Young�s modulus: E = 200 and Poisson�s ratio: � = 0:5. For the evaluation of the
+stabilization parameters in the mixed u=s=p formulation the characteristic length is taken equal to
+50.
+
+In order to test the convergence behavior of the di¤erent formulations, the problem has been
+discretized into a series of regular mesh re�nements with 2�2, 4�4, 8�8, 16�16, 32�32, 64�64,
+128 � 128 and 256 � 256 elements per side. Both structured quadrilateral and triangular meshes
+have been tested. In Figure 2 the 16� 16 quadrilateral and triangular meshes are shown.
+
+Figure 3 compares the performance of the u=s=p vs. u=p formulations. It shows how they both
+converge to the reference values (best value obtained with the 256�256 quadrilateral mesh using the
+u=s=p formulation) on mesh re�nement. The performance is monitored reporting the displacement
+of the top right corner (point A in Figure 1) and both the J2 deviatoric stress and pressure value
+at the mid point of the bottom side of the Cook�s membrane (point B in Figure 1). Note that the
+
+17
+
+
+
+Figure 1: Cook�s membrane problem: geometry.
+
+u=p formulation computes the stresses (locally) at the Gauss points (Figure 4 (a)) while the u=s=p
+formulation adopts a continuous stress �eld (Figure 4 (b)). To compare stress accuracy, a local
+smoothing technique has been applied to the original discontinuous stress �elds of the mixed u=p
+formulation. So, Figure 3 presents the continuous values obtained after the smoothing operation.
+
+Results in Figure 3 clearly show that both the u=s=p and the u=p formulations deal appropriately
+with the incompressibility constraint but the three-�eld formulation exhibits a higher convergence
+rate in the stress �elds. This translates into an enhanced stress accuracy of the proposed formulation
+even for very coarse meshes. The same considerations apply for both triangular and quadrilateral
+mesh discretizations.
+
+For the sake of completeness, Figure 3 also shows results obtained for the bilinear displace-
+ment/constant pressure Q1P0 element ([33]) and the bilinear displacement with enhanced strains
+Q1E4 element ([34]). These two elements can only approach the incompressible limit, so a value
+of Poisson�s ratio � = 0:4999 has been used. The same local smoothing technique has been applied
+to the discontinuous stress �elds that these elements produce. Both quadrilaterals perform satis-
+factorily on these regular structured meshes, showing an accuracy comparable to that of the mixed
+u=s=p formulation. However. the �nite element formulations behind these two elements cannot be
+extended to triangular and tetrahedral meshes.
+
+7.2 Cantilever beam
+
+Let us now consider a beam of unit thickness (plane-strain analysis) subjected to a bending moment
+imposed at right end side by means of a linear normal traction distribution (the maximum traction
+values is f = 10), as shown in Fig. 5.
+
+Both the horizontal and vertical displacements are prescribed at the bottom corner of the left
+hand side. The horizontal displacement is also �xed at the upper corner. The exact solution of this
+
+18
+
+
+
+(a) Structured quadrilateral
+mesh
+
+(b) Structured triangular
+mesh
+
+Figure 2: Cook�s membrane problem: (16 x 16) FE meshes.
+
+pure bending problem is given by:
+
+u (x; y) =
+2f
+�
+1� �2
+
+�
+EL
+
+x
+
+�
+L
+
+2
+� y
+
+�
+(116)
+
+v (x; y) =
+f
+�
+1� �2
+
+�
+EL
+
+�
+x2 +
+
+�
+
+1� �
+y (y � L)
+
+�
+(117)
+
+where u (x; y) and v (x; y) are the horizontal and vertical displacements (0 � x � L and 0 � y � H).
+The beam length is L = 10 and its height is H = 2. Young�s modulus is set to E = 200 and
+
+Poisson�s ratio to � = 0:5. For the evaluation of the stabilization parameters in the mixed u=s=p
+formulation the characteristic length is taken equal to H.
+
+To assess the accuracy of the proposed formulation, the vertical displacement at the top corner
+(A) of the right side of the beam is monitored (the analytical value is v (10; 2) = 0:375), as well as
+the maximum horizontal normal stress and the mean stress (pressure) at the mid-point (B) of the
+bottom side (the analytical values are �xx = 2 and p = 1, respectively).
+
+The computational domain has been discretized into a series of orthogonal re�ned meshes with
+1� 5, 2� 10, 4� 20, 10� 50 and 100� 500 quadrilateral elements (see Fig. 6).
+
+The performance of the proposed three-�eld formulation is shown in Figure 7 and compared to
+that of the displacement/pressure formulation. The enhanced accuracy of the proposed formulation
+is clearly demonstrated. Using very coarse meshes such as the 2 � 10 mesh (only 2 elements in
+the thickness), the error is less than 5% for the top corner displacement and less that 1% for both
+horizontal stress and pressure values.
+
+Figure 8 depicts the vertical displacement along the top side of the beam using di¤erent mesh
+resolutions for both the u=s=p and u=p formulations. The analytical solution is given by the
+parabolic function:
+
+v (x; 2) =
+f
+�
+1� �2
+
+�
+EL
+
+x2 = 0:375 � 10�2x2 (118)
+
+19
+
+
+
+(a) QUAD: displacement (b) TRI: displacement
+
+(c) QUAD: J2-stress (d) TRI: J2-stress
+
+(e) QUAD: pressure (f) TRI: pressure
+
+Figure 3: Cook�s membrane problem: performance of the proposed mixed three-�eld formulation
+compared with the mixed displacement/pressure formulation.
+
+20
+
+
+
+(a) u/p formulation (b) u/s/p formulation
+
+Figure 4: Cook�s membrane problem (16x16 triangular mesh): J2 deviatoric stress value.
+
+Figure 5: Cantilever beam: geometry.
+
+Once again, the behavior of the proposed formulation shows a great degree of accuracy even for
+very coarse meshes.
+
+Sensibility of the proposed formulation against element distortion is tested by comparing the
+above results on orthogonal meshes with those obtained on slanted meshes (see Fig. 6). Table 1
+compares errors on maximum vertical displacements, horizontal normal stress and pressure obtained
+with the u=p and u=s=p formulations on the 10� 50 orthogonal and slanted meshes. The accuracy
+of the proposed u=s=p formulation is almost insensitive to distortion. This is not the case for u=p
+formulation, where accuracy on stress and pressure deteriorates with slanting.
+
+7.3 Sharp V-notched specimen under tension
+
+As a last example, the vertical stretching of a square V-notched specimen, shown in Figure 9, is
+considered. Dimensions of the sample are 2 � 2 (width � height) and the V-shaped notch has a
+
+21
+
+
+
+(a) Orthogonal mesh
+
+(b) Slanted mesh
+
+Figure 6: Cantilever beam: 10x50 meshes.
+
+Max vertical displ. Max horiz. stress Max pressure
+u=p orth. +10:6 % �0:30 % �8:95 %
+u=p slanted +2:03 % �13:0 % �12:43 %
+u=s=p orth. �0:26 % +0:55 % +3:14 %
+u=s=p slanted �0:53 % +0:35 % +1:74 %
+
+Table 1: Cantilever beam. Accuracy on orthogonal and slanted 10x50 meshes.
+
+22
+
+
+
+(a) Displacement
+
+(b) Max. hor. normal stress
+
+(c) Pressure
+
+Figure 7: Cantilever beam: performance of the proposed mixed three-�eld formulation compared
+with the mixed displacement/pressure formulation.
+
+23
+
+
+
+(a) u/p formulation (b) u/s/p formulation
+
+Figure 8: Cantilever beam problem: vertical displacement along the top side of the beam using
+di¤erent mesh resolutions.
+
+length of 1 and a maximum width at the boundary of 0:02. For the evaluation of the stabilization
+parameters in the mixed formulation, L = 2 is taken as representative length of the problem.
+Uniform vertical displacements of opposed sign are imposed at the top and bottom boundaries.
+
+Figure 9: Geometry for the sharp V-notched specimen under tension
+
+In the continuous elastic problem associated to this situation, the strain and stress �elds are
+singular at the tip of the sharp notch. The discrete model corresponding to the u=p �nite element
+formulation performs satisfactorily in terms of a global error norm, but approximates very poorly
+the actual behavior near the singular points.
+
+To show this, a coarse structured mesh consisting of 8� 8� 2 u=p triangles with a �45o bias is
+
+24
+
+
+
+(a) u/p formulation: max. pr.
+stress contour-�ll.
+
+(b) u/p formulation: principal
+stresses.
+
+(c) u/s/p formulation: max.
+pr. stress contour-�ll.
+
+(d) u/s/p formulation:
+principal stresses.
+
+Figure 10: Sharp V-notch specimen under tension.Principal stresses.
+
+constructed. Figure 10(a) depicts contour-�ll of the maximum principal stresses computed on this
+mesh. Note the strong mesh bias dependence that is observed in front of and behind the notch tip.
+In fact, the largest values of the stresses occur behind the tip (left of the tip in the Figures), rather
+than in front of it (right of the tip in the Figures). Computed stress directions near the tip of the
+crack also show strong mesh bias dependence (see Figure 10(b)). These severe local errors caused
+by the mesh alignment are not alleviated by mesh re�nement.
+
+Figures 10(c)-(d) show corresponding results obtained using the stabilized mixed u=s=p formu-
+lation on the same mesh. The improved accuracy with respect to the u=p formulation is clear. In
+particular, the maximum principal stress value is detected exactly at the tip of the notch; computed
+stresses directions are also noticeably improved. The importance of these two features in nonlinear
+solid and �uid mechanics is evident. As it is shown in reference [18], they are crucial in strain
+
+25
+
+
+
+localization problems where the constitutive equation depends on the principal stress values and
+their directions.
+
+8 Concluding remarks
+
+This paper shows that it is possible to tackle problems involving the incompressibility constraint
+(including the limit case of Poisson�s ratio � = 0:5) while, at the same time, achieving a remarkable
+degree of accuracy of the stress �eld.
+
+The proposed three-�eld formulation is convergent upon mesh re�nement, virtually free of any
+volumetric or shear locking. The technology is suitable for engineering applications in 2D and 3D
+and for both triangular (tetrahedral for 3D analysis) or quadrilateral (or hexahedral in 3D) meshes.
+
+Numerical examples show the remarkable degree of accuracy (even for coarse meshes) for both
+displacement and stress �elds.
+
+The proposed element technology can easily be extended to more complex non-linear material
+behaviors allowing for the spheric/deviatoric split of the constitutive equations, such as incom-
+pressible J2-plasticity.
+
+9 Acknowledgments
+
+Financial support from the EC 7th Framework Programme under the MuMoLaDe project - Multi-
+scale Modelling of Landslides and Debris Flows - within the framework of Marie Curie ITN (Initial
+Training Networks) is gratefully acknowledged.
+
+R. Codina gratefully acknowledges the support received from the ICREA Academia Program
+from the Catalan Government.
+
+References
+
+[1] Agelet de Saracibar C., Chiumenti M., Valverde Q., and Cervera M., On the Orthogonal
+Subgrid Scale Pressure stabilization of Small and Finite deformation J2 Plasticity, Computer
+Methods in Applied Mechanics and Engineering, 195 (2006) 1224-1251.
+
+[2] Arnold, D.N., Brezzi, F. and Fortin, M. A stable �nite element for the Stokes equations.
+Calcolo (1984) 21, 337-344.
+
+[3] Arnold, D.N. and Winther, R. Mixed �nite elements for elasticity, Numerische Mathematik
+(2002) 92, 401-419.
+
+[4] Arnold, D.N., Awanou, G. , and Winther, R. Finite elements for symmetric tensors in three
+dimensions, Math. Comput. (2008) 77, 1229-1251.
+
+[5] Badia, S. and Codina, R. Uni�ed stabilized �nite element formulations for the Stokes and the
+Darcy problems, SIAM Journal on Numerical Analysis (2009) 17, 309-330.
+
+[6] Badia, S. and Codina, R. Stabilized continuous and discontinuous Galerkin techniques for
+Darcy �ow, Comp. Meth. in Appl. Mech. and Eng. (2010) 199, 1654-1667.
+
+26
+
+
+
+[7] Baiocchi, C., Brezzi, F. and Franca, L. Virtual bubbles and Galerkin/least-squares type meth-
+ods (Ga.L.S.), Comp. Meth. in Appl. Mech. and Eng. (1993) 105, 125-141.
+
+[8] Bonet, J. and Burton, A.J. A simple average nodal pressure tetrahedral element for incom-
+pressible and nearly incompressible dynamic explicit applications. Comm. Num. Meths. in
+Eng. (1998)1 4, 437-449.
+
+[9] Bonet, J., Marriot, H. and Hassan, O. An averaged nodal deformation gradient linear tetra-
+hedral element for large strain explicit dynamic applications. Comm. Num. Meths. in Eng.
+(2001) 17, 551-561.
+
+[10] Bonet, J., Marriot, H. and Hassan, O. Stability and comparison of di¤erent linear tetrahe-
+dral formulations for nearly incompressible explicit dynamic applications. Int. Jour. for Num.
+Meths. in Eng. (2001) 50, 119-133.
+
+[11] Brezzi, F. and Fortin, M. Mixed and Hybrid Finite Element Methods, Spinger, New York,
+1991.
+
+[12] Cervera, M., Agelet de Saracibar, C. and Chiumenti, M. COMET: COupled MEchan-
+ical and Thermal analysis. Data Input Manual, Version 5.0, Technical report IT-308,
+htpp://www.cimne.upc.es, 2002.
+
+[13] Cervera, M., Chiumenti, M., Valverde, Q. and Agelet de Saracibar, C. Mixed Linear/linear
+Simplicial Elements for Incompressible Elasticity and Plasticity, Comp. Meth. in Appl. Mech.
+and Eng. (2003) 192, 5249-5263.
+
+[14] Cervera, M., Chiumenti, M. and Agelet de Saracibar, C. Softening, localization and stabiliza-
+tion: capture of discontinuous solutions in J2 plasticity, Int. J. for Num. and Anal. Meth. in
+Geomechanics (2004) 28, 373-393.
+
+[15] Cervera, M., Chiumenti, M. and Agelet de Saracibar, C. Shear band localization via local J2
+continuum damage mechanics, Comp. Meth. in Appl. Mech. and Eng. (2004) 193, 849-880.
+
+[16] Cervera, M. and Chiumenti, M. Size e¤ect and localization in J2 plasticity, Int. J. of Solids
+and Structures (2009) 46, 3301-3312.
+
+[17] Cervera, M., Chiumenti, M. and Codina, R. Mixed stabilized �nite element methods in non-
+linear solid mechanics. Part I: formulation, Comp. Meth. in Appl. Mech. and Eng., 199 (2010)
+2559-2570.
+
+[18] Cervera, M., Chiumenti, M. and Codina, R. Mixed stabilized �nite element methods in non-
+linear solid mechanics. Part II: strain localization, Comp. Meth. in Appl. Mech. and Eng., 199
+(2010) 2571-2589.
+
+[19] Chama, A. and Reddy, D.B. New stable mixed �nite element approximations for problems in
+linear elasticity, Comput. Methods Appl. Mech. Eng. 256 (2013) 211�223.
+
+27
+
+
+
+[20] Chiumenti, M., Valverde, Q., Agelet de Saracibar, C. and Cervera, M. A stabilized formula-
+tion for incompressible elasticity using linear displacement and pressure interpolations, Comp.
+Meth. in Appl. Mech. and Eng. (2002) 191, 5253-5264.
+
+[21] Chiumenti, M., Valverde, Q., Agelet de Saracibar, C. and Cervera, M. A stabilized formulation
+for incompressible plasticity using linear triangles and tetrahedra, Int. J. of Plasticity (2004)
+20, 1487-1504.
+
+[22] Codina, R. Stabilization of incompressibility and convection through orthogonal sub-scales in
+�nite element methods, Comp. Meth. in Appl. Mech. and Eng. (2000) 190, 1579-1599.
+
+[23] Codina, R. Finite element approximation of the three �eld formulation of the Stokes problem
+using arbitrary interpolations, SIAM Journal on Numerical Analysis (2009) 47, 699-718.
+
+[24] Dohrmann, C.R., Heinstein, M.W., Jung, J., Key, S.W. and Witkowsky, W.R. Node-based
+uniform strain elements for three-node triangular and four-node tetrahedral meshes. Int. Jour.
+for Num. Meths. in Eng. (2000) 47, 1549-1568.
+
+[25] GiD: The personal pre and post preprocessor. htpp://www.gid.cimne.upc.es, 2002.
+
+[26] Hughes, T.J.R. Multiscale phenomena: Green0s function, Dirichlet-to Neumann formulation,
+subgrid scale models, bubbles and the origins of stabilized formulations, Comp. Meth. in Appl.
+Mech. and Eng. (1995) 127, 387-401.
+
+[27] Hughes, T.J.R., Feijoó, G.R., Mazzei. L., Quincy, J.B. The variational multiscale method-a
+paradigm for computational mechanics, echanics, Comp. Meth. in Appl. Mech. and Eng. (1998)
+166, 3-28.
+
+[28] Kasper, E. P. and Taylor, R. L. A mixed-enhanced strain method. I: Geometrically linear
+problems. II: Geometrically nonlinear problems, Comput. Struct. 75 (2000) 237-250, 251-260.
+
+[29] Malkus, D.S. and Hughes, T.J.R. Mixed �nite element methods - reduced and selective inte-
+gration techniques: a uni�cation of concepts, Comp. Meth. in Appl. Mech. and Eng. (1978)
+15, 63-81.
+
+[30] Mijuca, D. On hexahedral �nite element HC8/27 in elasticity, Computational Mechanics (2004)
+33, 466-480.
+
+[31] Pastor, M., Li, T., Liu, X. and Zienkiewicz, O.C. Stabilized low-order �nite elements for failure
+and localization problems in undrained soils and foundations, Comp. Meth. in Appl. Mech.
+and Eng. (1999), 174, 219-234.
+
+[32] Reddy, B.D. and Simo, J.C. Stability and convergence of a class of enhanced assumed strain
+methods, SIAM J. Num. Anal. (1995) 32, 1705-1728.
+
+[33] Simo, J.C., Taylor, R.L. and Pister, K.S. Variational and projection methods for the volume
+constraint in �nite deformation elasto-plasticity, Comp. Meth. in Appl. Mech. and Eng. (1985)
+51, 177-208.
+
+28
+
+
+
+[34] Simo, J.C. and Rifai, M.S. A class of mixed assumed strain methods and the method of
+incompatible modes, Int. Jour. for Num. Meths. in Eng. (1990) 29, 1595-1638.
+
+[35] de Souza Neto, E.A., Pires, F.M.A. and Owen D.R.J. F-bar-based linear triangles and tetra-
+hedra for �nite strain analysis of nearly incompressible solids. Part I: formulation and bench-
+marking.Int. Jour. for Num. Meths. in Eng. (2005) 62, 353�383.
+
+29
+
+

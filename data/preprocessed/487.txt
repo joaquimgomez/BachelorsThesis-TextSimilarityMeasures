@@ -1,0 +1,584 @@
+shock captur techniqu hp-adapt finit element alba hierroa , b , santiago badiaa , b , pavel kusc auniversitat politecnica de catalunya , jordi girona 1-3 , edifici c1 , 08034 barcelona , spain .
+bcentr internacion de metod numer l  enginyeria ( cimn ) , parc mediterrani de la tecnologia , upc , estev terrada 5 , 08860 castelldefel , spain ( { sbadia , ahierro } @ cimne.upc.edu ) .
+cinstitut mathemat , academi scienc czech republ ( kus @ math.cas.cz ) abstract aim work propos hp-adapt algorithm discontinu galerkin method capabl detect discontinu sharp layer avoid spurious oscil solut around .
+order control spurious oscil- lation , artifici viscos use particular appli around layer solut chang abrupt .
+, novel troubled-cel detector develop order mark element around layer impos linear order .
+detector take advantag evolut valu gradient adapt process .
+keyword : hp-adapt , discontinu galerkin , shock captur , troubled-cel detector , nonlinear stabil , convection-diffus , convection-domin flow 1 .
+introduct work convection-domin convection-diffus problem , solut may contain steep layer solut chang abrupt .
+pure hyperbol case , diffus zero , solut may contain discontinu .
+high resolut need around discontinu sharp layer , suitabl consid h- adapt mesh lead quit uniform distribut error .
+even better , use hp-adapt finit element ( fe ) space , one improv accuraci increas order approxim ( p ) smooth region reduc element size ( h ) near discontinu sharp layer .
+impli extra effort tackl differ way ( see sect .
+4.1 ) .
+order select fes need refin , posteriori error estim use .
+hp-adapt , one also need kind smooth indic order decid whether refin mesh element increas order approxim .
+work adapt mesh continu fe space , one take account adapt mesh preserv regular deal hang- ing node appear process .
+method avoid hang node adapt mesh expens increas aspect ratio ( see , e.g. , [ 34 ] 2d mesh ) ; implement method general 3d mesh complic .
+hand , simpl local adapt inevit produc hang node .
+enforc continu ( requir ) impli extra implement work , especi deal preprint submit comput method appli mechan engin decemb 22 , 2016 arbitrary-level hang node [ 29 ] .
+discontinu galerkin ( dg ) method read- ili use non-conform mesh , i.e. , simpl local adapt procedur , involv degre freedom ( dof ) continu galerkin one mesh .
+[ 2 ] , badia baig propos continuous-discontinu formul allow one use local adapt without need enforc continu hang node .
+approach combin lower cost continu galerkin method capabl dg method deal non-conform mesh .
+work , restrict interior penalti dg method local adapt .
+numer approxim problem consid lead spurious oscil around sharp layer discontinu , violat discret level monoton properti continu oper .
+numer techniqu avoid oscil denot shock captur techniqu .
+use common notion shock captur even though paper deal layer ( discuss appropri name see [ 25 ] ) .
+monoton linear shock captur first order accur , due celebr godunov  theorem .
+order attain better accuraci , perturb depend solut must consid .
+sever shock captur strategi .
+limit strategi typic appli explicit time integr ; tentat solut first obtain explicit time- march scheme next post-process limit clean oscil .
+approach typic fulli explicit finit volum dg code hyperbol conser- vation law [ 12 ] .
+conceptu differ famili method base ad artifici diffus term .
+purpos method perturb problem hand way perturb solut ( almost ) oscil free .
+sinc post-process need viscous term ad formul , type techniqu suitabl implicit ( implicit-explicit ) time integr continu fe space .
+artifici diffus term understood nonlinear sta- bilize method .
+nonlinear stabil scheme propos literatur prove enjoy variant discret maximum principl ( dmp ) [ 3 , 4 , 8 , 11 ] .
+scheme , nonlinear stabil activ sharp layer/discontinu , resort linear stabil smooth region .
+knowledg , shock captur method propos far enjoy dmp design work linear ( quadrat ) fes [ 20 ] .
+case , use high-ord fes steep layer discontinu wise , sinc smooth exploit region mesh finer width physic layer .
+hand , refin mesh need effici captur layer , make adapt mesh refin mandatori .
+base observ , motiv work combin nonlinear stabil scheme satisfi dmp ( appli linear fes ) hp-adapt .
+object restrict nonlinear stabil around sharp layer , fine mesh first order element automat select hp-adapt algorithm .
+hand , far region , solut smooth , algorithm increas order reduc element size .
+sinc interest use hp-adapt method , find necessari appli artifici viscos everywher troubl cell ( exist method alreadi scale viscos way take valu close 2 zero smooth region [ 17 , 3 ] ) .
+nonlinear stabil use smooth region .
+various troubled-cel indic ; sever compar [ 37 ] .
+use differ criteria identifi element may contain sharp layer , discontinu , shock .
+exampl , cockburn shu [ 12 ] compar gradient neighbor element .
+extend higher order analysi coeffici associ differ order use modal base [ 28 ] .
+also local discontinu detector base decay coeffici [ 6 ] .
+troubled-cel detector design limit explicit simul ; solut comput , troubl cell detect proper modifi ( time accord paramet obtain detect troubl cell ) .
+herein , interest troubled-cel indic implicit scheme involv nonlinear stabil method ( i.e. , artifici viscos ) .
+differ set , vuik ryan success detect non-smooth region take account properti associ multiwavelet coeffici [ 39 ] .
+albeit use h-adapt mesh [ 40 ] , troubled-cel indic men- tion design fix mesh simpli recalcul troubled-cel indic iter instead take advantag solut histori .
+paper also aim develop novel troubled-cel indic hp-adapt scheme exploit adapt histori .
+idea simpl : discontinu ( steep layer width order much smaller characterist length element ) , gradient greater h-refin element , propos compar valu gradient parent children element adapt iter order decid whether element mark suspici neighborhood sharp layer .
+overal algorithm , linear order impos element troubled-cel flag activ .
+outlin paper follow .
+sect .
+2 introduc problem solv well notat interior penalti dg method use .
+sect .
+3 new artifici viscos method introduc ; extens one propos [ 4 ] .
+next sect .
+4 deal adapt strategi .
+next , sect .
+5 introduc novel troubled-cel detector allow us use artifici viscos present well improv hp-adapt process .
+final , sect .
+6 , numer experi report show perform propos method .
+2 .
+interior penalti method convection-diffus equat follow introduc convection-diffus problem want solv well interior penalti discontinu method use .
+2.1 .
+convection-diffus problem consid convection-diffus problem dirichlet boundari condit : { lu : =   ( u ) +  ( u ) = f  , u = g  ( 1 )  open , bound , connect subset rd lipschitz boundari  , space dimens ( assum arbitrari although sect .
+3 5 analysi 3 restrict 2-dimension case ) , f  l2 (  ) , g  h 1 2 (  ) .
+assum  > 0 constant   ( h1 (  )  c0 (  ) ) solenoid ( i.e. ,    = 0 ) .
+denot  inflow boundari defin  = { x  | ( x )  n ( x ) < 0 } n outsid normal  .
+well known oper l associ problem ( 1 ) enjoy maximum principl ( proof maximum principl ellipt problem see [ 19 ] ) .
+particular , mean interior oscil appear insid domain f = 0 .
+also well known , problem convection-domin , solut may sharp interior boundari layer .
+region discret solut may exhibit spurious oscil , nonlinear stabil term aim regular problem .
+note nonlinear stabil scheme use work also appli pure hyperbol problem [ 4 ] , i.e. ,  = 0 , even though consid case sect .
+6 posteriori error estim use sect .
+4.1 appli circumst .
+2.2 .
+notat consid total  m adapt iter .
+adapt step need consid partit tm = { ki } nelm i=1  n el element characterist length hmki .
+consid quadrilater ( hexahedr 3 dimens ) element .
+sinc use isotrop refin , assum length edg element dimens order characterist length element .
+mesh tm correspond mesh adapt previous partit domain tm1 .
+impli everi element ki  tm either equival certain kj  tm1 correspond transform element set tm1 .
+transform either isotrop refin element ( ki one children element kj  tm1 ) coarsen set element ( ki parent set element ) .
+isotrop refin divid element nc = 2 ident sub-el .
+coarsen , time , perform set nc element alreadi come previous refin element .
+order eas transfer data consecut mesh , establish relat indic element tm immedi previous mesh tm1 .
+end defin function fm : { 1 ,    , n elm }  { 1 ,    , n elm1 } follow way : kfm ( )  tm1 either correspond equival element tm1 , parent ki first children come ( assum without loss general children element consecut list ) .
+case coarsen element ki  tm , correspond element tm1 kfm ( ) +c c = 0 ,    , nc  1 .
+given p  n , let pp (  ) space polynomi order p domain    .
+given { pjm } nelm j=1 array approxim order everi element tm , defin gm piece-wis polynomi function  gm|ki polynomi order pim obtain l 2-project g|ki onto ppim ( ki   ) ki  tm contain boundari facet .
+defin discret space consid henceforth discontinu space piece-wis polynomi function vm = { vm | vm|ki  ppim ( ki ) ki  tm } .
+vm  vm , notat v ki  ppim ( ki ) vkim  ( ppim1 ( ki ) ) function correspond restrict vm gradient ki .
+denot v : = (   v2 ) 1 2 l2 (  ) norm v| 4 function v  l2 (  ) .
+similar , v ,  : = max x v ( x ) denot l (  ) norm .
+also defin measur  |w| : =   1 .
+given mesh tm , intersect f = ki  kj two neighbor element ki , kj  tm call interior facet tm set dimens d 1 .
+set interior facet denot e0m .
+hand , non-empti intersect f = ki   element ki  tm boundari domain , call boundari facet .
+set facet denot em .
+denot em ( ki ) set face f  em contain ki .
+facet f  e0m denot k + f kf two neighbor element k + f  k  f = f .
+addit , name n+f n  f unitari normal face f outsid k + f k  f , respect .
+facet boundari k+f n + f defin .
+given facet f , defin characterist face length hf = { min { hk+ f , hk f } f  e0m hk+ f f   .
+given vm  vm , defin common concept averag { {  } } jump [ [  ] ] interior point x facet f  e0m follow : { { vm } } ( x ) = 1 2 ( v k+ f ( x ) + v k f ( x ) ) , [ [ vm ] ] ( x ) = v k+ f ( x ) n + f + v k f ( x ) n  f .
+also defin harmon averag q x vm ( x ) = 2v k+ f ( x ) v k f ( x ) v k+ f ( x ) + v k f ( x ) .
+boundari facet point x  f , f   , defin { { vm } } ( x ) = v k+ f ( x ) , [ [ vm ] ] ( x ) = v k+ f ( x ) n + f ( x ) q ( x ) = v k+ f ( x ) .
+2.3 .
+weak form interior penalti discontinu galerkin approxim adapt iter , weight incomplet interior penalti discontinu galerkin ( wipdg ) method nonlinear artifici viscos stabil read find um  vm ( um , vm ) = l ( vm ) vm  vm , ( 2 ) ( um , vm ) =  kitm  ki ( ( + ki ( um ) ) umvm  um  vm ) ( 3 )   fem  f  (  [ [ um ] ] { { vm } } + { { um } } [ [ vm ] ] ) +  fem  f ciph1f + m ( um )  [ [ um ] ] [ [ vm ] ] +  fem\  f { { um } } [ [ vm ] ] + cbms  fe0m  f || [ [ um ] ] [ [ vm ] ] 5 l ( vm ) =  kitm ( fm , vm ) k   f  f   ngmvm ( 4 ) +  f  f gm { { vm } }  n   f  f ciph1f + m ( um ) gmvm , fm ( similar gm ) denot piece-wis polynomi approxim tm given l2-project f onto vm .
+paramet c ip constant scale diffus interior penalti term cbms constant stabil convect term explain [ 7 ] .
+valu use comput specifi sect .
+6 .
+valu  discuss remark 2 .
+remark 1 .
+function m ( um ) correspond nonlinear piece-wis artifici viscos introduc extra stabil method .
+artifici viscos activ valu may reli differ paramet problem numer solut um .
+restrict element ki denot ki ( um ) comput defin sect .
+3 .
+remark 2 .
+choic  lead differ interior penalti method : symmetr (  = 1 ) , incomplet (  = 0 ) , anti-symmetr (  = 1 ) .
+origin interior penalti method symmetr one nice monoton properti shown [ 4 ] take  = 0 .
+approach dynam  depend um way take valu [ 0 , 1 ] depend properti um element facet .
+specif implement featur introduc experiment sect .
+6 .
+remark 3 .
+sinc main motiv articl accur repres discon- tinuiti sharp layer , aim keep also sharp layer boundari numer experi , check qualiti approach .
+result , boundari con- dition enforc strong , common dg method .
+case , test space replac v trialm = { vm  vm : vm| = gm } trial space v testm = { vm  vm : vm| = 0 } .
+thus , term includ g right-hand side eventu disappear .
+3 .
+nonlinear stabil : shock captur artifici viscos shock captur nonlinear stabil scheme basic consist ad extra non consist viscos term  origin problem .
+valu solution-depend , element ki , usual order hki , ki scale constant shock detector ski .
+differ featur taken consider comput ski element residu equat [ 13 , 30 , 25 , 26 ] , entropi energi solut [ 21 ] , decay high order coeffici [ 27 , 36 ] , among other .
+work , [ 9 , 8 ] , focus variat gradient solut element .
+general , techniqu take advantag good smooth properti laplacian oper .
+particular , key featur avoid oscil inherit 6 ( ) wipdg+ngjv , triangl ( b ) wipdg+ngjv , quad ( c ) wipdg+dbgjv , quad figur 1 : solut discontinu propag problem 6.2 20 20 mesh maximum principl continuum equat numer scheme , lead call discret maximum principl ( dmp ) ; see [ 8 , 10 ] .
+unfortun , even laplacian oper , monoton prove acut simplici mesh , hard get practic .
+monotonicity-preserv ( acut mesh ) nonlinear stabil continu fes propos [ 3 ] multi-dimension case .
+dg method situat wors , dmp laplacian prove , far know , 1d problem incomplet ipdg scheme [ 23 ] .
+nonlinear stabil dg approxim transport problem enjoy dmp assumpt prove [ 4 ] .
+even though none method , construct , monotonically-preserv general , defin nonlinear stabil scheme keep dmp properti under laplacian oper prove good approach design algorithm .
+refer [ 3 , 4 ] test dmp-preserv method non- acut mesh .
+restrict problem 2d , nodal gradient jump viscos ( ngjv ) intro- duce [ 4 ] design triangular structur mesh .
+element-wis constant artifici diffus scale shock detector , took account variat direct gradient function node element .
+sinc interest work adapt mesh quadrilater ( hexahedra ) , need fit method new paradigm .
+first new properti take account gradient bi-linear solut constant element anymor .
+natu- ral extens take valu gradient element solut nodal point .
+check behavior definit coars mesh 20  20 quad solv discontinu propag problem defin sect .
+6.2 .
+result plot fig .
+1 ( ) fig .
+1 ( b ) show , even though dmp still attain , regular problem near exponenti layer boundari lost .
+second hurdl deal hang node appear adapt mesh .
+clear whether comput viscos take account valu shock detector point , , consid parent neighbor .
+sinc , fact , dmp prove ngjv dimens greater one , anoth option look altern extens dmp-satisfi artifici viscos 1d allow us circumv problem .
+possibl approach consid extens boundari gradient jump viscos ( bgjv ) introduc [ 3 ] 7 discontinu scheme .
+constant nonlinear viscos ki read follow :  ( um ) |ki = cgjvhki , ki max fem ( ki ) ki ( f ) f ( um ) , ( 5 ) ki : em ( ki )  {  , + } function ki = k ki ( f ) f f  em ( ki ) , cgjv set 0.5 sf defin sf ( um ) = |um ( x )  n| |um ( x ) | max xf ( sf ( x ) ) q , ( 6 ) sf shock detector defin everi x  f sf ( x ) : = ukfm ( x )  nfhkf +ukfm ( x )  nf hkf + 2 [ [ um ] ] ( x )  nf ukfm ( x )  nfhkf + ukfm ( x )  nf hkf + [ [ um ] ] ( x )  nf + | [ [ um ] ] ( x )  nf | .
+( 7 ) definit  stand /+ ( therefor  opposit sign ) , x = arg maxxf ( sf ( x ) ) .
+denomin ( 7 ) vanish , simpli take  f = 0 x  f .
+term |um ( x ) n||um ( x ) | ( 6 ) correspond correct term avoid excess smear .
+practic , comput term , maximum approxim maximum gauss point .
+behavior new method test 20  20 quad mesh .
+need nonlinear iter converg , shown fig .
+3 , result obtain much smoother previous one .
+call method discontinu boundari gradient jump viscos ( dbgjv ) one use hereinaft .
+remark 4 .
+restrict definit ( 6 ) piece-wis linear continu solut triangular homogen mesh valu new definit orig- inal sf associ boundari gradient jump viscos method [ 3 ] equival .
+recal definit given sf ( um ) =  f |um  n|d f |um|d (  f | [ [ um ] ] |d 2  f { { |um  n| } } d ) q .
+( 8 ) case valu um constant element , [ [ u ] ] zero sinc continu valu hki nullifi , ( 6 ) ( 8 ) read .
+4. hp-adapt interest hp-adapt fe method goe back classic result publish , e.g. , [ 22 ] , author show possibl attain exponenti converg .
+sinc , lot comput implement method realiz , despit rather larg technic complex ( see , e.g. , [ 1 , 14 , 5 , 29 , 32 ] , list refer signific work ) .
+differ implement differ great purpos , general , type element use , mani aspect .
+8 contribut , use quadrilater element isotrop refin .
+choic dg method make use hang node easier , sinc need enforc continu hang node .
+nevertheless , allow first-level hang node , mean one element neighbor refin one level away .
+experi show restrict lead signific slow-down converg due extra refin use modern code .
+4.1 .
+posteriori error estim adapt algorithm hp-adapt paradigm , one need determin element need refin choos h- p-refin .
+one big challeng method tackl differ way .
+approach use priori knowledg trouble-spot element , set h-refin [ 1 , 38 ] .
+demkowicz co-work [ 16 , 14 , 15 ] project solut differ mesh adapt make adapt evolv choos best option accord suitabl posteriori error estim .
+approach analyz decay legendr polyno- mial coeffici [ 24 , 31 ] .
+techniqu compar survey perform mitchel mcclain [ 35 ] .
+survey win strategi seem smooth predictor propos melenk wohlmuth [ 33 ] one use numer experi .
+smooth predictor basic consist predict error assum solut smooth .
+know , smooth case , order converg l2-error element ki h pim+1 ki , one predict evolut error h- p-refin take place .
+posteriori error estim decay l2-error laplacian problem present [ 33 ] .
+element mark refin , local posteriori error estim compar predict error ( comput last adapt step involv element ) .
+error greater predict , solut assum non-smooth element mark h-refin .
+otherwis mark p-refin .
+basic use scheme , sinc interest enforc linear order ( thus , forc h-refin ) element want appli shock captur , slight modifi ( see algorithm sect .
+5.3 explicit definit hp-adapt algorithm ) .
+abl benefit smooth converg hp-adapt techniqu , posteriori error estim converg l2-norm actual error need .
+end , error estim propos [ 18 ] implement .
+element ki , consist three part : ( im ) 2 = 2m , ri +  2 , ei + 2m , ji , ( 9 ) ri interior residu term , ei ji correspond edg residu error jump face , respect .
+origin definit term adapt case isotrop refin quadrilater mesh .
+also , sinc strong dirichlet boundari condit use , remov boundari term .
+notic , boundari condit polynomi ( thus could exact captur solut ) , valu approxim error boundari led overestim error boundari lead over-refin 9 boundari element ( even solut smooth ) .
+, definit local posteriori error estim term read like 2m , ri = 1 ( pim ) 2h2kifm + um  um 2 ki , ( 10 ) 2m , ei = 1 2  fem ( ki ) \ hf pf  [ [ um ] ] 2f , ( 11 ) 2m , ji = 1 2  fem ( ki ) \ (  ( cip ) 2p2f hki + p2f hki + hf pf )  [ [ um ] ] 2f .
+( 12 ) valu pf pf : = maxkif p m. prove [ 18 ] exist norm respect error estim almost asymptot equivalent.1 norm prove equival l2-error , practic , numer result show agreement posteriori estim weight l2-error approxim defin  1 2u uml2 (  ) .
+follow scheme , predict error array em construct begin adapt iterationm .
+element , defin element predict valu eim base valu posteriori error estim  fm ( ) m1 correspond element tm1 .
+numer solut um obtain , actual posteriori error estim compar predict valu eim decid whether h- p-refin .
+practic , develop variat mesh adaptivit propos melenk wohlmuth [ 33 ] .
+first chang comput predict error : comput size hki element ki ad order better comput predict error p-refin .
+also , includ case coarsen , moreov , chang predict refin element .
+explicit comput predict error shown alg .
+1 .
+notic element modifi ( refin coarsen ) , neither predict valu .
+coarsen element , set predict error way reinforc p-refin .
+element ki p-coarsen , predict error set e = p-refin next mesh adapt .
+hand , set element h-coarsen take error proport greatest error set .
+due fact troubled-cel detector alreadi reinforc h-refin want recov order converg method smooth region unnecessarili h-refin .
+select element refin refin also slight modifi reli troubled-cel detector introduc next section .
+specifi subsect .
+5.3 .
+1almost mean sub-optim respect polynomi degre upper bound , moreov , bound approxim error forc term convect term explod  0 10 algorithm 1 : set predict error array em = 1   n elm ki child kfm ( )  tm1 eim = 2 pim1 1 2 ( pimp fm ( ) m1 ) p  1 2 h  fm ( ) m1 els ki correspond kfm ( )  tm1 pim > p fm ( ) m1 eim =  1 2 p hmax fm ( ) m1 els pim = p fm ( ) m1 eim = ne fm ( ) m1 els pim < p fm ( ) m1 eim = els ki parent kfm ( )  tm1 eim = maxc=0 ,  , nc1 {  1 2 h 2 p fm ( ) +c m1 h ( pimp fm ( ) +c m1 ) k  fm ( ) +c m1 } valu constant paramet h , p , n defin sect .
+6 .
+5 .
+troubled-cel detector 5.1 .
+refinement-depend troubled-cel detector novel troubled-cel detector propos next .
+use inform given evolut solut mesh adapt process .
+idea solut discontinu front certain region , gradient discret approxim element nearbi invers proport size .
+assum width sharp layer order much smaller characterist length consid width 0 , i.e. , discontinu .
+present method 2d case extens 3d case given remark 5 .
+defin mean element gradient element ki  tm adapt step gim = umki |ki| 1 2 .
+( 13 ) analyz evolut gradient numer solut 2d assum solut discontinu approxim numer method .
+particular focus happen element h-refin ( see fig .
+2 ) .
+sinc expect method capabl captur discontinu smooth element , assum solut nodal exact .
+moreov , sinc discontinu impli huge chang valu solut , conjectur differ valu solut differ nodal point side discontinu neglig .
+fact , even though discontinu might straight , assum mesh fine enough topolog element close straight line .
+lead constant valu solut side discontinu , without loss general ( interest valu 11 m+1 h h/2 ( ) k1 m+1 h h/2 ( b ) k2 figur 2 : element ( refin ) discontinu gradient ( 13 ) ) , consid 0 one side .
+call h valu jump discontinu .
+premis obtain two possibl set element cross discontinu :  1 vertex one side discontinu 3 vertic ( fig .
+2 ( ) ) .
+ 2 vertic side discontinu ( fig .
+2 ( b ) ) .
+element subdivid 4 children , one inherit discontinu two configur , shown fig .
+2 .
+take situat let h size element , easi comput valu mean element gradient element k adapt step case .
+parent element ( case 1 2 ) easi calcul lead valu ( notic , sake comprehens , differ notat superscript g case ) : gk1m =  2 3 h h gk2m = h h .
+want know relat valu mean element gradient children element k  contain layer .
+know children element characterist length h 2 assum premis solut , two possibl element mean gradient gk  1 m+1 =  8 3 h h gk  2 m+1 = 2 h h .
+thus valu element mean gradient children element contain discontinu increas respect previous step .
+hand , gradient children discontinu neglig ( 0 limit case ) comparison origin gradient .
+particular , quotient valu expect follow interv :   gim+1 gfm+1 ( )  [  8 3 ,  6 ] ki  tm+1 contain discontinu gim+1 gfm+1 ( )  0 ki  tm+1 contain discontinu 12 remark 5 .
+3d case , take similar assumpt approxim dis- continu plane , end 5 differ configur .
+mean element gradient configur vari along interv [ h  3h , h h ] .
+follow previous step expect coeffici gim+1 gfm+1 ( ) respect children inherit discon- tinuiti interv [ 2  3 , 2  3 ] .
+inform use order tackl method .
+end , defin troubled-cel indic , say , element k take valu im  { 0 , 1 , 2 } .
+rough speak , im = 0 element region solut smooth , im = 1 element contain discontinu , im = 2 element around previous element .
+adapt iter , numer solut um comput , find gim valu mean element gradient element ki  tm im > 0 compar valu correspond element/ iter m 1 .
+follow scenario :  ki  tm parent kfm ( ) +c  tm1 , c = 0 ,    , nc  1 element kfm ( ) +c  tm1 fm ( ) +c m1 = 1 , therefor contain discontinu , parent ki also contain layer im = 1 .
+otherwis , im = 0 .
+ ki  tm correspond kfm ( )  tm1 intuit idea would consid element discontinu insid , maintain troubled-cel indic .
+, practic , found , check evolut gradient function consecut adapt iter , could lead troubled-cel mark region smooth solut .
+instead , im = 1 , mean element gradient gim alway compar g j mk , j = fmk+1  fmk+2      fm ( ) first element refin .
+, sfm ( ) m1 = 1 gim > ng j mk , = 1 , otherwis im = 0 .
+ ki  tm child kfm ( )  tm1 use reason state , use threshold valu n  ( 0 ,  8 3 ) decid children element discontinu insid inherit troubled-cel indic .
+troubled-cel indic valu given by2 im = { 1 gim > ng fm ( ) m1 and fm ( ) m1 > 0 0 otherwis .
+obvious smooth region refin much less sharp layer error latter greater size element .
+mean , 2see remark 6 justif element ki fm ( ) m1 = 1 check .
+13 solut combin kind region , troubled-cel detector dynam near non-smooth layer , evolv adapt step , need much adapt step complet remov smooth region .
+acceler process , set paramet rs = 0.001 element gim < rs maxj gjm automat set non-troubl ( im = 0 ) .
+say element mean element gradient less 0.1 % mean element gradient element largest valu mark troubled-cel solut .
+addit valu , select troubled-cel use previous algorithm , assign flag im = 2 everi element k share face troubled-detect element .
+scheme summar alg .
+2 .
+algorithm 2 : updat valu sm sm = 0 = 1   n elm ki child kfm ( )  tm1 gim > ng fm ( ) m1 and fm ( ) m1 > 0 im = 1 els ki correspond kfm ( )  tm1 sfm ( ) m1 = 1 gim > ng fm ( ) mk im = 1 els ki parent kfm ( )  tm1 c = 1 ,    , nc  1 sfm ( ) +cm1 = 1 im = 1 gim < rs maxj gjm im = 0 = 1   n elm ki share face kj s.t .
+sjm = 1 im = 0 im = 2 valu paramet n defin sect .
+6 remark 6 .
+extra troubled-cel indic ( im = 2 ) two main advantag : one hand allow add artifici viscos element discontinu also neighbor region , use , sinc spurious oscil often appear .
+hand , allow us introduc second order control .
+element mark im = 2 , evolut mean gradient also check children might consid discontinu layer next adapt step , lead effect method practic .
+remark 7 .
+implement issu algorithm perform 2 step .
+iter , comput um , evalu predict gradient gm defin : 14  h-coarsen : gim = min c=0 ,  , nc1 gfm ( ) +cm1  modif : gim = g fm ( ) m1  h-refin : gim = g fm ( ) m1 numer solut comput , actual valu gm comput compar predict one , necessari .
+exampl , element ki h- refin kfm ( )  tm1 fm ( ) m1 , would check gim > ngim decid whether assign im = 1 .
+valu n chosen .
+big enough , solv smooth problem , troubled-cel element detect reason number adap- tive iter ( avoid set element h-refin instead p-refin smooth region ) .
+, fact , mean reason interv n ( 1 ,  8 3 ) would make sens consid region gradient decay , keep consid discontinu .
+hand n small enough detect discontinu sharp layer .
+choic valu introduc experiment sect .
+6 .
+numer experi start set s0 = 1 proceed h-refin element least 2 iter .
+5.2 .
+activ shock captur troubled-cel indic identifi region linear element dif- ferent stabil techniqu benefit .
+particular , work , previous introduc dbgjv viscos use .
+valu shock detector sf defin ( 6 ) comput face linear order , pf = 1 , , least , one neighbor element k im > 0 .
+impli artifici viscos- iti activ troubled-cel element .
+motiv fact troubled-cel usual one steep layer spurious oscil tend also surround layer .
+proven numer ad artifici viscos surround element improv consider behavior method .
+5.3 .
+combin hp-adapt process troubled-cel detector point set paramet process introduc .
+, proceed numer result , might use summar whole method order make clearer .
+first step , troubled-cel detector set im = 1 ki first adapt process consist h-refin element establish valu predict error em , ( introduc alg .
+1 ) , predict gradient gm ( remark 7 sect .
+5.1 ) troubled-cel detector sm .
+fact element mesh simpli h-refin first adapt step .
+numer experi done first 2 step shown first part alg .
+3 .
+affect converg help detect non-smooth layer begin .
+paramet algorithm set way favor h-coarsen 15 region unnecessarili h-refin ( see introduct sect .
+6 ) .
+moreov assum initi mesh coars , make sens h-refin element begin .
+sect .
+4.1 alreadi introduc smooth predictor propos [ 32 ] togeth modif .
+last show troubled-cel detector affect choic kind refin .
+basic , follow smooth predictor scheme adapt unless element ki set troubled-cel ( im > 0 ) , case avoid p-refin .
+moreov ad coarsen possibl .
+three valu associ process : tref , amount element refin , tcoar , p tcoar , h , amount element p h refin respect .
+defin follow : tref = n nd  brefn nd c , tcoar , p = dpcoarsenn nd e , tcoar , h = dhcoarsenn nd e. paramet ref ,  p coarsen  h coarsen paramet method must chosen .
+notic element h-coarsen children set h-coarsen ( rare happen solut proper refin ) .
+instead p-coarsen occur alway element set p-coarsen ran- dom happen solut correct refin everywher .
+defin two differ valu differ coarsen option set paramet pcoarsen  hcoarsen minim problem .
+also , tref approxim valu , order homogen refin region order error , includ correct factor element 90 % error last element refin also mark refin ; object minim abnorm adapt step keep symmetri problem , .
+also element 10 % threshold error mark h-coarsen .
+process specifi alg .
+3 .
+summar , given tm1 ( mesh ) , gm1 ( mean element gradient ) , m1 ( posteri- ori error estim ) , sm1 ( troubled-cel flag ) , pm1 ( element polynomi order ) , adapt flag , um1 ( discret solut ) , follow follow step comput tm , gm , m , sm , pm , um : 1 .
+comput mesh tm order array pm use tm1 pm1 adapt flag previous iter .
+2 .
+inherit troubled-cel detector valu .
+3 .
+set predict error em ( follow alg .
+1 ) predict gradient gm ( in- troduc remark 7 sect .
+5.1 ) .
+4 .
+comput matrix vector obtain um .
+use shock captur , non- linear iter relax paramet use .
+particular imple- ment relax scheme propos [ 26 ] , use paramet valu therein .
+5 .
+comput posteriori error estim valu m ( see equat ( 9 ) ) gm ( see equat ( 13 ) ) .
+16 algorithm 3 : comput adapt flag element tm use posteriori error estim solut um .
+ 2 set element tm h-refin ; els = sort ( m ) /*  kii   kii+1 i = 1 ,    , nndm */ first refin elem = nndm  tref t = 0.9  first refin elemm /* upper threshold error */ b = 0.1  first refin elemm /* lower threshold error */  tcoar , p set kii p-coars = 0  tcoar , h iim < b set kii h-coarsen = i+ 1 tcoar , h <  nndm  tref iim > t first refin element= exit loop siim > 0 pim > 1 set kii p-coars linear order first refin element <  nndm iim < e = 0 set kii p-refin els set kii h-refin 17 6 .
+set troubled-cel indic valu sm ( follow scheme alg .
+2 sect .
+5.1 ) .
+comput , use inform store gm .
+7 .
+comput adapt flag alg .
+3 .
+6 .
+numer result follow numer experi want show perform troubled-cel detector find optimum valu paramet method way ensur detect correct layer , time , deactiv solut smooth .
+exampl , mesh consist squar element chosen length edg element ki characterist length hki .
+follow [ 4 ] , set paramet equat ( 2 ) - ( 3 ) - ( 4 ) cip = 10 cbms = 0.5 .
+concern  , sinc interest recov dmp featur introduc [ 4 ] , would like incomplet method around non-smooth region symmetr method elsewher .
+achiev properti use valu use scale ki , ski : = maxfem ( ki ) ki ( f ) f .
+paramet take valu interv [ 0 , 1 ] ; ski  1 near local extrema function ski = 0 smooth region .
+thus , defin  = 1 ski attain desir properti .
+sinc know troubled-cel detector activ first step even solut smooth , moreov , sinc know ( least expect ) linear order impos , choos paramet favor p-refin h-coarsen .
+follow principl , justifi choic paramet done beforehand .
+start set valu h , p n alg .
+1 .
+even though valu use h [ 33 ] 4 , allow take valu h = 10 , predict error bigger smooth assumpt foster .
+also p set p = 10 .
+fact , definit p [ 33 ] differ sinc use characterist length hki comput predict error .
+hand , set predict error eim = ne fm ( ) m1 ki ident kfm ( )  tm1 .
+sinc element chang , could accept predict error remain , thus , let n = 1 .
+instead , set slight larger , n = 1.1 , , element refin mani step , predict valu rise promot p-refin .
+final set percentag element refin ref = 0.75 coarsen percentag hcoarsen = 0.20 ; mean element correspond top 25 % error ( h- p- ) refin bottom 20 % element mark h-coarsen ( necessarili mean coarsen , sinc children mark coarsen ) .
+last option , tri compens fact smooth region might h-refin erron consid troubl region ; want promot coarsen region recov order converg hp-adapt method .
+final set pcoarsen = 0 virtual avoid p-coarsen ( fact p-coarsen keep take place near sharp layer element detect troubled-cel ) .
+follow numer test first set valu n ensur work smooth function .
+, show method capabl correct determin 18 cip cbms  h p n ref  h coarsen  p coarsen 10 0.5 1 ski 10 10 1.1 0.75 0.20 0 tabl 1 : valu fix paramet method .
+sharp layer appli h- p-refin accord .
+perform shock captur term diminish oscil around non-smooth layer also shown .
+6.1 .
+smooth solut constant set beforehand n .
+valu paramet crucial defin behavior troubled-cel detector sinc defin threshold consid smooth region .
+explain sect .
+5.1 , n take valu interv ( 1 ,  8 3 ) .
+closer 1 easiest element consid troubl cell .
+certain choos larg , sinc want ensur troubled-cel detector activ around sharp layer ; would like n small possibl .
+order set paramet , choos smooth function variabl slope check mani step take method remov troubled-cel flag differ valu n .
+concret , choos solut sinus ( align mesh ) solv problem ( 2 )  = [ 0 , 1 ] 2  = 1 ,  = 0 , f = 2 ( 1+2 ) sin (  ( x+ ( y1 ) ) ) boundari condit g ( x , ) = sin (  ( x+ ( y1 ) ) ) ,  = 1 tan/3 .
+even look like simpl solut , difficult deal region near maximum minimum sinc discret solut almost flat element extrema refin children greater slope .
+thus good solut check propos formul .
+run method n = 1.1 , 1.2 , 1.3 , 1.4 , 1.5 ,  8 3 check evolut activ detector .
+notic , case , artifici viscos activ sinc  , ki = 0 , thus ki = 0 i .
+take initi mesh 4  4 element s0 = 1 check evolut rate troubled-cel detect element .
+interest know mani adapt step necessari complet remov troubled-cel flag affect converg problem .
+rate troubled-cel element , # { k s.t.sim > 0 } nelm , plot fig .
+3 well converg posteriori error estim  actual l2 error .
+observ n  1.2 troubled-cel detector progress remov optim converg recov step .
+plot also show n = 1.1 seem incap remov troubl cell converg method jeopard .
+consequ , chosen n = 1.2 n = 1.4 paramet use rest numer test .
+valu n = 1.2 smallest one capabl remov troubled-cel detector flag method n = 1.4 seem effect .
+plot also verifi order converg posteriori error actual l2-error agre .
+19 0 0.2 0.4 0.6 0.8 1 10 100 1000 10000 100000 1e+06 r te f tr u b le -c e e le e n ts dof prob64 = 0 n=1.1 n=1.2 n=1.3 n=1.4 n=1.5 n=1.63 ( ) rate troubled-cel element 1e-10 1e-08 1e-06 0.0001 0.01 1 100 10 100 1000 10000 100000 1e+06 e rr r dof  , = 0  , n=1.1  , n=1.2  , n=1.3  , n=1.4  , n=1.5  , n=1.63 l2-error , s=0 l2-error , n=1.1 l2-error , n=1.2 l2-error , n=1.3 l2-error , n=1.4 l2-error , n=1.5 l2-error , n=1.63 ( b ) converg posteriori error estim  weight l2-error  1 2 uuml (  ) .
+figur 3 : smooth solut .
+troubled-cel activ differ valu n .
+20 ( ) wipdg .
+troubled-cel ac- tivat ( b ) wipdg + dbgjv , n = 1.2 ( c ) wipdg + dbgjv , n = 1.4 figur 4 : solut adapt step = 12 .
+6.2 .
+propag discontinu let us analyz good method captur proper boundari intern layer .
+typic steady-st test studi propag boundari discontinu convection-domin equat .
+, problem ( 2 ) solv  = [ 0 , 1 ] 2  = 108 ,  = ( cos ( /3 ) , sin ( /3 ) ) , f = 0 , boundari condit g = 1 = 1 { x = 0 }  {  0.7 } g = 0 rest boundari .
+solut problem two boundari layer ( x = 1 = 0 ) interior layer width proport valu  .
+start 4 4 element mesh adapt .
+want control spurious oscil aris around sharp layer ( see fig .
+4 ( ) ) .
+, must correct identifi layer add adequ artifici viscos .
+fig .
+5 , one appreci evolut troubled-cel flag mesh adapt process see layer correct captur method valu n .
+lead solut plot fig .
+4 ( b ) fig .
+4 ( c ) .to precis , follow evolut oscil adapt process see control method .
+defin oscil point x   : oscm ( x ) : = max { 0 , um ( x )  1 , um ( x ) } .
+, defin two paramet give idea much dmp violat , name mean osc defin mean valu oscil degre freedom maximum osc defin maximum valu oscm  .
+see fig .
+6 ( ) artifici viscos techniqu capabl control spurious oscil , special mesh refin , give mean osc 5 order magnitud lower one obtain wipdg method without extra stabil .
+maximum osc , hand , two order magnitud lower , shown fig .
+6 ( b ) .
+observ slight oscillatori behavior mean osc number dof fig .
+6 ( ) .
+happen , observ fig .
+5 ( e ) fig .
+5 ( f ) small region layer may becom undetect .
+reason fact 21 ( ) = 3 , n = 1.2 ( b ) = 6 , n = 1.2 ( c ) = 12 , n = 1.2 ( ) = 3 , n = 1.4 ( e ) = 6 , n = 1.4 ( f ) = 12 , n = 1.4 figur 5 : troubled-cel differ step valu n .
+22 1e-05 0.0001 0.001 0.01 0.1 1 10 100 1000 10000 100000 1e+06 symmetr ipdg stabil wipdg , n=1.2 stabil wipdg , n=1.4 ( ) mean osc 0 0.5 1 1.5 2 2.5 3 10 100 1000 10000 100000 1e+06 symmetr ipdg stabil wipdg , n=1.2 stabil wipdg , n=1.4 ( b ) maximum osc figur 6 : mean maximum oscil vs. amount dof .
+real discontinu practic , due smear produc artifici viscos .
+region over-resolv , fe scale solut start smooth , artifici viscos switch .
+special crucial region exponenti boundari layer interior layer meet sinc size element even smaller rest interior layer .
+behavior could correct complic adapt strategi .
+6.3 .
+propag smooth region hp-adapt complet exploit previous exampl , sinc solut flat smooth region , thus , perfect captur low order approxi- mation .
+, let us evalu perform approach term distribut h p adapt .
+basic took solut , instead impos g = 1 = 1 { x = 0 }  {  0.7 } , impos g = 1+0.1 cos ( 6 ( x 1y tan ( 3 ) ) ) .
+result solut sinusoid previous flat region ( see fig .
+7 ( ) ) .
+order map solut fig .
+7 ( ) differ valu n plot fig .
+7 ( b ) fig .
+7 ( c ) .
+observ method inde capabl p-refin smooth region case .
+, smaller valu n impli necessarili mean order smooth region lower .
+6.4 .
+parabol boundari layer let us check method perform use parabol boundari layer .
+solv problem ( 2 )  = [ 0 , 1 ] 2 ,  = 108 ,  = ( 1 , 0 ) , f = 1 , homogen boundari condit g = 0  .
+lead exponenti layer x = 1 parabol layer = 0 = 1 .
+fig .
+8 , one see first adapt step method capabl correct control oscil .
+plot solut fig .
+8 ( b ) fig .
+8 ( c ) troubled-cel detector activ map one appreci activ relat control spurious oscil .
+case defin oscm ( x ) = max { 0 , um ( x )  x } fig .
+9 plot approxim maximum valu comput quadratur point .
+see 23 ( ) um , n = 1.4 ( b ) element order map n = 1.2 ( c ) element order map n = 1.4 figur 7 : stabil solut = 12 .
+order map rang p  { 1 , 4 } .
+( ) wipdg .
+troubled-cel ac- tivat ( b ) wipdg + dbgjv , n = 1.2 ( c ) wipdg + dbgjv , n = 1.4 figur 8 : solut adapt step = 5. , even though order oscil one order lower origin method , point oscil tend increas .
+special notic n = 1.4 .
+phenomena due fact two region troubled-cel detector deactiv suffici refin mesh .
+one hand region parabol layer close x = 0 , appreci fig .
+10 ( b ) , gradient smaller rest layer .
+hand , saw sect .
+6.2 , region exponenti parabol layer intersect crucial .
+case , n = 1.4 , troubl cell deactiv region lead peak one appreci fig .
+8 correspond oscil shown fig .
+10 ( c ) .
+6.5 .
+curv characterist final , show troubled-cel detector work curv characterist .
+, solv problem ( 2 )  = [ 0 , 1 ] 2 ,  = 108 ,  = ( 2y , 2x ) , f = 0 , 24 0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 10 100 1000 10000 100000 symmetr ipdg stabil wipdg , n=1.2 stabil wipdg , n=1.4 figur 9 : maximum oscil vs amount dof .
+( ) wipdg .
+troubled-cel ac- tivat ( b ) wipdg + dbgjv , n = 1.2 ( c ) wipdg + dbgjv , n = 1.4 figur 10 : solut adapt step = 10 .
+25 ( ) = 3 , n = 1.2 ( b ) = 6 , n = 1.2 ( c ) = 9 , n = 1.2 ( ) = 3 , n = 1.4 ( e ) = 6 , n = 1.4 ( f ) = 9 , n = 1.4 figur 11 : troubled-cel differ step valu n .
+g = 0 boundari except = 0 , take step function g ( x , 0 ) = { 1 x  ( 0.35 , 0.65 ) , 0 elsewher .
+problem lead curv step function intern layer boundari layer x = 0 .
+fig .
+11 shown troubled-cel detector perform captur kind solut .
+observ previous exampl , seem method n = 1.2 capabl better captur layer final adapt step .
+gap troubled-cel activ layer origin oscil observ fig .
+12 ( c ) .
+7 .
+conclus paper new troubled-cel detector propos work adapt mesh .
+numer section , shown work differ kind solut parabol exponenti boundari interior layer .
+general , method capabl correct detect sharp layer certain level refin .
+shown , smaller valu paramet n ( determin amount variat gradient admit consid solut smooth ) better method perform .
+even solut smooth region togeth sharp layer , method capabl let order solut rise smooth region keep low order nonlinear stabil sharp layer solut .
+26 ( ) wipdg .
+troubled-cel ac- tivat ( b ) wipdg + dbgjv , n = 1.2 ( c ) wipdg + dbgjv , n = 1.4 figur 12 : solut adapt step = 9 .
+hand extens bgjv method propos [ 3 ] shown effect deal spurious oscil adapt mesh .
+thus implement troubled-cel detector ensur condit non-smooth layer crucial blend adapt monotonicity-preserv shock captur .
+acknowledg work partial fund european research council fp7 programm idea start grant .
+258443 - comfus : comput method fusion technolog .
+a. hierro grate acknowledg support receiv catalan govern fi fellowship .
+[ 1 ] m. ainsworth b .
+senior , hp-finit element procedur non-uniform geometr mesh : adapt constrain approxim , grid generat adapt algorithm , m. w. bern , j. e. flaherti , m. luskin , eds. , .
+113 ima volum mathemat applic , springer new york , jan. 1999 , pp .
+127 .
+[ 2 ] s. badia j. baig , adapt finit element simul incompress flow hybrid continuous-discontinu galerkin formul , siam journal scientif comput , 35 ( 2013 ) , pp .
+a491a516 .
+[ 3 ] s. badia a. hierro , monotonicity-preserv stabil finit element approxim transport problem , siam journal scientif comput , 36 ( 2014 ) , pp .
+a2673a2697 .
+[ 4 ] s. badia a. hierro , discret maximum principl discontinu galerkin method , comput method appli mechan engin , 286 ( 2015 ) , pp .
+107122 .
+[ 5 ] w. bangerth o. kayser-herold , data structur requir hp finit element softwar , acm tran .
+math .
+softw. , 36 ( 2009 ) , pp .
+4:14:31 .
+27 [ 6 ] r. biswa , k. d. devin , j. e. flaherti , parallel , adapt finit element method conserv law , appli numer mathemat , 14 ( 1994 ) , pp .
+255 283 .
+[ 7 ] f. brezzi , l .
+d. marini , e. suli , discontinu galerkin method first- order hyperbol problem , mathemat model method appli scienc , 12 ( 2004 ) , pp .
+18931903 .
+[ 8 ] e. burman , nonlinear artifici viscos , discret maximum principl hy- perbol conserv law , bit numer mathemat , 47 ( 2007 ) , pp .
+715733 .
+[ 9 ] e. burman a. ern , nonlinear diffus discret maximum principl stabil galerkin approxim convection-diffusion-react equat , comput method appli mechan engin , 191 ( 2002 ) , pp .
+3833 3855 .
+[ 10 ] , stabil galerkin approxim convection-diffusion-react equat : discret maximum principl converg , mathemat comput , 74 ( 2005 ) , pp .
+16371652 .
+[ 11 ] e. burman p. hansbo , edg stabil galerkin approxim convection-diffusion-react problem , comput method appli mechan engin , 193 ( 2004 ) , pp .
+14371453 .
+[ 12 ] b. cockburn c.-w. shu , tvb runge-kutta local project discontinu- ous galerkin finit element method conserv law .
+ii .
+general framework , mathemat comput , 52 ( 1989 ) , pp .
+411435 .
+[ 13 ] r. codina , stabil incompress convect orthogon sub-scal finit element method , comput method appli mechan engin , 190 ( 2000 ) , pp .
+15791599 .
+[ 14 ] l. demkowicz , comput hp-adapt finit element .
+vol 1 .
+one two dimension ellipt maxwel problem , crc press , oct. 2006 .
+[ 15 ] l. demkowicz , j. kurtz , d. pardo , m. paszynski , w. rachowicz , a. zdunek , comput hp-adapt finit element , vol .
+2 : frontier : three dimension ellipt maxwel problem applic , chapman hall/crc , boca raton , 1 edit ed. , nov. 2007 .
+[ 16 ] l. demkowicz , w. rachowicz , p. devloo , fulli automat hp- adapt , journal scientif comput , 17 ( 2002 ) , pp .
+117142 .
+[ 17 ] a. ern j. guermond , weight edg stabil , siam journal numer analysi , 51 ( 2013 ) , pp .
+16551677 .
+[ 18 ] s. giani , d. schotzau , l. zhu , a-posteriori error estim -adapt dg method convection-diffus problem anisotrop refin mesh , comput & mathemat applic , 67 ( 2014 ) , pp .
+869887 .
+28 [ 19 ] d. gilbarg n. s. truding , ellipt partial differenti equat second order , springer , mar .
+2015 .
+[ 20 ] j. guermond , m. nazarov , b. popov , y. yang , second-ord maxi- mum principl preserv lagrang finit element techniqu nonlinear scalar conserv equat , siam journal numer analysi , 52 ( 2014 ) , pp .
+2163 2182 .
+[ 21 ] j.-l. guermond , r. pasquetti , b. popov , entropi viscos method nonlinear conserv law , journal comput physic , 230 ( 2011 ) , pp .
+42484267 .
+[ 22 ] b. guo i. babuska , hp version finit element method , computa- tional mechan , 1 ( 1986 ) , pp .
+2141 .
+[ 23 ] t. l. horvath m. e. mincsov , discret maximum principl interior penalti discontinu galerkin method , central european journal mathemat , 11 ( 2013 ) , pp .
+664679 .
+[ 24 ] p. houston , b .
+senior , e. suli , sobolev regular estim hp- adapt finit element method , numer mathemat advanc appli- cation , f. brezzi , a. buffa , s. corsaro , a. mur , eds. , springer milan , jan. 2003 , pp .
+631656 .
+[ 25 ] v. john p. knobloch , spurious oscil layer diminish ( sold ) method convectiondiffus equat : part review , comput method appli mechan engin , 196 ( 2007 ) , pp .
+21972215 .
+[ 26 ] , spurious oscil layer diminish ( sold ) method convec- tiondiffus equat : part ii analysi finit element , comput method appli mechan engin , 197 ( 2008 ) , pp .
+19972014 .
+[ 27 ] a. klockner , t. warburton , j. s. hesthaven , viscous shock captur- ing time-explicit discontinu galerkin method , mathemat model natur phenomena , 6 ( 2011 ) , pp .
+5783 .
+[ 28 ] l. krivodonova , limit high-ord discontinu galerkin method , journal comput physic , 226 ( 2007 ) , pp .
+879896 .
+[ 29 ] p. kus , p. solin , d. andr , arbitrary-level hang node adapt hp- fem approxim 3d , journal comput appli mathemat , 270 ( 2014 ) , pp .
+121133 .
+[ 30 ] g. lube g. rapin , residual-bas stabil higher-ord fem advection- domin problem , comput method appli mechan engin , 195 ( 2006 ) , pp .
+41244138 .
+[ 31 ] c. mavripli , adapt mesh strategi spectral element method , comput method appli mechan engin , 116 ( 1994 ) , pp .
+7786 .
+29 [ 32 ] j. m. melenk , hp-finit element method singular perturb , springer scienc & busi media , oct. 2002 .
+[ 33 ] j. m. melenk b. i. wohlmuth , residual-bas posteriori error estima- tion hp-fem , advanc comput mathemat , 15 ( 2001 ) , pp .
+311331 .
+[ 34 ] w. f. mitchel , adapt refin arbitrari finite-el space hi- erarch base , journal comput appli mathemat , 36 ( 1991 ) , pp .
+6578 .
+[ 35 ] w. f. mitchel m. a. mcclain , survey hp-adapt strategi ellipt partial differenti equat , recent advanc comput appli mathemat , t. e. simo , ed. , springer netherland , jan. 2011 , pp .
+227 258 .
+[ 36 ] p.-o .
+persson j. perair , sub-cel shock captur discontinu galerkin method , 44th aiaa aerospac scienc meet exhibit , american institut aeronaut astronaut .
+[ 37 ] j. qiu c. shu , comparison troubled-cel indic rungekutta discontinu galerkin method use weight essenti nonoscillatori lim- iter , siam journal scientif comput , 27 ( 2005 ) , pp .
+9951013 .
+[ 38 ] e. suli , p. houston , c. schwab , hp-finit element method hyperbol problem , mathemat finit element applic x , elsevi , june 2000 , p. 432 .
+[ 39 ] m. j. vuik j. k. ryan , multiwavelet troubled-cel indic discontinu detect discontinu galerkin scheme , journal comput physic , 270 ( 2014 ) , pp .
+138160 .
+[ 40 ] h. zhu j. qiu , h-adapt rkdg method troubled-cel indic two-dimension hyperbol conserv law , advanc comput mathe- matic , 39 ( 2012 ) , pp .
+445463 .
+30 introduct interior penalti method convection-diffus equat convection-diffus problem notat weak form interior penalti discontinu galerkin approxim nonlinear stabil : shock captur hp-adapt posteriori error estim adapt algorithm troubled-cel detector refinement-depend troubled-cel detector activ shock captur combin hp-adapt process troubled-cel detector numer result smooth solut propag discontinu propag smooth region parabol boundari layer curv characterist conclus

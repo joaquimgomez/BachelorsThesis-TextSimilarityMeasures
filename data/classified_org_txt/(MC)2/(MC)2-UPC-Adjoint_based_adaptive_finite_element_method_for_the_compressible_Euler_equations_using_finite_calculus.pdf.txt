@@ -1,0 +1,2234 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Adjoint-based Adaptive Finite Element Method For The
+
+Compressible Euler Equations Using Finite Calculus
+
+Mohammad Kouhi∗, Eugenio Oñate and Dimitri Mavriplis
+
+∗Corresponding author: e-mail: kouhi@cimne.upc.edu
+
+August 3, 2015
+
+Abstract
+
+In this paper, an adjoint-based error estimation and mesh adaptation framework is devel-
+oped for the compressible inviscid flows. The algorithm employs the Finite Calculus (FIC)
+scheme for the numerical solution of the flow and discrete adjoint equations in the context
+of the Galerkin finite element method (FEM) on triangular grids. The FIC scheme treats
+the instabilities normally generated in the numerical solution of the fluid equations through
+adding two stabilization terms, called streamline term and transverse term, to the original
+central-based discretized formulation. The non-linear system of equations resulting from the
+flow problem is solved implicitly using a damped Newton’s method accompanied with the
+exact Jacobian matrix. A defect corrected scheme is implemented to iteratively solve the
+linear system of equations related to the adjoint problem benefiting from the transpose of
+the Jacobian matrix. At each iteration, the linear systems of equations resulting from the
+fluid and adjoint problems are solved using a preconditioned GMRES method. Having cal-
+culated the error of a specified output functional locally, an h-refinement methodology based
+on the element subdivision is performed to refine the candidate elements. The quality of the
+numerical results proves the capability of the presented approach for the adjoint-based error
+estimation and mesh adaptation problems in different flow regimes.
+Keywords: Compressible Euler Equations; Stabilized Finite Element; Finite Calculus; Dis-
+crete Adjoint; h-refinement
+
+1 Introduction
+
+Adaptive mesh refinement (AMR) is one of the most efficient means for reducing the overall
+computational cost in the numerical solution of engineering fluid problems modeled by the com-
+pressible Euler and Navier-Stokes equations [1–4]. The basic idea behind AMR is the control of
+the mesh resolution by generating an appropriate fine mesh near the zones where the solution
+error is high and assigning a coarse mesh to the rest of the domain. These techniques are able to
+improve the accuracy of the flow solution around the high-error zones such as boundary layers,
+stagnation points and shock waves. This effect of AMR is more remarkable when the numerical
+solution of the fluid flow is to be employed in an optimization problem [5] where an appropriate
+evaluation of a practical output function such as the lift and drag coefficients becomes important.
+
+The main components of any AMR technique are a reliable error estimator/indicator and a
+mesh refinement methodology. The error estimator/indicator introduces areas from the current
+mesh where refinement is needed whereas the enhancement of the current mesh in these areas
+through adding new elements is the task of the mesh refinement methodology. Based on the so
+called feature-based methods, one can consider the flow gradients [4, 6] or flow curvatures [3, 7, 8]
+as the error indicator for predicting the areas where the refinement is needed. In these areas, the
+fluid flow mostly has some complex features such as shock waves, boundary layers and stagnation
+points. Although this family of error indicators can predict the flow features accurately, it does
+not necessarily provide an efficient estimation of the practical engineering outputs (such as lift
+and drag) used widely during the design optimization process.
+
+1
+
+*Manuscript
+
+Click here to view linked References
+
+http://ees.elsevier.com/aescte/viewRCResults.aspx?pdf=1&docID=5110&rev=1&fileID=114579&msid={CFA1DA03-D628-4F0F-9BD6-420256DA7386}
+
+
+In order to resolve this drawback, another family of error estimators/indicators, called output-
+based methods, has been developed recently employing the sensitivities of a specified output
+functional with respect to the flow solution where these sensitivities are predicted through the
+implementation of the adjoint variables. The general idea of these methods is to estimate the
+global error of the output functional as an inner product of the flow residuals and the adjoint
+variables a posteriori. For this end, two sets of problems, namely the flow problem and the
+adjoint problem, need to be solved on the current coarse mesh. The numerical solution of the
+flow equations provides the flow variables, whereas the adjoint variables are evaluated through the
+numerical solution of the adjoint equations.
+
+Besides the application of output-based methods for estimating the global error, they can be
+considered as a local error indicator to find the zones where the functional error is more than a
+desirable tolerance. The application of the output-based error estimation and mesh adaptation
+methods using adjoint variables in the context of finite volume is studied by Pierce and Giles [9] for
+the Poisson equation as well as the nonlinear quasi-one-dimensional Euler equations. At the fol-
+lowing, Pierce and Giles [10] investigated this approach for two-dimensional inviscid shocked prob-
+lems. The extension of this method for compressible two-dimensional inviscid and viscous flows is
+delivered by Venditti and Darmofal [11, 12]. Park [13] employed this approach for incompressible
+and compressible three-dimensional Euler problems whereas Nemec et al. [14] demonstrated this
+for complex geometries. In the context of the finite element discretization method, Becker and
+Rannacher [15] developed adjoint-based error estimation and mesh adaptation for viscous fluid
+flow, chemically reactive flow, elasto-plasticity and radiative transfer problems. At the following,
+Rannacher [16] studied this approach for incompressible viscous flows whereas Giles et al. [17]
+demonstrated the capability of this technique for drag and lift coefficients of a body immersed into
+a incompressible viscous flow. Based on the recent developments of the discontinuous Galerkin
+finite element method in fluid problems, several implementations of the adjoint-based error esti-
+mation are presented for inviscid [18, 19] and turbulent viscous [20] flows. A comprehensive review
+of adjoint-based error estimation and mesh refinement methods in computational fluid dynamics
+for laminar and Reynolds-averaged Navier-Stokes applications is carried out by Fidkowski and
+Darmofal [21].
+
+The adjoint equations are originally developed by Pironneau [22] and Jameson [23] for com-
+putation of derivatives of an output functional to be employed for gradient-based optimization
+methods. In order to solve the adjoint equations two different procedures, namely the continuous
+formulation and the discrete formulation, have been developed by researchers. In the continu-
+ous formulation the continuous form of the governing flow equations is first differentiated and
+then discretized, whereas the discrete formulation directly differentiates the discretized form of
+the governing equations. Although the continuous adjoint formulation has the advantage of less
+memory requirements, the implementation of the discrete formulation has been increased recently
+due to the simplicity of implementation and the unique capability of providing the exact discrete
+sensitivities. This simplicity comes from the fact that the transpose of the global Jacobian matrix,
+already calculated for the implicit solution of the flow equation, is utilized directly for the solution
+of the linear system of equations which arise from the discrete adjoint formulation. On the other
+hand, the treatment of the boundary conditions is quite straightforward in the case of the discrete
+formulation. A comprehensive comparison of the continuous and discrete adjoint formulations is
+presented in [24].
+
+An important property related to the adjoint-based error estimation is adjoint consistency
+which ensures that the discrete adjoint problem is a consistent discretization of the continuous
+one. In the error estimation problems, an adjoint inconsistent discretization can lead to unsmooth
+or oscillatory adjoint solutions with discontinuity between elements that delivers adaptation in un-
+necessary areas leading to suboptimal convergence rate of functional estimates [25]. In particular,
+for the discretizations based on the high-order elements, enforcing adjoint consistency is essential
+for obtaining superconvergent functional estimates [26, 27]. There has been a significant inter-
+est in studying the adjoint consistency in the context of finite difference method [28], stabilized
+continuous finite element method [27, 29–33] and discontinuous Galerkin finite element method
+[25, 34, 35].
+
+Regarding any central-based discretized formulation employed for the flow equations, it is a
+well established fact that the addition of stabilization terms to the original system of equations re-
+
+2
+
+
+
+sulting from the discretization of the flow problem is essential to avoid the occurrence of numerical
+instabilities [36, 37]. Within the family of the stabilization techniques, the so called Finite Cal-
+culus (FIC) method has been successfully implemented for the stabilization of advective-diffusive
+transport and incompressible fluid flow problems [38–43]. Recently, a FIC-based stabilized for-
+mulation for the numerical solution of the compressible Euler and Navier-Stokes equations has
+been proposed in the context of Galerkin FEM by Kouhi and Oñate [44, 45]. Since the systems
+of equations obtained from both the flow and the adjoint problems contain the same eigenvalues,
+the stabilization techniques developed for the flow equations can be implemented for solving the
+adjoint problem as well.
+
+In this article, we extend the implementation of the FIC-FEM stabilized formulation presented
+in [44] to develop an adjoint-based error estimation and mesh adaptation framework for compress-
+ible inviscid flows. The system of equations obtained from the discretization of the flow problem
+is solved implicitly using a damped Newton’s method benefiting from the exact Jacobian matrix
+proposed in [45]. At each iteration step, the inherent linear system resulting from the flow equa-
+tions is solved with a preconditioned GMRES method. The transpose of the Jacobian matrix,
+already constructed from the discretized flow equations containing the FIC-based stabilization
+terms, is employed for the solution of the adjoint equations. In the paper, the adjoint consistency
+of the proposed stabilized method is investigated through checking smoothness and continuity of
+the adjoint solutions obtained for the presented examples.
+
+AMR is performed here by using the local contributions of the functional error in conjunction
+with the classical h-refinement methodology, where each candidate element is divided into four by
+dividing each edge of the element into two. In order to demonstrate the capability of the FIC-FEM
+stabilized formulation in output-based error estimation problems, several examples are presented.
+By studying the quality of the results, it is found that the presented stabilized formulation provides
+enough stability for the numerical solution of the adjoint equations yielding an accurate estimation
+of the functional error during the AMR process.
+
+The layout of the paper is the following: In Section 2 the compressible Euler equations along
+with the FIC-FEM stabilized formulation are described. Section 3 presents the derivation of the
+output-based error estimation and adaptive mesh refinement method using adjoint variables. The
+solution strategies for the flow and adjoint equations are explained in Section 4. The numerical
+results corresponding to the proposed error estimation and mesh refinement strategy for different
+output functional in subsonic, transonic and supersonic flow regimes are shown in Section 5.
+Finally, conclusions and general remarks are summarized in Section 6.
+
+2 Flow Problem Formulation
+
+2.1 Governing Equations
+
+The two-dimensional (2D) compressible Euler equations, including the mass balance, momentum
+and energy equations, are considered in this work and can be written in the following conservative
+form
+
+∂U
+
+∂t
++
+
+∂Fi
+
+∂xi
+= 0 for i = 1, 2 (1)
+
+where U and F are the vectors of conservative variables and inviscid fluxes, respectively, which
+can be expressed as
+
+U =
+
+
+
+
+
+
+
+
+
+ρ
+
+ρv1
+ρv2
+ρe
+
+
+
+
+
+
+
+
+
+Fi =
+
+
+
+
+
+
+
+
+
+ρvi
+ρv1vi + pδi1
+ρv2vi + pδi2
+vi(p+ ρe)
+
+
+
+
+
+
+
+
+
+(2)
+
+where ρ, v, p and e are the density, the velocity vector, the static pressure and the total internal
+energy per unit mass, respectively. In the above equations i, j = 1, nd where nd is the number of
+space dimensions (nd = 2 for 2D flow problems) and δij is the Kronecker delta.
+
+By defining R as the ideal gas constant and neglecting chemical reactions, the equation of state
+for an ideal gas has the following form
+
+p = RρT (3)
+
+3
+
+
+
+where T is the temperature of the gas that can be obtained from
+
+T =
+γ − 1
+
+R
+(e− 0.5vjvj) (4)
+
+where γ is the ratio of specific heats.
+The standard sum convention for terms with repeated indices is adopted in the paper, unless
+
+otherwise specified.
+
+2.2 Derivation of the Stabilized Formulation
+
+We define rd, rmi and re as the differential form of the mass balance equation, the ith momentum
+equation and the energy equation, respectively, as
+
+rd :=
+∂ρ
+
+∂t
++
+
+∂(ρvj)
+
+∂xj
+(5)
+
+rmi :=
+∂(ρvi)
+
+∂t
++
+
+∂
+
+∂xj
+(ρvivj) +
+
+∂p
+
+∂xi
+(6)
+
+re :=
+∂(ρe)
+
+∂t
++
+
+∂
+
+∂xj
+(vj(ρe+ p)) (7)
+
+with i, j = 1, nd. The stabilized formulation of the Euler equations based on the FIC scheme,
+presented in [44, 45], is obtained as
+
+rd −
+1
+
+2
+(1− β)ℓ sgn(rd)
+
+∇ρ
+
+|∇ρ|
+.∇rd −
+
+1
+
+2
+βℓ
+
+1
+
+|v|+ vc
+∇.(∇.Fmi) = 0 (8)
+
+rmi −
+1
+
+2
+(1− β)ℓ sgn(rmi)
+
+∇vi
+
+|∇vi|
+.∇rmi −
+
+1
+
+2
+βℓ
+
+v
+
+|v|+ vc
+.∇rmi = 0 (9)
+
+re −
+1
+
+2
+(1− β)ℓ sgn(re)
+
+∇T
+
+|∇T |
+.∇re −
+
+1
+
+2
+βℓ
+
+v
+
+|v|+ vc
+.∇re = 0 (10)
+
+where β is a constant coefficient ranging between zero and one, ℓ is the characteristic element size,
+
+sgn(.) denotes the sign function, |v| is the modulus of the velocity vector and vc =
+√
+
+γ
+p
+ρ
+is the
+
+speed of the sound in the flow. Also, ∇.Fmi is the divergence of the flux term corresponding to
+the ith momentum equation which may be expressed as
+
+∇.Fmi =
+∂(ρvivj)
+
+∂xj
++
+
+∂p
+
+∂xi
+(11)
+
+More details on the derivation of Equations (8), (9) and (10) can be found in [44, 45].
+
+2.3 Space Discretization
+
+In order to discretize the obtained stabilized formulation, the finite element method (FEM) is
+selected where the vector of the conservative variables U can be approximated by Ū as
+
+U ≃ Ū =
+n
+∑
+
+J=1
+
+NJŪJ (12)
+
+where vector Ū contains the approximate values corresponding to the conservative variables. N
+is the matrix of the interpolating shape functions, subscript index J represents the value for the
+J th node and n is the number of nodes in each element. In our work we use 3-noded triangles
+with linear shape functions (n = 3).
+
+4
+
+
+
+Let us define the approximate residual vectors r̄ and r̄st as well as the vector of the approxi-
+
+mated primitive variables
+¯̃
+U as
+
+r̄ =
+
+
+
+
+
+
+
+
+
+r̄d
+r̄m1
+r̄m2
+r̄e
+
+
+
+
+
+
+
+
+
+r̄st =
+
+
+
+
+
+
+
+
+
+1
+r̄m1
+r̄m2
+r̄e
+
+
+
+
+
+
+
+
+
+¯̃
+U =
+
+
+
+
+
+
+
+
+
+ρ̄
+
+v̄x
+v̄y
+T̄
+
+
+
+
+
+
+
+
+
+(13)
+
+where r̄d, r̄mi and r̄e denote the finite element residuals for the mass balance equation, the ith
+momentum equation and energy equation, respectively.
+
+By applying the Galerkin FEM to Equations (8), (9) and (10), integrating the inviscid flux
+terms as well as the stabilization terms by parts and neglecting the boundary contributions of the
+stabilization terms, the general form of the FIC-FEM stabilized formulation for a problem domain
+Ω with a boundary Γ = ∂Ω is obtained as
+
+∫
+
+Ω
+
+N.
+∂Ū
+
+∂t
+dΩ−
+
+∫
+
+Ω
+
+∂N
+
+∂xi
+.F̄idΩ+
+
+∫
+
+Γ
+
+N.F̄ndΓ
+
++
+
+nel
+∑
+
+e
+
+∫
+
+Ωe
+
+τ
+
+2
+Ai
+
+∂N
+
+∂xi
+.r̄stdΩ+
+
+nel
+∑
+
+e
+
+∫
+
+Ωe
+
+1
+
+2
+S
+∂N
+
+∂xi
+.
+∂
+¯̃
+U
+
+∂xi
+dΩ = 0
+
+(14)
+
+where nel is the number of the elements and i = 1, 2 (for 2D problems). In the above equation,
+F̄i and F̄n are the ith component of the approximated inviscid flux vector F̄ and the vector of
+inviscid boundary flux along the normal vector to the boundary, respectively.
+
+Also in Equation (14), τ = βℓ
+|v̄|+v̄c
+
+is the stabilization parameter and the stabilization matrices
+
+S and Ai are
+
+S = (1− β)ℓ
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+|r̄d|
+
+|∇
+˜̄
+U1|
+
+0 0 0
+
+0
+|r̄m
+
+1
+|
+
+|∇
+˜̄
+U2|
+
+0 0
+
+0 0
+|r̄m
+
+2
+|
+
+|∇
+˜̄
+U3|
+
+0
+
+0 0 0
+|r̄e|
+
+|∇
+˜̄
+U4|
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Ai =
+
+
+
+
+
+
+
+
+
+∇.F̄mi 0 0 0
+0 v̄i 0 0
+0 0 v̄i 0
+0 0 0 v̄i
+
+
+
+
+
+
+
+
+
+(15)
+
+where ∇.F̄mi is the divergence of the approximate finite element flux terms corresponding to the
+ith momentum equation.
+
+More details on the derivation of the proposed stabilized formulation as well as the treatment of
+the boundary conditions can be found in [44, 45]. As discussed in these references, the assumptions
+β = 0.5 and ℓ = (2Ωe)1/2 with Ωe being the element area for 2D problems give suitable results.
+Hence, the same assumptions are taken in this work.
+
+By neglecting the temporal derivative term (i.e. the first term) in Equation 14 and assem-
+bling the elemental contributions from Equation (14), the steady-state flow residual vector RI(Ū)
+corresponding to the Ith global node can be defined as
+
+RI(Ū) = −
+
+∫
+
+Ω
+
+∂NI
+
+∂xi
+.F̄idΩ+
+
+∫
+
+Γ
+
+NI .F̄ndΓ
+
++
+
+nel
+∑
+
+e
+
+∫
+
+Ωe
+
+τ
+
+2
+Ai
+
+∂NI
+
+∂xi
+.r̄stdΩ+
+
+nel
+∑
+
+e
+
+∫
+
+Ωe
+
+1
+
+2
+S
+∂NI
+
+∂xi
+.
+∂
+¯̃
+U
+
+∂xi
+dΩ = 0
+
+(16)
+
+where subscript index I represents the values corresponding to the Ith node.
+Equation (16) is a non-linear system of equations whose solution is presented in Section 4.1.
+
+5
+
+
+
+3 Output-based AMR
+
+3.1 Adjoint-based Error Estimation Formulation
+
+Consider a spatial domain of resolution H related to a coarse mesh discretization. The corre-
+sponding output functional JH is defined as
+
+JH = JH(ŪH) (17)
+
+where ŪH is the vector of the discrete flow variables obtained by satisfying the non-linear flow
+equation RH(ŪH) = 0 on the coarse mesh.
+
+Also, consider a spatial domain of resolution h related to a fine mesh discretization. By
+assuming Ūh as the solution of the flow equation Rh(Ūh) = 0 on the fine mesh, an output
+functional Jh can be expressed with the form
+
+Jh = Jh(Ūh) (18)
+
+Let us define ŪHh as the flow variables obtained on the spatial domain of resolution H projected
+onto the spatial domain of resolution h. In general, the Taylor expansion of the functional Jh (only
+considering the linear terms) using the solution ŪHh can be expressed as
+
+Jh(Ūh) ≃ Jh(Ū
+H
+h ) +
+
+[
+
+∂Jh
+
+∂Ūh
+
+]
+
+Ū
+H
+
+h
+
+(Ūh − Ū
+H
+h ) (19)
+
+where Jh(Ū
+H
+h ) is the functional value on the fine mesh calculated using Ū
+
+H
+h . Also, vector
+
+[
+
+∂Jh
+∂Ūh
+
+]
+
+Ū
+H
+
+h
+
+contains the sensitivities of the functional on the fine mesh respect to the flow variables evaluated
+using ŪHh .
+
+We define now εt as the linear approximation of the total error in the functional evaluated on
+the fine mesh using projected solutions from the coarse one. By using Equation (19), εt can be
+represented as
+
+εt = Jh(Ūh)− Jh(Ū
+H
+h ) =
+
+[
+
+∂Jh
+
+∂Ūh
+
+]
+
+Ū
+H
+
+h
+
+(Ūh − Ū
+H
+h ) (20)
+
+It is to be mentioned that ŪHh is not essentially equal to Ūh, since Ū
+H
+h does not necessarily
+
+satisfy Rh(Ū
+H
+h ) = 0. Hence, Equation (20) yields nonzero values for εt.
+
+The same expansion as the one introduced for the Jh(Ūh) in Equation (19) can be written for
+the flow residual Rh(Ūh) with the following form
+
+Rh(Ūh) ≃ Rh(Ū
+H
+h ) +
+
+[
+
+∂Rh
+
+∂Ūh
+
+]
+
+Ū
+H
+
+h
+
+(Ūh − Ū
+H
+h ) (21)
+
+where
+[
+
+∂Rh
+∂Ūh
+
+]
+
+Ū
+H
+
+h
+
+is the Jacobian matrix of the flow residual, presented in Equation (16), evaluated
+
+using ŪHh on the fine mesh. By considering the fact thatRh(Ūh) = 0, the solution error (Ūh−Ū
+H
+h )
+
+appeared in Equation (21) can be represented as
+
+(Ūh − Ū
+H
+h ) ≃ −
+
+[
+
+∂Rh
+
+∂Ūh
+
+]
+
+−1
+
+Ū
+H
+
+h
+
+R(ŪHh ) (22)
+
+Substituting Equation (22) into (20) gives the following expression for the total functional
+error
+
+εt = −
+
+[
+
+∂Jh
+
+∂Ūh
+
+]
+
+Ū
+H
+
+h
+
+[
+
+∂Rh
+
+∂Ūh
+
+]
+
+−1
+
+Ū
+H
+
+h
+
+Rh(Ū
+H
+h ) (23)
+
+The above equation states that the evaluation of the total functional error εt involves the
+inversion of the Jacobian matrix which is a process with high computational cost. In order to
+avoid inverting the Jacobian matrix directly, the discrete adjoint system of equations is defined as
+
+[
+
+∂Rh
+
+∂Ūh
+
+]T
+
+Ū
+H
+
+h
+
+(Λh)ŪH
+h
+
+=
+
+[
+
+∂Jh
+
+∂Ūh
+
+]T
+
+Ū
+H
+
+h
+
+(24)
+
+6
+
+
+
+where (Λh)ŪH
+h
+
+is the vector of the discrete adjoint variables calculated using ŪHh on the fine mesh.
+
+Using Equation (24), the formulation of the total functional error presented in Equation (23) can
+be transformed to
+
+εt = −(Λh)
+T
+Ū
+
+H
+
+h
+
+Rh(Ū
+H
+h ) (25)
+
+From Equation (25) it can be deduced that the evaluation of the total functional error on the
+fine mesh would require the adjoint variables obtained by solving the discrete adjoint equations
+(24) on the fine mesh. As the main idea is to prevent solving any system of equations on the
+fine mesh, an approximation of (Λh)ŪH
+
+h
+
+is made by solving the adjoint equations initially on the
+coarse mesh as
+
+[
+
+∂RH
+
+∂ŪH
+
+]T
+
+ΛH =
+
+[
+
+∂JH
+
+∂ŪH
+
+]T
+
+(26)
+
+where ΛH is the vector containing the discrete adjoint variables corresponding to the coarse mesh.
+Once the discrete adjoint variables are computed on the coarse mesh, the projection of these values
+from the coarse mesh to the fine mesh, called ΛhH , is calculated to be used as an approximation
+of the discrete adjoint variables corresponding to the fine mesh.
+
+Let us define the computed functional error correction εc as an approximation of the total
+functional error εt. Using the projected adjoint variables, εc can be expressed as
+
+εt ≃ εc = −(Λ
+H
+h )
+
+T
+Rh(Ū
+
+H
+h ) (27)
+
+The above equation states that εc is obtained as the inner product between the vector of projected
+adjoint variables and the vector of nonzero residuals. In contrast to Equation (25), the above
+equation demonstrates that the functional error can be approximately predicted without any
+solution on the fine mesh by just solving the flow and adjoint equations on the coarse mesh along
+with the proper projection procedure to the fine mesh level.
+
+It is to be noted that the same projection operator as the one implemented for the flow solution
+is utilized for the discrete adjoint variables in this work. The solution method of Equation (26) is
+presented in Section 4.2.
+
+3.2 Adaptation Criteria
+
+The element-wise error indicator Ik is defined as the contribution of εc corresponding to the kth
+element belonging to the coarse mesh H with the form
+
+Ik = −(Λ
+H
+h )
+
+T
+kRh(Ū
+
+H
+h ) (28)
+
+In fact, the local error indicator of element k is obtained as the inner product of the projected
+adjoint variables and local residual vectors both computed in subelements of element k in the
+coarse mesh. In order to find the candidate elements for the refinement, an adaptation criteria is
+employed where the local error indicator of each element is compared to an elemental allowable
+error as
+
+|Ik| >
+Etol
+
+Nel
+(29)
+
+where Etol denotes a positive desirable error tolerance and Nel is the number of elements in the
+coarse mesh. The elements satisfying Equation (29) are considered as the candidate elements for
+the refinement.
+
+3.3 Refinement Methodology
+
+The mesh refinement methodology implemented in this work is an isotropic h-refinement scheme
+where each candidate element is subdivided into four subelements. The element subdivision
+process is carried out through the insertion of extra points at the edge midpoints suited for
+the triangle elements.
+
+For the candidate elements connected to a curved boundary, the new inserted point at the
+edge belonging to the boundary must be adjusted to the original boundary surface. For this
+reason, a correction on the coordinates of the new surface points is performed at the end of each
+
+7
+
+
+
+adaptation level by implementing a quintic spline interpolation based on the coordinates of the
+original surface points. The geometrical interpretation of this process is depicted in Figure 1.
+
+��������	������
+�	���������
+������������
+
+(a)
+
+��������	������
+�	���������
+������������
+
+(b)
+
+Figure 1: Isotropic mesh refinement near a curved boundary. (a) Before correction, (b) After
+correction.
+
+Some consideration must be taken into account regarding the possibly generated hanging points
+where one or two edges of an element are split by the new points due to its candidate neighbour
+elements. For the case of an element with one hanging point, an anisotropic refinement into two
+subelements is implemented, whereas an element with two hanging points is divided regularly into
+four subelements, as shown in Figure 2. In order to keep the quality of the mesh, any anisotropic
+subelement is not allowed to be refined further. If any such element requires refinement, both
+anisotropic subelements are removed and the original coarse element is isotropically refined into
+four subelements.
+
+��� ��� ���
+
+Figure 2: Mesh refinement process around the hanging nodes: (a) Isotropic refinement of two
+candidate elements, (b) Isotropic refinement of an element due to the presence of two handing
+nodes, (c) Anisotropic refinement of elements due to the presence of one hanging node.
+
+3.4 AMR Procedure
+
+The error estimation and mesh adaptation algorithm presented in this work consists of the fol-
+lowing steps
+1- Obtain the flow variables ŪH by solving Equation (16) for the coarse mesh.
+2- Compute the adjoint variables ΛH by solving Equation (26) for the coarse mesh using the
+converged flow solution ŪH .
+3- Evaluate the projected flow variables Ūh
+
+H
+and the projected adjoint variables Λh
+
+H
+.
+
+4- Find the candidate elements for refinement through Equations (28) and (29).
+5- If the candidate elements exist, refine the coarse mesh and then return to step 1.
+
+8
+
+
+
+The AMR procedure finishes when there is no candidate element for refinement. It is to be
+mentioned that after each refinement level the solution of the flow and adjoint equations can be
+started using the previously projected variables.
+
+The projection of the flow and adjoint variables from the current coarse mesh to the embedded
+fine one can be performed by either a linear or a higher-order interpolation method. The former
+requires only the values of the solution at the coarse mesh points, whereas the latter involves the
+calculation of the least-squares gradients of the solution. In this work, suitable results have been
+obtained by using a simple linear interpolation method.
+
+4 Solution Method
+
+In this section, the solution strategies for the flow and adjoint equations given in Equations (16)
+and (26), respectively, are presented. Since the exact Jacobian matrix is needed for the solution
+of the adjoint equations (See Equation (26)), an iterative Newton linearization scheme with an
+exact Jacobian matrix has been chosen as the solution approach for the nonlinear flow equations
+(i.e. Equation (16)). The adjoint equation given in Equation (26) corresponds to a linear system
+of equations. Although this system can be solved directly, an iterative scheme is presented by
+transferring these equations to defect correction form.
+
+4.1 Flow Solution
+
+The solution of Equation (16) is performed using following Newton’s method
+[
+
+∂R
+
+∂Ū
+
+]n
+
+∆Ūn = −R(Ūn)
+
+∆Ūn = Ūn+1 − Ūn
+
+(30)
+
+where n is the iteration number. At the beginning of the solution, the Newton solver may diverge
+due to the start-up transients caused by a poor initial flow field. In order to overcome this problem,
+a damped Newton’s method is implemented where the diagonal terms of the Jacobian matrix are
+augmented with a damping factor as
+
+[
+
+δIJMIJ
+
+∆tI
++
+
+∂RI
+
+∂ŪJ
+
+]n
+
+∆ŪnJ = −RI(Ū
+n)
+
+MIJ =
+
+∫
+
+Ω
+
+NINJdΩ
+
+(31)
+
+with I, J = 1, nnode where nnode is the total number of nodes in the mesh and M is the global
+mass matrix. In the above equation, the nodal (and pseudo) time step ∆tI is the minimum of the
+elemental time steps corresponding to the elements connected to node I. The elemental time step
+∆te for a candidate element e is determined from a uniform CFL number over the domain as
+
+∆te = CFL
+ℓ
+
+|v̄|+ v̄c
+(32)
+
+In this work the CFL number is responsible for adding a scalable damping term during the
+startup process and has the following form
+
+CFL(n) = min(αnCFL(0), CFL(max)) (33)
+
+where CFL(0) = 0.01, CFL(max) = 1012 and α is selected between 1.1 and 10.0 depending on
+the problem. Using this pattern for the CFL, by increasing the pseudo time step to a large value
+(CFL = 1012) the damped unsteady terms vanish and the desired quadratic convergence rate of
+the Newton’s method is achieved.
+
+The linear system of equations (31) consisting of a sparse block matrix is solved using GMRES
+method described in [46]. In order to improve the convergence of this method, the preconditioned
+GMRES algorithm based on a block-diagonal preconditioning has been implemented in this work.
+
+9
+
+
+
+4.2 Adjoint Solution
+
+Omitting the subscript H from Equation (26), the defect correction form of the adjoint equation
+can be written as
+
+[
+
+δIJMIJ
+
+∆tI
++
+
+[
+
+∂R
+
+∂Ū
+
+]T
+]k
+
+∆ΛkJ =
+
+[
+
+∂J
+
+∂Ū
+
+]T
+
+−
+
+[
+
+∂R
+
+∂Ū
+
+]T
+
+Λ
+k
+
+∆Λk = Λk+1 −Λk
+
+(34)
+
+where k denotes the iteration number. As seen in the above equation, the pseudo time term is
+added to the diagonal components of the Jacobian matrix to provide enough diagonal dominance
+for the system solver. This is the direct benefit of the defect correction method. The final
+converged solution for Λ can be obtained by continuously increasing the time step ∆tI using the
+pattern presented in Equations (32) and (33). Similarly as for the flow equations, a block-diagonal
+preconditioned GMRES method is used for the solution of the linear system of equations at each
+iteration step of Equation (34).
+
+By comparing the iterative schemes developed for the solution of the flow and adjoint equations
+(Equations (31) and (34)), it is found that both systems have the same coefficient matrix with the
+exception of the transpose. Since the transpose operation does not change the eigenvalues of the
+coefficient matrix, both systems have the same convergence.
+
+In the current work, a hand-coded linearization of the Galerkin terms as well as the stabilization
+terms in Equation (16) has been implemented giving a sparse Jacobian matrix for the unstructured
+triangular meshes used in this work. The Jacobian matrix based on the final steady-state flow
+solution is stored to be employed for the solution of the adjoint equation.
+
+5 Numerical Results
+
+In this section, a set of numerical examples related to the proposed adjoint-based error estimation
+and adaptive mesh refinement is presented. The first example involving a subsonic flow over a
+Gaussian bump consists of three parts. Firstly, the behavior of the proposed FIC-FEM formulation
+in conjunction with the presented damped Newton solver is validated. In the second part, the
+accuracy of the adjoint-based error estimates is examined by comparing the predicted errors
+obtained from the total functional error εt and the computed functional error correction εc with
+the true functional error between two mesh levels. In the last part, the adapted meshes related to
+the presented element-wise error indicator Ik as well as the error convergence graphs are delivered
+by considering the lift coefficient as the output functional. In the next two examples, the capability
+of this method in the presence of shock waves is evaluated by studying a transonic flow over
+NACA0012 airfoil and a supersonic flow over a ramp. At each adaptation level of the presented
+examples, the computations of the flow solver as well as the adjoint solver are advanced until a
+fully convergence of the corresponding residuals to machine zero (1E − 14 for double precision) is
+obtained.
+
+The error convergence graphs show the reduction of the functional error versus the number of
+nodes or the accumulative computational cost in CPU time. The computational cost corresponding
+to each refinement level consists of the consumed CPU time for the solution of the flow and adjoint
+equations in all previous refinement levels plus an extra CPU time due to the flow solution on the
+current adapted mesh. The initial solution at each refinement level is obtained by interpolating
+the converged flow solution of the previous level from the old mesh to the new one. Regarding
+the uniform mesh refinement, the computational cost includes only the CPU time for a single flow
+solution on the uniformly refined mesh.
+
+5.1 Example I: Subsonic Flow Over a Bump
+
+A compressible flow with freestream Mach number of 0.35 passing a Gaussian bump is studied
+here to demonstrate the effectiveness of the developed error estimation and adaptation technique
+
+10
+
+
+
+in a subsonic regime. The bump with a maximum thickness of 0.08 is placed at the center of
+the bottom side of a rectangular domain with height 2 and length 4. The initial unstructured
+mesh, shown in Figure 3, contains 952 nodes and 1902 3-noded triangles. The slip wall condition
+is imposed at the bottom boundary, whereas the far field condition is applied at the rest of the
+boundaries.
+
+Figure 3: Subsonic flow over a bump. Initial uniform mesh.
+
+1- Flow and Adjoint Solver
+
+Since the main part of the error estimation and mesh adaptation procedure is the solution of the
+flow and adjoint equations, the characteristics of the solver in terms of the accuracy and efficiency
+can affect the quality of the final results during the adaptive mesh refinement process. For this
+reason, by assuming the lift coefficient as the functional, the numerical results corresponding to
+the solution of the flow and adjoint equations on the initial mesh are delivered here to demonstrate
+the behavior of the proposed FIC-FEM formulation in conjunction with the presented damped
+Newton solver.
+
+The obtained contours corresponding to the pressure and the first component of the momentum
+adjoint variables are presented in Figure 4 indicating that the proposed FIC-FEM formulation
+gives rise to a smooth solution in all the domain even using a coarse mesh. The smoothness and
+the continuity of the adjoint solution near the boundaries and between the elements demonstrate
+the consistency of the presented discrete adjoint formulation based on the FIC-FEM scheme.
+
+The convergence graphs of the flow and adjoint solvers using the presented iterative strategy
+are shown in Figure 5 where an almost quadratic convergence is obtained for the flow solver after
+some iterations where the initial transients disappear and the CFL number can be slowly allowed
+to grow to its maximum value. As expected, an almost similar convergence rate to machine zero
+is obtained for the adjoint equation.
+
+11
+
+
+
+��������
+
+(a)
+
+������
+
+(b)
+
+Figure 4: Subsonic flow over a bump. (a) Pressure contours and (b) the first component of the
+momentum adjoint variables corresponding to the initial uniform mesh.
+
+���������	
+
+�
+�
+�
+��
+��
+
+��
+�
+
+� � � �� �� ��
+
+�����	��
+
+�����	��
+
+�����	��
+
+�����	��
+
+�����	��
+
+�����	��
+
+�����	��
+
+�����	��
+
+��������
+
+�������������
+
+����������������
+
+Figure 5: Subsonic flow over a bump. Convergence of the flow and adjoint equations for the initial
+coarse mesh.
+
+2- Error prediction
+
+The delivered scheme for error prediction is validated here for a set of meshes, called coarse,
+intermediate and fine mesh, consisting of 952, 3728 and 14852 nodes, respectively, where the lift
+coefficient is considered as the output functional. The idea is to compare the true functional error
+deduced from two mesh levels with the ones obtained from the total functional error εt and the
+computed functional error correction εc.
+
+12
+
+
+
+The obtained values for the functional error corresponding to the lift coefficient as well as the
+ratio values are demonstrated in Table 1. It can be seen that the ratio values obtained by both
+total and corrected errors asymptotically approach unity as the spatial resolution is increased. As
+expected, better compatibility between the true and total error values is observed for the finest
+discretization. The demonstrated ratio values corresponding to the total error indicate that con-
+sidering only the linear term in the Taylor expansion of the functional, presented in Equation
+(19), is capable to predict the functional appropriately. On the other hand, the ratio values cor-
+responding to the corrected errors illustrate that the proposed projection method for the adjoint
+variables is able to predict the functional error accurately.
+
+Table 1: Subsonic flow over a bump. Comparison of the total and corrected adjoint predicted
+errors with the exact error for the lift coefficient.
+
+Mesh exact εt εc εt/exact εc/exact
+Coarse 0.001562 0.001649 0.0012332 1.055 0.788
+Intermediate 0.0004081 0.0004233 0.0003507 1.037 0.859
+Fine 0.0001115 0.0001150 0.0001050 1.031 0.941
+
+3- Mesh adaptation
+
+After the validation of the flow and adjoint solvers as well as the error prediction scheme, the
+efficiency of the developed adjoint-based mesh adaptation strategy using the presented local error
+indicator Ik is studied for this example by considering the lift coefficient as the output functional.
+The procedure begins by using the uniform mesh, previously shown in Figure 3, while the ter-
+mination criteria is the attainment of a tolerance of order 4 × 10−4 in the output functional. In
+this example, the true functional is computed from a solution of an adapted mesh obtained from
+refining the initial mesh while a relative functional difference of order 10−5 is considered between
+two consecutive adaptive meshes.
+
+Figure 6 depicts the final adaptive mesh obtained after four levels of refinement consisting of
+1472 nodes. This figure indicates that the major part of the refinement is performed around the
+bump where the solution has a greater influence on the output functional. Also, the obtained
+pressure contours as well as the first component of the momentum adjoint variables corresponding
+to the final adapted mesh are presented in Figure 7 demonstrating that the final adapted mesh
+delivers smoother contours in comparison with the ones obtained by the initial uniform mesh
+plotted in Figure 4.
+
+Figure 6: Subsonic flow over a bump. Final adapted mesh for lift coefficient after four refinement
+levels.
+
+13
+
+
+
+��������
+
+(a)
+
+������
+
+(b)
+
+Figure 7: Subsonic flow over a bump. (a) Pressure contours and (b) the first component of the
+momentum adjoint variables corresponding to the final adapted mesh.
+
+Figures 8a shows the convergence of the lift error versus the number of nodes where the error
+convergence of the adaptive method is compared with that of the uniform method. This figure
+demonstrates that the adaptive approach at each refinement level gives rise to relatively similar
+functional error as the uniform approach by using a lower number of nodes. As an example, we can
+mention that the number of nodes generated by the adaptive approach at the second refinement
+level is about 8% of the one generated by the uniform approach.
+
+��� ���� �����
+
+��
+
+����
+
+��
+
+����
+
+��
+
+����
+
+�
+�
+�
+��
+��
+
+��
+�
+��
+
+	���
+
+�
+�
+
+������������
+
+����������������������
+
+(a)
+
+� ��� ���� ���� ���� ���� ����
+
+��
+
+����
+
+��
+
+����
+
+��
+
+����
+
+�
+�
+�
+��
+��
+
+��
+�
+��
+
+	
+�
+
+������������
+
+����������������������
+
+��������������
+
+(b)
+
+Figure 8: Subsonic flow over a bump. Comparison of the error convergence in the lift coefficient
+related to the uniform and adaptive mesh refinement versus (a) number of nodes and (b) CPU
+time (sec).
+
+A more impressive behaviour can be seen in Figure 8b for the CPU time comparison where
+the adaptive approach demands much less CPU time than the uniform method due to the smaller
+
+14
+
+
+
+number of nodes resolved during the mesh adaptation process. Again, by comparing of the CPU
+time of both approaches at the second refinement level, it can be seen that the computational cost
+consumed by the adaptive approach is about 11% of the one used by the uniform method. It is
+worth noting that the CPU time of the adaptive approach involves the flow and adjoint solutions
+in all the previous levels, while that only the CPU time of a single flow solution on the refined
+mesh is counted for the case of uniform approach.
+
+Figure 9 depicts the convergence graphs for the lift coefficient corresponding to the adaptive
+refinement by using the error estimation and the correction term as well as the one related to the
+uniform refinement. It is observed that at each refinement level the adaptive mesh can produce
+nearly the same functional value as the one obtained from the uniform mesh. Although, the
+agreement between the corrected functional values and the calculated ones from the adaptive mesh
+is poor for the primary refinement levels, a better agreement is obtained in the last refinement
+levels. This improvement is due to the fact that the corrected terms are calculated from the
+projected adjoint variables and by reducing the mesh size the projection process delivers better
+agreement between the exact and the projected values.
+
+��� ����
+������
+
+������
+
+������
+
+������
+
+�����	
+
+����������	�
+
+��������������������	�
+
+�����������������������
+
+����
+
+�
+�
+�
+�
+��
+�
+�
+�
+�
+
+Figure 9: Subsonic flow over a bump. Convergence graphs of the lift coefficient using different
+refinement methods.
+
+5.2 Example II: Transonic Flow Past NACA0012
+
+In this example, a transonic flow past NACA0012 with the flow conditionsM
+∞
+
+= 0.8 and α = 1.25◦
+
+is considered involving a strong shock wave at the upper side of the airfoil and a weak shock wave
+at the lower side. The assumed circular domain is initially discretized into 3820 nodes and 7258
+3-noded triangles. The analysis domain as well as the details of the initial mesh near the airfoil
+are shown in Figure 10. The slip wall condition is imposed at the airfoil surface, whereas the far
+field condition is applied at the outer boundary. An adjoint-based mesh adaptation for the lift
+coefficient is utilized in this example with a tolerance of 10−4.
+
+15
+
+
+
+(a) (b)
+
+Figure 10: Transonic flow past NACA0012. (a) Initial mesh generated in the circular domain; (b)
+Details of the mesh near the airfoil.
+
+The obtained pressure contours corresponding to the initial mesh are shown in Figure 11a
+demonstrating that the FIC-FEM formulation is able to capture the shock waves appearing in
+the solution of the flow equation. The contours related to the first component of the momentum
+adjoint variables obtained on the initial mesh are depicted in Figure 11b. Results show that the
+FIC-FEM formulation can yield a smooth and continuous solution for the adjoint equations which
+demonstrates the consistency of the discrete adjoint formulation presented.
+
+��������
+
+(a)
+
+������
+
+(b)
+
+Figure 11: Transonic flow past NACA0012. (a) Pressure contours and (b) the first component of
+the momentum adjoint variables corresponding to the initial mesh.
+
+The generated adaptive meshes after four refinement levels is shown in Figure 12a containing
+8231 nodes and 15874 3-noded triangles. As expected, the mesh refinement is mostly carried out
+near the zones with higher importance like the leading and the trailing edges as well as the vicinity
+of the shock waves. The obtained pressure contours after four refinement levels is presented in
+Figure 12b. Note that the refined mesh delivers sharper shock waves in comparison to the initial
+mesh.
+
+16
+
+
+
+(a)
+
+��������
+
+(b)
+
+Figure 12: Transonic flow past NACA0012. Final results after four refinement levels for the lift
+coefficient: (a) adapted mesh and (b) pressure contours.
+
+The capability of the proposed error estimation and correction method is demonstrated in
+Figure 13a where the convergence graphs of the lift values obtained from different refinement
+methods versus the number of nodes are depicted. The comparison of the convergence graphs
+related to the uniform and the adaptive mesh refinement confirms that the functional values at
+each refinement level obtained from the adaptive method are in close agreement with the ones
+obtained from the uniform refinement method. Also, the predicted values at each refinement level
+provided by the added correction term are compared to the ones calculated on the adapted mesh.
+Although at the primary levels large differences are observed between the corrected functional
+values and the calculated ones, the corrected values become closer to the calculated ones as the
+refinement advances such that at the last refinement level these two values are coincident.
+
+Figure 13b shows the CPU time comparison between the uniform and the adaptive meshes. It
+can be seen that large amount of savings are enhanced by using the adjoint-based mesh refinement.
+As an example, the computational cost of the second refinement level related to the adaptive mesh
+is about 17.5% of the one related to the uniform mesh.
+
+17
+
+
+
+���� ����� ������
+�����
+
+�����
+
+�����
+
+�����
+
+�����
+
+�����
+
+����������	�
+
+��������������������	�
+
+�����������������������
+
+�
+�
+�
+�
+��
+�
+�
+�
+�
+
+����
+
+(a)
+
+� ���� ���� ���� ���� �����
+�����
+
+����	
+
+�����
+
+����	
+
+���	�
+
+���		
+
+����������	�
+
+��������������������	�
+
+�
+�
+�
+�
+��
+�
+�
+�
+�
+
+����������	���
+
+(b)
+
+Figure 13: Transonic flow past NACA0012. Convergence graphs of the predicted lift coefficient
+using different refinement methods versus (a) number of nodes and (b) CPU time (sec).
+
+5.3 Example III: Supersonic Flow Over Ramp
+
+In this example, a flow with Mach number 3.0 passing over a ramp of angle 19◦ is considered to
+investigate the effectiveness of the proposed adjoint-based error estimation and mesh adaptation
+method for a supersonic regime where both the flow and the adjoint variables are discontinuous.
+The analysis domain and the initial mesh consisting of 345 nodes and 612 3-noded triangles are
+shown in Figure 14a. The slip boundary condition is applied to the bottom side of the domain
+whereas the far field condition is imposed on the rest of the boundaries. The drag coefficient is
+chosen as the output functional in this example where a tolerance of 10−4 is used.
+
+The contours of the pressure and the first component of the momentum adjoint variables are
+shown in Figures 14b and 14c, respectively, demonstrating that the FIC-FEM formulation can
+successfully capture the shock wave generated in the flow solution as well as the discontinuities
+appearing in the adjoint solution.
+
+(a)
+
+��������
+
+(b)
+
+������
+
+(c)
+
+Figure 14: Supersonic flow past from ramp. (a) Initial mesh; (b) Pressure contours and (c)
+contours of the first component of the momentum adjoint variables corresponding to the initial
+mesh.
+
+Based on the assumed tolerance, five refinement levels are carried out in this example. The
+generated adaptive mesh after one, three and five refinement levels consisting of 603, 1601 and
+2336 nodes, respectively, are shown in Figure 15. It is to be noted that although the shock wave
+is expanded across the domain length entirely, the refinement is carried out just in the zones with
+
+18
+
+
+
+higher effect on the drag coefficient. That is the benefit of implementing the adjoint-based mesh
+adaptation that does not allow refinement to be performed in the parts of the domain that have
+minimal impact on the output functional.
+
+(a) (b) (c)
+
+Figure 15: Supersonic flow past from ramp. The obtained refined meshes after (a) one, (b) three
+and (c) five refinement levels.
+
+The pressure contours are depicted in Figure 16 where the direct effect of the adjoint-based
+mesh adaptation on improving the resolution of the shock wave can be observed. Also, the obtained
+contours related to the first component of the momentum adjoint variables are shown in Figure
+17.
+
+��������
+
+(a)
+
+��������
+
+(b)
+
+��������
+
+(c)
+
+Figure 16: Supersonic flow past from ramp. The obtained pressure contours after (a) one, (b)
+three and (c) five refinement levels.
+
+19
+
+
+
+������
+
+(a)
+
+������
+
+(b)
+
+������
+
+(c)
+
+Figure 17: Supersonic flow past from ramp. The obtained contours of the first component of the
+momentum adjoint variables after (a) one, (b) three and (c) five refinement levels.
+
+Figure 18a shows the convergence history of the calculated drag values in conjunction with
+the predicted values delivered by the addition of the correction term. This graph confirms the
+capability of the adjoint-based mesh refinement approach for delivering almost the same functional
+value as the uniform refinement method at each refinement level using fewer number of nodes. It
+can be also deduced from this graph that although the adjoint solution involves discontinuities,
+the accordance of the corrected functional values with the calculated ones progresses by advancing
+in the refinement process.
+
+As for the previous examples, Figure 18b depicts the convergence graph of the functional using
+the uniform and the adaptive mesh versus CPU time. The capability of the adjoint-based mesh
+refinement in reducing computational cost can be observed. For instance, the adaptive mesh is
+able to produce nearly the same functional value in the third refinement level by consuming almost
+13.5% of the computational cost versus that for the uniform mesh.
+
+��� ���� ����� ������
+�����
+
+�����
+
+�����
+
+�����
+
+�����
+
+�����
+
+����������	�
+
+��������������������	�
+
+�����������������������
+
+�
+�
+�
+�
+��
+�
+�
+�
+�
+
+����
+
+(a)
+
+�� ��� ���� �����
+
+�����
+
+�����
+
+�����
+
+�����
+
+�����
+
+�����
+
+����������	�
+
+��������������������	�
+
+�
+�
+�
+�
+��
+�
+�
+�
+�
+
+����������	���
+
+�
+
+(b)
+
+Figure 18: Supersonic flow past from ramp. Convergence graphs for the drag coefficient using
+different refinement methods versus (a) number of nodes and (b) CPU time (sec).
+
+6 Concluding Remarks
+
+An adjoint-based error estimation and a mesh adaptation methodology have been developed and
+applied to compressible inviscid flow problems in the subsonic, transonic and supersonic regimes.
+By solving the flow and adjoint equations on the coarse mesh, the error related to a desirable
+
+20
+
+
+
+functional was calculated as the inner product of the local residual and the adjoint variables. A
+linear interpolation has been employed to project the flow and adjoint variables from the coarse
+mesh into the fine one. For the mesh adaptation procedure, an error indicator based on the local
+contributions of the functional error in conjunction with the classical h-refinement methodology
+was used. The flow equations were discretized using the FIC-FEM stabilized formulation. A
+damped Newton method was implemented to solve the discretized flow equations whereas the
+adjoint equations were introduced in a defect corrected form. At each iteration step, the linear
+system of equation deduced from the flow and adjoint equations were solved by using a precondi-
+tioned GMRES solver. The efficiency of the proposed method was demonstrated by comparing the
+presented method with a uniform mesh refinement in terms of the number of nodes as well as the
+CPU time. The development of the current method for 3D turbulent viscous flows will be consid-
+ered as the next task in this research. Another extension of this work will be the implementation
+of high-order finite element methods with a p-refinement methodology.
+
+7 Acknowledgements
+
+The first author would like to acknowledge the financial support provided by CIMNE. This research
+was partially supported by the SAFECON project of the European Research Council.
+
+References
+
+[1] T.J. Baker. Mesh adaptation strategies for problems in fluid dynamics. Finite Elements Anal.
+Design, 25:243–273, 1997.
+
+[2] R. Löhner. Mesh adaptation in fluid mechanics. Engineering Fracture Mechanics,
+50(5/6):819–847, 1995.
+
+[3] J. Peraire, M. Vahdati, K. Morgan, and O. C. Zienkiewicz. Adaptive remeshing for compress-
+ible flow computations. Journal of Computational Physics, 72:449–466, 1987.
+
+[4] O. C. Zienkiewicz and J. Wu. Automatic directional refinement in adaptive analysis of com-
+pressible flows. Int. J. Numer. Meth. Eng., 72:2189–2210, 1994.
+
+[5] M. Kouhi, D. S. Lee, G. Bugeda, and E. Oñate. Multi-objective aerodynamic shape optimiza-
+tion using MOGA coupled to advanced adaptive mesh refinement. Computers and Fluids,
+88:298–312, 2013.
+
+[6] S.Z. Pirzadeh. An adaptive unstructured grid method by grid subdivision, local remeshing,
+and grid movement. AIAA Paper, 99-3255, 1999.
+
+[7] P. Nithiarasu and OC. Zienkiewicz. Adaptive mesh generation for fluid mechanics problems.
+Int J Numer. Met.h Eng., 47:629–662, 2000.
+
+[8] D. Li G. Xia and C.L. Merkle. Anisotropic grid adaptation on unstructured meshes. AIAA
+Paper, 2001-0443, 2001.
+
+[9] N. A. Pierce and M. Giles. Adjoint Recovery of Superconvergent Functionals from PDE
+Approximations. SIAM Review, 42(2):247–264, 2000.
+
+[10] N. A. Pierce and M. Giles. Adjoint and defect error bounding and correction for functional
+estimates. J. Comput. Phys., 200:769794, 2004.
+
+[11] D.A. Venditti and D.L. Darmofal. Grid adaptation for functional outputs: application to
+two-dimensional inviscid flows. J. Comput. Phys., 176:40–69, 2002.
+
+[12] D.A. Venditti and D.L. Darmofal. Anisotropic grid adaptation for functional outputs: appli-
+cation to two-dimensional viscous flows. J. Comput. Phys., 187:22–46, 2003.
+
+21
+
+
+
+[13] M.A. Park. Adjoint-based, three-dimensional error prediction and grid adaptation. AIAA
+Paper, 2002-3286, 2002.
+
+[14] M. Nemec, M.J. Aftosmis, and M. Wintzer. Adjoint-based adaptive mesh refinement for
+complex geometries. AIAA Paper, 2008-725, 2008.
+
+[15] R. Becker and R. Rannacher. An optimal control approach to a posteriori error estimation
+in finite element methods. Acta Numerica 2000, 2001.
+
+[16] R. Rannacher. Adaptive Galerkin finite element methods for partial differential equations. J.
+Comput. Appl. Math., 128:205233, 2001.
+
+[17] M.B. Giles, M.G. Larson, M. Levenstam, and E. Suli. Adaptive error control for finite element
+approximations of the lift and drag in a viscous flow. Technical Report NA 97/06, Oxford
+Computing Laboratory, Oxford, 1997.
+
+[18] R. Hartmann and P. Houston. Adaptive discontinuous Galerkin finite element methods for
+the compressible Euler equations. J. Comput. Phys., 183:508532, 2002.
+
+[19] L. Wang and D. J. Mavriplis. Adjoint-based h-p adaptive discontinuous Galerkin methods
+for the 2D Euler equations. J. Comput. Phys., 228(20):7643–7661, 2009.
+
+[20] N. K. Burgess and D. J. Mavriplis. An hp-adaptive discontinuous galerkin method for the
+navier-stokes equations. In Proceedings of the SIAM Conference on Computational Science
+and Engineering, Reno, NV, Mar 2011. Society of Industrial and Applied Mathematics, 2011.
+
+[21] K.J. Fidkowski and D.L. Darmofal. Review of Output-Based Error Estimation and Mesh
+Adaptation in Computational Fluid Dynamics. AIAA Journal, 49(4):673–694, 2011.
+
+[22] O. Pironneau. Optimum design in fluid mechanics. Journal of Fluid Mechanics, 64(1):97–110,
+1974.
+
+[23] A. Jameson. Aerodynamic design via control theorgy. Journal of Scientific Computing,
+3(3):233–260, 1998.
+
+[24] S. Nadarajah and A. Jameson. A Comparison of the Continuous and Discrete Adjoint Ap-
+proach to Automatic Aerodynamic Optimization. AIAA 38th Aerospace Sciences Meeting
+and Exhibit, AIAA-2000-0667, Reno, NV, January 2000.
+
+[25] J. Lu. An a Posteriori Error Control Framework for Adaptive Precision Optimization Us-
+ing Discontinuous Galerkin Finite Element Method. Ph.D. Thesis, Massachusetts Inst. of
+Technology, Cambridge, MA, 2005.
+
+[26] N. A. Pierce and M. B. Giles. Adjoint Recoveryof Superconvergent Functionals from PDE
+Approximations. SIAM Review, 42(2):247–264, 2011.
+
+[27] S. S. Collis and M. Heinkenschloss. Analysis of the Streamline-Upwind/Petrov-Galerkin
+Method Applied to the Solution of Optimal Control Problems. Technical report TR02-01,
+Department of Computational and Applied Mathematics, Rice University, Houston, TX,
+2002.
+
+[28] J. E. Hicken and D. W. Zingg. Dual consistency and functional accuracy: a finite-difference
+perspective. Journal of Computational Physics, 256:161–182, 2014.
+
+[29] J.E. Hicken, J. Li, O. Sahni, and A.A. Oberai. Adjoint consistency analysis of residual-based
+variational multiscale methods. Journal of Computational Physics, 255:393–406, 2013.
+
+[30] M. Braack. Optimal Control in Fluid Mechanics by Finite Elements with Symmetric Stabi-
+lization. SIAM Journal on Control and Optimization, 48(2):672–687, 2009.
+
+[31] E. Cyr, J. Shadid, and T. Wildey. Approaches for adjoint-based a posteriori analysis of
+stabilized finite element methods. SIAM Journal on Scientific Computing, 36:A766–A791,
+2014.
+
+22
+
+
+
+[32] P. Houston, R. Rannacher, and E. Suli. A posteriori error analysis for stabilised finite element
+approximations of transport problems. Comput. Methods Appl. Mech. Engrg, 190:1483–1508,
+2000.
+
+[33] R. Rannacher. A posteriori error estimation in least-squares stabilized finite element schemes.
+Comput. Methods Appl. Mech. Engrg, 166:99–114, 1998.
+
+[34] R. Hartmann. Adjoint Consistency Analysis of Discontinuous Galerkin Discretizations. SIAM
+J. Numer. Anal., 45(6):2671–2696, 2007.
+
+[35] R. Hartmann and P. Houston. An Optimal Order Interior Penalty Discontinuous Galerkin Dis-
+cretization of the Compressible NavierStokes Equations. Journal of Computational Physics,
+227(22):9670–9685, 2008.
+
+[36] J. Donea and A. Huerta. Finite Element Methods for Flow Problems. Wiley, 2003.
+
+[37] O.C. Zienkiewicz, R.L. Taylor, and P. Nithiarasu. The Finite Element Method. Vol. 3 Fluid
+Dynamics. Elsevier, 6th Edition, 2005.
+
+[38] E. Oñate. Derivation of stabilized equations for advective-diffusive transport and fluid flow
+problems. Comput. Meth. Appl. Mech. Engng., 151:233–267, 1998.
+
+[39] E. Oñate, J. Garcia, and S. Idelsohn. An alpha-adaptive approach for stabilized finite element
+solution of advective-diffusive problems with sharp gradients. New Adv. in Adaptive Comp.
+Met. in Mech., P. Ladeveze and J.T. Oden (Eds.), Elsevier, 1998.
+
+[40] E. Oñate and M. Manzan. A general procedure for deriving stabilized space-time finite
+element methods for advective-diffusive problems. Int. J. Num. Meth. Fluids., 31:203–221,
+1999.
+
+[41] E. Oñate. A stabilized finite element method for incompressible viscous flows using a finite
+increment calculus formulation. Comp. Meth. Appl. Mech. Eng, 182:355–370, 2000.
+
+[42] E. Oñate and J. Garcia. A finite element method for fluid-structure interaction with surface
+waves using a finite calculus formulation. Comput. Meth. Appl. Mech. Eng., 191:635–660,
+2001.
+
+[43] E. Oñate. Possibilities of finite calculus in computational mechanics. Int. J. Num. Meth.
+Engng, 60:255–281, 2004.
+
+[44] M. Kouhi and E. Oñate. A stabilized finite element formulation for high-speed inviscid
+compressible flows using Finite Calculus. Int. J. Num. Meth. Fluids, 74(12):872–897, 2013.
+
+[45] M. Kouhi and E. Oñate. An implicit finite element formulation for compressible Navier-Stokes
+equations using Finite Calculus. Computational Mechanics, 56(1):113–129, 2015.
+
+[46] Y. Saad and M. H. Schultz. GMRES: A Generalized Minimum Residual Algorithm for Solving
+Nonsymmetric Linear Systems. SIAM Journal of Scientific and Statistical Computing, 7:856–
+869, 1986.
+
+23
+
+
+
+LaTeX Source Files
+
+Click here to download LaTeX Source Files: adjoint_amr_cor.zip
+
+http://ees.elsevier.com/aescte/download.aspx?id=114578&guid=227e84bb-2219-409d-98b1-8212b7af403f&scheme=1
+

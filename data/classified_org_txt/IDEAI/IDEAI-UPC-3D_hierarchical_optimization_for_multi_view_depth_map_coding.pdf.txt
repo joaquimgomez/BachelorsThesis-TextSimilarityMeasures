@@ -1,0 +1,2169 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+
+ 
+
+UPCommons 
+Portal del coneixement obert de la UPC 
+
+http://upcommons.upc.edu/e-prints 
+
+ 
+ 
+
+Aquesta és una còpia de la versió author’s final draft d'un article 
+publicat a la revista Multimedia Tools and Applications . 
+
+URL d'aquest document a UPCommons E-
+prints: http://hdl.handle.net/2117/113183 
+
+ 
+ 
+
+Article publicat / Published paper: 
+
+Duch, M.M., Varas, D., Rubió, J.R.M. et al. (2017) 3D hierarchical 
+optimization for multi-view depth map coding. Multimedia tools and 
+applications, p. 1-26. Doi: 10.1007/s11042-017-5409-z 
+ 
+ 
+ 
+ 
+
+http://upcommonsdev.upc.edu/
+http://upcommonsdev.upc.edu/
+http://upcommons.upc.edu/e-prints
+http://hdl.handle.net/2117/113183
+
+
+Noname manuscript No.
+(will be inserted by the editor)
+
+3D hierarchical optimization for Multi-view depth
+map coding
+
+Marc Maceira · David Varas ·
+Josep-Ramon Morros · Javier
+Ruiz-Hidalgo · Ferran Marques
+
+Received: date / Accepted: date
+
+Abstract Depth data has a widespread use since the popularity of high reso-
+lution 3D sensors. In multi-view sequences, depth information is used to sup-
+plement the color data of each view. This article proposes a joint encoding of
+multiple depth maps with a unique representation. Color and depth images
+of each view are segmented independently and combined in an optimal Rate-
+Distortion fashion. The resulting partitions are projected to a reference view
+where a coherent hierarchy for the multiple views is built. A Rate-Distortion
+optimization is applied to obtain the final segmentation choosing nodes of the
+hierarchy. The consistent segmentation is used to robustly encode depth maps
+of multiple views obtaining competitive results with HEVC coding standards.
+
+Marc Maceira Duch
+EDIFICI D5 DESPATX 120 C. JORDI GIRONA, 1-3 BARCELONA SPAIN
+Tel.: +34-93-4011627
+E-mail: marc.maceira@upc.edu
+
+David Varas
+EDIFICI D5 DESPATX 120 C. JORDI GIRONA, 1-3 BARCELONA SPAIN
+Tel.: +34-93-4011627
+E-mail: david.varas@upc.edu
+
+Josep-Ramon Morros
+EDIFICI D5 DESPATX 008 C. JORDI GIRONA, 1-3 BARCELONA SPAIN
+Tel.: +34-93-4015765
+E-mail: ramon.morros@upc.edu
+
+Javier Ruiz-Hidalgo
+EDIFICI D5 DESPATX 008 C. JORDI GIRONA, 1-3 BARCELONA SPAIN
+Tel.: +34-93-4015765
+E-mail: j.ruiz@upc.edu
+
+Ferran Marques
+EDIFICI D5 DESPATX 111 C. JORDI GIRONA, 1-3 BARCELONA SPAIN
+Tel.: +34-93-4016450
+E-mail: ferran.marques@upc.edu m
+
+
+
+2 Marc Maceira et al.
+
+1 Introduction
+
+Advances on 3D media technology and the progressively affordable 3D displays
+have consolidated 3D video technology in recent years. Video applications
+such as 3D television and Free-viewpoint selection are able to provide depth
+perception and interactivity to the user. One way to provide this functionality
+is by capturing the scene from multiple viewpoints.
+
+Multi-view video coding systems can be classified among those that only
+use color data and the ones that also make use of depth data for each viewpoint.
+Among the ones using only color data stand out the respective extensions of
+the H.264 [19] and HEVC [28] to multi-view environments. The multi-view
+video coding (MVC) [13] was developed as the extension of H.264 standard
+while HEVC has the multi-view video coding extension (MV-HEVC) [29]. Both
+extensions use inter view prediction to exploit the multi-view redundancy of
+the N cameras employed.
+
+On the other hand, in the multi-view plus depth (MVD) representation,
+depth data of each viewpoint is encoded in addition of color data. The depth
+information is encoded in depth maps, where a per-pixel distance between the
+scene and the camera is stored. The addition of depth maps allows the render-
+ing of virtual views in-between of the encoded camera positions (DIBR) [3].
+
+The efficient compression of depth data has been studied to exploit the dis-
+tinct characteristics of depth maps from standard video images. Depth maps
+present sharp edges separating areas with smooth transitions which are not
+well represented with the block-based transformations of natural video coders.
+The 3D extension of the high efficiency video coding (3D-HEVC) [17] presented
+coding tools for both color and depth maps. For depth maps, 3D-HEVC uses
+the similarity between color and depth data with the motion parameter inher-
+itance.
+
+In MVD sequences, depth data associated with each view heavily augments
+the amount of data needed to store the 3D information. In this context, ex-
+tracting a 3D model of a scene from multiple depth maps removes redundant
+information of the views while obtaining a unique 3D representation of the
+scene.
+
+In this work, we are inspired in segmentation-based coding systems [30],
+where images (in our case, depth maps) are segmented into homogeneous re-
+gions; the resulting texture and contours of the partition are encoded and
+sent to the receiver. However, classical segmentation-based systems would use
+an independent segmentation of each view and the encoding process would
+also be performed independently for each view. We propose to build a global
+3D hierarchical representation of the scene that is able to jointly model the
+various views in a MVD sequence. This new representation allows exploiting
+the spatial redundancy among views to efficiently compress the depth maps
+of multiple viewpoints. We start by constructing color and depth partitions
+for each of the views. These partitions are combined into a single hierarchi-
+cal representation. The depth information of each resulting region is modeled
+as a 3D plane, thus providing a global 3D hierarchical scene representation.
+
+
+
+3D hierarchical optimization for Multi-view depth map coding 3
+
+This 3D planar representation is a convenient model for the smooth regions
+with sharp transitions in depth maps [16]. As long as the sharp edges in depth
+maps lay in-between regions, the planar models can approximate the texture
+information compactly.
+
+A Rate-Distortion optimization process over the previous hierarchy (hier-
+archical optimization) allows obtaining an optimal (for a given bit budget)
+coding partition for each one of the different views automatically. Depth map
+coding is then performed by sending the plane coefficients for all regions of the
+view’s coding partitions, as well as the contours of these partitions. This set of
+partitions is consistent (regions representing the same objects in the different
+views are given the same labels) because the cameras parameters are used
+through all the process. Having a global multiview model implies that corre-
+sponding regions from different views can be represented with a unique planar
+model, thus reducing the number of bits necessary. Figure 1 shows a graphical
+overview of the proposed multi-view representation and coding scheme.
+
+LPcolor
+
+Partition	
+hierarchy	(Href)
+
+Single	View	
+Optim.
+
+Single	View	
+Optim.
+
+Single	View	
+Optim.
+
+Multi-view
+Optim.
+
+Reference	view	
+partition	(Pref)
+
+Coding	of	regions	&	contoursHierarchical	representationCombination	of	color	and	
+depth	partitions
+
+Texture	(3D	plane	coeffs)
+&	contours	1
+
+Texture	(3D	plane	coeffs)
+&	 contours	Nv
+
+Initial	partition	in	
+reference	view	(Pref)
+
+ini
+
+Coding	partition	(Pcod)(Pi
+
+Coding	partition	(Pcod)(PNv
+
+Depth	partition	LPdepthLP1
+
+Depth	partition	LPdepthLPNv
+
+LP1Color	partition	 LPcolor
+
+LPNvColor	partition
+
+Fig. 1 Overview of the multi-view optimal partition. Color & depth map images of multiple
+views are projected and combined in a reference view, where a hierarchy of regions is built
+(each layer shows a cut of the hierarchy). A Rate-Distortion optimization finds the optimal
+partition in the hierarchy which defines a coding partition in each of the input views. The
+coding partitions are used to encode the depth maps of each input view.
+
+One of the problems of segmentation based coding systems is the high cost
+of sending the contours. In this work, we will assume that color images are
+already encoded and available at the decoder. Thus, depth boundaries can be
+approximated by a color partition without cost, because the color partition can
+be reproduced from the color image at the decoder. Only the approximation
+error (depth contours not present in the color image) will need to be explicitly
+sent, at a reduced coding cost.
+
+The main contributions of this paper are:
+
+
+
+4 Marc Maceira et al.
+
+– A consistent segmentation of the multiple views and a hierarchical repre-
+sentation of the different views.
+
+– A new global scene representation based on a 3D planar model obtained
+from a hierarchical optimization.
+
+– A method to efficiently encode the depth maps from multiple views, based
+on the global scene representation.
+
+The outline of the paper is as follows. Related work in 3D planar repre-
+sentations and multi-view depth coding is studied in Section 2. In Section 3,
+the generic hierarchical optimization method is presented. In Section 4, the
+consistent multi-view depth map representation is introduced. Details of en-
+coding the information of the multiple views are found in Section 5. Finally, we
+discuss the experimentation results and conclusion in Section 6 and Section 7
+respectively.
+
+2 Related Work
+
+The use of 3D planar models to represent the structure of a scene has been
+explored in multiple applications. 3D planar models have shown to be useful
+to extract the structure of a scene using only color data in a stereo configu-
+ration [27], to co-segment multiple view objects [9], to recover the structure
+of the scene from panoramic sequences [15] or from a multi-camera environ-
+ment [34]. Multiple planes are detected and tracked in Time of Flight depth
+images using a layered scene decomposition in [24].
+
+More similar to our configuration, in [1] the 3D point cloud from multiple
+RGB-D cameras is projected to the 3D world and used to generate a set
+of 3D planar patches consistent among the views. This patches are obtained
+with a Markov random fields using a voxelization of the scene and several
+3D planar candidates. More recently, in [32] the same problem is tackled in
+a wide-baseline stereo configuration. Each image is segmented independently
+and a fitting process assigns a 3D plane to each region. Those planes are used
+as candidates in an energy-minimization problem, which optimizes the error
+of the model and the smoothness over neighboring regions.
+
+Segmenting point clouds coming from RGB-D sensors has been tackled as
+a part of semantic labeling of indoor scenes and scene understanding. In [26] a
+hierarchical segmentation is proposed using depth clues to infer the relations
+between objects and using priors to classify the different objects. In [21] an
+initial superpixel segmentation is used to compute kernel descriptors such as
+gradient, color and surface normal to build a hierarchy that is used to assign
+the labels to each node using markov random field. Gupta et al. [8] generalize
+the gPb-ucm hierarchical segmentation to incorporate depth information for
+semantic segmentation. Lately, in [33] an unsupervised framework where joint
+feature learning and encoding is proposed for RGB-D scene labeling.
+
+Planar models have been also proposed for depth representation on 3DTV
+applications. In [20] a Markov random field model that mimics a Rate-Distortion
+
+
+
+3D hierarchical optimization for Multi-view depth map coding 5
+
+trade-off is used in a stereo configuration to obtain a co-segmentation with pla-
+nar approximations. A single reference MVD format is also proposed to fuse
+the information of the stereo views in a single reference.
+
+Some depth map coding techniques propose improvements of the depth
+coding modes of 3D-HEVC. In [11] an intra prediction framework with a flexi-
+ble block partition scheme. Depth edges that cannot be predicted are explicitly
+encoded. Similarly, in [14] a complete overhaul of the 3D-HEVC is defined. It
+incorporates planar signals to represent the smooth changes of flat scene ar-
+eas, a new intra-picture prediction for this model and an improved wedgelet
+segmentation.
+
+A joint color and depth coding for multi-view video is proposed in [6].
+Making use of DIBR, the color and depth information is projected obtaining a
+inter-view prediction. This inter-view prediction has missing pixels which are
+inpainted using minimum explicitly encoding.
+
+In [12] we proposed a region based coding of depth maps for a single-view.
+There we defined depth hierarchies to segment a depth map from one RGB-D
+image but only a flat partition was explored for coding. In the current paper
+we extend the depth hierarchies defined in [12] to deal with multiple views on
+an optimal fashion.
+
+3 Rate-Distortion hierarchy optimization
+
+In this Section, we define a generic methodology to find the optimal partition
+in a hierarchy in terms of Rate-Distortion. The notation used is consistent
+with [31], where an optimization on multiple hierarchies is used for semantic
+segmentation of sequences. The optimization presents two benefits. Firstly,
+the encoding parameters are selected optimally for each region and secondly,
+the optimal final number of regions needed to encode the depth map can be
+automatically obtained. In this work, we will use this Rate-Distortion opti-
+mization in various steps of the proposed algorithm.
+
+3.1 Hierarchy Definition
+
+The representation of a hierarchy can be depicted with nodes as shown in
+Figure 2. Each node of the hierarchy represents a region in the image, and the
+parent node of a set of regions represents their merging. In all stages we assume
+that this hierarchy is binary (regions are merged by pairs). This structure is
+named as Binary Partition Tree [23]. Commonly, such hierarchies are created
+using a greedy region merging algorithm that, starting from an initial leaf
+partition LP , iteratively merges the most similar pair of neighboring regions
+according to a region similarity criteria.
+
+The merging process ends when the whole image is represented by a single
+region, which is the root of the tree. The set of mergings that creates the tree,
+from the leaves to the root, is denoted as merging sequence (Figure 2). In a
+
+
+
+6 Marc Maceira et al.
+
+R1 R3
+
+R2 R4
+
+R5
+R3
+
+R4
+
+R5 R6 R7
+
+R1 R2 R3 R4
+
+R5
+
+R1 R2 R3 R4
+
+R5
+
+R1 R2
+
+R6
+
+R3 R4
+
+R7
+
+R5
+
+R1 R2
+
+R6
+
+R3 R4
+
+Fig. 2 Hierarchical representation of an image. At each step the two most similar regions
+are merged.
+
+binary hierarchy, a merging sequence contains N partitions, where N is the
+number of leaves (regions in LP ). This is the set of partitions that is usually
+analyzed when working with hierarchies. Still, once the hierarchy is built, an
+analysis on the whole hierarchy could obtain partitions which are not included
+in the merging sequence (for instance, merging regions 3 and 5 in the example
+of Figure 2)
+
+3.2 Rate-Distortion Problem Definition
+
+The Rate-Distortion problem consists in finding the optimal coding that min-
+imizes the distortion D of the image with the constraint that the total cost
+R is below a given budget [18]. In our case, this optimal coding consists in
+finding the optimal partition to describe the image.
+
+In a hierarchical representation, the Rate-Distortion function has to be
+defined (see [18]) with R and D additive measures in the hierarchy H:
+
+RH =
+∑
+leaves
+
+Rk (1)
+
+DH =
+∑
+leaves
+
+Dk (2)
+
+Each node of the hierarchy can be encoded using a set of coding techniques
+generating a set of Rk and Dk for each region k. In this work, the distortion
+measure Dk is computed as the Square Error between the estimated texture
+values and the real ones:
+
+Dk =
+
+Nk∑
+n=1
+
+|ĝ(n)− g(n)|2 (3)
+
+where Nk is the number of pixels of the region k, g is the texture value of
+the pixels of the region and ĝ is the estimated values with the texture coding
+option.
+
+Typically, in region-based coding, two terms are needed to encode the
+region. The cost to store the position of the contours of the region (RCk ) and
+
+
+
+3D hierarchical optimization for Multi-view depth map coding 7
+
+the cost to store the texture coefficients (RTk ). Hence, for each region their rate
+cost Rk is defined as:
+
+Rk = R
+C
+k +R
+
+T
+k (4)
+
+The constrained problem can be converted into an equivalent unconstrained
+one by using Lagrangian relaxation [18]. Cost and distortion are combined us-
+ing a positive multiplier λ that defines the trade-off between the distortion
+allowed and the number of bits spent:
+
+Jk = Dk + λRk (5)
+
+The best partition can be obtained by using a bottom-up local analysis at
+each node:
+
+Jparent ≤ Jch1 + Jch2 (6)
+
+where Jch is the cost of the cheapest path under the child node.
+
+3.3 Hierarchy Optimization
+
+The objective of the hierarchy optimization is to find the optimal boundary
+configuration that defines a partition using nodes from the hierarchy H using
+the previously defined Rate-Distortion constraints.
+
+Inspired by [2, 7, 31], we propose to solve the Rate-Distortion optimiza-
+tion problem as a quadratic semi-assignment problem (QSAP), restricting the
+solution to nodes of the hierarchy. Partitions are defined in terms of bound-
+aries between regions and hierarchical constraints are added to solve the QSAP
+problem with a linear programming relaxation approach. The QSAP approach
+have two main advantages over other common approaches such as the dy-
+namic programming solution. Firstly, QSAP defines the relation between re-
+gions (whether they are merged or not) in terms of their common contour.
+This relation allows to represent the contour cost of the union of two regions
+easily. Secondly, QSAP can be generalized to work with multiple hierarchies,
+which would allow applying the procedure defined in this work to relate frames
+of multiple time instants in order to remove temporal redundancy.
+
+This optimization can be stated as a constrained minimization problem:
+
+min
+B
+
+tr(QB) = min
+B
+
+∑
+m,n
+
+qm,nbm,n (7)
+
+s.t. bm,n ∈ {0, 1} ∀m,n bm,m = 0
+
+where matrix Q is an affinity matrix that measures the quality of all the
+possible partitions in the hierarchy H. Matrix B encodes those partitions as a
+binary matrix, where elements bm,n = 1 if the boundary between leaves m and
+n is active (regions m and n have not been merged) and bm,n = 0 otherwise.
+
+
+
+8 Marc Maceira et al.
+
+In our case, the elements in matrix Q can be defined to mimic the Rate-
+Distortion Lagrangian decision as:
+
+qch1,ch2 = Jparent − (Jch1 + Jch2) (8)
+
+This allows to introduce the local node analysis of Equation (6) into the
+global framework optimization of Equation (7). The idea is that nodes with
+minimum Lagrangian J are favored, thus leading to the optimal partition for
+a given λ. Figure 3 presents an example of Lagrangian optimization over the
+hierarchy presented in Figure 2. The algorithm examines all the nodes in the
+hierarchy (nodes 1-7) and selects the ones that present a minimum Lagrangian
+(nodes 3, 4 and 5). The final partition (shown in the right side of the figure)
+is composed of the regions represented by these nodes.
+
+R7
+
+R5
+
+R1 R2
+
+R6
+
+R3 R4
+
+R5
+
+R3
+
+R4
+
+Fig. 3 Example of Lagrangian optimization over the hierarchy presented in Figure 2. The
+optimization process activates the nodes with minimum Lagrangian J (regions 3, 4 and 5),
+thus finding the best partition for a given λ.
+
+The hierarchy H contributes in two aspects to the optimization process.
+Firstly, it defines the mergings between regions of its leaves partition LP to
+form clusters. Secondly, it also includes the order in which these regions should
+be merged to represent each node of the tree. As in [31], these restrictions are
+encoded using two coupled constraints per node. The first constraint imposes
+that all the variables representing boundaries between two siblings should have
+the same value. The second constraint imposes that for a given node, a variable
+representing a boundary between two siblings can only impose a merging if all
+the leaves associated with the node are merged.
+
+The first constraint is defined as:
+
+m,n∑
+n 6=l
+
+bm,n = (Nc − 1)bm,l (9)
+
+where Nc is the total number of common region boundaries from the leaf
+partition that represents the union of both siblings, m is a region from the
+first sibling and n, l are regions from the second sibling.
+
+The second as:
+
+n,l∑
+bn,l ≤ Nmbm,o (10)
+
+
+
+3D hierarchical optimization for Multi-view depth map coding 9
+
+where Nm is the total number of inner region boundaries from the leaves
+partition of both siblings, m and n are regions from the first sibling and n, l
+are regions from the second sibling.
+
+Adding these two constraints to the optimization process of Equation (7)
+results in:
+
+min
+B
+
+∑
+m,n
+
+qm,nbm,n (11)
+
+s.t. bm,n ∈ {0, 1} bm,n = bn,m ∀n,m
+m,n∑
+n 6=l
+
+bm,n = (Nc − 1)bm,l,
+n,l∑
+
+bn,l ≤ Nmbm,o ∀p ∈ {H}
+
+where p represents any parent node in the collection of hierarchies. The
+result of this optimization is a binary matrix B∗ that describes the optimal
+partition {P ∗(λ)}. Varying λ, different optimal Rate-Distortion partitions are
+found. Each λ corresponds to a different potential solution on the convex hull
+of the operational Rate-Distortion points. It can be demonstrated that the set
+of solutions is finite [25]. Because of the monotonicity of R(λ), only a small
+subset of λ need to be searched and the convergence of the algorithm is ensured
+in all cases.
+
+4 Multi-view 3D Representation
+
+The proposed multi-view depth map coding system fuses the information of
+multiple views in a unique 3D representation. Our method builds a 3D repre-
+sentation from a set of initial 2D partitions for each of the views. The global
+scheme is depicted in Figure 4. It starts by finding a partition for each indi-
+vidual view i which merges color and depth partitions optimally, reducing the
+computational complexity of the multi-view process. The single-view process-
+ing is done independently for each view as shown in Figure 5 and explained in
+Section 4.1.
+
+The information of the multiple views is accumulated in the reference view
+viewref by projecting the views partitions into viewref . Then, an optimization
+process (depicted in Figure 8) obtains Pref which defines the final coding par-
+titions for each view. Complete details on this process are given at Section 4.2.
+
+We refer the optimization process of Equation (11) as:
+
+P ∗(λ) = Optλ(H) (12)
+
+where for a given λ an optimal partition P ∗ is extracted from H. For
+simplicity, we will reduce the notation of optimal partitions from P ∗(λ) to P .
+
+In this work we use the initial color and depth leaves partitions from [12].
+
+We name those initial partitions as LP colori and LP
+depth
+i respectively. Hierar-
+
+chies in the single-view and the multi-view stages are built as in [12]: region
+
+
+
+10 Marc Maceira et al.
+
+Single-view 
+optimization 
+
+Multi-view representation 
+
+P1
+
+Pref 
+Multi-view 
+
+optimization 
+
+LP1
+
+LP1
+
+Single-view 
+optimization 
+
+PNv
+LPNv
+
+depth
+
+LPNv
+color
+
+Nv views 
+
+View ref 
+
+depth
+
+color
+
+Fig. 4 Multi-view representation. For each view i, a joint color and depth optimization finds
+a Pi partition. The Nv Pi partitions are projected to the reference view where a multi-view
+optimization finds the best set of regions for each partition.
+
+contents are projected into 3D and modeled as 3D planes with RANSAC [4].
+The merging criterion is based on 3D plane similarity. Both stages find optimal
+partitions P ∗ inside the hierarchy with the method presented in Section 3.
+
+4.1 Single-View Optimization
+
+In the Single-View Optimization LP colori and LP
+depth
+i are combined into an
+
+optimal partition Pi for each view i as shown in Figure 5.
+
+LPi
+depth
+
+Single-view optimization 
+
+Pi 
+LPi
+
+color
+
+Combine 
+partitions 
+
+Pi
+c_d
+
+Hierarchical 
+representation 
+
+Hi
+c_d
+
+Optimization 
+
+Fig. 5 Optimization process for each view. A combined color and depth optimization is
+performed finding an optimal combined partition.
+
+LP colori and LP
+depth
+i are fused into a partition P
+
+c d
+i = LP
+
+color
+i
+
+⋂
+LP
+
+depth
+i
+
+that preserves all the boundaries from both partitions. The P c di is used to
+build a hierarchy Hc di . The optimization procedure introduced in Section 3.2
+over that hierarchy obtains an optimal Rate-Distortion partition Pi:
+
+Pi = Optλ(H
+c d) (13)
+
+
+
+3D hierarchical optimization for Multi-view depth map coding 11
+
+For each view i, Equation (8) can be expressed as follows:
+
+qchi,1,chi,2 = Jpi − (Jchi,1 + Jchi,2) = (14)
+(Dpi + λRpi)− (Dchi,1 + λRchi,1)− (Dchi,2 + λRchi,2) =
+
+4Dchi,1,chi,2 + λ4Rchi,1,chi,2
+
+where pi is the parent region resulting of the union of children chi,1 and chi,2:
+
+pi = chi,1
+⋃
+chi,2 (15)
+
+4Dchi,1,chi,2 is the increment in distortion caused by the union of Equa-
+tion (15) while 4Rchi,1,chi,2 is the increment in rate of this union. Typically,
+the 4Dchi,1,chi,2 is positive as representing the depth map with less regions
+will increase the distortion and 4Rchi,1,chi,2 is negative.
+
+The distortion of each region k of the hierarchy is computed as the square
+error between the 3D planar model and the pixel values of the region, partic-
+ularizing Equation (3) as:
+
+Di,k =
+
+NPixi,k∑
+n=1
+
+|Proji(Πk, n)− gi(n)|2 (16)
+
+where Π3Dk is the plane model for region k, N
+Pix
+i,k is the number of pixels
+
+of region k, Proji(Πk, n) is the value of the projected 3D planar model to the
+pixel n of region k and gi(n) is the depth value of pixel n for each view i. An
+example of the projection step is shown in Figure 6.
+
+The 4Dchi,1,chi,2 is computed as:
+
+4Dchi,1,chi,2 = Dpi −Dchi,1 −Dchi,2 (17)
+
+r4
+r1 r2
+
+r3
+
+∏2∏1
+∏3 3D planes
+
+Image Partition
+r1
+
+∏1
+∏4
+
+Fig. 6 The Single-View distortion is computed projecting each 3D planar model to all the
+pixels of the corresponding region. The r4 distortion generated with Π4 is compared with a
+representation using the child regions r2 and r3, represented with models Π2 and Π3.
+
+To compute the 4Rchi,1,chi,2 two terms are present: texture and contour.
+For texture:
+
+
+
+12 Marc Maceira et al.
+
+4RTchi,1,chi,2 = R
+T
+pi
+−RTchi,1 −R
+
+T
+chi,2
+
+= −RT (18)
+
+since the cost of texture is constant (RT ) for all regions.
+
+Contours of a region may come from two partitions; some from LP colori and
+
+some from LP
+depth
+i . The contour cost4R
+
+C
+chi,1,chi,2
+
+is computed by counting the
+
+number of contour elements (two neighboring pixels with different labels define
+one contour element between them) of the regions chi,1, chi,2 and multiplying
+for the average cost of encoding each contour element. Since we are considering
+the common contours, the contour cost for the parent is zero. Then:
+
+4RCchi,1,chi,2 = −cANchi,1,chi,2 − c
+′
+AN
+
+′
+chi,1,chi,2
+
+(19)
+
+where Nchi,1,chi,2 and N
+′
+chi,1,chi,2
+
+are the numbers of common contours of the
+
+two children from the depth and color partitions respectively, while cA and c
+′
+A
+
+are the average costs to encode a contour element for either the depth and the
+color partitions. Note that contours from the color partition do not introduce
+any cost, therefore c′A = 0. The cA has been obtained experimentally using
+the multi-view sequences resulting in cA = 1.2 bits per contour position.
+
+Equation (4) is computed as:
+
+4Rchi,1,chi,2 = 4R
+C
+chi,1,chi,2
+
++4RTchi,1,chi,2 = −cANchi,1,chi,2 −R
+T (20)
+
+Figure 7 shows an example of merging two regions. Encoding r4 instead of r2
+and r3 saves the cost of encoding the boundary between the regions and the
+texture coefficients of one region.
+
+r4
+
+r1 r2
+
+r3
+
+r1
+
+Fig. 7 The Single-View rate for each region is the rate saving promoted by the merging.
+Regions r2 and r3 are merged into r4, leading to represent the depth map without the
+contour between r2 and r3 and saving one 3D plane.
+
+The color-depth optimization in each view addresses the addition of the
+depth boundaries in the color partition in an optimal fashion while reducing
+heavily the total number of regions. Doing this procedure in each view also
+reduces the number of occluded regions in the Multi-View Optimization.
+
+
+
+3D hierarchical optimization for Multi-view depth map coding 13
+
+4.2 Multi-View Optimization
+
+The multi-view optimization process is shown in Figure 8. The partition Pi of
+each of the Nv views is projected, using the camera parameters, to viewref ,
+obtaining an initial partition P inii for each view i:
+
+P inii = Projref (Pi) (21)
+
+Pixels in each partition Pi are processed in scan order and the correspond-
+ing pixel labels are projected to viewref . Each individual projected partition
+P inii is defined by assigning to each pixel position the label of the nearest pro-
+jected view i pixel. With this process the regions that are near to the camera
+position prevail over the ones that are further away.
+
+In this projection step, regions of view i that are occluded in the reference
+view are detected. A region is considered occluded if the number of pixels of
+this region in viewref is less than half the number of pixels in view i. Occluded
+regions have no valid correspondence in viewref . To solve this, these regions
+will be encoded independently in that view and removed from the projected
+partition in viewref .
+
+P1 
+
+Multi-view optimization 
+
+Pref 
+
+PNv 
+
+Combine 
+partitions 
+
+Nv views 
+
+Projection 
+
+Projection 
+
+Pref
+ini 
+
+Hierarchical 
+representation 
+
+Optimization 
+
+Href 
+
+P1
+ini 
+
+PNv
+ini 
+
+Fig. 8 Multi-View Optimization process for each view. Partitions from multiple views are
+combined in a unique hierarchy. Rate-Distortion measures are computed using all the input
+views and stored in the hierarchy to find the joint optimal partition for the multiple views.
+
+The individual projected partitions P inii in viewref are accumulated in a
+unique partition as stated in Equation (22). Unlike the single-view optimiza-
+tion, here in the projected viewref not all the pixels have a projected label. In
+order to obtain a partition with all the pixels assigned to a label, a hole filling
+algorithm creates new labels in-between regions with different label. For each
+combination of labels in each viewi, a new label is created in P
+
+ini
+ref .
+
+P iniref =
+⋂
+i
+
+P inii (22)
+
+
+
+14 Marc Maceira et al.
+
+A hierarchical depth representation Href is built using the accumulated
+partition P iniref . Rate and distortion values for each region in Href are found
+examining each partition generated in theN views. The increment of distortion
+for each union is computed as:
+
+4Dch1,ch2 =
+N∑
+i=1
+
+4Dchi,1,chi,2 (23)
+
+where 4Dchi,1,chi,2 represents the increment of distortion of each view i as in
+Equation (17). A graphical example of Equation (23) is shown in Figure 9.
+Notice that, in the example, rocl 1 is occluded in viewref . Therefore, rocl 1 does
+not participate of the optimization process and is encoded with a independent
+plane.
+
+r1 r2
+
+r3
+
+viewref
+
+r1 r2
+
+r3
+
+view2
+
+r1 r2
+
+r3
+
+view1
+
+∏2
+∏1 ∏3
+
+rocl 1
+
+∏ocl 1
+
+Fig. 9 The Multi-View distortion is computed projecting each 3D planar model to all the
+pixels of the corresponding region of each image.
+
+Similarly, the rate is computed using the information of all views, adding
+the boundary cost (from depth boundaries only, as c′A = 0 for color contours):
+
+4Rch1,ch2 =
+N∑
+i=1
+
+4Rchi,1,chi,2 (24)
+
+As the same region model encodes regions of multiple views, the texture
+rate is the same than in the single view optimization:
+
+4Rch1,ch2 = −cA
+N∑
+i=1
+
+Nchi,1,chi,2 −R
+T (25)
+
+An example of computing the rate for the Multi-View optimization is shown
+in Figure 10.
+
+
+
+3D hierarchical optimization for Multi-view depth map coding 15
+
+The Pref partition is obtained using the hierarchical optimization of Sec-
+tion 3.2:
+
+Pref = Optλ(Href ) (26)
+
+Since the hierarchy Href is build in the viewref , the merging orders are
+determined in viewref . By incorporating the information of theNv views to the
+optimization process, the resulting partition Pref defines an optimal partition
+in all the views.
+
+r4
+
+r1 r2
+
+r 3           
+
+r1
+
+viewref
+
+r4
+
+r1 r2
+
+r3
+
+r1
+
+view2
+
+r4
+
+r1 r2
+
+r3
+
+r1
+
+view1
+
+rocl 1
+
+Fig. 10 The Multi-View rate for each region is the rate saving obtained with the merging.
+A merging in viewref may force a merging in the other views.
+
+The optimization parameter λ that defines the Rate-Distortion trade-off
+is the quality parameter. By varying λ, different Rate-Distortion points are
+found, being able to obtain 3D scene representations with different level of
+detail.
+
+5 Multi-view depth map coding
+
+In Section 4, the proposed method to obtain a joint segmentation of the scene
+combining color and depth partition has been explained. In order to convey
+the depth information to the decoder we propose a method to pack the infor-
+mation of the multiple views efficiently. The method assumes that the camera
+parameters and the color images of each view have been encoded and sent to
+the decoder before decoding the depth map information. The partition Pref
+is projected back, following the inverse process of Equation (21), to obtain a
+consistent set of coding partitions P codi for each of the Nv views.
+
+The general coding scheme for each view i is presented in Figure 11. The
+first step consists in analyzing which contours from LP colori and LP
+
+depth
+i are
+
+present in P codi . Contours in P
+cod
+i from LP
+
+depth
+i are encoded with Freeman
+
+contour coding [5] independently for each view. For the color contours, infor-
+mation of color boundaries that are not active (because of region mergings)
+is sent to the decoder indicating if the merging has been done or not. Active
+information is stored with 1 bit per each merging in Href .
+
+Once the partition information has been encoded, the texture coefficients
+are generated. The first view encodes the texture information of all the planes
+
+
+
+16 Marc Maceira et al.
+
+3D multi-view
+
+Partition bitstream i
+
+Encoder view i
+
+Partition 
+Analysis
+
+Contour Coding
+
+Texture bitstream i
+
+Nregs_color
+
+Pi
+
+LPi
+color
+
+3D 
+models
+
+Depth_edges
+
+Active color 
+boundaries i
+
+Texture 
+Encoding
+
+cod
+
+Fig. 11 Encoder scheme. Partition information is generated independently for each view.
+Texture encoding encodes the 3D plane in INTRA if it is the first view where it appears or
+INTER if it has been encoded previously.
+
+associated to that view in INTRA mode, while planes from the subsequent
+views will be encoded using INTER view prediction when possible. In the
+INTRA mode, the 3D planes are represented by using the distance of that
+plane to a camera plus the plane orientation. This plane orientation is stored
+in spherical coordinates with their 3D angles θ and φ:
+
+θ = arccos
+
+(
+nz
+‖n‖
+
+)
+φ = arctan
+
+(
+ny
+nx
+
+)
+(27)
+
+where the nz component is pointed towards z > 0. The resulting angles (in
+the range 0 ≤ θ ≤ π
+
+2
+and 0 ≤ φ ≤ 2π) are encoded with equal precision with
+
+a uniform quantizer.
+The distance from the plane to the camera is converted to an alternative
+
+quantized representation using the distance to depth map conversion:
+
+Cdist =
+1.0
+
+d(pl,c)
+
+(2Ndist−1) ∗ (
+1.0
+
+MinZ
+− 1.0
+
+MaxZ
+) + 1.0
+
+MaxZ
+
+(28)
+
+where d(pl, c) is the euclidean distance between the region plane and the
+camera, Ndist is the number of bits to be used in the quantization and MaxZ
+and MinZ are the maximum and minimum depth values of the image.
+
+For subsequent views i, the INTER mode is used. Planes from the first
+view are projected to view i as done in the construction of the multi-view
+partition in viewref . Each region in view i has a candidate plane from the first
+view. This plane is compared with a plane coded with INTRA in view i. The
+plane with the lower error is kept. If the plane is coded with INTER, a SKIP
+mode is sent, if not the region is INTRA coded.
+
+The bitstream (depicted in Figure 12) provides the decoder with the infor-
+mation needed to recover the partition and the texture for each region. The
+partition bitstream, active color boundaries and texture bitstream for each
+view are provided in addition of the number of regions Nregs color in each
+initial color partition LP colori . Nregs color is the same for the Nv views.
+
+
+
+3D hierarchical optimization for Multi-view depth map coding 17
+
+Depth partition information Active Boundaries Texture Coefficients
+
+View 1 View NV View 1 View NV
+View 1 
+INTRA
+
+View NV 
+INTER
+
+View 2 
+INTER
+
+... ... ...
+
+Fig. 12 Bitstream with the information of the Nv views. The depth partition information
+signal the depth boundaries added to the color information. With the active boundaries
+information the final coding partition is obtained. The texture coefficients for views 2 to Nv
+make use of the previous transmitted coefficients.
+
+The decoder process is depicted in Figure 13. For each view, the LP colori
+is built from the decoded color image. From that partition, color edges are
+removed using the active color boundaries information. Then new edges are
+added from the partition bitstream. Depth map is recovered by decoding the
+texture bitstream and projecting each 3D plane to P codi .
+
+Color 
+SegmentationDecoded 
+
+color image i
+
+Decoder view i
+
+Partition 
+Decoding
+
+Active color
+boundaries i
+
+Texture 
+Bitstream i
+
+Texture 
+Decoding
+
+LPi
+color
+
+Decoded 
+depth map 
+
+view i
+
+Nregs_color
+
+3D multi-view
+
+Partition 
+Bitstream i
+
+Pi
+cod
+
+Fig. 13 Decoder scheme. LP colori is generated from the decoded color image using
+Nregs color. Using the information of active color boundaries and the partition bitstream
+
+the encoding partition P codi is generated. The decoded depth map for view i obtained by
+
+projecting the 3D planes to P codi .
+
+6 Experimental Evaluation
+
+In this section, we present a quantitative evaluation of our multi-view opti-
+mization segmentation and coding method. We use the RGB-D multi-view
+sequences Ballet, Undo Dancer, Breakdancers and Ghost Town for evalua-
+tion [22, 35, 36]. Each sequence is composed of color and depth frames from
+up to 8 camera views as well as camera parameters for each frame. Ballet and
+Breakdances have been captured using color (RGB) cameras and the depth has
+been computed afterwards. Undo Dancer and Ghost Town are synthetic se-
+quences. The resolution of the sequences is 1920x1088 pixels for Undo Dancer
+
+
+
+18 Marc Maceira et al.
+
+and Ghost Town and 1024x768 pixels for Ballet and Breakdancers. We assume
+that color views have been previously decoded at the receiver side. The dif-
+ferent stages of the proposed method are evaluated using 25 frames of each
+sequence.
+
+In order to assess our technique, we first explore different configurations of
+the proposed method in Section 6.1. Finally, our proposal is compared against
+HEVC, 3D-HEVC and MV-HEVC in Section 6.2.
+
+Experiments will make use of three views: viewleft, viewright and viewref
+using the same configuration of 3D-HEVC. viewleft and viewright are the
+two base views to encode and viewref is the location selected to perform the
+optimization process in the multi-view optimization block (See Section 4.2).
+This view corresponds to the virtual view of 3D-HEVC. Color and depth
+map images as well as the camera parameters are available in the three views
+considered.
+
+6.1 Configuration
+
+In this Section, the different blocks of the overall system are analyzed. The first
+experiment studies how the number of views affects the coding performance
+of our method. Then, we show the gain of using the RD optimization in the
+hierarchy. In the third experiment, we show the difference between using a color
+partition or a combination of color plus depth partitions. Finally we study the
+distribution of rate among depth partition information, active boundaries and
+texture coefficients. Results for the different sequences are averaged into a
+single Rate-Distortion curve.
+
+Combining multiple views
+
+In this experiment we study the combination of several views prior to the
+multi-view optimization
+
+Figure 14 shows the results of encoding the viewref depth map in different
+configurations. In each configuration, a different number of views is used to
+obtain the hierarchy in viewref .
+
+In the 1 view optimal configuration, only information from the viewref is
+used. This configuration is the one that achieves better Rate-Distortion figures.
+The 2 views optimal configuration uses information of viewleft and viewright.
+As the projection from those views to viewref is not able to match all the
+depth boundaries in viewref , the results for the 2 views optimal are below the
+1 view configuration. With the 3 views optimal all 3 views are used. Results
+are slightly below the 1 view optimal, but in this case we optimize for the 3
+views together, obtaining a consistent segmentation across the views.
+
+The resulting optimal coding partitions for each configuration are projected
+back to viewleft and viewright, as presented in Section 5. Results are shown
+in Figure 15. The different configurations achieve similar results, all of them
+below the results of the single-view configuration. This behavior is due to
+
+
+
+3D hierarchical optimization for Multi-view depth map coding 19
+
+0.00 0.01 0.02 0.03 0.04 0.05 0.06 0.07
+
+Rate (bpp)
+
+20
+
+25
+
+30
+
+35
+
+40
+
+45
+
+50
+
+P
+S
+
+N
+R
+
+1 view optimal
+
+2 views optimal
+
+3 views optimal
+
+Fig. 14 Coding results in the viewref . 1 view configuration has only information of viewref ,
+2 view configuration use the 2 views projected to viewref and 3 view configuration uses the
+three of them.
+
+the fact that the hierarchical optimization in viewref restricts the possible
+mergings in the other views and that an extra rate is needed to encode occluded
+regions.
+
+With the Single-View optimization, the number of regions in the different
+views is reduced before building the shared hierarchy between views in viewref .
+Being able to merge regions in a single-view reduces the number of regions
+that are occluded in viewref while creating a hierarchy Href in viewref with
+relevant regions.
+
+Rate-Distortion optimization
+
+In this Section, the performance of the Rate-Distortion optimization method
+in the Single-View Configuration is studied. Different cuts of the hierarchy
+Hc di (this is, different partitions) extracted following the merging sequence
+are compared with optimal partitions Pi with different quality parameter λ.
+Results are shown in Figure 16. By using the proposed optimization, we are
+able to achieve a gain of 2-3 dB over using the H
+
+depth
+i merging sequence.
+
+Color and depth combination
+
+Figure 17 shows the R-D curves for three different options: using only a depth
+partition, using only a color partition and using a color-depth partition. Using
+only color partition has the advantage that no contour information has to
+be sent. It’s a good option for very low bit-rates but the lack of precision
+
+
+
+20 Marc Maceira et al.
+
+0.00 0.01 0.02 0.03 0.04 0.05 0.06 0.07
+
+Rate (bpp)
+
+20
+
+25
+
+30
+
+35
+
+40
+
+45
+
+50
+
+P
+S
+
+N
+R
+
+Multiview 1 view
+
+Multiview 2 view
+
+Multiview 3 view
+
+Single view
+
+Fig. 15 Results from Figure 14 are translated to viewleft and viewright. The three multi-
+view configuration (all with hierarchy built in viewref ) are compared with a hierarchy in
+each view independently.
+
+in the region boundaries limits the maximum achievable quality. Using only
+depth information allows to obtain higher quality as all the contours have
+to be sent, the curve is displaced to the right. The combination of color and
+depth provides a good trade-off because most of the depth contours can be
+approximated using color boundaries and only a reduced set of depth contours
+not present in the color partition must be sent.
+
+Multi-view optimization: rate statistics
+
+To evaluate the distribution of rate among depth partition information, active
+boundaries and texture coefficients, the bitstream presented in Section 5 was
+analyzed to determine the different contributions. Figure 18 shows the rate
+distribution among each category. Each bar is normalized with the maximum
+rate in the last column. The cost of encoding the texture and the information
+of active boundaries remains fairly constant among all the different Rate-
+Distortion points. However, the partition cost becomes the prevailing one as
+the rate increases. The results of the optimization depend on the given budget
+rate. When the budget is low, only color boundaries are added. When more
+bits can be allocated, the optimization adds the costly depth boundaries.
+
+6.2 Rate-Distortion results
+
+As the proposed method does not have temporal prediction, only intra modes
+for the different methods are taken. For each sequence, three views are used,
+
+
+
+3D hierarchical optimization for Multi-view depth map coding 21
+
+0.00 0.01 0.02 0.03 0.04 0.05 0.06 0.07
+
+Rate (bpp)
+
+20
+
+25
+
+30
+
+35
+
+40
+
+45
+
+50
+
+P
+S
+
+N
+R
+
+Hierarchy
+
+Optimal
+
+Fig. 16 Rate-Distortion results with the proposed optimization method. Using an initial
+Hdepth, results from coding the partition with 3D planes following the merging sequence
+and with the proposed optimization.
+
+viewleft and viewright are encoded (each view independently) and the middle
+one is employed as the location for the viewref . The view rendered using the
+original depth maps serves as a reference for the different methods in the
+virtual view.
+
+To objectively evaluate the proposed method, error measures are taken
+both in the depth map and in the synthesized virtual view. Since depth maps
+are not visualized but used to render new images, the measure in the virtual
+view gives the real performance of the method. Measuring directly on the depth
+map gives an overview of how the original depth map can be represented with
+planes. Similar results were obtained using PSNR and SSIM. As both measures
+show similar tendencies, only the PSNR will be shown to evaluate the error.
+
+Results measured on the depth map for the different sequences are shown in
+Figure 19. In that comparison, the 3D-HEVC performs worse than the other
+HEVC configurations methods of the literature. This is because color and
+depth map for two views are encoded together in 3D-HEVC, the view synthesis
+optimization maximize the quality in the virtual view and not directly in
+the depth map. The proposed method outperforms [12] ([Maceira2016]) for
+all the sequences. The use of multi-view redundancy as well as the proposed
+optimization net allows a more than 2 dB gain for the different sequences. This
+improvement is noteworthy for the Undo Dancer sequence, where the planar
+characteristic of the scene can be fully exploited. On the other hand, our
+method has more problems with the Ghost Town sequence, where the number
+of added depth contours is similar to [12], thus achieving similar results. This
+
+
+
+22 Marc Maceira et al.
+
+0.000 0.005 0.010 0.015 0.020 0.025 0.030
+
+Rate (bpp)
+
+20
+
+25
+
+30
+
+35
+
+40
+
+45
+
+P
+S
+
+N
+R
+
+color
+
+depth
+
+color and depth
+
+Fig. 17 R-D curves using color partitions, depth partitions and combined color and depth
+partitions to encode depth maps. Partitions using depth include the cost of encoding texture
+and boundary while the colors only need texture information.
+
+is because the color segmentation is not able to properly segment elements at
+different depths since all of them have the same tonality.
+
+In sequences where the depth map is noisier, as Ballet and Breakdancers,
+the 3D planar segments are not able to represent correctly the depth maps,
+thus obtaining worse results than the HEVC standards.
+
+Results in the rendered virtual view are shown in Figure 20. The results of
+the planar implementations achieve better results than HEVC and MV-HEVC
+in Ballet and Undo Dancer and are closer than in the depth map comparison in
+the other sequences. Notice that in Undo Dancer 3D-HEVC does not improve
+HEVC or MV-HEVC. This is due to 3D-HEVC encoding together color and
+depth information. Here we only take the depth maps from the 3D-HEVC,
+using the same color image than the other methods for doing the rendered
+view. The results for Figure 20 are summarized in Tables 1 and 2 where the
+Bjontegaard’s metric to compute the average gain in psnr (BD-SNR) and to
+compute the average saving in bitrate (BD-Rate) are shown, taking the HEVC
+as a reference.
+
+Table 1 BD-RATE
+
+MV-HEVC 3D-HEVC Maceira2016 Proposed
+Undo Dancer -23.69 -40.97 -36.94 -49.16
+Ghost Town -39.96 -64.50 42.03 2.91
+Ballet -6.03 -71.89 -37.16 -41.63
+Breakdancers -6.16 -35.71 48.46 150.13
+
+
+
+3D hierarchical optimization for Multi-view depth map coding 23
+
+5 6 7 8 9 10 11 12 13 14
+
+rate (bpp/1000)
+
+0
+
+10
+
+20
+
+30
+
+40
+
+50
+
+60
+
+70
+
+80
+
+90
+
+100
+
+%
+ o
+
+f 
+ra
+
+te Depth Partition
+
+Active Bound.
+
+Texture
+
+Fig. 18 Distribution of rate in texture, partition and active boundaries information for
+different Rate-Distortion points.
+
+Table 2 BD-SNR
+
+MV-HEVC 3D-HEVC Maceira2016 Proposed
+Undo Dancer 1.16 1.80 2.12 3.38
+Ghost Town 1.43 2.16 -1.03 0.01
+Ballet 0.20 3.47 1.57 1.51
+Breakdancers 0.17 1.02 -1.03 -2.57
+
+The multi-view method proposed improves the Rate-Distortion results of
+[12] for all sequences, achieving encoding results competitive with the HEVC
+standards. However, this result is not translated equally in virtual views. For
+instance, Ballet and Breakdancers sequences are noisier and present a larger
+baseline between views. In this case, the proposed method reduces the number
+of 3D planes when encoding the corresponding depth maps, which penalizes
+the performance of the method. On the other hand, in sequence Undo Dancer,
+the planar characteristics of their depth maps allow an improvement over the
+HEVC standards. In addition, the multi-view method presented in this work
+extracts a consistent segmentation for the different views, which could be very
+useful in further applications.
+
+7 Conclusion
+
+In this work we have presented a region-based multi-view depth map cod-
+ing technique based on a global 3D scene representation. Color and depth
+segmentations of the different views are combined into a single hierarchical
+
+
+
+24 Marc Maceira et al.
+
+0.000 0.005 0.010 0.015
+Rate (bpp)
+
+PS
+N
+
+R
+
+hevc 
+mv_hevc
+3d_hevc
+Proposed Multi-View
+Maceira [2016]
+
+0.020 0.025
+25
+
+30
+
+35
+
+40
+
+45
+
+50
+
+55
+
+0.000 0.005 0.010 0.015 0.020
+Rate (bpp)
+
+0.025 0.030 0.035 0.040
+25
+
+30
+
+35
+
+40
+
+45
+
+50
+
+PS
+N
+
+R
+
+hevc 
+mv_hevc
+3d_hevc
+Proposed Multi-View
+Maceira [2016]
+
+a) Undo Dancer b) Ghost Town
+
+0.00 0.02 0.04 0.06
+Rate (bpp)
+
+PS
+N
+
+R
+
+hevc 
+mv_hevc
+3d_hevc
+Proposed Multi-View
+Maceira [2016]
+
+0.08 0.10
+20
+
+25
+
+30
+
+35
+
+50
+
+45
+
+40
+
+0.00 0.01 0.02 0.03 0.04 0.05
+Rate (bpp)
+
+0.06
+
+hevc 
+mv_hevc
+3d_hevc
+Proposed Multi-View
+Maceira [2016]
+
+0.07 0.08 0.0925
+
+30
+
+35
+
+40
+
+45
+
+PS
+N
+
+R
+
+c) Ballet d) Breakdancers
+
+Fig. 19 Rate distortion results evaluated directly in depth maps.
+
+representation. An optimization process over this hierarchy allows to obtain
+the optimal coding partition. This representation retrieves a unique 3D planar
+decomposition of the scene. A method to encode the 3D planar decomposition
+for multi-view depth map coding application is also proposed. Texture infor-
+mation is sent by modeling each resulting region as a 3D plane and sending the
+corresponding plane parameters. The use of a color partition (that is already
+available at the decoder, without extra cost) allows to reduce the cost of send-
+ing this coding partition. The multi-view coding method shows competitive
+results against HEVC.
+
+A side benefit of the proposed method is that, in addition to coding, the
+global 3D scene representation is susceptible to be used in tasks such as action
+detection [10], scene recognition [8] or scene labeling [33].
+
+Acknowledgements This work has been developed in the framework of projects TEC2013-
+43935-R and TEC2016-75976-R, financed by the Spanish Ministerio de Economı́a y Com-
+petitividad and the European Regional Development Fund (ERDF)
+
+
+
+3D hierarchical optimization for Multi-view depth map coding 25
+
+0.000 0.005 0.010 0.015
+Rate (bpp)
+
+PS
+N
+
+R
+
+hevc 
+mv_hevc
+3d_hevc
+Proposed Multi-View
+Maceira [2016]
+
+0.020 0.025
+28
+
+30
+
+42
+
+40
+
+38
+
+36
+
+34
+
+32
+
+0.000 0.005 0.010 0.015 0.020
+Rate (bpp)
+
+0.025 0.030 0.035 0.040
+34
+
+36
+
+38
+
+40
+
+42
+
+44
+
+PS
+N
+
+R
+
+hevc 
+mv_hevc
+3d_hevc
+Proposed Multi-View
+Maceira [2016]
+
+a) Undo Dancer b) Ghost Town
+
+0.00 0.02 0.04 0.06
+Rate (bpp)
+
+28
+
+30
+
+PS
+N
+
+R
+
+hevc 
+mv_hevc
+3d_hevc
+Proposed Multi-View
+Maceira [2016]
+
+0.08 0.10
+
+32
+
+34
+
+36
+
+38
+
+40
+
+0.00 0.01 0.02 0.03 0.04 0.05
+Rate (bpp)
+
+0.06
+
+hevc 
+mv_hevc
+3d_hevc
+Proposed Multi-View
+Maceira [2016]
+
+0.07 0.08 0.09
+32
+
+33
+
+34
+
+40
+
+39
+
+38
+
+37
+
+36
+
+35
+
+PS
+N
+
+R
+
+c) Ballet d) Breakdancers
+
+Fig. 20 Rate distortion results evaluated over rendered views.
+
+References
+
+1. Barrera F, Padoy N (2014) Piecewise planar decomposition of 3D point
+clouds obtained from multiple static rgb-d cameras. In: 2014 2nd Interna-
+tional Conference on 3D Vision, vol 1, pp 194–201
+
+2. Charikar M, Guruswami V, Wirth A (2003) Clustering with qualitative
+information. In: Proceedings of the 44th Annual IEEE Symposium on
+Foundations of Computer Science, IEEE Computer Society, Washington,
+DC, USA, FOCS ’03, pp 524–533
+
+3. Fehn C (2004) Depth-image-based rendering (DIBR), compression, and
+transmission for a new approach on 3D-TV
+
+4. Fischler MA, Bolles RC (1981) Random sample consensus: A paradigm
+for model fitting with applications to image analysis and automated car-
+tography. Commun ACM 24(6):381–395
+
+5. Freeman H (1961) On the encoding of arbitrary geometric configurations.
+IRE Transactions on Electronic Computers EC-10(2):260–268
+
+6. Gao Y, Cheung G, Maugey T, Frossard P, Liang J (2016) Encoder-driven
+inpainting strategy in multiview video compression. IEEE Transactions on
+Image Processing 25(1):134–149
+
+
+
+26 Marc Maceira et al.
+
+7. Glasner D, Vitaladevuni SN, Basri R (2011) Contour-based joint clustering
+of multiple segmentations. In: Proceedings of the 2011 IEEE Conference
+on Computer Vision and Pattern Recognition, IEEE Computer Society,
+Washington, DC, USA, CVPR ’11, pp 2385–2392
+
+8. Gupta S, Arbeláez P, Malik J (2013) Perceptual organization and recog-
+nition of indoor scenes from RGB-D images. In: Computer Vision and
+Pattern Recognition (CVPR), 2013 IEEE Conference on, pp 564–571
+
+9. Kowdle A, Sinha S, Szeliski R (2012) Multiple view object cosegmentation
+using appearance and stereo cues. In: European Conference on Computer
+Vision, Firenze, Italy, pp 789–803, DOI 10.1007/978-3-642-33715-4 57
+
+10. Liang B, Zheng L (2015) A survey on human action recognition using
+depth sensors. In: Digital Image Computing: Techniques and Applications
+(DICTA), 2015 International Conference on, pp 1–8
+
+11. Lucas LFR, Wegner K, Rodrigues NMM, Pagliari CL, da Silva EAB,
+de Faria SMM (2015) Intra predictive depth map coding using flexible
+block partitioning. IEEE Transactions on Image Processing 24(11):4055–
+4068
+
+12. Maceira M, Morros JR, Ruiz-Hidalgo J (2016) Depth map compression
+via 3D region-based representation. Multimedia Tools and Applications
+pp 1–24
+
+13. Merkle P, Smolic A, Muller K, Wiegand T (2007) Efficient prediction
+structures for multiview video coding. IEEE Transactions on Circuits and
+Systems for Video Technology 17(11):1461–1473
+
+14. Merkle P, Müller K, Marpe D, Wiegand T (2016) Depth intra coding for
+3D video based on geometric primitives. IEEE Transactions on Circuits
+and Systems for Video Technology 26(3):570–582
+
+15. Micusik B, Kosecka J (2009) Piecewise planar city 3D modeling from street
+view panoramic sequences. In: Computer Vision and Pattern Recognition,
+2009. CVPR 2009. IEEE Conference on, pp 2906–2912
+
+16. Müller K, Merkle P, Wiegand T (2011) 3-D video representation using
+depth maps. Proceedings of the IEEE 99(4):643–656
+
+17. Müller K, Schwarz H, Marpe D, Bartnik C, Bosse S, Brust H, Hinz T,
+Lakshman H, Merkle P, Rhee FH, Tech G, Winken M, Wiegand T (2013)
+3D High-Efficiency Video coding for multi-view video and depth data.
+IEEE Transactions on Image Processing 22(9):3366–3378
+
+18. Ortega A, Ramchandran K (1998) Rate-distortion methods for image and
+video compression. IEEE Signal Processing Magazine 15(6):23–50
+
+19. Ostermann J, Bormans J, List P, Marpe D, Narroschke M, Pereira F,
+Stockhammer T, Wedi T (2004) Video coding with H.264/AVC: tools, per-
+formance, and complexity. IEEE Circuits and Systems Magazine 4(1):7–28
+
+20. Özkalayc BO, Alatan AA (2014) 3D planar representation of stereo depth
+images for 3DTV applications. IEEE Transactions on Image Processing
+23(12):5222–5232
+
+21. Ren X, Bo L, Fox D (2012) RGB-(D) scene labeling: Features and al-
+gorithms. In: Computer Vision and Pattern Recognition (CVPR), 2012
+IEEE Conference on, pp 2759–2766
+
+
+
+3D hierarchical optimization for Multi-view depth map coding 27
+
+22. Rusanovskyy D, Aflaki P, Hannuksela M (2011) Undo dancer 3DV se-
+quence for purposes of 3DV standardization. ISO/IEC JTC1/SC29/WG11
+MPEG2010 M 20028
+
+23. Salembier P, Garrido L (2000) Binary partition tree as an efficient repre-
+sentation for image processing, segmentation, and information retrieval.
+IEEE Transactions on Image Processing 9(4):561–576
+
+24. Schwarz LA, Mateus D, Lallemand J, Navab N (2011) Tracking planes
+with time of flight cameras and j-linkage. In: Applications of Computer
+Vision (WACV), 2011 IEEE Workshop on, pp 664–671
+
+25. Shoham Y, Gersho A (1988) Efficient bit allocation for an arbitrary set of
+quantizers 36(9):1445–1453
+
+26. Silberman N, Hoiem D, Kohli P, Fergus R (2012) Indoor segmentation
+and support inference from RGBD images. In: ECCV
+
+27. Sinha S, Steedly D, Szeliski R (2009) Piecewise planar stereo for image-
+based rendering. In: International Conference on Computer Vision, Kyoto,
+Japan, pp 1881–1888
+
+28. Sullivan GJ, Ohm JR, Han WJ, Wiegand T (2012) Overview of the high
+efficiency video coding (HEVC) standard. IEEE Transactions on Circuits
+and Systems for Video Technology 22(12):1649–1668
+
+29. Sullivan GJ, Boyce JM, Chen Y, Ohm JR, Segall CA, Vetro A (2013)
+Standardized extensions of High Efficiency Video coding (HEVC). IEEE
+Journal of Selected Topics in Signal Processing 7(6):1001–1016
+
+30. Torres L, Kunt M (1996) Second Generation Video Coding Techniques,
+Springer US, Boston, MA, pp 1–30
+
+31. Varas D, Alfaro M, Marques F (2015) Multiresolution hierarchy co-
+clustering for semantic segmentation in sequences with small variations.
+In: 2015 IEEE International Conference on Computer Vision (ICCV), pp
+4579–4587
+
+32. Verleysen C, De Vleeschouwer C (2016) Piecewise-planar 3d approxima-
+tion from wide-baseline stereo. In: The IEEE Conference on Computer
+Vision and Pattern Recognition (CVPR)
+
+33. Wang A, Lu J, Cai J, Wang G, Cham TJ (2015) Unsupervised joint feature
+learning and encoding for RGB-D scene labeling. IEEE Transactions on
+Image Processing 24(11):4459–4473
+
+34. Yin F, Velastin SA, Ellis T, Makris D (2015) Learning multi-planar scene
+models in multi-camera videos. IET Computer Vision 9(1):25–40
+
+35. Zhang J, Li R, Li H, Rusanovskyy D, Hannuksela MM (2011) Ghost
+Town Fly 3DV sequence for purposes of 3DV standardization. ISO/IEC
+JTC1/SC29/WG11, Doc M 20027
+
+36. Zitnick CL, Kang SB, Uyttendaele M, Winder S, Szeliski R (2004) High-
+quality video view interpolation using a layered representation. In: ACM
+SIGGRAPH 2004 Papers, New York, NY, USA, SIGGRAPH ’04, pp 600–
+608
+
+
+	ADPC352.tmp
+	UPCommons
+	Portal del coneixement obert de la UPC
+	11TUhttp://upcommons.upc.edu/e-prints
+	Aquesta és una còpia de la versió author’s final draft d'un article publicat a la revista Multimedia Tools and Applications .
+	URL d'aquest document a UPCommons E-prints: 11TUhttp://hdl.handle.net/2117/113183U11T
+	Article publicat / Published paper:
+
+

@@ -1,0 +1,1963 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Variational Multiscale error estimators for solid mechanics
+
+adaptive simulations: an Orthogonal Subgrid Scale approach
+
+Joan Baiges1 and Ramon Codina1,2
+1 Universitat Politècnica de Catalunya, Jordi Girona 1-3, Edifici C1, 08034 Barcelona, Spain
+
+2 Centre Internacional de Mètodes Numèrics a l’Enginyeria (CIMNE),
+
+Edifici C1, Campus Nord UPC C/ Gran Capità S/N 08034 Barcelona, Spain
+
+joan.baiges@upc.edu, ramon.codina@upc.edu
+
+July 7, 2017
+
+Abstract
+
+In this work we present a general error estimator for the finite element solution of
+solid mechanics problems based on the Variational Multiscale method. The main idea
+is to consider a rich model for the subgrid scales as an error estimator. The subscales
+are considered to belong to a space orthogonal to the finite element space (Orthogonal
+Subgrid Scales) and we take into account their contribution both in the element interiors
+and on the element boundaries (Subscales on the Element Boundaries). A simple analysis
+shows that the upper bound for the obtained error estimator is sharper than in other error
+estimators based on the Variational Multiscale Method. Numerical examples show that
+the proposed error estimator is an accurate approximation for the energy norm error and
+can be used both in simple linear constitutive models and in more complex non-linear
+cases.
+
+1 Introduction
+
+In the general solution of computational solid mechanics problems using finite element approx-
+imations, many times one faces situations where it is convenient to focus the computational
+effort in certain subdomains of interest. This is the case for instance when simulating fracture
+processes, where very large deformation gradients are concentrated along fracture lines. If the
+position and orientation of fracture lines are known a priori, a suitably refined computational
+mesh can be built beforehand.
+
+However, in most engineering cases of interest the location of such failure lines is precisely
+part of the information that one expects to obtain from a computational simulation. As a
+consequence, the information required to build such meshes is not known a priori. In this case
+one faces with the need of either building extremely fine computational meshes capable of
+appropriately capturing the details of the solution no matter where these appear, or running
+successive simulations with different computational meshes which are progressively built as
+more information is available.
+
+Adaptive mesh refinement (AMR) techniques [1, 2, 3] appear precisely to deal with simula-
+tions where the refinement requirements are not known a priori. AMR consists in introducing
+local modifications in the computational mesh in such a way that the computational effort
+for attaining a certain error level is minimized. Or, equivalently, adaptive strategies allow
+one to maximize the accuracy of the obtained solution for a given computational cost.
+
+There are two main ingredients which are involved in an AMR simulation: the first one
+is the actual mesh refinement algorithm, which allows one to increase the accuracy of the
+
+1
+
+
+
+numerical solution in a given region of the computational domain. Several families of methods
+exist which are able to modify a given finite element mesh into a new mesh which is more
+convenient and results in a reduced approximation error. For the sake of conciseness, let
+us just remark that in our work we are focused in hierarchical h refinement with hanging
+nodes. The treatment of hanging nodes used here consists in enforcing that the value of the
+unknown in these nodes is exactly the interpolated value of their parent nodes, although other
+possibilities for the treatment of hanging nodes such as the use of Discontinuous Galerkin
+approaches are possible [4], and perfectly compatible with the developments done here. Also,
+the proposed strategies are in principle applicable to p and r mesh refinement techniques,
+although these possibilities are not explored here. For the mesh refinement process, we
+rely on the adaptive refinement library RefficientLib [5, 6], which is capable of running
+adaptively refined simulations on distributed memory parallel systems and handling meshes
+with hanging nodes.
+
+The second ingredient (and the one in which this work is focused) are error estimators
+which are used to decide over which domain region mesh refinement is required [7, 8]. Again
+several families of a posteriori error estimators can be found in the literature, including
+explicit, implicit and goal-oriented error estimators. This work deals with the development
+of error estimators for AMR based on the Variational Multiscale Method (VMS) [9, 10] .
+
+The main idea of the VMS method is based in considering that the finite element approxi-
+mation is not capable of exactly representing the solution to computational physics problems.
+If this is taken into account, the exact solution can be decomposed into the finite element
+part plus what are called the subscales, which are precisely the parts of the solution not
+representable by the finite element approximation. The finite element part can be resolved,
+but the effect of the subscales on the finite element solution (or coarse scales) needs to be
+modeled. Including the effect of the unresolved scales in the finite element formulation has
+turned out to be a very good strategy to solve many of the intrinsic drawbacks of the standard
+Galerkin method for finite elements: the VMS method is capable of providing stable solu-
+tions for convective problems, saddle point problems, acting as a turbulence model for fluid
+mechanics problems, dealing with the polution error of the Helmholtz equation and solving
+many other problems related to the finite element approximation of computational physics
+problems, see for instance the reviews in [11, 12].
+
+Although it was already remarked in [10] that the modeling of the subgrid scales could be
+used as a suitable a posteriori error estimator, it has not been until much more recently that
+these ideas have started to be implemented. A first approach to use the VMS framework in
+error estimation is presented in [13], where the error norm for each element is computed for
+the one dimensional convection-diffusion equation. The methodology is extended to higher
+order elements in [14, 15]. The previous strategy is used in two-dimensional domains in [16],
+where also the contribution of the error on the element boundaries is taken into account in
+the error estimator. The same ideas are applied to the Navier-Stokes equations in [17, 18],
+to linear elasticity in [19], and to higher order ordinary differential equations in [20]. Also,
+in [21], an algebraic subgrid scale approach is used to derive an error estimator for a mixed
+formulation for linear elasticity, although the contribution of the subscales in the boundary
+is neglected. A similar approach based on the Streamwise Upwind Petrov Galerkin (SUPG)
+stabilization method can be found in [22], where it is applied to the stationary convection-
+diffusion equation.
+
+A different approach can be found in [23], where following [24], the equation for the
+subscales is solved in a finer mesh instead of using an analytical expression for them. This
+idea is also pursued in [25], and applied to nearly-incompressible elasticity in [21] and to
+elliptic problems with highly varying physical coefficients in [26].
+
+2
+
+
+
+In this work a different approach is pursued in order to obtain error estimators for solid
+mechanics problems solved using a mixed u-p formulation. The proposed error estimator is
+based on the Orthogonal Subgrid Scales concept presented in [27], and the model for the
+subscales on the element boundaries first presented in [28, 29]. This turns out in an er-
+ror estimator composed of three main ingredients: the orthogonal displacement subscales in
+the element interiors, the displacement subscales in the element boundaries, and the pressure
+subscales. As it will be shown, this approach provides an elaborate model for the subscales ca-
+pable of taking into account the effect of the non-resolved scales, that allows one to efficiently
+predict the error of the finite element approximation for mixed elasticity u-p formulations.
+Also, it will be shown that the subscales are capable of tracking the behavior of non-linear
+solid mechanics constitutive models.
+
+The paper is organized as follows. In Section 2 the mixed u-p formulation for solid
+mechanics is presented. Section 3 describes the proposed error estimator and its numerical
+properties. Numerical examples illustrating the performance of the proposed error estimator
+are presented in Section 4, and finally some conclusions close the paper in Section 5.
+
+2 Finite element formulation
+
+In this section we present a finite element formulation for general solid mechanics problems in
+the small strains context. The proposed mixed displacement - pressure (u-p) formulation is
+valid both for compressible materials and for materials in the incompressible limit. As it will
+be explained, it relies on a variational multiscale stabilizing mechanism which allows one to
+use arbitrary interpolation spaces for both displacement and pressure even when one is dealing
+with incompressible materials. The formulation departs from the equation of conservation of
+momentum:
+
+−∇ · σ = ρb,
+
+where σ represents the stress tensor, ρ is the density, and b is the vector of external forces.
+Additionally, a constitutive equation which relates strains and stresses is required, which for
+linear elasticity can be stated as:
+
+σ = C : �(u).
+
+Here C is the constitutive tensor, and �(·) represents the symmetric gradient operator. Many
+times, and specially when dealing with incompressible materials, it is convenient to decompose
+the stress tensor into its spherical and deviatoric parts. The spherical part is then represented
+by means of the pressure p (taken as positive in compression regime) and the deviatoric part
+is denoted as σ′:
+
+σ = −pI + σ′,
+
+where I is the identity tensor. Introducing this decomposition in the constitutive equation,
+we obtain:
+
+σ = −pI + C′ : �(u),
+
+where now C′ represents the deviatoric part of the constitutive tensor, that is, the tensor that
+applied to the symmetric gradient of the displacement field yields the deviatoric part of the
+stresses:
+
+C′ : �(u) = σ′.
+
+p is related to the displacement field through the following equation:
+
+p = −κ∇ · u,
+
+3
+
+
+
+where κ is the bulk modulus or modulus of compressibility. This yields the final form of the
+linear elasticity equations in u-p form: find u and p such that:
+
+−∇ ·
+[
+C′ : �(u)
+
+]
++∇p = ρb in Ω,
+
+∇ · u+
+1
+
+κ
+p = 0 in Ω,
+
+where Ω represents the computational domain of R2 or R3. The boundary conditions for the
+problem are:
+
+u = ū on ΓD,
+
+σ · n = t̄ on ΓN ,
+
+where ū are the prescribed displacements in the Dirichlet boundary ΓD and t̄ are the pre-
+scribed tractions in the Neumann boundary ΓN , n being the unit external normal.
+
+Let us consider a quasi-uniform (for simplicity) finite element partition Th := {K} defined
+over domain Ω, assumed to be polyhedral, h denoting the element size. In the adaptive context
+this translates into considering that ratio between the largest and the smallest element of the
+mesh is bounded. The Galerkin weak form of the u-p linear elasticity equations can be
+written as: find uh ∈ Vh and ph ∈ Qh such that:
+
+B([uh, ph], [vh, qh]) = L(vh, qh), ∀vh ∈ Vh,∀qh ∈ Qh, (1)
+
+with:
+
+B([uh, ph], [vh, qh]) =
+(
+�(vh), σ
+
+′(uh)
+)
+− (∇ · vh, ph) + (qh,∇ · uh) +
+
+(
+qh,
+
+1
+
+κ
+ph
+
+)
+,
+
+L(vh, qh) = 〈vh, ρb〉+ 〈vh, t̄〉ΓN .
+
+Here Vh ⊂ V = H1(Ω) and Qh ⊂ Q = L2(Ω) are the displacement and pressure interpolation
+spaces, defined on the partition Th. (·, ·) stands for the L2(Ω) inner product and 〈·, ·〉ω for
+the integral of the product of two functions in a domain ω, not necessarily in L2(ω); the
+subscript is omitted when ω = Ω. Boundary conditions need to be incorporated to Vh in the
+usual way.
+
+In the incompressible limit this formulation is not stable for arbitrary spaces Vh and
+Qh, because the term
+
+(
+qh,
+
+1
+κ
+ph
+)
+
+tends to zero and causes the stability of the weak form to
+depend on a compatibility inf-sup condition between Vh and Qh. In order to circumvent this
+restriction, an additional stabilization term is introduced which ensures that the resulting
+linear system of equations is solvable. This additional stabilizing term can be derived by
+using the VMS method.
+
+The VMS method was firstly introduced in [9, 10] and has since been used as a tool
+for stabilization and representation of multiscale phenomena in many fields. The main idea
+consists in decomposing the exact solution of a variational problem into the part which can
+be captured by the finite element space, and the part which cannot. In the problem we are
+considering, this translates into the following decomposition of u and p:
+
+u = uh + ũ (2)
+
+p = ph + p̃
+
+where uh ∈ Vh and ph ∈ Qh represent the finite element parts of the solution, and ũ ∈ Ṽ
+and p̃ ∈ Q̃ are the displacement and pressure subscales and subscale spaces, respectively.
+
+4
+
+
+
+This decomposition leads to enhanced numerical discretization schemes, which in many cases
+allow one to solve the stability issues of the straightforward Galerkin variational form. In the
+particular case of solid mechanics problems, the use of the VMS method leads to formulations
+which are stable in the incompressible limit, in contrast to the standard Galerkin method
+which is unstable in this limit. This is the case of the formulation presented in equation (1).
+
+Intuitively, it can be seen from the decomposition introduced in equation (2) that the
+subscales are a measure of the error of the obtained solution, because they represent the
+difference between the exact solution and the approximated one. This was originally noted in
+[9, 10], and has been exploited in several works since then. In this work, we are going to use
+a particular family of subgrid scales, the orthogonal subgrid scales, in order to build an error
+estimator for solid mechanics problems. The main particularity of this family of subscales is
+that it assumes that the subscales belong to spaces which are orthogonal to the finite element
+approximation spaces with respect to the L2(Ω) inner product:
+
+Ṽ = V ⊥h ,
+
+Q̃ = Q⊥h .
+
+The objective of this section is to obtain an accurate representation of the displacement
+and pressure subscales which allows us to, on the one hand, obtain a stable finite element
+formulation for the u-p approximation of the solid mechanics problem, and on the other,
+estimate the error of the finite element approximation. Let us start by introducing the
+decomposition (2) in the original variational form of the problem, and apply it both to the
+unknowns and the test functions of the problem. This allows us to separate the resulting
+equations into the equations for the finite element test functions, and the equations for the
+subscales test functions. The resulting finite element equations are:(
+
+�(vh),σ
+′(uh)
+
+)
++
+(
+�(vh),σ
+
+′(ũ)
+)
+− (∇ · vh, ph)− (∇ · vh, p̃) = 〈vh, ρb〉 , (3)
+
+(qh,∇ · uh) + (qh,∇ · ũ)−
+(
+qh,
+
+1
+
+κ
+ph
+
+)
+−
+(
+qh,
+
+1
+
+κ
+p̃
+
+)
+= 0. (4)
+
+Here and in the following we have considered that t̄ = 0 on ΓN for simplicity in the theoretical
+development, although arbitrary values for the tractions can be used with the proposed error
+estimator.
+
+On the other hand, the equation for the subscales test functions in the element interiors
+are: (
+
+�(v′),σ′(uh)
+)
+
++
+(
+�(v′),σ′(ũ)
+
+)
+−
+(
+∇ · v′, ph
+
+)
+−
+(
+∇ · v′, p̃
+
+)
+=
+〈
+v′, ρb
+
+〉
+, (5)(
+
+q′,∇ · uh
+)
+
++
+(
+q′,∇ · ũ
+
+)
+−
+(
+q′,
+
+1
+
+κ
+ph
+
+)
+−
+(
+q′,
+
+1
+
+κ
+p̃
+
+)
+= 0. (6)
+
+The equations for the subscales cannot be exactly solved and need to be approximated.
+Integrating by parts equation (5) inside each element and neglecting the contribution of the
+pressure subscales on the displacement subscales equation we obtain the following equation:
+
+−
+(
+v′,∇ ·
+
+(
+σ′(uh)
+
+))
+h
+−
+(
+v′,∇ ·
+
+(
+σ′(ũ)
+
+))
+h
+
++
+(
+v′,∇ph
+
+)
+=
+〈
+v′, ρb
+
+〉
+.
+
+In this expression, subscript h is used to indicate that integrals are evaluated element-wise and
+we have taken into account that the exact fluxes (stresses) across inter-element boundaries
+cancel in matching element faces. It represents the equation for the subscales on the element
+interiors. Grouping terms for uh and ũ we obtain:
+
+−
+(
+v′,∇ ·
+
+(
+σ′(ũ)
+
+))
+h
+
+=
+(
+v′, ρb+∇ · σ′(uh)−∇ph
+
+)
+h
+. (7)
+
+5
+
+
+
+Finally, we introduce the additional key approximation
+
+∇ ·
+(
+σ′(ũ)
+
+)
+= τ−1ũ.
+
+Assuming isotropic elasticity, the expression for τ in each element can be defined as (see [30]):
+
+τ = c1
+h2
+
+2
+
+(
+1
+
+µ
++
+
+1
+
+κ
+
+)
+, (8)
+
+with h being the element size, µ being the shear modulus and c1 being an algorithmic con-
+stant. A more elaborated expression for the stabilization parameter τ would be required if
+anisotropic materials are considered. For simplicity we have assumed quasi-uniform meshes,
+so that τ will be considered the same for all the elements in what follows.
+
+The closed form expression for the subscales in the element interiors can now be obtained
+from equation (7):
+
+ũ = τP̃
+(
+ρb+∇ · σ′(uh)−∇ph
+
+)
+. (9)
+
+where P̃ (·) denotes the projection onto the subscales space. This projection operator is many
+times defined as the identity operator, which results in the approach known as the Algebraic
+Subgrid Scale (ASGS) method. In the case of the Orthogonal Subgrid Scale method (OSS)
+used in this work, the projection operator is taken as projection onto the space orthogonal
+to the finite element space:
+
+P̃ = I − Ph,
+
+where Ph denotes the projection onto the appropriate finite element space, either of displace-
+ments as in (9) or onto the pressure space, as we require next.
+
+Applying a similar strategy to equation (4) we arrive to the expression for the pressure
+subscales:
+
+p̃ = τpP̃
+
+(
+1
+
+κ
+ph −∇ · uh
+
+)
+= τpP̃ (−∇ · uh), (10)
+
+with
+
+τp = c22
+
+(
+1
+
+µ
++
+
+1
+
+κ
+
+)−1
+.
+
+We have assumed that the normal component of the stresses produced by the finite
+element solution and the subscales is continuous across interelement boundaries, but this
+does not happen when the subscales are approximated. We now argue as in [28] to obtain
+the contribution of the subscales on the element boundaries, assuming this does not affect
+the subscales in the element interiors. Integrating by parts within each element in equations
+(3) and (4), we obtain:(
+
+�(vh),σ
+′(uh)
+
+)
+−
+(
+∇ · σ′(vh), ũ
+
+)
+h
+
++
+∑
+K
+
+〈
+n · σ′(vh), ũE
+
+〉
+∂K
+
+− (∇ · vh, ph)− (∇ · vh, p̃) = 〈vh, ρb〉 , (11)
+
+(qh,∇ · uh)− (∇qh, ũ)h +
+∑
+K
+
+〈qh,n · ũE〉∂K +
+(
+qh,
+
+1
+
+κ
+ph
+
+)
++
+
+(
+qh,
+
+1
+
+κ
+p̃
+
+)
+= 0, (12)
+
+where ũE represents the value for the subscales on the element boundaries ∂K. We assume it
+is uniquely defined on the edges (faces, in 3D) shared by neighboring elements, that we denote
+with subscript E. The expression for the subscales in the element interiors has already been
+obtained in equations (9) and (10). However, their contribution in the element boundaries
+
+6
+
+
+
+ũE in equations (11) and (12) still needs to be accounted for. Following [28], the subscales
+in the element boundaries can be approximated as:
+
+ũE = −τE [[σ′(uh) · n− phn]]E , (13)
+
+with
+
+τE =
+δ0h
+
+2µ
+.
+
+The algorithmic constant δ0 = 1/2 is typically used. h here is taken as the average element
+length, that is, the average of the square (in two dimensions) or cubic (in three dimensions)
+root of the volume of the elements owning the edge or face. The jump operator across a face
+E is defined as:
+
+[[ng]]E = n1g|∂K1∩E + n2g|∂K2∩E ,
+
+where ni denotes the external normal in the boundary of element Ki. This expression for
+the boundary subscales is obtained by enforcing that the total tractions are continuous across
+interelement boundaries. As a consequence, [[σ′(u) · n − pn]] = 0 must hold. Decomposing
+this expression into the finite element contribution and the contribution of the displacement
+boundary subscales we obtain:
+
+[[σ′(uh + ũE) · n− pn]] = 0.
+
+Finally, approximating [[σ′(ũE) · n]] on the faces of the elements as:
+
+[[σ′(ũE) · n]] =
+ũE
+τE
+
+yields (13). The details of the formulation can be found in [28]. A similar model for the
+boundary subscales in the context of the transport equation is proposed in [16].
+
+For continuous interpolation spaces for ph, where the pressure is already continuous, we
+obtain:
+
+ũE = −τE [[σ′(uh) · n]]E .
+
+Introducing the previous expressions for the displacement and pressure subscales in equa-
+tions (3) and (4) results in a stabilized formulation capable of dealing with any interpolation
+space pair for the displacement and pressure, even in the incompressible limit. However,
+when using continuous interpolation spaces for both the displacement and the pressure, not
+all of the previous terms are required in order to obtain a stable formulation. Particularly,
+a stable formulation can be obtained by dropping all the contributions of the subgrid scale
+terms except for the ones corresponding to the element interior displacement subscales in
+the continuity equation,
+
+∑
+K τ
+〈
+∇qh, P̃ (ρb+∇ · σ′(uh)−∇ph)
+
+〉
+K
+
+. When using continuous
+interpolation spaces this results in the simplest implementation without harming the proper
+rate of convergence (see [27]). The additional terms can enhance the solution and account
+for the effect of unresolved subscales and materials with complex behavior (see for instance
+[31, 28, 32]).
+
+Due to this, and in order to obtain an as simple to implement as possible formulation
+without harming the accuracy of the method, we are going to use an OSS bilinear form
+with only the indispensable stabilizing terms in order to build the finite element system of
+equations. On the contrary, the full approximation for the subscales is going to be used in
+order to compute an as accurate as possible error estimator in Section 3.
+
+Taking this into account, the final stabilized weak form of the problem is:
+
+BS([uh, ph], [vh, qh]) = LS(vh, qh) (14)
+
+7
+
+
+
+with
+
+BS([uh, ph], [vh, qh]) = B([uh, ph], [vh, qh]) +
+∑
+K
+
+τ
+〈
+∇qh, P̃
+
+(
+−∇ · σ′(uh) +∇ph
+
+)〉
+K
+
+LS(vh, qh) = L(vh, qh) +
+∑
+K
+
+τ
+〈
+∇qh, P̃ (ρb)
+
+〉
+K
+
+The main properties of the formulation are the following: first, the formulation can now
+be shown to be stable even in the incompressible limit (see [33, 34] for a stability proof), and
+any set of continuous interpolation spaces Vh and Qh can be used. Second, the stabilization
+term is consistent. As a consequence, the convergence rate of the error of the finite element
+solution with respect to the mesh size is not harmed by the stabilizing term.
+
+Remark 1. When implementing the OSS formulation, the projections onto the finite
+element space, Ph, need to be computed. A possible approach to deal with these projections
+is to compute them in an iterative manner. This means that the global L2 projections onto
+the finite element space are evaluated using the residual fields at the preceding iteration. For
+non-linear problems the iterative process for the orthogonal projection can be coupled with
+the non-linear iterations, generally with reduced impact in the convergence rate.
+
+For linear problems, an iterative loop (not required in the original problem) is necessary
+to compute the projections. Local projections can be used to avoid this issue, although we
+have not pursued this possibility in this work, because our final objective is to apply the
+proposed methodology to non-linear solid mechanics problems.
+
+Also, diagonal lumped mass matrices can be used to perform low-computational-cost L2
+
+projections, with low impact in the accuracy of the results. This is the strategy followed in
+the numerical examples section.
+
+Remark 2. Note that, following [28], the expression for the subscales on the element
+boundaries is the same for our definition of the ASGS and the OSS method, that is, an identity
+projection operator is used for the subscales on the element boundaries. An unexplored
+possibility would be to consider an edge or face orthogonal projection for the subscales on
+the element boundaries. However, it is not clear that this would lead to a sharper error
+estimator.
+
+3 Variational Multiscale based error estimators
+
+3.1 Definition of the error estimator
+
+In this work we are going to see that the norm of the orthogonal subgrid scales given by
+equations (9), (10) and (13) can be used as an error estimator and provide an accurate
+measure of the difference between the finite element solution and the exact one. For this, we
+consider as an error estimator the following norm of the subscales:
+
+η2K := τ
+−1
+ˆ
+K
+|ũ|2 + τ−1p
+
+ˆ
+K
+|p̃|2 + τ−1E
+
+ˆ
+∂K
+|ũE |2 (15)
+
+Following [35] as done in [4], the last term in (15) can be shown to be equivalent to ‖σ′h −
+Ph(σ
+
+′
+h)‖
+
+2
+K in the sense that:
+
+γ1
+∑
+K
+
+hK
+
+ˆ
+∂K
+|[[σ′(uh) · n]]E |2 ≤ ‖σ′h − Ph(σ
+
+′
+h)‖
+
+2 ≤ γ2
+∑
+K
+
+hK
+
+ˆ
+∂K
+|[[σ′(uh) · n]]E |2 (16)
+
+for certain positive constants γ1, γ2. This introduces the possibility of approximating:
+
+τ−1E
+
+ˆ
+∂K
+|ũE |2 ≈ τEγh−1K ‖P̃ (σ
+
+′
+h)‖
+
+2
+K (17)
+
+8
+
+
+
+in practical cases. The most convenient γ parameter can be obtained through a numerical
+benchmark. In the numerical examples in Section 4 this approximation has been used. The
+performance of the error estimator (15) is going to be compared with the measure of the
+actual error in the energy norm, which we define as follows:
+
+|||[u, p]|||2 :=
+(
+σ′(u), �(u)
+
+)
++
+
+1
+
+κ
+‖p‖2 +
+
+∑
+K
+
+τ‖∇p‖2K .
+
+This is the norm in which stability and convergence can be proved for the stabilized finite
+element formulation being used.
+
+3.2 Error estimator bound and approximation
+
+In the following we check that the orthogonal subgrid scales based error estimator effectively
+provides an upper bound for the energy norm error. We define the error and the error’s
+energy norm as:
+
+e = [u− uh, p− ph],
+e = |||[u− uh, p− ph]|||.
+
+In order to show that the orthogonal subgrid scales can be used as an error estimator, we
+will show that the following inequality holds:
+
+|||e|||2 ≤ C2EST
+
+(∑
+K
+
+η2K
+
+)
+,
+
+where CEST is a mesh geometry dependent constant. This can be obtained following the
+procedure explained in [36]. The only particularity is that, since we consider the subscales
+to belong to spaces orthogonal to the finite element interpolation, some simplifications can
+be done in the derivation process. In particular, it can be shown that the upper bound for
+the error estimator is sharper than in the case of standard (non orthogonal) approximation
+of the subscales: basically the same error estimator as in the ASGS method can be obtained
+for the OSS method, but using the orthogonal projection of the residual. Since the norm of
+the orthogonal projection of the residual is smaller than the norm of the residual, the upper
+bound of the error estimator is sharper.
+
+Due to the consistency of the stability term, the usual Galerkin orthogonality for the
+stabilized formulation (14) can be applied:
+
+BS(e, [vh, qh]) = 0 ∀vh ∈ Vh,∀qh ∈ Qh. (18)
+
+Also:
+
+BS(e, [v, q]) = BS([u, p], [v, q])−BS([uh, ph], [v, q])
+= LS(v, q)−BS([uh, ph], [v, q]).
+
+Now, departing from the originally stabilized weak form (14), separating integrals within each
+element and integrating by parts we arrive to:
+
+BS(e, [v, q]) =
+∑
+K
+
+〈
+v, ρb+∇ · σ′(uh)−∇ph
+
+〉
+K
+
+−
+∑
+K
+
+〈
+v,n · (σ′(uh)− phI)
+
+〉
+∂K
+−
+∑
+K
+
+〈
+q,∇ · uh +
+
+1
+
+κ
+ph
+
+〉
+K
+
++
+∑
+K
+
+τ
+〈
+∇q, P̃ (ρb+∇ · σ′(uh)−∇ph)
+
+〉
+K
+.
+
+9
+
+
+
+Making use of (18), we have:
+
+BS(e, [v, q]) = BS(e, [v − vh, q − qh]).
+
+Now, in the previous equation we take vh = Ph(v), qh = Ph(q) and we recall that v−Ph(v) =
+P̃ (v) for the OSS method:
+
+BS(e, [v, q]) =
+∑
+K
+
+〈
+P̃ (v), P̃
+
+(
+ρb+∇ · σ′(uh)−∇ph
+
+)〉
+K
+
+−
+∑
+E
+
+〈
+P̃ (v), [[n · σ′(uh)− phn]]
+
+〉
+E
+−
+∑
+K
+
+〈
+P̃ (q), P̃ (∇ · uh)
+
+〉
+K
+
++
+∑
+K
+
+τ
+〈
+P̃ (∇(P̃ (q))), P̃ (ρb+∇ · σ′(uh)−∇ph)
+
+〉
+K
+. (19)
+
+Due to interpolation properties of the finite element space (see for instance [37]) and the
+definition of P̃ , the following inequalities hold:∑
+
+K
+
+‖P̃ (v)‖K . τ1/2|||[v, 0]|||,∑
+K
+
+‖P̃ (v)‖∂K . τ
+1/2
+E |||[v, 0]|||,∑
+
+K
+
+‖P̃ (q)‖K . τ1/2p |||[0, q]|||,∑
+K
+
+τ1/2‖P̃ (∇(P̃ (q)))‖K . |||[0, q]|||,
+
+where ., & denote an inequality up to dimensionless constants independent of the discretiza-
+tion.
+
+Using the stability of BS and applying the triangular inequality we can say that there
+exists [v, q] such that:
+
+|||e||||||[v, q]||| . BS(e, [v, q]). (20)
+
+The proof for the stability of BS can be found in [33, 34], and has not been included for
+conciseness. Let us only remark that in order for BS to be stable, a weakened inf-sup com-
+patibility condition needs to be satisfied between Vh and Qh. This weakened inf-sup condition
+is satisfied by most u-p interpolation pairs, and in particular by equal order interpolation
+spaces for u and p. Now, taking [v, q] such that (20) is fulfilled and using Schwarz’s inequality
+in (19), the sought bound for the error is obtained:
+
+|||e|||2 .
+∑
+K
+
+η2K
+
+It is interesting to note that the obtained error bound is sharper if we use an orthogonal
+space for the subgrid scales (OSS method), than if the usual space for the subscales is used
+(ASGS). This observation leads to our error estimator based on the OSS method.
+
+4 Numerical examples
+
+In this section some numerical examples are presented which focus in the various features
+of the OSS error estimator. Firstly, some analytical examples that highlight the behavior of
+the estimator with different type of displacement and pressure solution fields are simulated.
+
+10
+
+
+
+This allows us to see how does the estimator behave in divergence free, compressible and
+incompressible, and hydrostatic solution fields. In each of these examples, we evaluate the
+weight of the contribution of the interior and boundary subscales, and we compare the error
+estimator obtained with the OSS and the ASGS methods.
+
+A second block of examples show the behavior of the error estimator when applied to
+problems where non-linear constitutive models are used.
+
+4.1 Divergence free solution for a compressible material
+
+In this numerical example the following analytical solution is tested:
+
+u = 2xy, v = −y2,
+
+where u and v are the Cartesian components of the displacement. The computational domain
+is Ω := (0, 1) × (0, 1). A mesh of linear triangles is used to discretize the computational
+domain. The Poisson coefficient is taken as ν = 0.21, which corresponds to a compressible
+material. The Young modulus is taken as E = 2.40 · 1011, which results in a bulk modulus
+κ = 1.3793 · 1011 and a shear modulus µ = 9.9174 · 1010. On the other hand, note that the
+analytical solution is divergence free, so the pressure is going to be zero everywhere in the
+domain. This solution is very convenient in order to analyze the contribution of the subscales
+on the element boundaries ũE to the error estimator, since the contributions of ũ and p̃ will
+be negligible. The subscales based error estimator is compared with the energy norm error.
+Since this is a smooth solution, the error estimator causes the algorithm to refine the mesh
+uniformly. Also, it is important to note that this example has been used to adjust the γ
+parameter in approximation (17). We use γ = 4 in all the numerical examples. Nevertheless,
+the spatial distribution of the error estimator is independent of the chosen γ constant and it
+can be seen how it properly matches the spatial distribution of the energy norm error.
+
+The energy norm error and the error estimated by using the norm of the subgrid scales
+are shown in Fig. 1, after some refinement steps have been done. It is interesting to observe
+that the shape of the elements that conformed the original mesh (which has been successively
+refined) can still be appreciated in the coloring of both the energy norm and the subscales
+error estimator. The cause for this is that the original coarse element geometry and quality
+determine the quality of their children refined elements. Fig. 2 shows the convergence rate
+of both the energy error and the subscales error estimator with the mesh size. It also shows
+the global efficiency index of the error estimator for this problem. It can be observed that
+the efficiency of the estimator for this case is very good.
+
+4.2 Hydrostatic solution for an incompressible material
+
+In this numerical example, an incompressible material with Poisson coefficient ν = 0.5 is
+tested, so that the bulk modulus is κ = ∞. The Young modulus is again taken as E =
+2.40 · 1011 and a shear modulus µ = 8 · 1010. In this case an analytical solution with null
+displacement is considered:
+
+u = 0, v = 0, p = 2x2y.
+
+The domain is again Ω := (0, 1) × (0, 1). A mesh of linear triangles is used to discretize
+the computational domain. As in the previous case, the solution is quite smooth, so a
+uniform refinement criteria is obtained. The main interest of this case is that both the
+contribution from the subscales on the element boundaries ũE and the contribution of the
+pressure subscales p̃ to the error indicator are negligible, so it allows us to evaluate the
+
+11
+
+
+
+Figure 1: Left: Energy norm error contribution. Right: Subscales error estimator contribu-
+tion. Top: After two refinement steps. Bottom: After four refinement steps.
+
+10
+0
+
+10
+3
+
+10
+4
+
+10
+5
+
+1/h
+
+e
+
+ 
+
+ 
+
+Energy Norm Error
+Error Estimator
+
+0 0.2 0.4 0.6 0.8 1
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+1.2
+
+1.4
+
+1.6
+
+1.8
+
+2
+
+1/h
+
+E
+rr
+
+o
+r 
+
+E
+st
+
+im
+a
+
+to
+r/
+
+E
+n
+
+e
+rg
+
+y 
+N
+
+o
+rm
+
+Figure 2: Left: convergence of the energy error norm and the subscales error estimator with
+the mesh size. Right: Global efficiency index as a function of the mesh size.
+
+12
+
+
+
+Figure 3: Left: Energy Error Norm. Center: ASGS error estimator. Right: OSS error
+estimator. Top: Two refinement levels. Bottom: Four refinement levels.
+
+performance of ũ as an error indicator. Fig. 3 shows a comparison between the energy norm
+error, the Algebraic Subgid Scale (ASGS) error estimator (obtained by using the identity
+projector I instead of P̃ when defining the subgrid scales in (9)) and the OSS error estimator.
+The ASGS is the usual approach in VMS methodologies, possibly because it allows to avoid
+the projection onto the subscales space. However, it has been observed that in many cases
+the OSS approach results in more accurate results (see [31, 38]).
+
+It can be observed that a good match between the energy norm error and the ASGS and
+OSS error estimators is obtained. Despite the fact that the analysis shows that the OSS error
+bound is sharper than the ASGS error bound, in this practical example very few differences
+are observed between them. In Fig. 4 a comparison between the convergence rate of the
+energy norm error and the OSS error estimator is shown, together with the global efficiency
+index of the OSS error estimator. It can be observed that the error estimator does a good
+job in reproducing the convergence rate of the energy norm error.
+
+4.3 Hydrostatic solution for a compressible material
+
+This case deals with a hydrostatic solution for a compressible material. The contribution of
+the pressure gradient to the error and the capability of the error estimator to capture it are
+
+13
+
+
+
+10
+0
+
+10
+−10
+
+10
+−9
+
+10
+−8
+
+1/h
+
+e
+
+ 
+
+ 
+
+Energy Norm Error
+
+Error Estimator
+
+0 0.2 0.4 0.6 0.8 1
+0
+
+0.5
+
+1
+
+1.5
+
+2
+
+1/h
+
+E
+rr
+
+o
+r 
+
+E
+s
+ti
+m
+
+a
+to
+
+r/
+E
+
+n
+e
+
+rg
+y
+ N
+
+o
+rm
+
+Figure 4: Convergence rate and global efficiency index for the error estimator.
+
+evaluated. The components of the displacement of the considered solution are:
+
+u =
+1
+
+2
+
+(
+x2 − y2 − z2
+
+)
++ x (y + z) + y + z,
+
+v =
+1
+
+2
+
+(
+y2 − x2 − z2
+
+)
++ y (x+ z)− z − x,
+
+w =
+1
+
+2
+
+(
+z2 − x2 − y2
+
+)
++ z (x+ y)− x+ y.
+
+The Poisson coefficient is taken as ν = 0, and the Young modulus E = 1, which results
+in a bulk modulus κ = 1/3 and a shear modulus µ = 0.5. In this case the computational
+domain is three-dimensional and occupies the cube Ω := (0, 1) × (0, 1) × (0, 1). A mesh of
+linear tetrahedra is used to discretize the computational domain. The resulting stress field is
+hydrostatic, the value for the pressure being:
+
+p = −κ(3x+ 3y + 3z).
+
+As in the previous cases, we are using linear approximation spaces for the displacement and
+pressure unknowns. As a consequence, the pressure approximation is capable of exactly cap-
+turing the analytical solution. However, the displacement approximation does not allow one
+to exactly represent the displacement field and its divergence, which results in an approx-
+imation error. Since the stresses are purely hydrostatic, the only active part of the error
+estimator will be the pressure subscale p̃, which includes the orthogonal projection of the
+displacement divergence. This is precisely the part of the error estimator that we want to
+evaluate in this numerical example. In this case, no difference will be appreciated between
+using the algebraic or the orthogonal subscales version for the error estimator, because when
+using equal order interpolation the pressure is precisely the projection onto the finite element
+space of the displacement divergence, and the expression for the pressure subscale is the same
+for the ASGS and the OSS error estimators.
+
+Fig. 5 shows a comparison of the energy norm error distribution and the error estimator
+at several refinement steps. Both are similar at the several stages, and thus we conclude that
+the pressure subscales are capable of capturing the part of the error associated to hydrostatic
+stress states.
+
+Fig. 6 shows the convergence and global efficiency index for the hydrostatic solution for
+a compressible material. It can be observed that the global efficiency index is close to one in
+the whole refinement process and that the energy norm error and the global efficiency index
+converge at the same rate.
+
+14
+
+
+
+Figure 5: Comparison of the energy norm error and the subgrid scales error estimator for the
+hydrostatic solution for a compressible material. The figures in the left represent the energy
+norm error, the ones in the right the subgrid scales error estimator. From top to bottom, the
+results for one and two refinement steps are shown.
+
+10
+1
+
+10
+2
+
+10
+−2
+
+10
+−1
+
+1/h
+
+e
+
+ 
+
+ 
+
+Energy Norm Error
+
+Error Estimator
+
+20 30 40 50 60 70 80 90
+0
+
+0.5
+
+1
+
+1.5
+
+2
+
+1/h
+
+E
+rr
+
+o
+r 
+
+E
+s
+ti
+m
+
+a
+to
+
+r/
+E
+
+n
+e
+rg
+
+y
+ N
+
+o
+rm
+
+Figure 6: Left: Error and error estimator convergence for the hydrostatic solution for a
+compressible material. Right: Global efficiency index for the hydrostatic solution for a com-
+pressible material.
+
+15
+
+
+
+Figure 7: Comparison of the energy norm error and the orthogonal subgrid scales error
+estimator for the singular solution problem.
+
+4.4 Singular solution
+
+In this numerical example we test a solution for the incompressible limit ν = 0.5 (and thus
+κ = ∞) with a singular point. The Young modulus is taken as E = 1, which results in a
+shear modulus µ = 1/3. This allows us to evaluate the performance of the subscales as an
+error indicator when large localized gradients appear. The studied solution is the following:
+
+u(r, φ) = rα
+[
+
+cos(φ)ψ′(φ) + (1 + α) sin(φ)ψ(φ)
+sin(φ)ψ′(φ)− (1 + α) sin(φ)ψ(φ)
+
+]
+, p(r, φ) = −rα−1
+
+(1 + α)2ψ′(φ) + ψ′′′(φ)
+
+1− α
+,
+
+with r and φ being the polar coordinates and:
+
+ψ(φ) =
+sin((1 + α)φ) cos(αω)
+
+1 + α
+− cos((1 + α)φ) +
+
+sin((α− 1)φ) cos(αω)
+1− α
+
++ cos((α− 1)φ).
+
+Here we take ω = 3π/2 and α as the (approximate) root of the following non-linear equation:
+
+sin2(αω)− α2 sin2(ω)
+α2
+
+= 0.
+
+This solution is evaluated in the L-shaped domain:
+
+Ω := ((−1, 1)× (−1, 1))\([0, 1]× [−1, 0]).
+
+A bilinear quadrilateral mesh is used to discretize the computational domain.
+Fig. 7 shows the comparison of the error estimator and the energy norm error after several
+
+refinement steps. It can be observed that both quantities are very similar, from which we
+conclude that the orthogonal subgrid scale error estimator is suitable also for problems in
+which the solution presents large gradients. Fig. 8 shows the convergence rate of the energy
+norm error compared to the error estimator and the global efficiency index. Again, very good
+results are obtained.
+
+4.5 Damage model
+
+In this numerical example we use the subscales error estimator in order to track the failure
+process of a plain strain test plate subject to an increasing axial effort. In order to properly
+track the evolution of the failure lines when using low order elements, a smoothing of the
+
+16
+
+
+
+10
+1
+
+10
+2
+
+10
+3
+
+10
+4
+
+10
+−1
+
+10
+0
+
+Number Of Elements
+
+e
+
+ 
+
+ 
+
+Energy Norm Error
+
+Error Estimator
+
+0 200 400 600 800 1000 1200
+0
+
+0.5
+
+1
+
+1.5
+
+2
+
+Number Of Elements
+
+E
+rr
+
+o
+r 
+
+E
+s
+ti
+m
+
+a
+to
+
+r/
+E
+
+n
+e
+rg
+
+y
+ N
+
+o
+rm
+
+Figure 8: Convergence rate and global efficiency index for the singular solution case.
+
+stress field is used in order to evaluate the damage constitutive model. This allows us to
+obtain an accuracy similar to the one of mixed σ-u-p finite element formulations for solid
+mechanics, but without the additional complexity of solving a coupled stress field.
+
+The constitutive equation for the J2-damage model used in this example (see [39]) reads
+as follows: an internal damage variable d is introduced which takes into account the damage
+of the deviatoric part of the stresses. This leads to the modified constitutive equation:
+
+σ = −pI + (1− d)C′ : �(u).
+
+The characterization of damage is done through an equivalent one dimensional shear stress:
+
+τd =
+
+√
+3
+
+2
+σ′ : σ′,
+
+which corresponds to the classical Von Misses stress. We also define the explicit internal
+variable r as:
+
+r = max{r0,max(τd)},
+
+where r0 corresponds to the initial damage uniaxial stress. From here, the damage parameter
+can be computed as:
+
+d(r) = 1−
+r0
+r
+
+exp
+
+(
+−2HS
+
+(
+r − r0
+r0
+
+))
+,
+
+where Hs is a constant which depends on the considered material rate of energy dissipation,
+with:
+
+HS =
+H̄Slch
+
+1− H̄Slch
+≥ 0,
+
+H̄S =
+r20
+
+3(2µ)GII
+,
+
+where lch is the fracture length (typically taken as the finite element size) and GII is the mode
+II fracture energy per unit area.
+
+The considered problem is the following: a rectangular plate with an orifice in its cen-
+ter is subject to a progressively increasing forced displacement in its top border, while the
+displacement in the bottom border is set to zero. The material properties are the following:
+the Young modulus is set to E = 10 MPa, the Poisson coefficient is ν = 0.3, which results
+in a bulk modulus κ = 8.333 MPa and a shear modulus µ = 3.846 MPa. The initial damage
+
+17
+
+
+
+Figure 9: Displacement field after 5, 64, 75 and 125 simulation steps.
+
+Figure 10: Pressure field after 5, 64, 75 and 125 simulation steps.
+
+uniaxial stress is taken as r0 = 10 kPa. Mode II fracture energy is taken as GII = 200 J/m2.
+Again, linear triangles are used to discretize the computational domain.
+
+As the stress module increases, the material gets damaged, damage starts first in the
+region surrounding the central orifice. Finally a crack appears departing from the central
+orifice and propagating with an angle of 3π/4. Figs. 9 and 10 show the displacement and
+pressure history as the simulation evolves. As the displacement increases large strains appear
+in the region surrounding the central orifice. The 3π/4 oriented crack can be observed in
+the last plot. Although initially (due to the simmetry of both loads and geometry) a second
+crack starts to develop with an orientation of π/4, this crack does not finally grow because
+the stress in the region decreases once the first crack develops. Which of both cracks finally
+develops depends on the initial imperfections of the considered problem, which in this case
+correspond to the lack of symmetry of the finite element mesh used to solve the problem.
+Fig. 11 shows the spatial distribution of the damage parameter at several simulation steps.
+In the initial steps the distribution of damage is symmetric, but at the end damage is much
+larger in the 3π/4 direction where the prevailing crack appears. Finally, Fig. 12 shows the
+adaptive mesh at each of the simulation steps, which has been obtained by using the adaptive
+refinement criteria based on the orthogonal subgrid scales model for the energy error. The
+mesh follows the path of the crack, which allows us to conclude that the orthogonal subgrid
+scales are a suitable error estimator for non-linear constitutive laws for solid mechanics which
+lead to the apparition of cracks.
+
+18
+
+
+
+Figure 11: Damage parameter field after 5, 64, 75 and 125 simulation steps.
+
+Figure 12: Finite element mesh 5, 64, 75 and 125 simulation steps.
+
+19
+
+
+
+4.6 A complex geometry case
+
+In order to illustrate the capability of the proposed methodology to solve complex problems,
+in this example we apply the damage model described in Section 4.5 to a case with a complex
+geometry. The considered geometry is depicted in Fig. 13; the total length of the simulated
+piece is 8 cm. It consists in a machinery piece with several orifices. The material properties are
+the following: the Young modulus is set to E = 24 MPa, the Poisson coefficient is ν = 0.21,
+which results in a bulk modulus κ = 13.79 MPa and a shear modulus µ = 9.92 MPa. The
+initial damage uniaxial stress is taken as r0 = 5 kPa. Mode II fracture energy is taken as
+GII = 240 J/m2. The boundary conditions are depicted in Fig. 14: one of the surfaces
+of the machinery piece is prescribed null displacements, while another one is prescribed an
+horizontal displacement. These boundary conditions cause a bending moment to appear in
+the sections close to the fixed surface. If the bending moment is large enough, it leads to the
+failure of the material. A mesh of linear tetrahedra is used to discretize the computational
+domain.
+
+As in the previous example, we are interested in showing that the subgrid scales based
+error estimator is capable of tracking the apparition of cracks. Fig. 15 shows the evolution of
+the damage parameter in one of the most stressed areas of the machinery piece, together with
+the evolution of the finite element mesh as the simulation evolves. The OSS error estimator
+is capable of tracking and capturing the apparition of damage (which induces the apparition
+of large deformation gradients), and thus it is suitable to be used for mesh adaptation in
+complex non-linear materials and geometries.
+
+5 Conclusions
+
+In this work we have presented an Orthogonal Subgrid Scale (OSS) [30, 27] error estimator
+for solid mechanics problems. The OSS error estimator belongs to the family of Variational
+Multiscale (VMS) based error estimators, with the particularity that the subgrid scales are
+considered to belong to a space orthogonal to the finite element approximation space. When
+applied to solid mechanics problems, the error analysis shows that a sharper upper bound
+can be obtained for the OSS error estimator than for other VMS error estimators such as the
+Algebraic Subgrid Scale (ASGS) error estimator. Also, the proposed error estimator makes
+use of a recently developed approximation for the subscales on the element boundaries [28].
+
+The numerical results show that the proposed error estimator is capable of recovering the
+energy error norm in a variety of situations where the contribution of each of the terms of the
+error estimator are evaluated: these situations correspond to compressible and incompressible
+materials, hydrostatic and deviatoric stress states.
+
+Finally the developed error estimator is applied to non-linear solid mechanics problems
+featuring a non-linear damage constitutive law. In these problems, the proposed error esti-
+mator is capable of tracking the apparition of cracks and large concentrated gradients, adding
+the required mesh refinement in the appropriate areas of the computational domain.
+
+In summary, the OSS error estimator is a suitable estimator for the solution of adaptive
+finite elements in the context of complex solid mechanics problems.
+
+Acknowledgements
+
+The authors would like to thank Fermı́n Otero for providing the geometrical data for the ma-
+chinery piece example. This work is partially funded through the ELASTIC-FLOW project,
+Ref. DPI2015-67857-R of the Spanish Government. J. Baiges acknowledges the support of
+
+20
+
+
+
+Figure 13: Complex geometry case. Top: xy, xz and yz views. Bottom: free view of the
+geometry
+
+Figure 14: Boundary conditions for the complex geometry case. The green surface is pre-
+scribed null displacements in all directions. The yellow surface is prescribed an increasing
+displacement in the x direction.
+
+21
+
+
+
+Figure 15: Damage parameter evolution and mesh evolution in the most stressed areas of the
+machinery piece.
+
+the Spanish Government through the Ramón y Cajal grant RYC-2015-17367. R. Codina
+acknowledges the support received through the ICREA Acadèmia Research Program of the
+Catalan Government. The support of the European PRACE computational network and
+the RES-Barcelona Supercomputing center in the development of the distributed memory
+adaptive mesh refinement algorithms is acknowledged. The financial support to CIMNE via
+the CERCA Programme / Generalitat de Catalunya is also acknowledged.
+
+References
+
+[1] Verfürth R. A review of a posteriori error estimation and adaptive mesh-refinement
+techniques. John Wiley & Sons Inc; 1996.
+
+[2] Vanella M, Posa A, Balaras E. Adaptive mesh refinement for immersed boundary meth-
+ods. Journal of Fluids Engineering. 2014;136(4):040909.
+
+[3] Russell RD. Adaptive Mesh Refinement. Encyclopedia of Applied and Computational
+Mathematics. 2015;p. 23–25.
+
+[4] Badia S, Baiges J. Adaptive finite element simulation of incompressible flows by hybrid
+continuous-discontinuous Galerkin formulations. SIAM Journal on Scientific Computing.
+2013;35(1):A491–A516.
+
+[5] Baiges J, Bayona C. RefficientLib: An efficient load-rebalanced adaptive mesh refinement
+algorithm for high performance computational physics meshes. Submitted. 2015;.
+
+[6] Baiges J, Codina R, Pont A, Castillo E. An adaptive Fixed-Mesh ALE method
+for free surface flows. Computer Methods in Applied Mechanics and Engineer-
+ing. 2017;313:159 – 188. Available from: http://www.sciencedirect.com/science/
+article/pii/S0045782516312567.
+
+[7] Ainsworth M, Oden JT. A Posteriori Error Estimation in Finite Element Analysis.
+Wiley-Interscience; 2000.
+
+[8] Verfürth R. A posteriori error estimation techniques for finite element methods. Oxford
+University Press; 2013.
+
+22
+
+
+
+[9] Hughes TJR. Multiscale phenomena: Green’s function, the Dirichlet-to-Neumann formu-
+lation, subgrid scale models, bubbles and the origins of stabilized formulations. Computer
+Methods in Applied Mechanics and Engineering. 1995;127:387–401.
+
+[10] Hughes TJR, Feijóo GR, Mazzei L, Quincy JB. The variational multiscale method–a
+paradigm for computational mechanics. Computer Methods in Applied Mechanics and
+Engineering. 1998;166:3–24.
+
+[11] Hughes TJ, Scovazzi G, Franca LP. Multiscale and stabilized methods. Encyclopedia of
+computational mechanics. 2004;.
+
+[12] Codina R, Badia S, Baiges J, Principe J. Variational Multiscale Methods in Computa-
+tional Fluid Dynamics. Encyclopedia of computational mechanics. 2017;.
+
+[13] Hauke G, Doweidar MH, Miana M. The multiscale approach to error estimation and
+adaptivity. Computer methods in applied mechanics and engineering. 2006;195(13):1573–
+1593.
+
+[14] Hauke G, Doweidar M, Fuster D, Gómez A, Sayas J. Application of Variational
+a-Posteriori Multiscale Error Estimation to Higher-Order Elements. Computational
+Mechanics. 2006;38(4-5):382–389. Available from: http://dx.doi.org/10.1007/
+s00466-006-0048-7.
+
+[15] Hauke G, Doweidar MH, Miana M. Proper intrinsic scales for a-posteriori multi-
+scale error estimation. Computer methods in applied mechanics and engineering.
+2006;195(33):3983–4001.
+
+[16] Hauke G, Fuster D, Doweidar MH. Variational multiscale a-posteriori error estimation
+for multi-dimensional transport problems. Computer Methods in Applied Mechanics
+and Engineering. 2008;197(33):2701–2718.
+
+[17] Rossi R, Cotela J, Lafontaine NM, Dadvand P, Idelsohn S. Parallel adaptive mesh
+refinement for incompressible flow problems. Computers & Fluids. 2013;80:342–355.
+
+[18] Hauke G, Fuster D, Lizarraga F. Variational multiscale a posteriori error estimation
+for systems: The Euler and Navier–Stokes equations. Computer Methods in Applied
+Mechanics and Engineering. 2015;283:1493–1524.
+
+[19] Hauke G, Irisarri D. Variational multiscale a posteriori error estimation for systems. Ap-
+plication to linear elasticity. Computer Methods in Applied Mechanics and Engineering.
+2015;285:291–314.
+
+[20] Irisarri D, Hauke G. Variational multiscale a posteriori error estimation for 2nd and
+4th-order ODEs. International Journal of Numerical Analysis & Modeling. 2015;12(3).
+
+[21] Masud A, Truster TJ, Bergman LA. A variational multiscale a posteriori error estimation
+method for mixed form of nearly incompressible elasticity. Computer Methods in Applied
+Mechanics and Engineering. 2011;200(47):3453–3481.
+
+[22] John V, Novo J. A robust SUPG norm a posteriori error estimator for stationary
+convection–diffusion equations. Computer Methods in Applied Mechanics and Engi-
+neering. 2013;255:289–305.
+
+23
+
+
+
+[23] Larson MG, Målqvist A. Adaptive variational multiscale methods based on a posteriori
+error estimation: energy norm estimates for elliptic problems. Computer methods in
+applied mechanics and engineering. 2007;196(21):2313–2324.
+
+[24] Hou TY, Wu XH. A multiscale finite element method for elliptic problems in composite
+materials and porous media. Journal of Computational Physics. 1997;134(1):169–189.
+
+[25] Larson MG, Målqvist A. An adaptive variational multiscale method for convection–
+diffusion problems. Communications in Numerical Methods in Engineering.
+2009;25(1):65–79.
+
+[26] Målqvist A, Peterseim D. Localization of elliptic multiscale problems. Mathematics of
+Computation. 2014;83(290):2583–2603.
+
+[27] Codina R. Stabilized finite element approximation of transient incompressible flows
+using orthogonal subscales. Computer Methods in Applied Mechanics and Engineering.
+2002;191:4295–4321.
+
+[28] Codina R, Principe J, Baiges J. Subscales on the element boundaries in the variational
+two-scale finite element method. Computer Methods in Applied Mechanics and Engi-
+neering. 2009;198:838–852.
+
+[29] Codina R, Baiges J. Finite element approximation of transmission conditions in fluids
+and solids introducing boundary subgrid scales. International Journal for Numerical
+Methods in Engineering. 2011;87:386–411.
+
+[30] Codina R. A stabilized finite element method for generalized stationary incompressible
+flows. Computer Methods in Applied Mechanics and Engineering. 2001;190:2681–2706.
+
+[31] Codina R, Principe J, Guasch O, Badia S. Time dependent subscales in the stabilized
+finite element approximation of incompressible flow problems. Computer Methods in
+Applied Mechanics and Engineering. 2007;196:2413–2430.
+
+[32] Castillo E, Baiges J, Codina R. Approximation of the two-fluid flow problem for vis-
+coelastic fluids using the level set method and pressure enriched finite element shape
+functions. Journal of Non-Newtonian Fluid Mechanics. 2015;225:37 – 53. Available
+from: http://www.sciencedirect.com/science/article/pii/S0377025715001688.
+
+[33] Codina R, Blasco J. A finite element formulation for the Stokes problem allowing equal
+velocity-pressure interpolation. Computer Methods in Applied Mechanics and Engineer-
+ing. 1997;143:373–391.
+
+[34] Codina R. Stabilization of incompressibility and convection through orthogonal sub-
+scales in finite element methods. Computer Methods in Applied Mechanics and Engi-
+neering. 2000;190:1579–1599.
+
+[35] El-Alaoui L, Ern A. Residual and Hierarchical a posteriori error estimates for noncon-
+forming mixed finite element methods. ESAIM: Mathematical Modelling and Numerical
+Analysis. 2004;38(6):903–929.
+
+[36] Ainsworth M, Oden JT. A posteriori error estimators for the Stokes and Oseen equations.
+SIAM Journal on Numerical Analysis. 1997;34:228–245.
+
+[37] Ern A, Guermond JL. Theory and Practice of Finite Element. Springer-Verlag; 2004.
+
+24
+
+
+
+[38] Codina R, Principe J, Ávila M. Finite element approximation of turbulent thermally
+coupled incompressible flows with numerical sub-grid scale modelling. International
+Journal of Numerical Methods for Heat & Fluid Flow. 2010;20(5):492–516.
+
+[39] Cervera M, Chiumenti M, Agelet de Saracibar C. Shear band localization via local J2
+continuum damage mechanics. Computer Methods in Applied Mechanics and Engineer-
+ing. 2004;193:849–880.
+
+25
+
+

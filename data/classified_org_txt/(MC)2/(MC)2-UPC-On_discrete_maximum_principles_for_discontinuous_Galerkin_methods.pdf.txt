@@ -1,0 +1,1901 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+On Discrete Maximum Principles for Discontinuous Galerkin Methods
+
+Santiago Badiaa,b, Alba Hierroa,b,∗
+
+aCentre Internacional de Mètodes Numèrics a l’Enginyeria (CIMNE), Parc Mediterrani de la Tecnologia, UPC, Esteve
+Terradas 5, 08860 Castelldefels, Spain
+
+bUniversitat Politècnica de Catalunya, Jordi Girona 1-3, Edifici C1, 08034 Barcelona, Spain.
+
+Abstract
+
+The aim of this work is to propose a monotonicity-preserving method for discontinuous Galerkin (dG)
+approximations of convection-diffusion problems. To do so, a novel definition of discrete maximum
+principle (DMP) is proposed using the discrete variational setting of the problem, and we show that
+the fulfilment of this DMP implies that the minimum/maximum (depending on the sign of the forcing
+term) is on the boundary for multidimensional problems. Then, an artificial viscosity (AV) technique is
+designed for convection-dominant problems that satisfies the above mentioned DMP. The noncomplete
+stabilized interior penalty dG method is proved to fulfil the DMP property for the one-dimensional
+linear case when adding such AV with certain parameters. The benchmarks for the constant values to
+satisfy the DMP are calculated and tested in the numerical experiments section. Finally, the method is
+applied to different test problems in one and two dimensions to show its performance.
+
+Keywords: discontinuous Galerkin, stabilized finite elements, shock capturing, nonlinear stabilization,
+convection-diffusion, convection-dominated flows
+
+1. Introduction
+
+It is well known that the operator L associated to an elliptic problem such as the convection-diffusion
+problem enjoys the maximum property, meaning that the maximum (resp., minimum) of the solution to
+the problem Lu = f is achieved on the boundary of the domain if the source term, f , is negative (resp.,
+positive). In particular, this property ensures that the solution of the problem will not show oscillations.
+It is well known that the solution of a convection-dominated problem may present sharp layers that may
+induce spurious oscillations in the discrete approximation of the solution. We are interested in finding a
+method that ensures a similar maximum property at the discrete discontinuous level in order to obtain
+a method that gives oscillation free solutions.
+
+When the problem is discretized, this maximum property may be inherited by what is called discrete
+maximum principle (DMP). Several definitions of the DMP have been proposed in the literature for
+continuous discrete approximations (see [13, 16, 27, 7, 26]). Some of them are equivalent while some
+others are weaker or stronger. There is also a lot of literature about the conditions on the mesh for the
+Poisson problem to enjoy the DMP [16, 29, 17, 25] as well as discrete methods specially implemented
+to fulfil such property. Methods have been designed for linear finite differences [9] and continuous linear
+finite elements [8, 13, 23, 5, 7, 6]. These methods are implicit in sense, and usually based on the addition of
+AV to the problem at hand; they are traditionally called shock (or discontinuity)-capturing techniques,
+even though we favour the notation nonlinear stabilization. Some approaches to prove a DMP using
+piecewise higher order polynomials have been done [24, 25, 20, 29, 28, 31, 32] but only the Poisson
+problem has been proved to enjoy the DMP and only on certain one-dimensional (1D) meshes [29] and
+on very restrictive quadratic and cubic two dimensional meshes [22, 16]. When it comes to discontinuous
+methods, most of the shock capturing techniques are based on the concept of slope limiter, proposed
+by Cockburn and Shu for conservation laws [11, 10] and latter adapted to the convection-dominated
+convection-diffusion problem [12]. The same strategy can be applied to finite volume methods (see
+
+∗Corresponding author
+Email addresses: sbadia@cimne.upc.edu (Santiago Badia), ahierro@cimne.upc.edu (Alba Hierro)
+
+Preprint submitted to Elsevier March 24, 2015
+
+
+
+[33, 34, 35]). Again, these methods consist in a postprocess after the solution is computed and are
+designed for explicit methods. However, as far as we know, there are no works dealing with nonlinear
+stabilization and implicit DMP-preserving dG formulations. In fact, even the definition of what a DMP
+for dG means is open.
+
+Concerning to the study of the DMP for the Poisson problem in the dG setting, there is only one
+work by Horváth and Mincsovics [17]; they analyse the fulfilment of certain condition on the stiffness
+matrix K that ensure the following property for the 1D interior penalty (IP) method:
+
+Ku ≤ 0 =⇒ max u ≤ max{0,max u∂Ω}.
+
+The aim of this work is twofold. On one side, we propose a new (variational) definition of the DMP
+for dG, and we prove that it is a sufficient condition to have the the minimum/maximum (depending
+on the sign of the forcing term) on the boundary for multidimensional problems. The new definition
+is stronger than the one given in [17] and it is, in some sense, closer to the one used in [4] for the 1D
+continuous Galerkin (cG) discretization of the Burgers’ equation. On the other hand, we construct a
+multidimensional nonlinear stabilization based on AV for dG methods and prove that, when restricted
+to the 1D case, the nonlinear stabilization combined with an incomplete (or weighted) IP dG method
+with upwinding is capable to ensure our DMP for the discrete dG solution of (1). In any case, numerical
+experiments evindence that the method also satisfies the DMP in the multidimensional case.
+
+The outline of the article is the following. In Section 2 we introduce the continuous convection-
+diffusion problems and its Galerkin discretization using finite elements. The IP dG method for the
+Laplacian is presented in Section 3. Our novel definition of the DMP for the dG scheme is proposed in
+Section 4 and some good properties derived from it are stated. Moreover, in Subsection 4.1, we prove
+that the IP method for the Laplacian enjoys the DMP in the 1D case. The extension of the IP method for
+the convection-diffusion problem is given in Section 5. In Section 6, an AV technique is proposed for the
+1D case, and we prove that it satisfies the DMP. Further, we extend the method to the multidimensional
+case. Numerical experiments are included in Section 7. Finally, some conclusions are drawn in Section
+8.
+
+2. Weak Form and Notation
+
+We will consider the convection-diffusion problem with Dirichlet boundary conditions:{
+Lu := −∇ · (µ∇u) +∇ · (βu) = f in Ω,
+
+u = g on ∂Ω.
+(1)
+
+We assume that µ ∈ L2(Ω) and β ∈ H1(Ω) ∩ C0(Ω) is solenoidal (∇ · β = 0). It is well known that the
+operator L associated to problem (1) enjoys the maximum principle (for proofs on maximum principles
+for elliptic problems see [14]).
+
+Definition 1. We say that an operator L posseses the maximum principle if, for all u ∈ C2(Ω) ∩ C(Ω̄),
+the following implication holds:
+
+Lu ≤ 0 in Ω =⇒ max
+S
+
+u ≤ max
+∂S
+
+u ∀S ⊂ Ω.
+
+Before studying how to achieve a maximum principle at the discrete level for the convection-diffusion
+problem, we will focus on the rather simpler Poisson’s equation:{
+
+−∆u = f in Ω
+u = g on ∂Ω.
+
+(2)
+
+We denote by (·, ·)K the L2(K) inner product for any K ⊂ Ω and by (·, ·) the L2(Ω) product. We consider
+(·, ·)h the L2(Ω)-scalar product evaluated using nodal quadrature (corresponding to the lumped mass
+matrix). The bilinear form a(·, ·) associated to the problem (2) is a(u, v) = (∇u,∇v). So, the weak form
+of (2) reads as:
+
+Find u ∈ H1(Ω) such that a(u, v) = (f, v) ∀v ∈ H1(Ω). (3)
+
+2
+
+
+
+Let us consider partitions T Nh = {K} of Ω formed by simplicial elements K of characteristic length
+hK ; we denote by h the characteristic size of the mesh. The corners of the mesh will be denoted by
+xi, i = 1, · · · , Nh (Nh being the total number of corners), and the macroelement associated to xi
+will be designated by Ωi = ∪xi∈KK. The discrete space considered henceforth is the discontinuous
+space of piecewise linear functions Vh = {vh | vh|K ∈ P1(K) ∀K}. Let Eh = ∪K∈T N
+
+h
+∂K be the set
+
+of the facets of the mesh and E0h = Eh\∂Ω. We define T (Eh) =
+∏
+K∈T N
+
+h
+L2(∂K). The functions in
+
+T (Eh) are double-valued on E0h and single-valued on ∂Ω; in particular, Vh|Eh ⊂ T (Eh). The functions
+vh ∈ Vh can be expressed as a linear combination of the basis {ϕKi } where ϕ
+
+K
+i is defined for all pairs
+
+{i,K} ∈ {1, · · · , Nh} × T Nh such that xi ∈ K. ϕ
+K
+i corresponds to the discontinuous function that is
+
+linear in K, with ϕKi (xi) = 1 and ϕ
+K
+i (xj) = 0 for xj ∈ K, j 6= i, and ϕ
+
+K
+i = 0 for x ∈ Ω \ K. So, a
+
+function vh ∈ Vh would read as:
+
+vh(x) =
+
+Nh∑
+i=1
+
+∑
+K⊂Ωi
+
+uKi ϕ
+K
+i (x), ∀x ∈ Ω.
+
+Moreover we can define the solution in a single element K as uKh (x) =
+∑
+xi∈K u
+
+K
+i ϕ
+
+K
+i (x), ∀x ∈ K, and
+
+its constant gradient ∇uKh =
+∑
+xi∈K u
+
+K
+i ∇ϕ
+
+K
+i |K . For any facet F ∈ E
+
+0
+h we know there are only two
+
+elements, say K+F and K
+−
+F , such that ∂K
+
++
+F ∩ ∂K
+
+−
+F = F . In addition, we can name n
+
++
+F and n
+
+−
+F the
+
+unitary normal to face F outside K+F and K
+−
+F , respectively. Given q ∈ T (Eh), we can define the common
+
+concepts of average {{·}} and jump [[·]] on an interior point x of a facet F ∈ E0h as follows:
+
+{{q}}(x) = 0.5(qK
++
+F (x) + qK
+
+−
+F (x)), [[q]](x) = qK
+
++
+F (x)n+F + q
+
+K
+−
+F (x)n−F .
+
+We also define the harmonic average of q on x as 〈q〉(x) = (2qK
++
+F (x)qK
+
+−
+F (x))/(qK
+
++
+F (x) + qK
+
+−
+F (x)). On
+
+boundary points x ∈ ∂Ω, we define {{q}}(x) = q(x), [[q]](x) = q(x)n∂Ω(x) and 〈q〉(x) = q(x).
+
+3. The Interior Penalty Method for the Poisson’s Problem
+
+There are numerous dG methods in the literature to approximate the Poisson problem. Many of
+them are contained in the unified analysis carried out by Arnold et al. in [1], where they conclude that
+any dG method approximating the second-order elliptic problem −∆u = f uses the following bilinear
+form:
+
+ah(uh, vh) =
+
+∫
+Ω
+
+∇uh∇vh +
+∫
+Eh
+
+([[ũ− uh]]{{∇vh}} − {{σ̃}}[[vh]]) +
+∫
+E0
+h
+
+({{ũ− uh}}[[∇vh]]− [[σ̃]]{{vh}}),
+
+where ũ = ũ(uh) and σ̃ = σ̃(uh) are scalar numerical fluxes that approximate u and ∇u respectively
+on the boundaries of the elements. Different choices for these fluxes lead to different dG methods. We
+consider the IP method, which consists in taking
+
+ũ = {{uh}}+ ξnK · [[uh]], σ̃ = {{∇uh}} − C1[[uh]].
+
+Given a facet F , the value C1(x) = c
+iph̃−1 for any x ∈ F , where cip|F = c
+
+ip
+F is a facet constant to be
+
+chosen and h̃|F = hF := minK̄⊃F {hK}. The parameter ξ can take values ξ = 0, 0.5 or 1, leading to the
+symmetric, incomplete, or nonsymmetric IP method, respectively:
+
+ah(uh, vh) =
+
+∫
+Ω
+
+∇uh∇vh −
+∫
+Eh
+
+((1− 2ξ)[[uh]]{{∇vh}}+ {{∇uh}}[[vh]]) +
+∫
+Eh
+ciph̃−1[[uh]][[vh]]. (4)
+
+According to the analysis performed in [17], the best option in order to guarantee the DMP is to choose
+ξ = 0.5.
+
+3
+
+
+
+4. Discrete Maximum Principle
+
+We recall the definition of DMP given by Burman and Ern in [5, 4] for the linear cG method:
+
+Definition 2 (DMP cG). We say that the semilinear form ah(uh, v) has the DMP property if the
+following holds true: ∀uh ∈ Vh ∩ C(Ω) and for all interior vertex xi, if uh is locally minimal (resp.,
+maximal) on vertex xi over a macroelement Ωi (i.e., uh(xi) ≤ uh(x), ∀x ∈ Ωi), there exists γK > 0 such
+that
+
+ah(uh, ϕi) ≤ −
+∑
+K⊂Ωi
+
+γK |∇uh|K |,
+
+(resp., ah(uh, ϕi) ≥
+∑
+K⊂Ωi γK |∇uh|K |) where ϕi is the continuous shape function associated with the
+
+node xi.
+
+Basically, the previous definition ensures that, when f ≥ 0, the solution to the discrete problem associ-
+ated with the bilinear form has no local discrete minimum in the interior of the domain. As far as we
+know, there is no such a DMP definition for dG methods. So, we have to find out the properties that
+the dG method should enjoy in order to have a solution without local extrema. But even the definition
+of local extremum is not clear in dG. We have come up with the following definition of extremum:
+
+Definition 3 (local discrete extremum). The function uh ∈ Vh has a local discrete minimum (resp.,
+maximum) on node xi in K if u
+
+K
+i ≤ uh(x) (resp., u
+
+K
+i ≥ uh(x)) ∀x ∈ Ωi.
+
+Remark 1. We use the adjective local to differentiate between the previous concept and a global
+minimum of the function uh on xi in K, what would mean that u
+
+K
+i ≤ uh(x) for all x ∈ Ω. The adjective
+
+discrete tries to emphasize that the definition is linked to the mesh provided in each case. Moreover, we
+will use strict local discrete extremum when the strict inequality holds.
+
+Now, taking into account the definition of local discrete extremum we are ready to give our own
+definition of DMP for dG:
+
+Definition 4 (DMP dG). We say that the bilinear form ah(uh, v) has the DMP property if the fol-
+lowing holds true: for all uh ∈ Vh and for all interior vertex xi, if uh is locally minimal (resp., maximal)
+on vertex xi in K, then there exist γF > 0 and δK > 0 such that
+
+ah(uh, ϕ
+K
+i ) ≤ −
+
+∑
+F∈K,F3xi
+
+γFh
+−1
+F
+
+∫
+F
+
+|[[uh]]| − δKh−1K
+∫
+K
+
+|∇uKh |, (5)
+
+(resp., ah(uh, ϕ
+K
+i ) ≥
+
+∑
+F γFh
+
+−1
+F
+
+∫
+F
+|[[uh]]|+ δKh−1K
+
+∫
+K
+|∇uKh |).
+
+This definition implies the following interesting property for the solution of the method.
+
+Lemma 1. Let ah(uh, vh) be a bilinear form enjoying the DMP property. If we solve the problem
+ah(uh, vh) = (f, vh) with f ≥ 0 (resp., f ≤ 0), the solution uh has no strict local discrete minimum
+(resp., maximum) in any interior point. As a result, the global minimum (resp. maximum) is on the
+boundary.
+
+Proof. Suppose that uh has a local discrete minimum on an interior node xi in K. Then, ah(uh, ϕ
+K
+i ) ≤
+
+−
+∑
+F γFh
+
+−1
+F
+
+∫
+F
+|[[uh]]| − δKh−1K
+
+∫
+K
+|∇uKh | ≤ 0. Since (f, ϕ
+
+K
+i ) ≥ 0, it implies that ah(uh, ϕ
+
+K
+i ) = 0. Then,
+
+the right hand side of (5) must be zero, implying that ∇uKh = 0 and [[uh]] = 0. Let K
+′ ⊂ Ωi be a
+
+finite element sharing a facet F with K. The previous result implies that uKh (x) = u
+K′
+
+h (x) for any
+
+x ∈ F . In particular, uKi = u
+K′
+
+i , and using the definition of minimum, we infer that uh has a local
+discrete minimum on xi in K
+
+′ too. By induction, ∇uh = 0 on Ωi and uh|Ωi = uKi is constant. Clearly
+the minimum is not strict. Since a global minimum on xi would imply, in particular, a local discrete
+minimum, we could follow the same reasoning and deduce that the global minimum is shared by all the
+nodes in Ωi. By induction, the function should be constant and the value of the function would be the
+same as in the boundary. So the global minimum must be on the boundary. �
+
+4
+
+
+
+Remark 2. The DMP introduced before would correspond to a strong maximum principle at the
+continuous level (see [14]).
+
+Now let us consider the transient problem
+
+
+ut −∆u = f in Ω,
+u(x, 0) = u0(x) x ∈ Ω,
+u(x, t) = g(x, t) x ∈ ∂Ω,
+
+(6)
+
+and discretise it (in space) as follows:
+
+Finduh ∈ Vh such that (∂tuh, vh)h + ah(uh, vh) = (f, v) ∀vh ∈ Vh, (7)
+
+almost everywhere in [0, T ]. It is possible to prove, following the same reasoning as the one in [4], that
+the solution of the problem will enjoy the local extremum decreasing (LED) property. This property is
+defined in the following lemma:
+
+Lemma 2. Let uh be the solution of (7) with f = 0 and with the bilinear form ah(·, ·) satisfying the
+DMP property. Then, any interior local discrete extremum of |uh| is decreasing in time.
+
+Proof. Assume there is a local discrete maximum on node xi in element K. Taking vh = ϕ
+K
+i in (7)
+
+and using the definition of lumped mass matrix, we have
+
+∂tu
+K
+i (t) = −
+
+(∫
+K
+
+ϕKi
+
+)−1
+ah(uh, ϕ
+
+K
+i ).
+
+By the DMP property we know that ah(uh, ϕ
+K
+i ) ≥ 0. Thus, ∂tu
+
+K
+i (t) ≤ 0 and so, the local discrete
+
+maximum is decreasing. The results for the minima follow the same fashion. �
+
+4.1. DMP satisfaction for the 1D IP Method
+
+In this section, we show that the IP method for the Poisson problem (4) enjoys the DMP property
+in the 1D case for large enough values of cip. In order to make compact the notation for the proof, we
+remark that in 1D the facets are the nodes xi and the integral over the facets reduces to the simple
+evaluation of the value at that point, thus we define [[·]]i = [[·]](xi) and {{·}}i = {{·}}(xi). Given a node xi,
+we will denote by K− and K+ the elements Ki = [xi−1, xi] and Ki+1 = [xi, xi+1] respectively; h− and
+h+ will be their corresponding lengths. Moreover the outside normals are simply n− = 1 and n+ = −1.
+There will be an abuse of notation in the proof of the proposition in which a binary parameter α is
+going to be used; it will be {−,+} when used as a superscript of a node or subscript of an element and
+{−1,+1} in the rest of the cases
+
+Lemma 3. The bilinear form (4) with ξ = 0.5 (incomplete) enjoys the DMP property if cip > 0.5.
+
+Proof. We will prove the DMP property assuming that there is a local discrete minimum on xi in the
+element Kα either for α = − or α = +. The proof for the local discrete maximum case is equivalent.
+Assuming that there is a minimum on xi in Kα, we can compute the following jumps and means:
+
+[[uh]]i = α|[[uh]]i|, [[ϕKαi ]]i = −α, [[ϕ
+Kα
+i,x ]]i =
+
+1
+
+hα
+, (8)
+
+{{uh,x}}i =
+1
+
+2
+u
+K−α
+h,x +
+
+α
+
+2
+|∇uKαh,x|, {{ϕ
+
+Kα
+i }}i =
+
+1
+
+2
+, {{ϕKαi,x }}i = −
+
+α
+
+2hα
+. (9)
+
+Moreover, knowing that uKαh (xi) ≤ uh(x) for any x ∈ Kα ∪K−α, we can deduce that
+
+αu
+K−α
+h,x ≤ |[[uh]]i|h
+
+−1
+K−α
+
+.
+
+5
+
+
+
+In order to prove that ah(·, ·) enjoys the DMP property we need to prove that there exist γi > 0 and
+δKα > 0 such that ah(uh, ϕ
+
+Kα
+i ) ≤ −γihi|[[uh]]i| − δKα |u
+
+Kα
+h,x|. Substituting vh by ϕ
+
+Kα
+i in (4) with ξ = 0.5:
+
+ah(uh, ϕ
+Kα
+i ) =
+
+∫
+Kα
+
+uh,xϕ
+Kα
+i,x dx−
+
+[
+−α
+
+1
+
+2
+u
+K−α
+h,x −
+
+1
+
+2
+|uKαh,x|
+
+]
+−
+c
+ip
+i
+
+hi
+|[[uh]]i|
+
+≤ − |uKαh,x|+
+1
+
+2hK−α
+|[[uh]]i|+
+
+1
+
+2
+|uKαh,x| −
+
+c
+ip
+i
+
+hi
+|[[uh]]i|
+
+≤ −
+1
+
+2
+|uKαh,x| −
+
+(
+c
+ip
+i −
+
+1
+
+2
+
+)
+1
+
+hK−α
+|[[uh]]i|.
+
+Thus, if we define δKα = 0.5 and γi = (c
+ip
+i −0.5)hK−αh
+
+−1
+i , it is clear that δK > 0 and γi > 0 if c
+
+ip
+i > 0.5,
+
+as we wanted to prove. �
+
+5. Convection-Diffusion Problem
+
+Considering the original problem (1) we will have to combine the previous terms with the IP terms
+described in [3] to handle with the convective term ∇· (βu), which basically consists in adding the term
+
+a
+β
+h(uh, vh) = −
+
+∫
+Ω
+
+uhβ · ∇vh +
+∫
+E+
+h
+
+{{βuh}}[[vh]] +
+∫
+E0
+h
+
+cbms|β|[[uh]][[vh]] (10)
+
+to the bilinear form and subtracting the term
+∫
+∂Ω−
+
+β · n∂Ωgvh from the right hand side. The set E+h =
+Eh\∂Ω−, where ∂Ω− = {x ∈ ∂Ω |β · n∂Ω(x) < 0} is the inflow boundary. We use cbmsi = 0.5 in our
+computations, which is equivalent to use the upwind value of βuh instead of {{βuh}} and cbms = 0 in
+(10).
+
+For convection-dominated problems, the solution may present sharp layers, i.e., small intervals in
+which the value of the solution changes abruptly. The IP method presented before can already control
+the global instabilities of the solution but it may still present local overshoots and undershoots around
+sharp layers. In particular, it means that the DMP is violated, so we would like to design a method
+that ensures a DMP in order to avoid this kind of problems; we will do so by means of an AV. That is,
+we will compute an extra AV, denoted by εh, in each K in such a way that it ensures the DMP; the
+explicit definition of the AV is introduced in the next section (see Eq. 13). Since the extra viscosity is
+not consistent, we will not add it in all the terms of the bilinear form, but only in those that are useful
+for the DMP to be fulfilled.
+
+Putting together the methods described in (4) and (10) with ξ = 0.5, using a piecewise constant
+approximation of µ, given by µh|K := h−1K
+
+∫
+K
+µdx, and taking the AV εh, we can define the dG problem
+
+that we want to solve:
+
+Find uh ∈ Vh such that ah(uh, vh) = l(vh) ∀vh ∈ Vh, (11)
+
+where
+
+ah(uh, vh) =
+∑
+
+K∈T N
+h
+
+(µh + εK(uh))(∇uh,∇vh)K −
+∑
+
+K∈T N
+h
+
+(uh, β · ∇vh)K (12)
+
+−
+∫
+Eh
+µ{{∇uh}}[[vh]] +
+
+∫
+Eh
+ciph̃−1〈µ+ εh(uh)〉[[uh]][[vh]]
+
++
+
+∫
+E+
+h
+
+{{βuh}}[[vh]] + cbms
+∫
+E0
+|β|[[uh]][[vh]]
+
+and
+
+l(vh) =
+∑
+
+K∈T N
+h
+
+(f, vh)K −
+∫
+∂Ω−
+
+β · n∂Ωgvh.
+
+Notice that the piecewise µh is only used in the volumetric integral of the diffusion term. In the
+integrals over the facets either µ or 〈µ+ ε〉 are used (we recall that 〈·〉 is the harmonic average defined
+at the end of section 2).
+
+6
+
+
+
+xi xi+1xi-1
+
+uh(xi
+-)
+
+uh(xi
++)
+
+uh(x
++
+i-1)
+
+uh(x
+-
+i+1)
+
+Ki Ki+1
+
+-⟦uh⟧i
+
+-⟦uh⟧i
+
+⟦uh⟧iu
+-
+h,xh-
+
+u-h,xh-
+
+u+h,xh+
+
+u+h,xh+
+
+(a) 1D (b) 2D
+
+Figure 1:
+
+6. The Artificial Viscosity technique
+
+Now we are ready to design the AV in order to obtain a dG formulation satisfying the DMP property
+defined above. In particular, we will consider a piecewise constant AV function εh = εh(uh) such that,
+when added to µh, takes values in a bounded interval µK + εK := µh|K + εh|K ∈ [0,ΛK ], where
+ΛK = max{ν‖β‖∞hK , µK} is the maximum amount of viscosity admitted in an element and ν > 0 is a
+parameter to be fixed. We want that, if uh has a local discrete extremum on xi in K, then µK+εK = ΛK .
+This will be achieved by scaling the AV using a shock detector s(uh) that will take values in the interval
+[0, 1] with s = 1 in K if there is a local discrete extremum in the element. Notice that if µK + εK = ΛK
+in every element K, the AV would correspond to the suboptimal isotropic diffusion introduced by Von
+Neumann and Richtmyer in [30] for the continuous case. We will start by designing the detector s for
+1D and then we will extend the definition to the multidimensional case.
+
+In order to construct such a shock detector we need to come up with quantities that let us detect
+where there is a local discrete extremum. Following the same notation as in the proof of Lemma 3, a
+possible option is, for the point xi, to consider the values of the jump [[uh]]i, the derivatives in Kα and
+K−α, and the corresponding lengths hα and h−α of the elements. Using these values we can compute
+the shock detector function s:
+
+sα(xi) =
+
+
+
+
+∣∣∣uKαh,xhα − uK−αh,x h−α + 2[[uh]]i∣∣∣∣∣∣uKαh,xhα∣∣∣+ ∣∣∣[[uh]]i − uK−αh,x h−α∣∣∣+ |[[uh]]i|
+
+
+q
+
+Remark 3. The parameter q > 0 is to be chosen. Low values of q improve the nonlinear convergence
+of the method since the value of sα(xi) changes smoothly between nonlinear iterations. On the other
+hand, high values of q improve the accuracy of the method, since, for q −→ ∞, the detector becomes
+binary and it only adds extra viscosity in the regions where there are local discrete extrema. Thus,
+the value of q can be modified during computation time, reducing q to ease nonlinear convergence, or
+increasing it to have sharper discontinuities at the expense of more CPU cost.
+
+With the previous definition, it is easy to see that s fulfils the following property:
+
+Lemma 4. Given a node xi ∈ E0 and uh ∈ Vh, the detector sα(xi) = sα(uh, xi) takes values in the
+interval [0, 1] and sα(xi) = 1 if and only if uh has a local discrete extremum on xi in Kα.
+
+Proof. First of all, it is obvious that sα(xi) ≤ 1. Then, we notice that sα(xi) = 1 iff the sign of
+uKαh,xhα, ([[uh]]i − u
+
+K−α
+h,x h−α) and [[uh]]i are the same. Observing Fig. 1(a) is easy to see that these three
+
+values correspond to α(u
+K+
+h (xj+1)− u
+
+Kα
+h (xi)), α(u
+
+K−
+h (xj−1)− u
+
+Kα
+h (xi)), and α(u
+
+K−α
+h (xi)− u
+
+Kα
+h (xi)),
+
+7
+
+
+
+not necessarily in that order. So, by the definition of local discrete extremum, it is clear that these three
+values will have the same sign iff there is a local discrete extremum on xi in Kα. �
+
+For xi and K ⊂ Ωi, let us define the value ΓKi to be such that Γ
+K
+i = α if K is the element Kα with
+
+respect to xi. Then, we can define the AV of the problem as:
+
+εK(uh) = max{0, ν‖β‖∞hK max
+xi∈K
+
+{sΓK
+i
+
+(xi)} − µK}. (13)
+
+Theorem 5. The semilinear form ah(·, ·) described in (12) with εh as in (13) and cbms = 0.5 enjoys
+the DMP property for any value of q > 0 if ν > 1 and c
+
+ip
+i > 0.5.
+
+Proof. Let us use the same notation as in Lemma 3. We use the fact that if uh has a local discrete
+extremum on xi in Kα, then µKα + εKα = ΛKα . Using the identities in (8) and integrating by parts the
+convective term, we get:
+
+ah(uh, ϕ
+Kα
+i ) =ΛKα
+
+∫
+Kα
+
+uh,xϕ
+Kα
+i,x dx+
+
+∫
+Kα
+
+βuh,xϕ
+Kα
+i −
+
+[
+βuhϕ
+
+Kα
+i · n∂K
+
+]
+∂K
+
+− µ
+[
+−α
+
+1
+
+2
+u
+K−α
+h,x −
+
+1
+
+2
+|uKαh,x|
+
+]
+− 〈µ+ ε(uh)〉i
+
+c
+ip
+i
+
+hi
+|[[uh]]i|
+
+−
+αβ(xi)
+
+2
+(u
+K−
+h (xi) + u
+
+K+
+h (xi))−
+
+1
+
+2
+|β(xi)||[[uh]]i|
+
+≤ − ΛKα |u
+Kα
+h,x|+
+
+1
+
+2
+‖β‖∞,KαhKα |u
+
+Kα
+h,x|+ αβ(xi)u
+
+Kα
+h (xi) +
+
+µ
+
+2hK−α
+|[[uh]]i|
+
++
+µ
+
+2
+|uKαh,x| −
+
+c
+ip
+i
+
+hi
+µ|[[uh]]i| −
+
+αβ(xi)
+
+2
+(uKαh (xi) + u
+
+K−α
+h (xi))−
+
+1
+
+2
+|β(xi)||[[uh]]i|
+
+=
+
+(
+−ΛKα +
+
+1
+
+2
+‖β‖∞,KαhKα +
+
+µ
+
+2
+
+)
+|uKαh,x|+
+
+(
+µ
+
+2hK−α
+−
+c
+ip
+i
+
+hi
+µ−
+
+1
+
+2
+|β(xi)| −
+
+α
+
+2
+β(xi)
+
+)
+|[[uh]]i|
+
+≤ − (ν − 1)
+1
+
+2
+‖β‖∞,KαhKα |u
+
+Kα
+h,x| −
+
+(
+c
+ip
+i −
+
+1
+
+2
+
+)
+1
+
+hK−α
+µ|[[uh]]i|.
+
+Thus, if we define δK = 0.5 (ν − 1) ‖β‖∞,Kα and γi =
+(
+c
+ip
+i − 0.5
+
+)
+hih
+−1
+K−α
+〈ΛK〉, it is clear that δK > 0
+
+if ν > 1 and γi > 0 if c
+ip
+i > 0.5, as we wanted to prove. �
+
+If one is interested in recovering the symmetric or nonsymmetric form, it is possible to weight the
+extra term using the same shock capturing in such a way that the term vanishes in the facets around
+the elements with a local discrete extremum inside. For the symmetric term we define
+
+ξ̃(xi) = 0.5 max
+K⊂Ωi
+
+sΓK
+i
+
+(resp., ξ̃(xi) = 1−0.5 maxK⊂Ωi sΓKi for the nonsymmetric term). Then, the weighted symmetric bilinear
+form would read:
+
+ãh(uh, vh) =
+∑
+
+K∈T N
+h
+
+(µK + εK(uh))(∇uh,∇vh)K −
+∑
+
+K∈T N
+h
+
+(uh, β · ∇vh)K (14)
+
+−
+∫
+Eh
+µ{{∇uh}}[[vh]]−
+
+∫
+Eh
+
+(1− ξ̃)µ[[uh]]{{∇vh}}+
+∫
+Eh
+ciph̃−1〈µ+ εh(uh)〉[[uh]][[vh]]
+
++
+
+∫
+E+
+h
+
+{{βuh}}[[vh]] + cbms
+∫
+E0
+|β|[[uh]][[vh]].
+
+This form is closer to the original symmetric scheme (ξ = 1), but it is not symmetric unless the shock
+detector is not activated.
+
+8
+
+
+
+Corollary 6. The weighted semilinear form ãh(·, ·) described in (14), with εh as in (13) and cbms = 0.5,
+enjoys the DMP property for any value of q > 0 if ν > 1 and c
+
+ip
+i > 0.5.
+
+Proof. Since the term (1 − ξ̃(xj)) nullifies for xj ∈ K if there is a maximum in K, the term∫
+Eh
+
+(1− ξ̃)µ[[uh]]{{∇ϕh}} does not add any contribution to ãh(uh, ϕKi ). Thus, the results hold from the
+proof of Theorem 5. �
+
+The results of such technique are shown in the section 7.
+
+6.1. Extension to the multidimensional case
+
+Let us consider the multidimensional convection-diffusion problem (1). It is possible to extend the
+nonlinear stabilization to the multidimensional case by generalising the computation of the AV. Even
+though it is unclear whether the multidimensional IP dG methods for the Poisson equation satisfy
+any DMP property, the underlying idea behind the multidimensional nonlinear stabilization design is
+similar to what was proposed in [2]. For each element K in the mesh we must compute the amount of
+AV εK = ε|K which will be scaled according to a shock detector s ∈ [0, 1] that takes value sK = 1 if
+there is a local discrete extremum in K.
+
+First of all, we must extend the definition of the shock detector function sα(xi) to the multidimen-
+sional case. The definition will be done in two dimensions for simplicity, but it can be easily extended to
+any space dimension. As it can be observed in Fig. 1(b), in the two-dimensional case, α is not a binary
+parameter, but it corresponds to an angle, α ∈ [0, 2π), and it gives a certain direction, rα = (cosα, sinα).
+Moreover the notation α− = α− π will be used to refer the opposite sense to α. The idea is to redefine
+the parameters used above to compute sα(xi) by projecting the solution in the direction rα around the
+node xi (see Fig. 1(b)).
+
+In this sense, Kα = {K ⊂ Ωi | ∃ δ > 0 : xi + δrα ∈ K} and K−α = Kα− . Then, let xα ∈ ∂Kα
+and hα > 0 be such that xα − xi = hαrα (h−α and x−α defined similarly for α−); see Fig. 1(b) for an
+illustration. These parameters are uniquely defined unless the direction rα coincides with the direction
+of one of the edges of the mesh but these directions are not required in the definition of sK below.
+
+Finally we define [[uh]]
+α
+i = u
+
+K−α
+h (xi)− u
+
+Kα
+h (xi). So, we can redefine sα(xi) as:
+
+sα(xi) =
+
+
+
+
+∣∣∣∇uKαh · rαhα −∇uK−αh · rαh−α + 2[[uh]]αi ∣∣∣∣∣∣∇uKαh · rαhα∣∣∣+ ∣∣∣[[uh]]αi −∇uK−αh · rαh−α ∣∣∣+ |[[uh]]αi |
+
+
+q
+
+.
+
+Following the proof of lemma 4 and noting that uKαh (xα) − u
+Kα
+h (xi) = ∇u
+
+Kα
+h · rαhα, it can be proved
+
+that this shock detector takes values s ∈ [0, 1] and that sα(xi) = 1 if and only if uh has a local discrete
+extremum on xi in the direction rα. Then, if we consider a node xi and an element K ⊂ Ωi, we let ΓKi
+be the interval such that if α ∈ ΓKi , Kα = K. It is easy to see that if the function uh has a local discrete
+extremum on xi in K then sα(xi) = 1 ∀α ∈ ΓKi . So it is possible to define the elemental shock detector
+as:
+
+sK = max
+xi∈K
+
+inf
+α∈ΓK
+
+i
+
+sα(xi).
+
+Notice that sα(xi) = 1 ∀α ∈ ΓKi does not necessarily imply that there is a local discrete extremum on xi
+in K. This property is natural, since local instabilities can appear on nodes that are not local discrete
+extrema, e.g., on shock fronts.
+
+On the other hand, given the cost of computing infα∈ΓK
+i
+s(xαi ), we can avoid its computation by
+
+taking the minimum with respect to edge directions only (at both sides of the edge). This simplification
+leads to a very slightly different method, but the simplified definition still enjoys the property that
+sK = 1 if uh has a local discrete extremum in K.
+
+Remark 4. We have designed a shock detector that ensures that there is the maximum amount of
+viscosity around a local discrete extremum. However, it is unclear how to prove the DMP for the
+multidimensional case, since it is not even available for the Laplacian problem. (It is due to the sign
+of the IP term, that cannot be determined.) In any case, looking at the results in Section 7, the DMP
+holds in practice for the same mesh conditions stated in [2].
+
+9
+
+
+
+-0.2
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+Exact 
+ν=0.49 
+ν=0.5 
+ν=0.6 
+
+(a) ν = 0.49, 0.5, 0.6
+
+-0.015
+
+-0.01
+
+-0.005
+
+ 0
+
+ 0.005
+
+ 0.01
+
+ 0.76  0.78  0.8  0.82  0.84  0.86  0.88  0.9
+
+Exact 
+ν=0.49 
+ν=0.5 
+ν=0.6 
+
+(b) Detail of Fig. 2(a)
+
+Figure 2:
+
+7. Numerical results
+
+For the following test, if nothing is said, the value of the parameters used will be q = 10, cip = 10
+and ν = 0.5. The choice of the last two parameters is explained in the first numerical experiment.
+
+7.1. Sharpness of the parameters
+
+In order to check if the choice of the parameters is sharp, we will solve the problem:
+
+−0.01uxx + ux = 0 in Ω = (0, 1)
+
+u(0) = 0
+u(1) = 1
+
+using a mesh of N = 10 elements. The solution of the problem presents a sharp slope near the boundary
+x = 1. The solution with N = 1000 is plotted as a reference solution. Let us check the sharpness of the
+bound for ν such that the formulation satisfies a DMP (see Theorem 5). In previous works, using similar
+schemes with continuous finite element methods (see [2, 4]) the condition for the method to enjoy a
+DMP was ν ≥ 0.5. In this case, if we look at the proof of Theorem 5, and assuming that µ < ‖β‖h, we
+can sharpen the value of ν to be ν > 0.5 +µ‖β‖−1h−1 (instead of ν > 1 as stated in the theorem) which
+in this particular case means ν > 0.55. But, when varying the values of ν and testing the violation of
+the DMP, we observed that the threshold is still on ν = 0.5 as it can be observed in Fig. 2. For ν = 0.49
+the DMP is violated while for ν = 0.5 the violation is in the order of the machine precision. For this
+reason, for the next tests we will use the value ν = 0.5. The results plotted in Fig. 2 are obtained using
+cip = 10.
+
+It is also possible to see how different choices of the parameter ξ lead to a violation of the DMP. We
+recall that ξ could take values {0, 0.5, 1}, corresponding to the symmetric, incomplete, and nonsymmetric
+scheme. Without weighting, our analysis works for the incomplete scheme only, and, as it can be checked
+in Fig. 3(a), this is the only scheme that ensures the DMP. Finally, we vary the value of cip. Theorem
+5 states that cip > 0.5 for the method to enjoy the DMP, but the method still satisfies the DMP for
+cip = 0.4 (see Fig. 3(b)). In any case, we prefer the use of cip = 10 which is common in the literature.
+
+As it was proved in the Corollary 6, it is possible to consider a weighted symmetric/antisymmetric IP
+formulation by weighting the value of ξ with the shock detector. The results obtained with such method
+are plotted in Fig. 4. It can be appreciated how the DMP is effectively enjoyed by all the methods,
+being the incomplete the most accurate one. Moreover, the nonlinear convergence is much faster in the
+incomplete case since the weighting introduce extra nonlinearity to the problem.
+
+10
+
+
+
+-0.015
+
+-0.01
+
+-0.005
+
+ 0
+
+ 0.005
+
+ 0.01
+
+ 0.76  0.78  0.8  0.82  0.84  0.86  0.88  0.9
+
+Exact 
+Symmetric 
+Incomplete 
+Antisymmetric 
+
+(a) ξ = 0, 0.5, 1
+
+-0.015
+
+-0.01
+
+-0.005
+
+ 0
+
+ 0.005
+
+ 0.01
+
+ 0.76  0.78  0.8  0.82  0.84  0.86  0.88  0.9
+
+Exact 
+c=0.4 
+c=0.5 
+c=0.6 
+
+(b) cip = 0.4, 0.5, 0.6
+
+Figure 3:
+
+-0.1
+
+ 0
+
+ 0.1
+
+ 0.2
+
+ 0.3
+
+ 0.4
+
+ 0.5
+
+ 0.6
+
+ 0.7
+
+ 0.8
+
+ 0.9
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+Exact 
+Weighted symm. 
+Incomplete 
+Weighted antisymm. 
+
+(a)
+
+-0.005
+
+ 0
+
+ 0.005
+
+ 0.01
+
+ 0.015
+
+ 0.76  0.78  0.8  0.82  0.84  0.86  0.88  0.9
+
+Exact 
+Weighted symm. 
+Incomplete 
+Weighted antisymm. 
+
+(b) detail of Fig. 4(a)
+
+Figure 4: ξ(xi) = 0.5ξmaxK sΓK
+i
+
+11
+
+
+
+-0.2
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 1.2
+
+ 0  0.2  0.4  0.6  0.8  1
+
+Exact 
+IP dG 
+IP dG + AD 
+
+(a) Solution of (15). N = 20. (b) Smooth convergence
+
+Figure 5:
+
+7.2. 1D advection case
+
+The next problem is a 1D first-order diferential equation (µ = 0) inspired by the numerical example
+in [15]:
+
+ux =
+1
+
+2�
+
+(
+1− tanh2
+
+(
+x− 0.5
+
+�
+
+))
+, in Ω = (0, 1), (15)
+
+with u(0) = 0. The solution to this problem is u = 0.5 (tanh ((x− 0.5)/�) + 1); it shows a sharp layer
+around x = 0.5. Since the source is positive in the whole domain, we expect the stabilized method not
+to have any local discrete minimum in Ω. In Fig. 5(a), it can be appreciated how the DMP is violated
+for the IP dG method without extra viscosity while it is not when the appropiate viscosity is added.
+Moreover the layer is captured with the same amount of elements in both cases, so the method is not
+too much diffusive.
+
+7.3. Convergence of a smooth solution
+
+We would like to see that the L2 convergence of the method towards an smooth solution is not
+affected by the activation of the AV. To test so, we consider the equation (1) with µ = 0, β = (1, 1),
+f(x, y) = cos(2πx) in Ω = [0, 1]2 and boundary conditions on the inflow boundary given by u(x, y) =
+sin(2πx), which is the exact solution. Since this solution presents maxima and minima in the x direction
+on the lines x = 0.25 and x = 0.75, the shock detector is activated and AV is added. The problem is
+solved in triangular meshes of Nh × Nh(×2) elements with size Nh = 12, 24, 48, 96, 192. Even though
+the presence of the AV increases the error in L2(Ω) norm (as expected), the convergence of order 2 is
+maintained, as it can be appreciated in Fig. 5(b)
+
+7.4. Propagation of discontinuities
+
+A typical steady-state test is to study the propagation of a boundary discontinuity for a convection-
+dominated equation. To do so, problem (11) is solved in Ω = [0, 1]2 with µ = 10−8, β =
+(cos(−π/3), sin(−π/3)), f = 0 and the boundary conditions g = 1 on y = 1 and on {x = 0} ∩ {y ≥ 0.7}
+and g = 0 on the rest of the boundary. The solution of this problem has two boundary layers (on x = 1
+and y = 0) and an interior layer of width proportional to the value of µ. The mesh used in this case
+consists of 48× 48(×2) triangles.
+
+The AV definition depends on the solution, ending up with a nonlinear stabilization term. For
+transient problems, it can be considered in a semi-implicit way (taking the value from the previous time
+step without nonlinear iterations), but for the steady state case nonlinear iterations are needed. In order
+to improve convergence we have used the damping parameter ω ∈ [0.01, 1] proposed in [18]. In any case,
+
+12
+
+
+
+(a) Incomplete dG scheme (b) dG+AD, q = 10 (semi-implicit) (c) dG+AD, q = 0.1
+
+Figure 6: Propagation of a discontinuity. 48× 48(×2) triangular mesh. cip = 10, cbms = 0.5, ν = 0.5
+
+for q = 10, the nonlinear error got stuck in values of order 10−2-10−3. However, the results in Fig. 6(b)
+are very good, with a violation of the DMP of order 10−3, clearly damping the initial sharp oscillations
+obtained by the original method (see Fig. 6(a)).
+
+This nonconvergence problem is common to AV due to the fact that, for high values of q, the shock
+detector values are almost binary (very close to 0 or 1) and the activation and deactivation of the shock
+detector s may become cyclic. That is what happens in this case when using q = 10.
+
+This behavior is explained by the fact that, even though the shock capturing term proposed herein
+is Lipschitz continuous, the Lipschitz constant blows up as q → ∞. However, a main difference with
+respect to the popular non-differentiable flux correction transport schemes (see [19]) is that we can
+control this Lipschitz constant by decreasing the value of q. As an example, taking q = 10ω ( we
+recall that ω ∈ [0.01, 1] is the damping parameter used to improve the nonlinear convergence and it is
+recalculated in each iteration), it is possible to converge with tolerance 10−8 with respect to the norm of
+the increment between iterations. In this last case we have lost accuracy in order to improve nonlinear
+convergence, but the method does fulfil the DMP exactly. The drawback of reducing q are less sharp
+fronts. In fact, in the limit case q = 0 we recover the sub-optimal Von Neumann-Richtmyer isotropic AV
+in the whole domain (see Fig. 6(c)). Ellaborated q-adaptive nonlinear algorithms could be considered,
+based on these observations.
+
+7.5. Multidimensional transport problem
+
+Finally, a pure convection problem will be used in order to show the performance of the method; let
+us note that the present numerical analysis does apply for the case µ = 0. The test consists in solving the
+two dimensional transport problem ∂tu+∇· (βu) = 0 in [0, 1]2× [0, T ], β = (−2π(y− 0.5), 2π(x− 0.5)).
+The solution of this equation is a displacement of the initial solution around the center of the square.
+The solution is computed at T = 1 after a complete cycle. The initial solution is given in [21] and its
+interpolation in a mesh of 250× 250 bilinear elements is displayed in Fig. 7(a).
+
+The solution is discretised with a 100 × 100(×2) triangular mesh and the integration in time is
+performed using Crank-Nicolson with time step ∆t = 2.5 · 10−4 and without mass lumping. The result
+can be compared with the original dG method and also with the results obtained in a finer mesh in
+the continuous case, using a similar shock capturing designed in [2] and denoted as boundary gradient
+jump viscosity (bGJV). If the reader is interested in comparing the results with some other state-of-art
+methods, like residual-based and entropy-viscosity methods, we refer to [2], where the results for the
+same tests are provided.
+
+For the continuous case, the mesh consists of 250× 250(×2) elements and more than 60, 000 nodes,
+which is the number of nodes of the discontinuous case. The AV is computed semi-implicitly. The results
+
+13
+
+
+
+(a) Nodally exact initial solution (b) Error regions
+
+Figure 7: Multidimensional transport problem in a 250× 250(×2) mesh
+
+Method Ω1 Ω2 Ω3 Ω4
+Incomplete dG 6.672e-002 2.331e-003 1.329e-004 1.027e-002
+Incomplete dG + shock capturing 7.452e-002 4.355e-003 1.480e-003 1.712e-002
+
+Table 1: ‖u− uh‖Ωi
+
+are displayed in Fig. 8 and it can be observed that, in comparison with the original result, the AV does a
+good job removing the oscillations on the top of the cylinder. On the other hand, it damps the solution
+around the top of the cone and the hump by activating unnecessarily the viscosity. This problem is
+avoided by refining the mesh as it is the case for the continuous method (see Fig. 8(d)).
+
+The L2 error after one cycle has been computed in 4 different regions, namely Ω1, Ω2, Ω3, Ω4,
+corresponding to the ones plotted in Fig. 7(b). The first three regions correspond to the elements of
+the mesh such that the centroid of their Gauss points are at distance 2 · 10−2 or less to a discontinuity
+or change of gradient of the exact solution. The region Ω4 is simply the rest of the domain.
+
+The results reported in Fig. 8 are at the final stage of the computation, i.e., t = 1, and the oscilla-
+tions have already been smoothed out. In order to better evaluate how the different methods succeed
+eliminating oscillations, we introduce the oscillation function
+
+osc(t) = max
+(x,y)∈Ω
+
+{0, uh(x, y, t)− 1,−uh(x, y, t)} .
+
+We compute the mean value of the parameter osc(t) in bunches of 50 time steps and the time evolution
+of this quantity for the different methods is plotted in Fig. 9. Clearly, the nonlinearly stabilized dG
+formulation defined herein beats by far the other two methods in terms of DMP violation; after the first
+50 steps the method has already reduced the oscillation below 10−3.
+
+8. Conclusions
+
+When considering dG methods for steady problems or transient problems via (semi-)implicit time
+integration, the use of traditional limiting techniques is not suitable in many instances. In this work, we
+propose dG formulations that satisfy some kind of monotonicity properties based on implicit nonlinear
+stabilization (AV-type terms). The analysis of monotonicity properties and discrete maximum principles
+in the frame of dG formulations (without additional postprocessing) is a quite unexplored area; as far
+as we know there are only some attempts to prove a DMP for the Laplacian problem in 1D (see [17]).
+For this reason, we have started our work defining the notion of local discrete extrema in dG; since
+
+14
+
+
+
+(a) Incomplete dG scheme (b) dG+AD
+
+(c) cG+SUPG+bGJV (d) dG+AD finer mesh
+
+Figure 8: Results at t = 1.0. Space discretization with p = 1 and ≈ 60000 DOFs (100 × 100(×2) and 250 × 250(×2)
+triangular mesh). Time discretization with Crank-Nicolson, ∆t = 2.5·10−4 and without mass lumping. Results for different
+schemes at t = 1.
+
+15
+
+
+
+Figure 9: OSC evolution
+
+the numerical solution is discontinuous on nodes, this concept is somehow open. Next, we propose a
+definition of DMP property for dG, and show that when the dG formulation enjoys this property, the
+maximum/minimum is on the boundary (given a negative/positive forcing term) for steady problems in
+the multidimensional case. Further, the method is LED for transient problems. Further we show that
+for the 1D Poisson problem, the incomplete IP dG formulation satisfies the DMP property. In order to
+make symmetric/antisymmetric IP versions to enjoy the DMP, a weighted version of these formulations
+is also proposed.
+
+Next, we tackle convection-diffusion and transport problems. The dG formulation we consider is the
+IP method (see [1, 17]) for the viscosity term together with the advection stabilization proposed in [3].
+On top of this dG formulation, we add a novel nonlinear stabilization (shock capturing) term, based
+on jumps of the unknown and its derivatives. As soon as the dG discretization of the Laplacian term
+satisfies the DMP (see above), we prove that the resulting dG method also satisfies the DMP property
+in 1D. It implies no overshoots/undershoots around sharp layers or discontinuities.
+
+The formulation is extended to multi-dimensional problems, and applied to different test problems.
+Out of these results, we show that we have the monotonic properties predicted by the theory in 1D.
+In multi-dimension, the method does an excellent job reducing local oscillations, as expected. For time-
+dependent problems, we have considered semi-implicit formulations (computing the AV with the solution
+of the previous time step). As other shock capturing techniques, when the shock sensor is very sensitive,
+i.e., it acts in an almost binary fashion, nonlinear convergence is hard to get. However, the definition of
+the shock-capturing proposed herein includes a numerical parameter, q, that allows one to control the
+Lipschitz constant, improving nonlinear convergence by reducing q.
+
+Acknowledgments
+
+This work has been partially funded by the European Research Council under the FP7 Programme
+Ideas through the Starting Grant No. 258443 - COMFUS: Computational Methods for Fusion Technol-
+ogy. A. Hierro gratefully acknowledges the support received from the Catalan Government through a
+FI fellowship.
+
+16
+
+
+
+References
+
+[1] D. N. Arnold, F. Brezzi, B. Cockburn, and L. D. Marini. Unified analysis of discontinuous Galerkin
+methods for elliptic problems. SIAM Journal on Numerical Analysis, 39(5):1749–1779, 2002.
+
+[2] S. Badia and A. Hierro. On monotonicity-preserving stabilized finite element approximations of
+transport problems. SIAM Journal on Scientific computing, in press.
+
+[3] F. Brezzi, L. D. Marini, and E. Süli. Discontinuous Galerkin methods for first-order hyperbolic
+problems. Mathematical Models and Methods in Applied Sciences, 14(12):1893–1903, 2004.
+
+[4] E. Burman. On nonlinear artificial viscosity, discrete maximum principle and hyperbolic conserva-
+tion laws. BIT Numerical Mathematics, 47(4):715–733, 2007.
+
+[5] E. Burman and A. Ern. Discrete maximum principle for Galerkin approximations of the Laplace
+operator on arbitrary meshes. Comptes Rendus Mathematique, 338(8):641–646, 2004.
+
+[6] E. Burman and A. Ern. Stabilized Galerkin approximation of convection-diffusion-reaction equa-
+tions: discrete maximum principle and convergence. Mathematics of computation, 74(252):1637–
+1652, 2005.
+
+[7] E. Burman and P. Hansbo. Edge stabilization for Galerkin approximations of convection-diffusion-
+reaction problems. Computer Methods in Applied Mechanics and Engineering, 193(1516):1437–1453,
+2004.
+
+[8] P. Ciarlet and P.-A. Raviart. Maximum principle and uniform convergence for the finite element
+method. Computer Methods in Applied Mechanics and Engineering, 2(1):17–31, 1973.
+
+[9] P. G. Ciarlet. Discrete maximum principle for finite-difference operators. Aequationes mathemati-
+cae, 4(3):338–352, 1970.
+
+[10] B. Cockburn, S. Hou, and C.-W. Shu. The Runge-Kutta local projection discontinuous Galerkin
+finite element method for conservation laws IV: The multidimensional case. Mathematics of Com-
+putation, 54(190):545–581, 1990.
+
+[11] B. Cockburn and C.-W. Shu. The Runge-Kutta discontinuous Galerkin method for conservation
+laws V: Multidimensional systems. Journal of Computational Physics, 141(2):199–224, 1998.
+
+[12] B. Cockburn and C.-W. Shu. Runge-Kutta discontinuous Galerkin methods for convection-
+dominated problems. Journal of Scientific Computing, 16(3):173–261, 2001.
+
+[13] R. Codina. A discontinuity-capturing crosswind-dissipation for the finite element solution of
+the convection-diffusion equation. Computer Methods in Applied Mechanics and Engineering,
+110(34):325–342, 1993.
+
+[14] D. Gilbarg and N. S. Trudinger. Elliptic partial differential equations of second order, volume 224.
+springer, 2001.
+
+[15] J.-L. Guermond. Subgrid stabilization of Galerkin approximations of linear monotone operators.
+IMA Journal of Numerical Analysis, 21(1):165–197, 2001.
+
+[16] W. Höhn and H. D. Mittelmann. Some remarks on the discrete maximum-principle for finite
+elements of higher order. Computing, 27(2):145–154, 1981.
+
+[17] T. L. Horváth and M. E. Mincsovics. Discrete maximum principle for interior penalty discontinuous
+Galerkin methods. Central European Journal of Mathematics, 11(4):664–679, 2013.
+
+[18] V. John and P. Knobloch. On spurious oscillations at layers diminishing (SOLD) methods for
+convection-diffusion equations: Part {II} - Analysis for and finite elements. Computer Methods in
+Applied Mechanics and Engineering, 197(2124):1997 – 2014, 2008.
+
+17
+
+
+
+[19] D. Kuzmin. On the design of general-purpose flux limiters for finite element schemes. I. scalar
+convection. Journal of Computational Physics, 219(2):513 – 531, 2006.
+
+[20] D. Kuzmin. On the design of algebraic flux correction schemes for quadratic finite elements. Journal
+of Computational and Applied Mathematics, 218(1):79–87, 2008.
+
+[21] D. Kuzmin. A guide to numerical methods for transport equations. 2010.
+
+[22] D. J. Lorenz. Zur inversmonotonie diskreter probleme. Numerische Mathematik, 27(2):227–238,
+1977.
+
+[23] A. Mizukami and T. J. Hughes. A Petrov-Galerkin finite element method for convection-dominated
+flows: An accurate upwinding technique for satisfying the maximum principle. Computer Methods
+in Applied Mechanics and Engineering, 50(2):181–193, 1985.
+
+[24] H. Nagarajan and K. B. Nakshatrala. Enforcing the non-negativity constraint and maximum prin-
+ciples for diffusion with decay on general computational grids. International Journal for Numerical
+Methods in Fluids, 67(7):820847, 2011.
+
+[25] G. Payette, K. Nakshatrala, and J. Reddy. On the performance of high-order finite elements
+with respect to maximum principles and the nonnegative constraint for diffusion-type equations.
+International Journal for Numerical Methods in Engineering, 91(7):742771, 2012.
+
+[26] H.G. Roos, M. Stynes and L. Tobiska. Robust numerical methods for singularly perturbed differ-
+ential equations Springer Ser. Comput. Math, 24,2008.
+
+[27] R. S. Varga. On a discrete maximum principle. SIAM Journal on Numerical Analysis, 3(2):355–359,
+1966.
+
+[28] T. Vejchodský. Higher-order discrete maximum principle for 1D diffusion-reaction problems. Ap-
+plied Numerical Mathematics, 60(4):486–500, 2010.
+
+[29] T. Vejchodský and P. Šoĺın. Discrete maximum principle for a 1D problem with piecewise-constant
+coefficients solved by hp-FEM. Journal of Numerical Mathematics, 15(3), 2007.
+
+[30] J. Von Neumann and R. D. Richtmyer A method for the numerical calculation of hydrodynamic
+shocks Journal of applied physics, 21(3):232–237, 1950.
+
+[31] E. Yanik. A discrete maximum principle for collocation methods. Computers & Mathematics with
+Applications, 14(6):459–464, 1987.
+
+[32] E. Yanik. Sufficient conditions for a discrete maximum principle for high order collocation methods.
+Computers & Mathematics with Applications, 17(11):1431–1434, 1989.
+
+[33] X. Zhang and C.-W. Shu. On maximum-principle-satisfying high order schemes for scalar conser-
+vation laws. Journal of Computational Physics, 229(9):3091–3120, 2010.
+
+[34] X. Zhang and C.-W. Shu. Maximum-principle-satisfying and positivity-preserving high-order
+schemes for conservation laws: Survey and new developments. Proceedings of the Royal Society
+A: Mathematical, Physical and Engineering Science, 467(2134):2752–2776, 2011.
+
+[35] X. Zhang, Y. Xia, and C.-W. Shu. Maximum-principle-satisfying and positivity-preserving high or-
+der discontinuous Galerkin schemes for conservation laws on triangular meshes. Journal of Scientific
+Computing, 50(1):29–62, 2012.
+
+18
+
+
+	Introduction
+	Weak Form and Notation
+	The Interior Penalty Method for the Poisson's Problem
+	Discrete Maximum Principle
+	DMP satisfaction for the 1D IP Method
+
+	Convection-Diffusion Problem
+	The Artificial Viscosity technique
+	Extension to the multidimensional case
+
+	Numerical results
+	Sharpness of the parameters
+	1D advection case
+	Convergence of a smooth solution
+	Propagation of discontinuities
+	Multidimensional transport problem
+
+	Conclusions
+

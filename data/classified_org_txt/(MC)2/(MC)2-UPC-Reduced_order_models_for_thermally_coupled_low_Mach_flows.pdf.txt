@@ -1,0 +1,2208 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Reduced order models for thermally coupled low Mach flows
+
+
+Reyes et al. Adv. Model. and Simul.
+in Eng. Sci.           (2018) 5:28 
+https://doi.org/10.1186/s40323-018-0122-7
+
+RESEARCH ART ICLE Open Access
+
+Reduced order models for thermally
+coupled low Mach flows
+Ricardo Reyes1* , Ramon Codina1,2, Joan Baiges1 and Sergio Idelsohn2,3
+
+*Correspondence:
+ricardo.reyes@upc.edu
+1Universitat Politècnica de
+Catalunya, Jordi Girona 1–3,
+Edifici C1, 08034 Barcelona, Spain
+Full list of author information is
+available at the end of the article
+
+Abstract
+
+In this paper we present a collection of techniques used to formulate a
+projection-based reduced order model (ROM) for zero Mach limit thermally coupled
+Navier–Stokes equations. The formulation derives from a standard proper orthogonal
+decomposition model reduction, and includes modifications to improve the drawbacks
+caused by the inherent non-linearity of the used Navier–Stokes equations: a hyper-ROM
+technique based on mesh coarsening; an implicit ROM subscales formulation based on
+a variational multi-scale framework; and a Petrov–Galerkin projection necessary in the
+case of non-symmetric terms. At the end of the article, we test the proposed ROM
+formulation using 2D and 3D versions of the same example: a differentially heated
+cavity.
+
+Keywords: Reduced order models, Finite element method, Variational multiscale,
+Hyper-reduction, Thermally coupled flow, Low Mach number flow
+
+Introduction
+The main purpose of this paper is to develop a model reduction formulation suitable for
+thermally coupled flows, by expanding the techniques in projection-based model reduc-
+tion developed for several applications on fluid dynamics—mostly for incompressible
+Navier–Stokes equations—to the zero Mach limit Navier–Stokes equations developed in
+[1,2].
+Following the model reduction developments in [3] we choose a PODmodel reduction
+
+approach. The POD, as any projection-based model reduction, aims to describe any phe-
+nomena that otherwise would be represented by a ‘computationally expensive’ numerical
+method with a surrogate lower dimensional model. This surrogate model is obtained by
+projecting the computational expensive numerical approximation onto a previously com-
+puted reduced space. Thus, the model reduction is arranged in two stages: an offline part,
+where the solution obtained from a ‘high fidelity’ full order model (FOM) is used to build
+the desired reduced order subspace; and an online part, where by projecting the original
+model onto the reduced subspace the ROM is built and subsequently solved.
+The traditional PODmodel reduction approach presents certain drawbacks when con-
+
+sidering non-linear complex problems: added computational cost of representing the
+non-linearities over a linearized computational model, inherent numerical instabilities
+caused by the Navier–Stokes formulation, and non-optimal projection over the reduced
+space caused by the asymmetrical nature of the formulation.
+
+© The Author(s) 2018. This article is distributed under the terms of the Creative Commons Attribution 4.0 International License
+(http://creativecommons.org/licenses/by/4.0/), which permits unrestricted use, distribution, and reproduction in any medium,
+provided you give appropriate credit to the original author(s) and the source, provide a link to the Creative Commons license, and
+indicate if changes were made.
+
+0123456789().,–: volV
+
+http://crossmark.crossref.org/dialog/?doi=10.1186/s40323-018-0122-7&domain=pdf
+http://orcid.org/0000-0003-0140-9564
+http://creativecommons.org/licenses/by/4.0/
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 2 of 20
+
+To overcome the first issue, a wide variety of methods inspired by the work of Everson
+and Sirovich [4] have been introduced [5–10], with the term ‘hyper-ROM’ coined by
+Ryckelink [11]. This family of methods consists in using a sample of the geometrical
+domain. In this paper, we propose an idea of hyper-ROM that differs from the sampling
+way: to set the ROM on a geometrical space smaller than the original one. This, applied to
+mesh based methods, implies the interpolation of the developed ROM—basis included—
+onto a coarser mesh.
+To stabilize both the FOM and ROM, we follow the same approach: a VMS framework.
+
+For the FOM case, we follow the stabilized formulation of the thermally coupled zero
+Mach limit Navier–Stokes equations developed in [12], using the Orthogonal Subgrid-
+Scales (OSS) as defined in [13]. For the ROM case, we propose an analogous method
+where the OSS are defined orthogonal to the ROM sub-space.
+Lastly, to solve the non-optimality in the reduced space projection, we use a Petrov–
+
+Galerkin projection instead of the standard Galerkin projection as proposed in [7]. In the
+specific case of mesh based methods, the POD-ROM method can be seen as a solution
+of the original problem using a projection method as in [14], where the Petrov–Galerkin
+projection is the one that satisfies the non-singularity of the system of equations when the
+FOM is not symmetric.
+This article is organized as follows. In the first section, we present a brief description
+
+of the zero Mach number limit Navier–Stokes model. In the second section, we describe
+briefly the idea of model reduction along with an explanation of the POD compression
+technique for the construction of the basis. In the third section, we present a modified
+finite element (FE)-ROM implementation, including the stabilization using VMS, the
+new proposed hyper-ROM method, and the Petrov–Galerkin projection. In the fourth
+section, we present examples consisting in a differential heated cavity, with 2D and 3D
+cases. Finally, we close the paper with some conclusions.
+
+Thermally coupled flow problems
+Let us start by describing a general thermally coupled Navier–Stokes formulation as a
+system of nonlinear convection–diffusion–reaction equations posed in a time interval
+(0, tf ) and in a domain � ∈ Rd with a boundary �, as:
+
+M(Y )∂tY + L(Y ;Y ) = F , in �, t > 0, (1)
+
+with the nonlinear operator L defined as:
+
+L(Y ;Y ) ..= Ai(Y )∂iY − ∂i
+(
+K ij(Y )∂jY
+
+) + S(Y )Y , (2)
+
+and the boundary and initial conditions:
+
+Y = Ŷ on �D, t > 0, (3a)
+niK ij∂jY − niAfi Y = T̂n on �N , t > 0, (3b)
+
+Y = Y 0 in �, t = 0, (3c)
+
+where Y = (u, p, T ) is the vector of unknowns (velocity u, pressure p and temperature
+T ), n is the geometric unit outward normal vector on �, F is a known vector of d + 2
+
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 3 of 20
+
+components and M, Ai, K ij and S are (d + 2 × d + 2) mass, convection, diffusion, and
+reaction matrices respectively. The usual summation convention is implied, with indices
+running from 1 to the number of space dimensions d, and the convection matrix Ai =
+Aci + A
+
+f
+i is split in order to define the appropriate Dirichlet (�D) and Neumann (�N )
+
+boundary conditions.
+
+LowMach number model
+
+Following the description of themodel in [1], the zeroMach limit Navier–Stokes model is
+based on the splitting of the pressure into two relevant parts: mechanical p, which behaves
+as in the incompressible and Boussinesq approximations; and thermodynamic pth, which
+is constant over the domain � but dependent on the energy added in such domain and
+therefore time dependent. Using the previous notation for the thermally coupled flows,
+this formulation can be written as:
+
+M =
+⎡
+
+⎢
+⎣
+
+ρI 0 0
+0� 0 0
+0� 0 ρcp
+
+⎤
+
+⎥
+⎦ , Aci =
+
+⎡
+
+⎢
+⎣
+
+ρIui 0 0
+0� 0 0
+0� 0 ρcpui
+
+⎤
+
+⎥
+⎦ , A
+
+f
+i =
+
+⎡
+
+⎢
+⎣
+0 ⊗ 0 ei 0
+ρe�i 0 0
+0� 0 0
+
+⎤
+
+⎥
+⎦ ,
+
+K ii =
+⎡
+
+⎢
+⎣
+
+μI 0 0
+0� 0 0
+0� 0 λ
+
+⎤
+
+⎥
+⎦ , K ij =
+
+⎡
+
+⎢
+⎣
+
+μej ⊗ ei − 23μei ⊗ ej 0 0
+0� 0 0
+0� 0 0
+
+⎤
+
+⎥
+⎦ , S = 0,
+
+F =
+⎡
+
+⎢
+⎣
+
+ρg
+−dρdt
+
+dpth
+dt + Q
+
+⎤
+
+⎥
+⎦ ,
+
+(4)
+
+where 0 is the vector of Rd with zero in all its components, ei is the unit vector in the
+i-th cartesian direction, I is the d × d identity matrix, and ρ is the fluid density. Viscosity
+μ, thermal conductivity λ, specific heat at constant pressure cp, and heat capacity ratio γ
+are used as constant physical properties; and g and Q represent a body force vector and a
+given external heat source respectively. Considering that a state equation is necessary to
+close the system, for simplicity, in this work we will focus exclusively on ideal gases, with
+p = ρRT as the state equation and R the specific gas constant.
+Finally, the formulation is complete with the thermodynamic pressure equations: for
+
+open flows (�uN �= ∅), where the thermodynamic pressure is determined through global
+conservation equations over � (Eq. 5a); and for closed flows (�uN = ∅), where the ther-
+modynamic pressure is determined by the boundary conditions (Eq. 5b):
+
+pth = pth0
+∫
+�
+
+1
+T0
+d�
+
+∫
+�
+
+1
+T d�
+
+(5a)
+
+|�|
+(γ − 1)
+
+dpth
+
+dt
++ γ
+
+γ − 1p
+th
+
+∫
+
+∂�
+
+n · ud� =
+∫
+
+�
+
+Qd� +
+∫
+
+∂�
+
+n · λ∇Td� (5b)
+
+Model reduction
+Projection-based ROMs rely on the existence of a reduced dimensional sub-space that
+approximates the solution space. Let us define a high dimensional space Yh of dimension
+M, withϕ its orthonormal basis. Then, the i-th component of any elementY h ∈ Yh can be
+
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 4 of 20
+
+written as the linear combination Yh,i =
+∑M
+
+k=1(Yh,i,ϕ
+k
+i )ϕ
+
+k
+i , with (:, :) a L
+
+2-inner product.
+Note that Yh may be an approximation to a continuous—infinite dimensional—space.
+Since formost cases the exact basisϕ is unknown,we candefine a lower-dimensional space
+Yr ⊂ Yh of dimensionm, which approximatesYh asm → M, with a basisφ. Using this test
+basis, we can approximate the i-th component of any element Y h as Yh,i ≈
+
+∑m
+k=1 φ
+
+k
+i Y
+
+k ,
+where the accuracy of the approximation will depend on how accurate is the basis φ
+compared to the exact basis ϕ.
+
+Construction of the basis
+
+Following previous works in model reduction in FE [3,7,9], we use the POD statistical
+procedure as a way to build the reduced order sub-space basis φ. The objective of the
+PODmethod is finding a basis for a collection of high-fidelity ‘snapshots’ to use it as a the
+basis of the desired reduced sub-space.
+Let us organize a set of data that has been previously obtained from a solution of the
+
+problem in Eq. 1, as a N -collection of ‘snapshots’ Y sh,j = Y h,j − Ȳ h in an ensemble:
+
+{Y sh,j}Nj=1 = {Y sh,1,Y sh,2, . . . ,Y sh,N }, (6)
+
+with Ȳ h the mean value of the snapshots.
+Now, let us denote as {φk}mk=1 an orthonormal basis of Yh, where any member Y h,j of
+
+the ensemble in Eq. 6 can be approximated as:
+
+Y h,j ≈ Ȳ h +
+m∑
+
+k=1
+(Y sh,j ,φ
+
+k )φk . (7)
+
+The POD consists in finding the orthonormal basis {φk}mk=1, such that, for every
+k ∈ {1, . . . , m} the mean square error between the elements Y h,j , 1 ≤ j ≤ N , and the
+corresponding j-th partial sum of Eq. 7 is minimized on average:
+
+min
+{φ}mk=1
+
+1
+N
+
+N∑
+
+j=1
+
+∥
+∥
+∥
+∥
+∥
+Y sh,j −
+
+m∑
+
+k=1
+(Y sh,j ,φ
+
+k )φk
+∥
+∥
+∥
+∥
+∥
+
+2
+
+,
+
+subject to (φi,φj) = δij , 1 ≤ i, j ≤ m. (8)
+
+To solve the problem in Eq. 8 we follow a singular value decomposition (SVD) of the
+‘snapshots’ collection in Eq. 6, where the resulting left singular-vectors of the decomposi-
+tion represent the basis {φk}Mk=1. Here, based on the Eckart–Young–Mirsky theorem we
+can define a reduced basis simply by truncating the left singular-vectors at them column
+as: {φk}m�Mk=1 . As a criterion for the truncation, we use the retained energy η defined in [3]
+as:
+
+η =
+∑m
+
+k=1 λ
+k
+
+∑M
+k=1 λk
+
+, (9)
+
+where λk are the SVD non-zero singular values.
+
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 5 of 20
+
+Remark Note that this is the way we approximate φ, but there are several other ways
+to find a basis for the reduced order sub-space (as the ones in [15,16]). The projection-
+based model reduction formulation below should be valid for any basis regardless of the
+technique used to obtain it.
+
+Remark In this paper, the ‘snapshots’ data is obtained using a FE approximation and
+therefore, the basis φ approximates the FE space Yh—of dimension M—which in turn
+approximates the space of the continuous problem.
+
+FE-ROM formulation
+Having stated the equations that represent the physical problem and the standard model
+reduction approach, we now describe the FE-ROM approximation of the problem.
+In this section, let us denoteY as the functional continuous spacewhereY exist. Instead
+
+of following a standard Galerkin approximation of the variational problem—where the
+FE space is denoted as Yh—we construct the approximation space Yr ⊂ Y for the ROM.
+The FE space is assumed to be built from a FE partition Th = K of the domain �. The
+order of the FE interpolation is irrelevant for our discussion.
+Introducing the notation (:, :) = (:, :)� and (:, :)� , for the L2-inner product on � and �
+
+respectively, or for the integral of the product of two functions—if they are not square
+integrable but their product can be integrated, we can define the variational problem as
+finding Y r ∈ Yr , such that:
+
+(M(Y )∂tY r ,ϒr) + B(Y ;Y r ,ϒr) = L(ϒr) ∀ϒr ∈ Yr , (10)
+
+where ϒr is the test function and the problem is written using the forms B and L defined
+as:
+
+B(Y ;Y r ,ϒr) ..=
+(
+Aci (Y )∂iY r ,ϒr
+
+) − (Afi (Y )Y r , ∂iϒr)
++ (K ij(Y )∂jY r , ∂iϒr
+
+) + (S(Y )Y r ,ϒr) , (11)
+L(ϒr) ..= (F ,ϒr) +
+
+(
+T̂n,ϒr
+
+)
+�
+. (12)
+
+Note that the terms where Y is not approximated by Y r in Eq. 11 involve non-linearities.
+In a further section we discuss the linearization scheme and two ways of approximating
+these terms.
+
+VMS for FE-ROM
+
+Given the well-known lack of stability in the Galerkin standard formulation—present in
+convective dominated regimes—a stabilization technique is necessary. Inspired in previ-
+ous works that acknowledge instability issues [17,18] and using a VMS framework as done
+for several problems in FE approximations, we develop what we call FE-ROM-Subgrid-
+Scales (SGS), which resembles FE-SGS.
+We start by splitting the unknown of the continuous problem Y in a part Y r , which
+
+can be resolved by the FE-ROM standard approximation; and a remainder Y̆ , the FE-
+ROM-SGS. In this way we can re-define the approximation of the continuous space as
+Y = Yr ⊕ Y̆ , where the SGS space Y̆ is any space that completes Yr in Y . Then, the
+
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 6 of 20
+
+variational form of the problem in Eq. 10 expands into two: finding Y r ∈ Yr and Y̆ ∈ Y̆ ,
+such that:
+
+(M(Y )∂tY r ,ϒr)+B(Y ;Y r ,ϒr) + (M(Y )∂t Y̆ ,ϒr)
++ B(Y ; Y̆ ,ϒr) = L(ϒr) ∀ϒr ∈ Yr , (13a)
+
+(M(Y )∂tY r , ϒ̆)+B(Y ;Y r , ϒ̆) + (M(Y )∂t Y̆ , ϒ̆)
++ B(Y ; Y̆ , ϒ̆) = L(ϒ̆) ∀ϒ̆ ∈ Y̆ . (13b)
+
+Since it is desirable to avoid derivatives over the subscale Y̆ , we can re-write the bilinear
+form B(Y ; Y̆ ,ϒr) in Eq. 13a by integrating by parts within each element and assuming
+that the exact tractions are continuous across inter-element boundaries, yielding:
+
+(M(Y )∂tY r ,ϒr) + B(Y ;Y r ,ϒr) + (M(Y )∂t Y̆ ,ϒr)
++
+
+∑
+
+K
+
+(
+Y̆ ,L∗(Y ;ϒr)
+
+)
+K = L(ϒr) ∀ϒr ∈ Yr , (14)
+
+where (:, :)K is the L2 inner product over element K , and L∗ is the adjoint of the lineal
+operator L(Y ; :). Following the formulation in [12], this adjoint operator L∗ is:
+
+L∗(Y ;ϒr) ..= ∂t (M(Y )ϒr) − Af �j (Y )∂jϒr
+− Ac�j (Y )∂jϒr − ∂jK�ij (Y )∂iϒr + S�(Y )ϒr . (15)
+
+Subscales approximation
+
+At this point, we have described two sets of equations: a FE-ROM one, in which all the
+terms have been described; and a FE-ROM-SGS one. In order to solve the second system,
+we follow a standard VMS formulation. After doing integration by parts in some terms,
+neglecting the tractions across inter-element boundaries, and replacingu·∇ρ by−ρuT ·∇T ;
+we can re-write Eq. 13b as:
+
+∑
+
+K
+
+(
+∂t (M(Y )Y̆ ), ϒ̆
+
+)
+K +
+
+∑
+
+K
+
+(
+L̆(Y ; Y̆ ), ϒ̆
+
+)
+
+K
+=
+
+∑
+
+K
+
+(
+R(Y ,Y r), ϒ̆
+
+)
+K ∀ϒ̆∈ Y̆ , (16)
+
+with the residual defined asR(Y ,Y r) = F−M(Y )∂tY r −L̆(Y ;Y r), and the linear operator
+defined as L̆(Y ;Y r) ..= ∂i(Aci (Y )Y r) + Ă
+
+f
+i (Y r)∂iY − ∂i
+
+(
+K ij(Y )∂jY r
+
+) + S(Y )Y r , with:
+
+Ă
+f
+i =
+
+⎡
+
+⎢
+⎣
+0 ⊗ 0 ei 0
+ρe�i 0
+
+ρui
+T
+
+0� 0 0
+
+⎤
+
+⎥
+⎦ . (17)
+
+We can re-write Eq. 16 in the following way:
+
+∂t (M(Y )Y̆ ) + L̆(Y ; Y̆ ) = R(Y ,Y r) + ϒ⊥r in K ∈ Th, (18)
+
+where ϒ⊥r is a term that ensures that Eq. 18 belongs to Y̆ ⊥ and its definition depends on
+the choice of Y̆ .
+Now, using the algebraic approximation L̆(Y ; Y̆ ) ≈ τ−1(Y )Y̆ , we can re-write Eq. 18 as:
+
+∂t (M(Y )Y̆ ) + τ−1(Y )Y̆ = R(Y ,Y r) + ϒ⊥r in K ∈ Th, (19)
+
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 7 of 20
+
+where τ is the matrix of stabilization parameters that depends on K and the coefficients
+of the operator L̆. It is important to notice that so far the matrix τ does not depend on
+the choice of the approximation space Yr , and therefore we can use the same definition
+of the stabilization parameters as in the FE approximation of the problem. In this case, we
+use the definition of the algebraic operator τ given by [2,13]:
+
+τ
+−1(Y ) =
+
+⎡
+
+⎢
+⎣
+
+τ−1m (Y )I 0 0
+0� τ−1c (Y ) 0
+0� 0 τ−1e (Y )
+
+⎤
+
+⎥
+⎦ , (20)
+
+with the stabilization parameters defined as:
+
+τ
+−1
+m = c1
+
+μ
+
+h2
++ c2
+
+ρ|u|
+h
+
+, (21a)
+
+τ
+−1
+c =
+
+c1ρτm
+h2
+
+, (21b)
+
+τ
+−1
+e = c1
+
+λ
+
+h2
++ c2
+
+ρcp|u|
+h
+
+, (21c)
+
+where h is the element size and c1 and c2 are algorithmic constants.
+To complete the approximation of the subscales, it still remains to define the term
+
+ϒ⊥r , that is, to choose the appropriate subscales space Y̆ . Based on the orthogonality
+property of the basis φ and on the work developed in [13,19], we define the subscales
+space Y̆ = Y ∩ Y ⊥r , which can be thought as being orthogonal to the approximation
+space Yr , that implies having:
+
+Y̆ ≈ Y ⊥r , (22a)
+Y̆ ∈ Y ⊥r , (22b)
+
+ϒ
+⊥
+r ∈ Y̆ ⊥. (22c)
+
+To numerically compute ϒ⊥r we follow the supposition made in [20], where the
+orthogonality between Yr and Y̆ is defined respect to the weighted inner product
+(Y ,ϒ)M = (Y ,M(Y )ϒ). Following this condition any subscale Y̆ must satisfy:
+
+(M(Y )Y̆ ,ϒr) = 0 ∀ϒr ∈ Yr . (23)
+
+Now replacing the orthogonality condition (Eq. 23) in Eq. 19, we obtain:
+
+∑
+
+K
+
+(
+∂t (M(Y )Y̆ ),ϒr
+
+) = 0 ∀ϒr ∈ Yr ,
+∑
+
+K
+
+(
+R(Y ,Y r) − τ−1(Y )Y̆ ,ϒr
+
+) +
+∑
+
+K
+
+(
+ϒ
+
+⊥
+r ,ϒr
+
+)
+= 0 ∀ϒr ∈ Yr . (24)
+
+from where it follows that ϒ⊥r is the following projection onto the space Y with respect
+to L2-inner product, denoted by r :
+
+ϒ
+⊥
+r = r
+
+(−R(Y ,Y r) + τ−1(Y )Y̆
+)
+. (25)
+
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 8 of 20
+
+Replacingϒ⊥r intoEq. 19, andusing the approximationr
+(
+τ−1(Y )Y̆
+
+) = M−1(Y )τ−1(Y )r(
+M(Y )Y̆
+
+) = 0 presented in [20], we find an expression for the FE-ROM-SGS:
+
+∂t (M(Y )Y̆ ) + τ−1(Y )Y̆ = ⊥r (R(Y ,Y r)) , (26)
+
+with⊥r ..= I−r defined as the orthogonal projection onYr , where I is now the identity
+in Yr .
+Finally, by introducing the orthogonality condition (Eq. 23) in Eq. 14, neglecting the
+
+term M(Y )∂tY in the residual R of Eq. 26—due to its orthogonality to Y̆ given by(
+M(Y )∂tY , ϒ̆
+
+) = 0, and rearranging Eqs. 14 and 26, we can state the problem in Eq.
+13 as finding Y r ∈ Yr and Y̆ ∈ Y̆ , such that:
+
+(M(Y )∂tY r ,ϒr) + B(Y ;Y r ,ϒr) +
+∑
+
+K
+
+(
+Y̆ ,L∗(Y ;ϒr)
+
+)
+K = L(ϒr), (27a)
+
+∂t (M(Y )Y̆ ) + τ−1(Y )Y̆ = ⊥r (R(Y ,Y r)) , (27b)
+
+with the adjoint operator L∗ and the residual R redefined as:
+
+L∗(Y ;ϒr) = S�(Y )ϒr − Af �j (Y )∂jϒr − Ac�j (Y )∂jϒr − ∂jK�ij (Y )∂iϒr ,
+R(Y ,Y r) = F − L̆(Y ;Y r).
+
+Remark By following the same analysis performed when deriving the orthogonal SGS in
+[13,19], we have come to a rather similar definition of the FE-ROM-SGS, where the most
+important difference lies in the definition of the orthogonal projection⊥ in Eq. 26. In the
+FE case the projection is done onto the space Y ⊥h , while in the FE-ROM approximation
+it is done onto the space Y ⊥r .
+
+Remark The choice of the stabilizationparameters τ is done following the Fourier analysis
+done in [13]. Since the information represented by the reduced basis corresponds to the
+resolved scales from the FOM, the subscales for both the FOM and the ROM are part of
+the continuous solution which cannot be approximated by the FOM.
+
+Remark Theprevious definitionof the FE-ROM-SGS is equivalent to thedynamic orthog-
+onal SGSmodel in [20]; it is important to acknowledge that subscales could also be imple-
+mented without the temporal term (quasi-static), or not orthogonal to Yr . An extensive
+analysis of the FE equivalent models is depicted in [12,20].
+
+Time discretization
+
+Any time integration scheme could now be applied to discretize in time the FE-ROM
+and FE-ROM-SGS equations together (Eq. 27). Considering the results in [21], where it is
+shown that the time integration for the subscales could be one order less accurate than for
+the finite element equations without affecting the accuracy of the scheme, we choose for
+this work two BackwardDifferentiation Formula (BDFs): of second order for the FE-ROM
+equations and of first order for the FE-ROM-SGS ones. Setting a uniform partition of the
+
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 9 of 20
+
+time interval of analysis [0, tf ],with δt the time step and n the superscript that denotes the
+current time step, we can approximate the temporal derivatives in Eq. 27 using:
+
+∂tY r |n+1 ≈
+δY n+1r
+
+δt
+..= 3Y
+
+n+1
+r − 4Y nr + Y n−1r
+
+2δt
+, (28a)
+
+∂t Y̆ |n+1 ≈
+δY̆ n+1
+
+δt
+..= Y̆
+
+n+1 − Y̆ n
+δt
+
+. (28b)
+
+Replacing the time integration scheme (Eq. 28b) in Eq. 27b we get an equation for the
+subscales:
+
+Y̆ n+1 = τt (Y n+1)
+(
+
+
+⊥
+r
+
+(
+R(Y n+1,Y n+1r )
+
+) + M(Y n+1) Y̆
+n
+
+δt
+
+)
+
+, (29)
+
+with the matrix of effective stabilization parameters is defined as τt (Y n+1)
+..=
+
+(
+M(Y n+1)
+
+δt + τ−1(Y n+1)
+)−1
+
+.
+Now, replacing Eq. 29 and the integration scheme (Eq. 28a) in Eq. 27a, we get:
+
+(
+
+M(Y n+1)
+δY n+1r
+
+δt
+,ϒr
+
+)
+
++ B(Y n+1;Y n+1r ,ϒr)
+
++
+∑
+
+K
+
+(
+τt (Y n+1)⊥r
+
+(
+R(Y n+1,Y n+1r )
+
+)
+,L∗(Y n+1;ϒr)
+
+)
+
+K
+
++
+∑
+
+K
+
+(
+
+τt (Y n+1)M(Y n+1)
+Y̆ n
+
+δt
+,L∗(Y n+1;ϒr)
+
+)
+
+K
+= L(ϒr), (30)
+
+Linearization
+
+To solve the non-linearity present in the terms involving Y , we implement a linearization
+scheme based on Picard’s method. Using the terminology used in [20], for each time
+step n + 1, we first solve Eq. 30 for iteration i + 1, where the non-linear terms can
+be approximated in two ways: as Y n+1,ir , for linear subscales; or as Y
+
+n+1,i
+r + Y̆
+
+n+1,i, for
+nonlinear subscales. Thenwe solve Eq. 29 for iteration j+1, approximating the non-linear
+terms in the same way: by linear subscales (Y n+1,i+1r ); or non-linear subscales (Y
+
+n+1,i+1
+r +
+
+Y̆ n+1,j).
+
+Discrete approximation
+
+We can describe the discrete representation of the FE-ROM problem as a composition
+of the FE and ROM approximations. In FE the space Yh is defined as made of con-
+tinuous piece-wise polynomial functions in the domain �, where we can write the dis-
+crete approximation of the unknown as Y ≈ Y h(x, t) ..=
+
+∑n
+i=1N (x
+
+i)Y i(t), with N (xi)
+the shape function of node i. In contrast, in ROM we approximate the unknown Y as
+Y (t) ≈ Ȳ + ∑mk=1 φkY k (t).
+Using these two approximations, we can describe the spaceYr in twoways: as a FE space
+
+Yh, represented using orthogonal basis φ, or as a ROM approximation of the problem,
+discretized in � using continuous piece-wise polynomial functions. In that way, we can
+write the discrete representation of Y r as:
+
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 10 of 20
+
+Y r(x, t) ..=
+n∑
+
+i=1
+N (xi)
+
+[
+
+Ȳ +
+m∑
+
+k=1
+φ
+k (xi)Y k (t)
+
+]
+
+, ∀x ∈ �, t > 0. (31)
+
+Petrov–Galerkin projection
+
+Since the formulation presented above introduces the non-symmetrical linear operators
+L and L∗, it is necessary to find an optimal projection in a way that it gives us a feasible
+solution [14]. To solve this lack of optimality in the projection, we replace the traditional
+Galerkin projection by the Petrov–Galerkin projection defined in [7]. Let us re-write the
+linearized version of Eq. 30 as the linear system:
+
+�
+�L�Yr = ��R (32)
+
+where � is the discrete basis matrix, ��L� and ��R are the discrete left and right hand
+sides of Eq. 30, and Yr the discrete unknown.
+To apply in a natural way the Petrov–Galerkin projection we define W = ��L� as
+
+a matrix whose column vectors form a basis to the projection space that allows us to
+transform the left hand side of Eq. 32 into a positive semi-define matrix. Projecting Eq. 32
+onto such space we get:
+
+W���L�Y r = W���R,
+�
+
+�L����L�Yr = ��L����R. (33)
+
+Using the orthogonality property of the basis��� = I, Eq. 33 becomes one that resembles
+the Petrov–Galerkin ROM formulations in [7,9]:
+
+�
+�L�L�Yr = ��L�R (34)
+
+Hyper-ROM
+
+Lastly, in order to reduce the computational cost of evaluatingnonlinear terms,wepropose
+a mesh-based hyper-ROM as an alternative to the sampling-based domain reduction
+algorithms [5–10].
+The mesh-based hyper-ROM consists in the solution of the described ROM problem
+
+using a coarser mesh than the one of the FOM. The implementation of this technique is
+done straightforwardly by writing the discrete approximation (Eq. 31) in function of the
+new coarser mesh.
+Ideally, the coarsening should be performed as a function of the ‘less important’ areas of
+
+the geometry, which can be achieved using already existing mesh refinement algorithms.
+In the subsequent exampleswe test this technique using a uniform coarsening of themesh.
+
+Remark When the POD basis is obtained by sampling a mesh-based solution—a FE one
+for example—the coarsening of the mesh implies an interpolation of such basis.
+
+Numerical examples
+In this section we present two examples consisting of 2D and 3D versions of the initial
+transient part of adifferentially heated cavity of aspect ratio 1—similar to theonepresented
+in [12,22]. In both examples the flow is considered an ideal gas with physical properties
+R = 287.0 JkgK , cp = 1004.5 JkgK , and μ = 0.001
+
+kg
+m s .
+
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 11 of 20
+
+The computational domain for both problems is defined as � = [0, L] × [0, L] for the
+2D problem, and � = [0, L] × [0, L] × [0, L] for the 3D problem, with L = 1 m. The
+temperatures on the walls perpendicular to the x-coordinate (horizontal) are fixed to
+Th = 960 K and Tc = 240 K; while adiabatic boundary conditions are prescribed in
+the remaining walls. Additionally, no slip and impermeable conditions are set over all the
+walls, togetherwith a homogeneous gravity force g prescribed in the negative y-coordinate
+(vertical). The initial thermodynamic pressure, temperature and density are set to pth0 =
+101, 325 Pa, T0 = 600 K, and ρ0 = 0.58841 kgm3 respectively, and the dimensionless Prandtl
+and Rayleigh numbers are set to Pr = cpμ
+
+λ
+= 0.71 and Ra = 2|g|ρ
+
+2cp
+λμ
+
+(Th−Tc)
+(Th+Tc) = 3.55 · 10
+
+6.
+For the FOMsolution (as a reference solution and for the construction of the snapshots),
+
+we follow the VMS formulation presented in [20], using the dynamic orthogonal SGS
+model. In all cases, we use a constant time step size of δt = 0.01 s. For the finite element
+meshes used (described below) this time step is slightly higher than the critical time step
+of an explicit scheme due to advection, which in turn is of the same order as that due to
+viscous effects. Since we use an implicit scheme, we are not restricted to a critical time
+step size, but this observation serves to justify that our choice is adequate.
+Additionally to the following examples, we have tested a differentially heated cavity of
+
+aspect ratio 8 analyzed in [23], getting inconclusive results.
+
+Two dimensional case
+
+In the 2D problem, we use 2 uniform structured meshes composed of quadrilateral ele-
+ments: one with 10,000 elements and a mesh size h = 0.01, used for the solving the FOM
+and the ROM; and one with 2500 elements and a mesh size h = 0.02, for testing the
+hyper-ROM formulation. To construct the basis, we collect 500 snapshots for velocity,
+pressure and temperature at every 4 time steps in a 20 s interval. Figures 1, 2, and 3, show
+temperature contours of the solutions obtained using the FOM, ROM, and hyper-ROM
+formulations respectively.
+To evaluate the accuracy of the ROM and hyper-ROM formulations, we perform a
+
+series of numerical tests using 12 different sets of basis, varying the retained energy from
+η1 = 0.99 to η12 = 0.3. Figure 4 depicts the number of vectors in the basis in function of
+the retained energy.
+
+Fig. 1 FOM temperature contours at t = 1, t = 2, and t = 3 s for the 2D differentially heated cavity
+
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 12 of 20
+
+Fig. 2 ROM temperature contours at t = 1, t = 2, and t = 3 s for the 2D differentially heated cavity
+
+Fig. 3 Hyper-ROM temperature contours at t = 1, t = 2, and t = 3 s for the 2D differentially heated cavity
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0.9
+
+1.0
+
+0 5 10 15 20 25 30 35 40 45 50 55
+
+η
+
+# basis vectors
+
+Fig. 4 Number of basis vectors for 2D
+
+In Figs. 5 and 6 we compare the Nusselt number for FOM, ROM, and hyper-ROM
+solutions. The Nusselt number is calculated as the integral of the local Nusselt number
+over the hot and cold walls
+
+∫
+�
+Nu(x, t)d�, with the local Nusselt number defined as:
+
+Nu(x, t) =
+∑
+
+a
+
+L
+Th − Tc
+
+n · ∇T (x, t), ∀x ∈ �, t > 0. (35)
+
+As expected,weobserve amorediffusive behaviour, in both themean and thefluctuation
+of the Nusselt number, when fewer basis vectors are included. The hyper-ROM results
+appear to have the same behaviour of the ROM with lower amplitude. Additionally, we
+
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 13 of 20
+
+6.5
+
+7.0
+
+7.5
+8.0
+
+8.5
+
+9.0
+
+9.5
+
+10.0
+10.5
+
+11.0
+
+11.5
+
+ROM
+
+N
+u
+ss
+
+e
+lt
+
+ROM ROM
+
+6.5
+
+7.0
+
+7.5
+
+8.0
+
+8.5
+
+9.0
+9.5
+
+10.0
+
+10.5
+
+11.0
+
+11.5
+
+0 1 2 3 4 5 6 7 8 9 10
+
+ROMH
+
+N
+u
+ss
+
+e
+lt
+
+Time
+
+0 1 2 3 4 5 6 7 8 9 10
+
+ROMH
+
+Time
+
+0 1 2 3 4 5 6 7 8 9 10
+
+ROMH
+
+Time
+
+FOM
+FOMH
+
+η1
+η2
+
+η3
+η4
+
+η5
+η6
+
+η7
+η8
+
+η9
+η10
+
+η11
+η12
+
+Fig. 5 Nusselt number evolution for the hot wall
+
+-14.0
+
+-13.5
+
+-13.0
+
+-12.5
+
+-12.0
+
+-11.5
+
+-11.0
+
+-10.5
+
+-10.0
+
+-9.5
+ROM
+
+N
+u
+ss
+
+e
+lt
+
+ROM ROM
+
+-14.0
+
+-13.5
+
+-13.0
+
+-12.5
+
+-12.0
+
+-11.5
+
+-11.0
+
+-10.5
+
+-10.0
+
+-9.5
+
+0 1 2 3 4 5 6 7 8 9 10
+
+ROMH
+
+N
+u
+ss
+
+e
+lt
+
+Time
+
+0 1 2 3 4 5 6 7 8 9 10
+
+ROMH
+
+Time
+
+0 1 2 3 4 5 6 7 8 9 10
+
+ROMH
+
+Time
+
+FOM
+FOMH
+
+η1
+η2
+
+η3
+η4
+
+η5
+η6
+
+η7
+η8
+
+η9
+η10
+
+η11
+η12
+
+Fig. 6 Nusselt number evolution for the cold wall
+
+include a FOM solution (labeled FOMH ) using the coarser mesh to evaluate how the
+hyper-ROM formulation relates to a FE mesh coarsening.
+Since we are computing an initial transient period of the physical phenomenawe choose
+
+a rootmean square of theNusselt error—over the hot and cold walls—as a way tomeasure
+the overall error. The discrete L2-norm error of the Nusselt number—for each time step
+i—over all the nodes of coordinates xa of a boundary � is defined as:
+
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 14 of 20
+
+10−3
+
+10−2
+
+0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0
+
+ε r
+m
+
+sH
+
+η
+
+10−3
+
+10−2
+
+0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0
+
+ε r
+m
+
+sC
+
+η
+
+10−3
+
+10−2
+
+0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0
+
+ε
+rm
+
+s
+
+η
+
+ROM ROMH FOMH
+
+Fig. 7 �rms convergence. Hot wall �Hrms, cold wall �
+C
+rms, and mean �̄rms
+
+�i =
+∑
+
+a ((NuROM(x
+a) − NuFOM(xa))2
+
+∑
+a (NuFOM(xa))
+
+2 , (36)
+
+and the root squared mean of �i—for N time steps— is defined as:
+
+�rms =
+√
+√
+√
+√
+
+N∑
+
+i=1
+
+(
+�2i
+N
+
+)
+
+. (37)
+
+Figure 7 shows the convergence of �rms over the hot and cold walls, and the mean value
+over both of them �̄rms. We also include the convergence error for the FOM using the
+coarse mesh.
+Although the convergence error does not have a clear slope, it behaves as expected,
+
+with the error decreasing with the addition of basis vectors. It is important to notice that
+appears to be an optimal value for η �= 1—the maximum number of basis vectors—where
+the error reaches the minimum; considering that this results occur near η = 1, we believe
+it can attributed to an overfitting phenomenon. The same idea is explored in [24,25],
+where it is attributed to a lack of smoothness or noisiness in low energy basis vectors. The
+overall results for the hyper-ROM seem adequate, given that the error is the same order
+of the ROM and the coarse mesh FOM solutions.
+To evaluate the temporal evolution we perform a discrete Fourier transform of the
+
+Nusselt number. In Figs. 8 and 9 we compare the Nusselt number spectra for the hot and
+cold walls respectively.
+Againwe see how reducing the amount of basis vectors leads to amore diffusive solution.
+
+But in contrast to Fig. 7, in Nusselt number spectra we observe that the ROM and hyper-
+ROM spectra tend to the FOM spectra as we approach η = 1.
+Regarding computational time, Fig. 10 shows speedup for all the cases under the same
+
+initial conditions, time step, and computer configuration. As expected the computational
+time is reduced when the coarser mesh is used. It is important to note that the computa-
+tional time for the ROMand hyper-ROM is decreased not only by the solution of a smaller
+linear system but as well for having fewer non-linear iterations.
+
+Three dimensional case
+
+For the 3D problem, we use 2 uniform structuredmeshes composed of regular hexahedral
+elements: one with 64,000 elements and a mesh size h = 0.025, used for the solving the
+
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 15 of 20
+
+10-4
+
+10-3
+
+10-2
+
+10-1
+
+100 η1
+
+N
+u
+ss
+
+e
+lt
+
+η2 η3 η4
+
+10-4
+
+10-3
+
+10-2
+
+10-1
+
+100 η5
+
+N
+u
+ss
+
+e
+lt
+
+η6 η7 η8
+
+10-4
+
+10-3
+
+10-2
+
+10-1
+
+100
+
+10-1 100 101
+
+η9
+
+N
+u
+ss
+
+e
+lt
+
+Frequency (Hz)
+10-1 100 101
+
+η10
+
+Frequency (Hz)
+10-1 100 101
+
+η11
+
+Frequency (Hz)
+10-1 100 101
+
+η12
+
+Frequency (Hz)
+
+FOM ROM ROMH
+
+Fig. 8 Fourier transform of the Nusselt number for the hot wall
+
+10-4
+
+10-3
+
+10-2
+
+10-1
+
+100 η1
+
+N
+u
+ss
+
+e
+lt
+
+η2 η3 η4
+
+10-4
+
+10-3
+
+10-2
+
+10-1
+
+100 η5
+
+N
+u
+ss
+
+e
+lt
+
+η6 η7 η8
+
+10-4
+
+10-3
+
+10-2
+
+10-1
+
+100
+
+10-1 100 101
+
+η9
+
+N
+u
+ss
+
+e
+lt
+
+Frequency (Hz)
+10-1 100 101
+
+η10
+
+Frequency (Hz)
+10-1 100 101
+
+η11
+
+Frequency (Hz)
+10-1 100 101
+
+η12
+
+Frequency (Hz)
+
+FOM ROM ROMH
+
+Fig. 9 Fourier transform of the Nusselt number for the cold wall
+
+FOM and the ROM; and one with 35937 elements and a mesh size h = 0.0̄3, for solving
+the hyper-ROM. To construct the basis, we collect 500 snapshots for velocity, pressure
+and temperature at every 2 time steps in a 10 s interval.
+
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 16 of 20
+
+0
+
+10
+
+20
+
+30
+
+40
+
+50
+
+60
+
+0.4 0.5 0.6 0.7 0.8 0.9 1.0
+
+S
+p
+e
+e
+d
+u
+p
+
+η
+
+ROM ROMH FOMH
+
+Fig. 10 Speedup for ROM and hyper-ROM
+
+Fig. 11 Streamlines at t = 10 for FOM, ROM and hyper-ROM with η = 0.8
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0.9
+
+1.0
+
+5 10 15 20 25 30 35 40 45
+
+η
+
+# basis vectors
+
+Fig. 12 Number of basis vectors for 3D
+
+Figure 11 shows a comparison of streamlines of the FOM, ROM and hyper-ROM solu-
+tions at the last time step of the simulation.
+To test the 3D problem we perform similar tests as the ones in the 2D problem using
+
+6 different sets of bases, varying the retained energy from η1 = 0.99 to η6 = 0.5 Fig. 12
+depicts the number of vectors in the basis as a function of the retained energy.
+As in the 2D problem, for the 3D case we compute the Nusselt number, the root mean
+
+square of the Nusselt error and the discrete Fourier transform of the Nusselt number for
+the hot and cold walls, getting similar results.
+In Figs. 13 and 14 we compare the Nusselt number spectra for the hot and cold walls.
+
+Although the results behave in a similar way as in the 2D case, the ROM and hyper-ROM
+
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 17 of 20
+
+10-7
+
+10-6
+
+10-5
+
+10-4 η1
+
+N
+u
+ss
+
+e
+lt
+
+η2 η3
+
+10-7
+
+10-6
+
+10-5
+
+10-4
+
+10-1 100 101
+
+η4
+
+N
+u
+ss
+
+e
+lt
+
+Frequency (Hz)
+10-1 100 101
+
+η5
+
+Frequency (Hz)
+10-1 100 101
+
+η6
+
+Frequency (Hz)
+
+FOM ROM ROM-H
+
+Fig. 13 Fourier transform of the Nusselt number for the hot wall
+
+10-7
+
+10-6
+
+10-5
+
+10-4 η1
+
+N
+u
+ss
+
+e
+lt
+
+η2 η3
+
+10-7
+
+10-6
+
+10-5
+
+10-4
+
+10-1 100 101
+
+η4
+
+N
+u
+ss
+
+e
+lt
+
+Frequency (Hz)
+10-1 100 101
+
+η5
+
+Frequency (Hz)
+10-1 100 101
+
+η6
+
+Frequency (Hz)
+
+FOM ROM ROM-H
+
+Fig. 14 Fourier transform of the Nusselt number for the cold wall
+
+seems to be more dissipative, in spite of the ratio of the meshes being smaller. We believe
+this could be attributed to the quality of basis, which directly depends on the quality of
+the snapshots used to construct it.
+Figure 15 shows the root mean square of the Nusselt error for ROM and hyper-ROM,
+
+showing similar results as the 2D case, including the overfitting phenomena when the
+retained energy η approaches 1.
+Figure 16 shows speedup for ROM and hyper-ROM solutions. The reduction in the
+
+computational time for the 3Dproblem is larger than the one achieved for the 2Dproblem,
+using a similar amount of basis vectors.
+
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 18 of 20
+
+10-3
+
+10-2
+
+0.5 0.6 0.7 0.8 0.9 1.0
+
+ε r
+m
+
+sH
+
+η
+
+10-4
+
+10-3
+
+10-2
+
+0.5 0.6 0.7 0.8 0.9 1.0
+
+ε r
+m
+
+sC
+
+η
+ROM ROMH
+
+Fig. 15 �rms convergence. Hot wall �
+H
+rms and cold wall �
+
+C
+rms
+
+25
+
+30
+
+35
+
+40
+
+45
+
+50
+
+55
+
+60
+
+65
+
+70
+
+0.5 0.6 0.7 0.8 0.9 1.0
+
+S
+p
+
+e
+e
+
+d
+u
+
+p
+
+η
+
+ROM ROMH
+
+Fig. 16 Speedup for ROM and hyper-ROM
+
+Conclusions
+In this work we have developed a formulation that allowed us to perform ROMs on the
+zero Mach number Navier–Stokes approximation. For that purpose we have described a
+set of tools that allowus to tackle themain problems that arise: lack of stability, added com-
+putational cost due to the non-linearities and non-optimal projection over the reduced
+space.
+To solve the lack of stability, we have proposed a VMS-FE-ROM formulation with the
+
+following characteristics:
+
+• It is an implicit formulation, reducing the offline costs and easing the implementation.
+• Since it is built over a VMS framework, it incorporates non-linear terms in the adjoint
+
+operator (Eq. 15), which may become relevant in complex flows.
+• Itmaintains the orthogonality definition, proposed in [18,26], between the sub-spaces
+Yr and Y̆ .
+
+• It is residual-based, as shown in Eq. 18.
+• It works with the same stabilization coefficients τ as the ones developed for the VMS-
+
+FE formulation in [2,12].
+
+Although in this work we focused solely in the use of dynamic subscales, it is possible to
+construct the same method for quasi-static subscales or other stabilization techniques.
+To solve the added computational cost, we have proposed a mesh-based hyper-ROM
+
+that contrary to the traditional sample-based methods, does not require any algorithm
+
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 19 of 20
+
+to select these sampling points. The numerical experiments performed show that this
+hyper-ROM method behaves appropriately, only inducing an expected added diffusion
+to the solution. A natural extension of the mesh-based hyper-ROM method is the use of
+mesh refinement techniques to improve both the computational time and the accuracy of
+the method.
+Finally, to tackle the non-optimal projection of the non-linear formulation, we give a
+
+different interpretation to the Petrov–Galerkin projection—originally described in [7]—in
+order to include it in our formulation.
+
+Authors’ contributions
+All authors contributed to the manuscript both in writing and the numerical experiments. The computer code for the
+numerical simulations was developed in FEMUSS by RR. All authors read and approved the final manuscript.
+
+Author details
+1Universitat Politècnica de Catalunya, Jordi Girona 1–3, Edifici C1, 08034 Barcelona, Spain, 2Centre Internacional de
+Mètodes Numèrics a l’Enginyeria (CIMNE), Campus Nord UPCC/Gran Capità S/N, Edifici C1, 08034 Barcelona, Spain,
+3Intitució Catalana de Recerca i Estudis Avançats (ICREA), Passeig Luís Companys 23, 08010 Barcelona, Spain.
+
+Acknowledgements
+R. Reyes acknowledges the scholarship received from COLCIENCIAS, from the Colombian Government. R. Codina
+acknowledges the support received from the ICREA Academia Research Program, from the Catalan Government.
+
+Competing interests
+The authors declare that they have no competing interests.
+
+Publisher’s Note
+Springer Nature remains neutral with regard to jurisdictional claims in published maps and institutional affiliations.
+
+Received: 28 July 2018 Accepted: 19 November 2018
+
+References
+1. Principe J, Codina R. Mathematical models for thermally coupled low speed flows. Adv Theor Appl Mech.
+
+2009;2(2):93–112.
+2. Principe J, Codina R. A stabilized finite element approximation of low speed thermally coupled flow. Int J Num
+
+Methods Heat Fluid Flow. 2008;18:835–67. https://doi.org/10.1108/09615530810898980.
+3. Sirovich L. Turbulence and the dynamics of coherent structures. I: coherent structures. II—symmetries and
+
+transformations. III—dynamics and scaling. Q Appl Math. 1987;45:561–71.
+4. Everson R, Sirovich L. Karhunen-loève procedure for gappy data. J Opt Soc Am A. 1995;12(8):1657–64. https://doi.
+
+org/10.1364/JOSAA.12.001657.
+5. Barrault M, Maday Y, Nguyen NC, Patera AT. An ‘empirical interpolation’ method: application to efficient
+
+reduced-basis discretization of partial differential equations. Comptes Rendus Math. 2004;339(9):667–72. https://doi.
+org/10.1016/j.crma.2004.08.006.
+
+6. Nguyen NC, Patera AT, Peraire J. A ‘best points’ interpolation method for efficient approximation of parametrized
+functions. Int J Num Methods Eng. 2008;73(4):521–43. https://doi.org/10.1002/nme.2086.
+
+7. Carlberg K, Bou-Mosleh C, Farhat C. Efficient non-linear model reduction via a least-squares Petrov–Galerkin
+projection and compressive tensor approximations. Int J Num Methods Eng. 2011;86(2):155–81. https://doi.org/10.
+1002/nme.3050.
+
+8. Ryckelynck D, Vincent F, Cantournet S. Multidimensional a priori hyper-reduction of mechanical models involving
+internal variables. Comput Methods Appl Mech Eng. 2012;225–228:28–43. https://doi.org/10.1016/j.cma.2012.03.
+005.
+
+9. Baiges J, Codina R, Idelsohn SR. Numerical simulations of coupled problems in engineering. In: Idelsohn SR, editor.
+Reduced-order modelling strategies for the finite element approximation of the incompressible Navier–Stokes
+equations. Cham: Springer; 2014. p. 189–216. https://doi.org/10.1007/978-3-319-06136-8_9.
+
+10. Hernández JA, Caicedo MA, Ferrer A. Dimensional hyper-reduction of nonlinear finite element models via empirical
+cubature. Comput Methods Appl Mech Eng. 2017;313:687–722. https://doi.org/10.1016/j.cma.2016.10.022.
+
+11. Ryckelynck D. A priori hyperreduction method: an adaptive approach. J Comput Phys. 2005;202(1):346–66. https://
+doi.org/10.1016/j.jcp.2004.07.015.
+
+12. Avila M, Principe J, Codina R. A finite element dynamical nonlinear subscale approximation for the low mach
+number flow equations. J Comput Phys. 2011;230(22):7988–8009. https://doi.org/10.1016/j.jcp.2011.06.032.
+
+13. Codina R. Stabilized finite element approximation of transient incompressible flows using orthogonal subscales.
+Comput Methods Appl Mech Eng. 2002;191(39):4295–321. https://doi.org/10.1016/S0045-7825(02)00337-7.
+
+14. Saad Y. Iterative methods for sparse linear systems, vol. 8. Philadelphia: Society for industrial and applied
+mathematics. p. 1–447. https://doi.org/10.1137/1.9780898718003. http://epubs.siam.org/doi/book/10.1137/1.
+9780898718003.
+
+https://doi.org/10.1108/09615530810898980
+https://doi.org/10.1364/JOSAA.12.001657
+https://doi.org/10.1364/JOSAA.12.001657
+https://doi.org/10.1016/j.crma.2004.08.006
+https://doi.org/10.1016/j.crma.2004.08.006
+https://doi.org/10.1002/nme.2086
+https://doi.org/10.1002/nme.3050
+https://doi.org/10.1002/nme.3050
+https://doi.org/10.1016/j.cma.2012.03.005
+https://doi.org/10.1016/j.cma.2012.03.005
+https://doi.org/10.1007/978-3-319-06136-8_9
+https://doi.org/10.1016/j.cma.2016.10.022
+https://doi.org/10.1016/j.jcp.2004.07.015
+https://doi.org/10.1016/j.jcp.2004.07.015
+https://doi.org/10.1016/j.jcp.2011.06.032
+https://doi.org/10.1016/S0045-7825(02)00337-7
+https://doi.org/10.1137/1.9780898718003
+http://epubs.siam.org/doi/book/10.1137/1.9780898718003
+http://epubs.siam.org/doi/book/10.1137/1.9780898718003
+
+
+Reyes et al. Adv. Model. and Simul. in Eng. Sci.           (2018) 5:28 Page 20 of 20
+
+15. Schimd PJ. Dynamic mode decomposition of numerical and experimental data. J Fluid Mech. 2010;656:5–28.
+https://doi.org/10.1017/S0022112010001217.
+
+16. Chinesta F, Ladeveze P, Cueto E. A short review on model order reduction based on proper generalized
+decomposition. Arch Comput Methods Eng. 2011;18(4):395. https://doi.org/10.1007/s11831-011-9064-7.
+
+17. Baiges J, Codina R, Idelsohn S. Reduced-order subscales for POD models. Comput Methods Appl Mech Eng.
+2015;291:173–96. https://doi.org/10.1016/j.cma.2015.03.020.
+
+18. Iliescu T, Wang Z. Variational multiscale proper orthogonal decomposition. Convec Domin Convec Diff Eq.
+2011;82(283):22.
+
+19. Codina R. Stabilization of incompressibility and convection through orthogonal sub-scales in finite element
+methods. Comput Methods Appl Mech Eng. 2000;190:1579–99. https://doi.org/10.1016/S0045-7825(00)00254-1.
+
+20. Avila M, Codina R, Principe J. Large eddy simulation of low Mach number flows using dynamic and orthogonal
+subgrid scales. Comput Fluids. 2014;99:44–66. https://doi.org/10.1016/j.compfluid.2014.04.003.
+
+21. Codina R, Principe J, Guasch O, Badia S. Time dependent subscales in the stabilized finite element approximation of
+incompressible flow problems. Comput Methods Appl Mech Eng. 2007;196(21–24):2413–30. https://doi.org/10.
+1016/j.cma.2007.01.002.
+
+22. Quéré PL, Weisman C, Paillere H, Vierendeels J, Dick E, Becker R, Braack M, Locke J. Modelling of natural convection
+flows with large temperature differences: a benchmark problem for low Mach number solvers. Part 1. Reference
+solutions. ESAIM. 2005;339:609–16 10.1051/m2an.
+
+23. Christon M, Gresho PM, Sutton SB. Computational predictability of natural convection flows in enclosures. LJINMF.
+2002;40:953–80. https://doi.org/10.1002/fld.395.
+
+24. Baiges J, Codina R, Idelsohn S. Explicit reduced-order models for the stabilized finite element approximation of the
+incompressible Navier-Stokes equations. Int J Num Methods Fluids. 2013;72(12):1219–43. https://doi.org/10.1002/
+fld.3777.
+
+25. Giere S, Iliescu T, John V, Wells D. SUPG reduced order models for convection–dominated
+convection–diffusion-reaction equations. Comput Methods Appl Mech Eng. 2015;289:454–74. https://doi.org/10.
+1016/j.cma.2015.01.020.
+
+26. Azaïez M, Chacón Rebollo T, Rubino S. Streamline derivative projection-based POD-ROM for convection-dominated
+flows. Part I : numerical analysis. ArXiv e-prints. 2017. arXiv:1711.09780.
+
+https://doi.org/10.1017/S0022112010001217
+https://doi.org/10.1007/s11831-011-9064-7
+https://doi.org/10.1016/j.cma.2015.03.020
+https://doi.org/10.1016/S0045-7825(00)00254-1
+https://doi.org/10.1016/j.compfluid.2014.04.003
+https://doi.org/10.1016/j.cma.2007.01.002
+https://doi.org/10.1016/j.cma.2007.01.002
+https://doi.org/10.1002/fld.395
+https://doi.org/10.1002/fld.3777
+https://doi.org/10.1002/fld.3777
+https://doi.org/10.1016/j.cma.2015.01.020
+https://doi.org/10.1016/j.cma.2015.01.020
+http://arxiv.org/abs/1711.09780
+
+	Reduced order models for thermally coupled low Mach flows
+	Abstract
+	Introduction
+	Thermally coupled flow problems
+	Low Mach number model
+
+	Model reduction
+	Construction of the basis
+
+	FE-ROM formulation
+	VMS for FE-ROM
+	Subscales approximation
+	Time discretization
+	Linearization
+	Discrete approximation
+	Petrov–Galerkin projection
+	Hyper-ROM
+
+	Numerical examples
+	Two dimensional case
+	Three dimensional case
+
+	Conclusions
+	Acknowledgements
+	References
+
+
+
+

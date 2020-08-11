@@ -1,0 +1,2731 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Comput Mech (2017) manuscript No.
+(will be inserted by the editor)
+
+A cut finite element method for the solution of the
+full-potential equation with an embedded wake
+
+M.Davari1 · R.Rossi1 , 2 · P. Dadvand2 · I. López3 · R. Wüchner3
+
+Received: date / Accepted: date
+
+Abstract Potential flow solvers represent an appeal-
+
+ing alternative for the simulation of non-viscous sub-
+
+sonic flows. In order to deliver accurate results, such
+
+techniques require prescribing explicitly the so called
+
+Kutta condition, as well as adding a special treatment
+
+on the “wake” of the body. The wake is traditionally
+
+modelled by introducing a gap in the CFD mesh, which
+
+requires an often laborious meshing work. The novelty
+
+of the proposed work is to embed the wake within the
+
+CFD domain. The approach has obvious advantages in
+
+the context of aeroelastic optimization, where the posi-
+
+tion of the wake may change due to evolutionary steps
+
+of the geometry. This work presents a simple, yet effec-
+
+tive, method for the imposition of the embedded wake
+
+boundary condition. The presented method preserves
+
+the possibility of employing iterative techniques in the
+solution of the linear problems which stem out of the
+
+discretization. Validation and verification of the solver
+
+are performed for a NACA 0012 airfoil.
+
+Keywords Full potential solver · Extended finite
+element method · Kutta condition
+
+1 Introduction
+
+Fluid solvers are a key component in aircraft optimiza-
+
+tion workflows. When choosing the right solver for a
+
+certain application, properties such as accuracy, com-
+
+putational effort and robustness have to be considered.
+
+M.Davari
+E-mail: md civil1983@yahoo.com
+
+1Polytechnic University of Catalonia (UPC), Barcelona,
+Spain. ·
+2International Centre for Numerical Methods in Engineering,
+Barcelona, Spain ·
+3Technical University of Munich, Munich, Germany
+
+Currently, the tendency is to integrate the optimization
+
+workflows in early stages of aircraft design, where fast
+
+solutions are required. Despite the large growth of com-
+
+puter power, there is still a significant overhead due to
+
+the large amount of design variables and system evalua-
+
+tions required to achieve accurate results. Most parts of
+
+the overhead can be attributed to the fluid solvers. For
+
+this reason, every effort is made to develop low-fidelity
+
+fluid solvers to reduce the computational cost.
+
+This paper presents an innovative finite element full-
+
+potential solver with an embedded wake approach. The
+
+advantage of full-potential solvers is that only a sin-
+
+gle, scalar, partial-differential equation (conservation of
+
+mass) is needed to obtain flow solutions, instead of five
+
+coupled equations (conservation of mass, momentum,
+
+energy). Therefore, for a given mesh the number of
+
+variables is five times lower than for the solution of
+
+the Euler equations [1]. Potential solvers can reproduce
+
+flow solutions with shock waves, such as in transonic
+
+[2, 3, 4, 5, 6] and supersonic [7, 8, 9, 10] flows. However,
+
+in the current study only subsonic flows are considered
+
+(M < 1). Thus, the fluid stays subsonic everywhere. In
+
+this case there are no shock waves, but the jump across
+
+the wake still needs to be modeled.
+
+The full-potential equation can be derived from the
+
+Navier Stokes equations assuming steady, irrotational
+
+and isentropic flow. These assumptions hold for the flow
+
+outside the boundary layer of streamlined bodies flying
+
+at high Reynolds numbers and small angles of attack
+
+(i.e. with attached boundary layers). For benign sub-
+
+sonic flows, the full-potential equation is elliptic but
+
+for some localized regions of high flow curvature. Thus,
+
+the finite element method provides robust and accurate
+
+results for this range of application.
+
+The full-potential formulation requires a model to
+
+approximate the wake shed behind the body, where the
+
+
+
+2 M.Davari1, R.Rossi1 , 2, P. Dadvand2, I. López3, R. Wüchner3
+
+flow field is not irrotational. In reality, the wake exhibits
+
+a roll up, which can be computed if the unsteady terms
+
+are kept in the formulation. Otherwise, a model for the
+
+geometry of the wake has to be introduced. Typically
+
+the wake is assumed to be straight and follow the direc-
+
+tion of the freestream velocity. This assumption is re-
+
+laxed imposing a continuous mass flux across the wake.
+
+Furthermore, the wake cannot support pressure jumps.
+
+This is ensured by means of the pressure-equality wake-
+
+boundary condition.
+
+Moreover, for very high Reynold numbers the wake
+
+can be approximated as a discontinuity. Hence, across
+
+the wake the fluid magnitudes and their derivatives
+
+may present finite jumps. Particularly, the potential
+
+exhibits a jump across the wake. In order to support
+
+the jump in the potential, Nishida and Drela [11] de-
+
+veloped a finite element method in which elements are
+
+not connected across the wake surface. David Eller im-
+
+proved the method’s flexibility and robustness by en-
+
+forcing the pressure-equality wake-boundary condition
+
+using a least-squares approach [1, 12]. However, both
+
+methods require a body-fitted mesh around the wake.
+
+This is a major disadvantage when performing aeroe-
+
+lastic optimization, where the wake’s geometry may
+
+change during the evolutionary steps. Indeed, in the
+
+conclusions of Eller’s work it is stated: “. . . there is lim-
+
+ited support for the automatic generation of unstruc-
+
+tured volume meshes with embedded wake surfaces.
+
+Therefore, the extension of available mesh generation
+
+software to robustly create element meshes including
+
+embedded wakes is a necessary prerequisite for the ef-
+
+fective use of the method. . . ” [1]. Based on this, the
+
+present paper is focused on the development of an em-
+
+bedded wake approach.
+
+The eXtended finite element method (X-FEM) is
+
+widely used to embed discontinuities [13, 14, 15, 16, 17,
+
+18, 19, 20]. In X-FEM special functions are added to
+
+the finite element approximation space in order to be
+
+able to capture discontinuities within the element. One
+
+of the main disadvantages of standard X-FEM is that
+
+these additional special functions should be considered
+
+not only for the elements that contain the discontinuity,
+
+but also for those elements adjacent to them (blending
+
+elements). There are various research studies aiming to
+
+avoid blending elements [21, 22, 23, 24, 25, 26, 27]. In
+
+[21, 22] a method to capture strong and weak disconti-
+
+nuities by means of an explicit variable is presented. In
+
+[23] the method is improved by adding new functions to
+
+the cut elements. The main achievement of [23] is that
+
+the additional functions are controlled by new local de-
+
+grees of freedom, which can be condensed before final
+
+assembly without changing the graph and the size of
+
+the final system. A further method that allows embed-
+
+ding discontinuities is the mesh-independent interface-
+
+enriched generalized finite element method (IGFEM)
+
+[24]. In IGFEM the element is enriched by adding nodes
+
+on the discontinuity. [25] improved IGFEM in order
+
+to reduce the discretization error on curved interfaces.
+
+IGFEM can handle weak discontinuities associated with
+
+multiple material interfaces crossing a single element
+
+[26]. Adding an extra enrichment function to the solu-
+
+tion space allows to also handle strong discontinuities.
+
+This last approach is denoted discontinuity-enriched fi-
+
+nite element method (D-EFEM) [27].
+
+In the presented method the element nodes are du-
+
+plicated. The auxiliary nodes allow to capture the wake
+
+discontinuity by decoupling the degrees of freedom above
+
+the wake from the degrees of freedom below the wake.
+
+At the same time, the auxiliary nodes allow to apply
+
+the wake-boundary conditions. The advantages of this
+
+method are:
+
+– Blending elements are not necessary.
+
+– An explicit variable is not required.
+
+– The graph of the final system does not change.
+
+– The system remains well conditioned, hence retain-
+
+ing the possibility of using iterative solvers.
+
+– Mesh conformity is preserved.
+
+– The geometry of the wake is described implicitly.
+
+With this flexible and robust handling of the embed-
+
+ded wake, it is expected that the proposed method may
+
+be useful to perform aeroelastic optimization. Although
+
+this paper is concerned with the embedded modelling
+
+of the wake, it is planned in the future to combine this
+
+technique with the methods described in [28], in or-
+
+der to use a fully immersed description of the geom-
+
+etry of interest. In this work the wake boundary con-
+
+ditions are applied using a least-squares finite-element
+
+approach. The solver is implemented in Kratos Multi-
+
+Physics, an open source framework to develop multi-
+
+disciplinary programs [29]. Efficiency is achieved using
+
+Kratos’ object-oriented data structure. Validation and
+
+verification of the solver are performed for a NACA
+
+0012.
+
+2 Method
+
+2.1 Governing Equation
+
+The flow outside the boundary layer of streamlined bod-
+
+ies flying at high Reynold numbers and small angles of
+
+attack, can be assumed to be steady, irrotational and
+
+isentropic [30]. This allows to reduce the Navier-Stokes
+
+equations to the steady full-potential equation
+
+∇ · (ρ∇Φ) = 0, (1)
+
+
+
+A cut finite element method for the solution of the full-potential equation with an embedded wake 3
+
+where ρ is the density and Φ is the velocity potential.
+
+Eq.(1) is a nonlinear partial differential equation for
+
+the potential, which expresses the conservation of mass.
+
+The compressible Bernoulli equation states the nonlin-
+
+ear relation between the density and the potential:
+
+ρ = ρ∞
+
+[
+1 +
+
+γ − 1
+2
+
+u2∞
+a2∞
+
+(
+1−
+∇Φ · ∇Φ
+u2∞
+
+)] 1
+γ−1
+
+, (2)
+
+where u∞, ρ∞ and a∞ are the freestream velocity, den-
+
+sity and speed of sound respectively and γ is the ratio
+
+of specific heats. The pressure p can be expressed in
+
+terms of the density and the far-field quantities using
+
+the following isentropic relation:
+
+p
+
+p∞
+=
+
+(
+ρ
+
+ρ∞
+
+)γ
+. (3)
+
+2.2 Boundary Conditions
+
+Consider the fluid domain Ω and its boundaries Γ as
+
+shown in Figure 1. The problem is further defined by
+
+the following set of boundary conditions:
+
+Φ = Φ∞ on ΓD, (4)
+
+n · (ρ∇Φ) = g on ΓN , (5)
+n · (ρ+∇+Φ− ρ−∇−Φ) = 0 on ΓW , (6)
+
+|∇+Φ|2 − |∇−Φ|2 = 0 on ΓW , (7)
+
+where n is the surfaces’ normal and the subscripts +
+
+and − denote the upper and lower wake respectively.
+Eq.(4) is a Dirichlet condition, which specifies the value
+
+of the far-field potential Φ∞ at the inlet. Note that this
+
+condition is required to determine the absolute value
+
+of the potential because the full-potential equation and
+
+the remaining boundary conditions are defined in terms
+
+of its derivatives only. Eq.(5) is a Neumann condition,
+
+which imposes the mass flux on ΓN . On the wing and
+
+on the walls a slip boundary condition is enforced be-
+
+cause viscosity is neglected (g = 0). On the outlet, the
+
+free stream velocity is specified as a Neumann condition
+
+with g = n · (ρ∞∇Φ∞). A Dirichlet condition cannot
+be applied on the outlet because there is a jump in the
+
+potential across the wake and the wake intersects the
+
+outlet (Figure 1). Eqs.(6) and (7) are the wake bound-
+
+ary conditions. Eq.(6) imposes mass conservation across
+
+the wake, relaxing the straight wake assumption and
+
+Eq.(7) imposes equality of pressures between the upper
+
+and lower wake.
+
+Fig. 1: Fluid domain Ω and its boundary Γ .
+
+2.3 Discretization
+
+The weak form of the system is obtained applying the
+
+Galerkin weighted residual method and the divergence
+
+theorem to Eq.(1):∫
+Ω
+
+ρ∇ω · ∇Φ dΩ =
+∫
+ΓN
+
+ωn · (ρ∇Φ) dΓ, (8)
+
+where ω is the test function. To define the weak finite-
+
+element form from Eq.(8), the domain of interest Ω is
+
+divided into simplicial finite elements. The method is
+
+presented here for the case of triangles, however the
+
+extension to the 3D case is straightforward.
+
+Local shape functions Ni ([N1, N2, N3]
+T ) are used
+
+for the interpolation of the potential inside a finite el-
+
+ement. Hence, the potential field Φ and also the test
+
+function ω are expressed as the product of shape func-
+
+tions and nodal values Φi and ωi as in:
+
+Φh =
+
+3∑
+i=1
+
+NiΦi, ω
+h =
+
+3∑
+i=1
+
+Niωi. (9)
+
+Therefore, the weak finite-element form of the problem
+
+can be obtained by substituting Eq.(9) into Eq.(8):
+
+3∑
+i=1
+
+3∑
+j=1
+
+∫
+Ω
+
+ρ∇Ni · ∇Nj dΩ Φj =
+3∑
+i=1
+
+∫
+ΓN
+
+Nig dΓ, (10)
+
+where the right-hand side has been replaced by the Neu-
+
+mann boundary condition (Eq.(5)). Eq.(10) can be ex-
+
+pressed in matrix form for a finite triangular element
+
+as:
+
+K(3×3)e Φ
+(3×1)
+e = F
+
+(3×1)
+e . (11)
+
+Since, the density is a nonlinear function of the po-
+
+tential, the discrete form of the problem is nonlinear.
+
+Hence, Eq.(10) is rewritten in residual form R(Φ) = 0,
+
+where the contribution of each element e to the residual
+
+is:
+
+Ri =
+
+3∑
+j=1
+
+∫
+Ωe
+
+ρ∇Ni · ∇Nj dΩ Φj −
+∫
+ΓNe
+
+Nig dΓ = 0.
+
+
+
+4 M.Davari1, R.Rossi1 , 2, P. Dadvand2, I. López3, R. Wüchner3
+
+(12)
+
+The global nonlinear problem is then solved by means
+
+of the Newton’s method. In this way the solution is
+
+updated by an increment ∆Φk, which can be computed
+
+from:
+
+J∆Φk = −R(Φk), (13)
+
+where the entries Ji,j of the Jacobian matrix J are de-
+
+fined by
+
+Ji,j =
+∂Ri(Φ)
+
+∂Φj
+=
+
+∫
+Ωe
+
+ρ∇Ni · ∇Nj
+
++ 2
+∂ρ
+
+∂|u|2
+(∇Nj · ∇Φ)(∇Ni · ∇Φ) dΩ
+
+(14)
+
+and the derivative of the density with respect to the
+
+local velocity is:
+
+∂ρ
+
+∂|u|2
+= −
+
+ρ∞
+2a2∞
+
+[
+1 +
+
+γ − 1
+2
+
+u2∞
+a2∞
+
+(
+1−
+|u|2
+
+u2∞
+
+)] 2−γ
+γ−1
+
+. (15)
+
+2.4 Wake Discretization and Boundary Conditions
+
+The finite element discretization introduced leads to a
+
+non-lifting problem [31, 32]. In order to enable the gen-
+
+eration of circulation around the body, the wake bound-
+
+ary conditions (Eqs.(6) and (7)) must be enforced. The
+
+standard body-fitted wake method and the proposed
+
+embedded wake method are presented in this section
+
+(Figure 2).
+
+2.4.1 Standard body-fitted wake method
+
+Let us begin by describing the standard approach, in
+
+which the wake is modelled as an infinitely thin gap.
+
+This gap introduces a geometrical boundary in the CFD
+
+domain. Following the method presented in [1], to sup-
+
+port a jump in the value of the potential across the
+
+wake, finite elements are not connected across the wake
+
+surface (Figure 2). Elements that share a node with the
+
+wake are only attached to one side of the wake, so that
+
+all wake nodes must be present at least twice. With-
+
+out any further boundary conditions, the wake acts
+
+as a solid wall. The mass-flux boundary condition is
+
+enforced using a Galerkin finite element method. The
+
+weak form of Eq.(6) is:∫
+Γw
+
+ω(ρ+∇Φ+ · n+ + ρ−∇Φ− · n−) dΓ = 0, (16)
+
+where n+ and n− are upper and lower wake normal
+
+vectors respectively. Using Eq.(10) the wake surface in-
+
+tegral can be expressed in terms of a volume integral:
+
+∫
+Ω
+
+ρ+∇ω+ · ∇Φ+ + ρ−∇ω− · ∇Φ−dΩ = 0. (17)
+
+Discretizing into finite elements yields:
+
+Rwi =
+
+nw∑
+j=1
+
+∫
+Ωj
+
+ρ∇Ni · ∇Φ dΩ = 0. (18)
+
+where the summation is performed over the elements
+
+that share a wake node. The entries Jwi,j of the Jacobian
+
+matrix are defined for each element:
+
+Jwi,j =
+∂Rwi (Φ)
+
+∂Φj
+=
+
+∫
+Ωe
+
+ρ∇Ni · ∇Nj
+
++ 2
+∂ρ
+
+∂|u|2
+(∇Nj · ∇Φ)(∇Ni · ∇Φ) dΩ.
+
+(19)
+
+Note that Eqs.(18) and (19) are identical to Eqs.(12)
+
+and (14). Taking advantage of this, a single mass-flux
+
+equation can be computed for each opposing pair of
+
+wake nodes. This is performed by adding the Jacobian
+
+and the residual contributions for each duplicated wake
+
+node.
+
+To solve the linear system of equations (Eq.(13)),
+
+the number of equations must be equal to the num-
+
+ber of unknowns. Thus, after summing up the rows of
+
+Fig. 2: Sketch of a standard body fitted approach on
+
+the up and the proposed wake embedded approach on
+
+the down.
+
+
+
+A cut finite element method for the solution of the full-potential equation with an embedded wake 5
+
+each pair of wake nodes, the upper nodes equations are
+
+canceled and they are replaced with pressure-equality
+
+wake-boundary condition (Eq.(7)), which can be rewrit-
+
+ten as:
+
+u+ · ∇Φ+ − u− · ∇Φ− = 0. (20)
+
+Assuming small-disturbance flows, the total velocities
+
+u+ and u− can be expressed as follows:
+
+u+ = u∞(1 + u), (21)
+
+u− = u∞(1 + u), (22)
+
+where u denotes the perturbation velocity and is as-
+
+sumed to be u � 1. Making use of Eqs.(21) and (22)
+and dropping high order terms allows to linearize the
+
+pressure-equality wake-boundary condition:
+
+u∞ · ∇(Φ+ − Φ−) = 0, (23)
+
+which is a convection equation for the potential jump
+
+across the wake. Eq.(23) states that the potential jump
+
+is constant along the wake. Using a least-squares ap-
+
+proach leads to the residual energy functional
+
+Π(Φ) =
+1
+
+2
+
+∫
+Γw
+
+[u∞ · ∇(Φ+ − Φ−)]2 dΓ = 0 (24)
+
+and the corresponding unconstrained minimization prob-
+
+lem
+
+minΠ(Φ). (25)
+
+Introducing the finite element discretization (Eq.(9))
+
+and deriving with respect to the degrees of freedom,
+
+yields the following minimum:
+
+R
+p
+i =
+
+∂Π(Φ)
+
+∂Φi
+
+=
+∑
+e=1
+
+∫
+Γw,e
+
+[u∞ · ∇Ni][u∞ · (∇N+Φ+ −∇N−Φ−)]dΓ
+
+= 0.
+
+(26)
+
+Second differentiation with respect to the degrees of
+
+freedom results in the corresponding Jacobian:
+
+J
+p
+i,j =
+
+∂R
+p
+i
+
+∂Φj
+
+=
+∑
+e=1
+
+∫
+Γw,e
+
+[u∞ ·∇Ni][u∞ ·(∇Nj,u−∇Nj,l)]dΓ = 0,
+
+(27)
+
+which completes the equation J
+p
+i,jΦj = −R
+
+p
+i for each of
+
+the wake nodes. Note that before modifying the global
+
+stiffness matrix in order to enforce the wake bound-
+
+ary conditions, the matrix was symmetric and positive
+
+definite. After summing up the rows of each pair of
+
+wake nodes (Eqs.(18) and (19)) and replacing the up-
+
+per nodes equations with the pressure-equality wake-
+
+boundary condition (Eqs.(26) and (27)), the matrix is
+
+no longer symmetric. Moreover, this standard body fit-
+
+ted wake treatment requires additional effort in the
+
+mesh-generation process in order to deal with the gap
+
+introduced in the domain. While this might not rep-
+
+resent a major issue at the preprocessing stage, it be-
+
+comes a potential blocker if the shape of the wake can
+
+evolve in time, as may happen for example due to con-
+
+trol operations or within an optimization loop. In this
+
+context, a change of the geometry of the wake cannot
+
+be easily handled, particularly in the case in which the
+
+wake intersects other bodies (for example the fuselage).
+
+This motivates the use of the proposed embedded wake
+
+treatment presented in the next section.
+
+2.4.2 Proposed embedded wake method
+
+Let us now proceed to describe our proposed method,
+
+in which the wake is embedded in the mesh (Figure 2).
+
+Let us begin describing the formulation for an element
+
+crossed by the embedded wake. Such wake element can
+
+be seen as composed of two “incomplete” sub-elements
+
+Ω+ and Ω−, each describing one of the two sides of
+
+the wake (Figure 3). In order to have a discontinuity
+
+in the potential field across the wake, the potential is
+
+approximated using a different set of degrees of free-
+
+dom in each sub-element. Three new auxiliary degrees
+
+of freedom Ψi, located at the position of the nodes of
+
+the mesh are therefore introduced. For further insight,
+
+assume that Θ+ and Θ− identify the sets of degrees of
+
+freedom corresponding to elements Ω+ and Ω− respec-
+
+tively. Then the degrees of freedom, corresponding with
+
+each sub-element are:
+
+Θ+i =
+
+{
+Φi if i
+
+th node ∈ Ω+
+
+Ψi if i
+th node ∈ Ω−
+
+,
+
+Θ−i =
+
+{
+Ψi if i
+
+th node ∈ Ω+
+
+Φi if i
+th node ∈ Ω−
+
+.
+
+(28)
+
+Figure 3 shows the set of degrees of freedom of a wake
+
+element. Inside the wake element, the standard finite el-
+
+ement shape functions N are used twice. Thus, the wake
+
+element is effectively duplicated. The new expanded
+
+wake element shape functions Ñ are defined on the ba-
+
+
+
+6 M.Davari1, R.Rossi1 , 2, P. Dadvand2, I. López3, R. Wüchner3
+
+Fig. 3: Degrees of freedom of a cut element. (a) shows a cut element with all its degrees of freedom. (b) and (c)
+
+show the degrees of freedom corresponding to Ω+ and Ω− respectively.
+
+sis of the standard finite element shape functions as:
+
+Ñ+i = Niβ
++, Ñ−i = Niβ
+
+−, (29)
+
+where β is defined as the heaviside step function:
+
+β+(x) =
+
+{
+1 if x ∈ Ω+
+
+0 if x ∈ Ω−
+, β−(x) = 1− β+(x).
+
+(30)
+
+Note that the new expanded shape functions are de-
+
+fined in such a manner that no relation exists between
+the degrees of freedom Θ+ and Θ−. This yields a new
+
+approximation for the potential and the test function:
+
+Θ+ =
+
+3∑
+i=1
+
+Ñ+i Θ
++
+i , Θ
+
+− =
+
+3∑
+i=1
+
+Ñ−i Θ
+−
+i , (31)
+
+ω+ =
+
+3∑
+i=1
+
+Ñ+i ω
++
+i , ω
+
+− =
+
+3∑
+i=1
+
+Ñ−i ω
++
+i . (32)
+
+Applying this discretization and assuming for simplicity
+
+triangular elements, Eq.(10) can be rewritten for the
+
+upper and lower sub-elements as:
+
+3∑
+i=1
+
+3∑
+j=1
+
+∫
+Ω
+
++
+w
+
+ρ+∇Ñ+i · ∇Ñ
++
+j dΩΘ
+
++
+j =
+
+3∑
+i=1
+
+∫
+Γ
+
++
+w
+
+ω+g+ dΓ,
+
+(33)
+
+3∑
+i=1
+
+3∑
+j=1
+
+∫
+Ω
+
+−
+w
+
+ρ−∇Ñ−i · ∇Ñ
+−
+j dΩΘ
+
+−
+j =
+
+3∑
+i=1
+
+∫
+Γ
+
+−
+w
+
+ω−g− dΓ.
+
+(34)
+
+where the wake boundary ΓW has accordingly been
+
+decomposed into two sub-interfaces Γ+W and Γ
+−
+W . As
+
+before, due to the fact that the problem is nonlinear,
+
+Eqs.(33) and (34) are rewritten in residual form R(Φ) =
+
+0, where the components Ri are:
+
+R+i =
+
+3∑
+j=1
+
+∫
+Ω
+
++
+w
+
+ρ+∇Ñ+i · ∇Ñ
++
+j dΩΘ
+
++
+j −
+
+∫
+Γ
+
++
+w
+
+ω+g+ dΓ = 0,
+
+(35)
+
+R−i =
+
+3∑
+j=1
+
+∫
+Ω
+
+−
+w
+
+ρ−∇Ñ−i · ∇Ñ
+−
+j dΩΘ
+
+−
+j −
+
+∫
+Γ
+
+−
+w
+
+ω−g− dΓ = 0.
+
+(36)
+
+Note that the residual terms of Eqs.(35) and (36) are
+
+identical to Eq.(12). Thus, the Jacobian terms stem-
+
+ming out of Eqs.(35) and (36) can be obtained from
+
+Eq.(14). The resulting linear system of equations can
+
+be written in matrix form as:[
+J+(3×3) 0
+
+0 J−(3×3)
+
+] [
+∆Θ+(3×1)
+
+∆Θ−(3×1)
+
+]
+= −
+
+[
+R+(3×1)
+
+R−(3×1)
+
+]
+. (37)
+
+For the element in Figure 3, Eq.(37) can be expressed
+
+as:
+
+
+J+11 J
++
+12 J
+
++
+13 0 0 0
+
+J+21 J
++
+22 J
+
++
+23 0 0 0
+
+J+11 J
++
+11 J
+
++
+11 0 0 0
+
+0 0 0 J−11 J
+−
+12 J
+
+−
+13
+
+0 0 0 J−21 J
+−
+22 J
+
+−
+23
+
+0 0 0 J−11 J
+−
+11 J
+
+−
+11
+
+
+
+
+
+
+
+Φ1
+Ψ2
+Ψ3
+Ψ4
+Φ5
+Φ6
+
+
+ = −
+
+
+
+
+R+1
+R+2
+R+3
+R−1
+R−2
+R−3
+
+
+ . (38)
+
+
+
+A cut finite element method for the solution of the full-potential equation with an embedded wake 7
+
+Observe that the degrees of freedom of upper and lower
+
+wake sub-elements are fully decoupled in Eq.(38). An
+
+additional condition needs to be applied to impose the
+
+relation between Θ+ and Θ−.
+
+Imposition of the Wake Boundary Conditions Let us
+
+consider a two dimensional problem where the wake
+
+boundary conditions Eqs.(6) and (7) can be rewritten
+
+as a single vector equation:
+
+ρ+∇Θ+ − ρ−∇Θ− = 0. (39)
+
+Applying a least squares finite element approach yields
+
+the residual energy functional
+
+Π(Θ) =
+1
+
+2
+
+∫
+Γω
+
+[ρ+∇Θ+ − ρ−∇Θ−]2 dΓ = 0, (40)
+
+where Γw = Γ
++
+w ⊕ Γ−w , and the corresponding uncon-
+
+strained minimization problem
+
+minΠ(Θ). (41)
+
+Discretizing into finite elements and deriving with re-
+
+spect to the degrees of freedom yields the minimum:
+
+R+i =
+∂Π(Θ)
+
+∂Θ+i
+=
+
+∫
+Γ
+
++
+w
+
+∇Ñ+i [ρ
++∇Θ+ − ρ−∇Θ−] dΓ
+
+= 0 (42)
+
+R−i =
+∂Π(Θ)
+
+∂Θ−i
+= −
+
+∫
+Γ
+
+−
+w
+
+∇Ñ−i [ρ
++∇Θ+ − ρ−∇Θ−] dΓ
+
+= 0, (43)
+
+where the small-disturbance assumption u � 1 allows
+to neglect the derivatives of the density. This is a good
+
+approximation on the wake, where compressible effects
+
+are small. Moreover, note that the following integrals
+
+vanish since:∫
+Γ
+
++
+w
+
+ρ+∇Ñ+i · ∇Ñ
+−
+j dΓ =
+
+∫
+Γ
+
+−
+w
+
+ρ−∇Ñ−i · ∇Ñ
++
+j dΓ = 0,
+
+(44)
+
+which can be derived from Eqs.(29) and (30). Making
+
+use of Eq.(44) and deriving Eqs.(42) and (43) with re-
+
+spect to the degrees of freedom yields the contributions
+
+for upper and lower sub-elements’ Jacobians respec-
+
+tively:
+
+J+i =
+∂R+i
+∂Θ+j
+
+=
+
+∫
+Γ
+
++
+w
+
+ρ+∇Ñ+i · ∇Ñ
++
+j
+
++2
+∂ρ+
+
+∂|u|2
+(∇Ñ+j ·∇Θ
+
++)(∇Ñ+i ·∇Θ
++) dΓ = 0,
+
+(45)
+
+J−i =
+∂R−i
+∂Θ−j
+
+= −
+∫
+Γ
+
+−
+w
+
+ρ−∇Ñ−i · ∇Ñ
+−
+j
+
++2
+∂ρ−
+
+∂|u|2
+(∇Ñ−j ·∇Θ
+
+−)(∇Ñ−i ·∇Θ
+−) dΓ = 0.
+
+(46)
+
+Due to the fact that the shape functions are linear
+
+within the sub-elements, their gradient is constant. There-
+
+fore, the surface integral introduced in Eqs.(45) and
+
+(46) can be expresed in terms of a volume integral as:
+
+J+i =
+∂R+i
+∂Θ+j
+
+=
+
+∫
+Ω
+
++
+w
+
+ρ+∇Ñ+i · ∇Ñ
++
+j
+
++2
+∂ρ+
+
+∂|u|2
+(∇Ñ+j ·∇Θ
+
++)(∇Ñ+i ·∇Θ
++) dΩ = 0,
+
+(47)
+
+J−i =
+∂R−i
+∂Θ−j
+
+= −
+∫
+Ω
+
+−
+w
+
+ρ−∇Ñ−i · ∇Ñ
+−
+j
+
++2
+∂ρ−
+
+∂|u|2
+(∇Ñ−j ·∇Θ
+
+−)(∇Ñ−i ·∇Θ
+−) dΩ = 0.
+
+(48)
+
+Note that the Jacobian terms obtained from the wake
+
+boundary condition are identical to the Jacobian terms
+
+obtained from the full-potential equation (Eq.(14)). As
+
+mentioned earlierΩw = Ω
++
+w⊕Ω−w . This allows to rewrite
+
+Eqs.(47) and (48) as:
+
+∂R+i
+∂Θ+j
+
+∆Θ+j +
+∂R−i
+∂Θ−j
+
+∆Θ−j = −Ri(Θ
++, Θ−), (49)
+
+which can be expressed in matrix form for each element
+
+as:
+
+[
+B+(3×3) B−(3×3)
+
+] [∆Θ+(3×1)
+∆Θ−(3×1)
+
+]
+= −
+
+[
+R(3×1)
+
+]
+. (50)
+
+Consider again the element presented in Figure 3. For
+
+this element Eq.(50) can be rewritten as:
+
+
+B+11 B+12 B+13 B−11 B−12 B−13B+21 B+22 B+23 B−21 B−22 B−23
+B+31 B
+
++
+32 B
+
++
+33 B
+
+−
+31 B
+
+−
+32 B
+
+−
+33
+
+
+
+
+
+
+Φ1
+Ψ2
+Ψ3
+Ψ4
+Φ5
+Φ6
+
+
+ = −
+
+
+R−1R+2
+R+3
+
+
+ . (51)
+
+
+
+8 M.Davari1, R.Rossi1 , 2, P. Dadvand2, I. López3, R. Wüchner3
+
+This represents the constraint to be respected. The
+
+wake boundary conditions are applied substituting Eq.(51)
+
+by the equations corresponding to the auxiliary degrees
+
+of freedom Ψi in Eq.(38):
+
+
+J+11 J
++
+12 J
+
++
+13 0 0 0
+
+B+21 B
++
+22 B
+
++
+23 B
+
+−
+21 B
+
+−
+22 B
+
+−
+23
+
+B+31 B
++
+32 B
+
++
+33 B
+
+−
+31 B
+
+−
+32 B
+
+−
+33
+
+B+11 B
++
+12 B
+
++
+13 B
+
+−
+11 B
+
+−
+12 B
+
+−
+13
+
+0 0 0 J−21 J
+−
+22 J
+
+−
+23
+
+0 0 0 J−11 J
+−
+11 J
+
+−
+11
+
+
+
+
+
+
+
+Φ1
+Ψ2
+Ψ3
+Ψ4
+Φ5
+Φ6
+
+
+ = −
+
+
+
+
+R+1
+R+2
+R+3
+R−1
+R−2
+R−3
+
+
+ . (52)
+
+3 Computational Results
+
+To validate and verify the implemented embedded wake
+
+method, the results of the flow over a symmetric NACA
+
+0012 airfoil are presented. First, a mesh-convergence
+
+study comparing the embedded wake method with the
+
+body fitted method is performed. Afterwards, the nu-
+
+merical results are compared with experimental data.
+
+3.1 Verification
+
+To evaluate the mesh-convergence properties, the lift
+
+coefficient is computed because it is an integrated quan-
+
+tity resulting from the pressure differences between up-
+
+per and lower surfaces. Since these pressure differences
+
+are small compared to the large pressure magnitudes,
+
+the lift coefficient is very sensitive to numerical erros
+
+resulting from an insufficient mesh resolution. Figure 4
+
+shows the value of the lift coefficient over the number of
+
+degrees of freedom for an angle of attack α = 15◦ and
+a free-stream Mach number M∞ = 0.15. Note that for
+
+2.3 ·104 degrees of freedom the lift coefficient is already
+converged. The results for both methods display large
+
+differences for a low number of degrees of freedom.
+
+3.2 Validation
+
+To validate the embedded wake method, the pressure
+
+coefficient distribution is compared against experimen-
+
+tal data in order to establish the ability of the embedded
+
+wake method to reproduce physics. The results for two
+
+angles of attack α = 0◦ and α = 15◦ and a free-stream
+
+Mach numberM∞ = 0.15 are presented. The mesh with
+
+2.3 · 104 degrees of freedom from the previous section
+was selected because of its convergence properties.
+
+The meshes for both test cases are presented in Fig-
+
+ure 5. The results are compared with reference solutions
+
+and experimental data in Figure 6. Note the stagnation
+
+point at the sharp trailing edge cp = 1 typical of the
+
+potential flow. At the trailing edge both slip bound-
+
+ary conditions at the upper and lower surface of the
+
+airfoil and the wake boundary conditions are applyed.
+
+The only way all boundary conditions can be satisfied
+
+at the same time at a sharp edge, is with a vanishing
+
+velocity. In reality however, every edge has a radius of
+
+curvature larger than zero, which explains why a stag-
+
+nation point does not appear in the experimental data.
+
+In Figure 6 an overestimation of the pressure coef-
+
+ficient at the leading upper surface can be observed for
+
+α = 15◦. This is a consequence of neglecting the viscos-
+
+ity effects, which results in an overestimated velocity
+
+at the airfoil boundary. This is a minor drawback, since
+
+the magnitude of interest is the pressure, which does
+
+not suffer large variations across the boundary layer,
+
+as shown in Appendix A. An improved accuracy of the
+
+method can be achieved with the coupling of the full
+
+potential solver with a boundary layer solver as shown
+
+in [33].
+
+Figures 7 to 10 show the potential isolines, pressure
+
+and velocity results obtained with the embedded wake
+
+solver for α = 0◦ and α = 15◦. Figure 7 shows that the
+
+potential isolines are perpendicular to the boundaries
+
+where an homogeneous Neumann boundary condition is
+
+applied and parallel to the inlet and the outlet. Further-
+
+more, the solution is symmetric with respect to the axis
+
+in the free-stream direction because at α = 0◦ the lift,
+
+circulation and jump in the potential across the wake
+
+vanish. This is in contrast to the solution for α = 15◦
+
+presented in Figure 8, where the generation of lift ap-
+
+pears as a jump in the potential across the wake. This
+
+result shows the ability of the embedded wake method
+
+to capture the discontinuity in the potential. Figures
+
+8 and 10, show the pressure and velocity fields in the
+
+proximity of the airfoil, which are magnitudes postpro-
+
+cessed from the potential field.
+
+3.3 Wake Movement
+
+In the context of fluid structure interaction and opti-
+
+mization, the position of the wake may change due to
+
+evolutionary steps of the geometry. The novelty and ad-
+
+vantage of the embedded wake method is that, as the
+
+wake geometry is described implicitly, such changes are
+
+robustly handled without loss of accuracy. Figure 11
+
+shows three test cases where the wake has been rotated
+
+0◦, 15◦ and 30◦ without additional computational cost
+
+due to remeshing. The sensitivity of the resulting pres-
+
+sure coefficient with respect to the angle of the wake is
+
+displayed in Figure 12.
+
+It is well known that cut-FEM approaches as the
+
+one employed may show ill-conditioning issues when
+
+elements are cut unfavorably. This typically manifests
+
+
+
+A cut finite element method for the solution of the full-potential equation with an embedded wake 9
+
+1
+
+5 ·103 104 2 ·104 5 ·104 105 2 ·105
+1.54
+
+1.56
+
+1.58
+
+1.6
+
+1.62
+
+1.64
+
+1.66
+
+1.68
+
+1.7
+
+ndof
+
+c l
+[−
+
+]
+
+cl mesh-refinement study (α= 15°)
+
+Embedded wake
+Body-fitted wake
+
+Figure 0.1: Mesh-refinement study showing the convergence of the lift coefficient.
+Fig. 4: Mesh-refinement study showing the convergence of the lift coefficient for M∞ = 15.
+
+Fig. 5: Geometry and mesh with 2.3 · 104 degrees of freedom. At the left α = 0◦. At the right α = 15◦.
+
+Fig. 6: Comparison between numerical and experimental results. At the left α = 0◦. At the right α = 15◦.
+
+
+
+10 M.Davari1, R.Rossi1 , 2, P. Dadvand2, I. López3, R. Wüchner3
+
+Fig. 7: Potential isolines for α = 0◦.
+
+Fig. 8: Potential isolines for α = 15◦.
+
+Fig. 9: Numerical results in the proximity of the airfoil at α = 0◦.
+
+Fig. 10: Numerical results in the proximity of the airfoil at α = 15◦.
+
+
+
+A cut finite element method for the solution of the full-potential equation with an embedded wake 11
+
+Fig. 11: Results for different wake rotations. From left to right the wake is rotated 0◦, 15◦ and 30◦ respectively.
+
+Fig. 12: Results for different wake rotations. From left to right the wake is rotated 0◦, 15◦ and 30◦ respectively.
+
+when the ratio between the areas of the cut element
+
+at the different sides of the cutting interace becomes
+
+very high. A very simple remedy is employed here: the
+
+interface is slighlty perturbed, by automatically modi-
+
+fying the distance field where this happens, so that the
+
+problematic cut configuration is transformed to an “ac-
+
+ceptable” one. The drawback of this approach is clearly
+
+that the exact wake position is not preserved. Such ge-
+
+ometric error is deemed acceptable in the current con-
+
+text since anyway the wake position only represents an
+
+estimation of the real wake geometry.
+
+The effectiveness of such simple correction strate-
+
+gies is shown by three sets of examples: first the angle
+
+of attack is varied from 0 to 30 degrees in steps of 1 de-
+
+gree, each step representing a new calculation scenario.
+
+Next, the direction of the wake is changed in the range
+
+0-30 degrees. Finally, the mesh is refined for one of the
+
+scenarios under consideration. The condition number of
+
+the matrix is computed for each of the different calcu-
+
+lations.
+
+Figure 13 presents the condition number for the dif-
+
+ferent angles under consideration. Note that the order
+
+of magnitude of the system’s conditioning remains con-
+
+stant for all of the tested configurations. A similar be-
+
+haviour can be observed in Figure 14. Figure 15 shows
+
+the dependence of the condition number with the mesh
+
+size for the proposed cut-FEM method and the stan-
+
+dard body-fitted method. Note that, even though the
+
+condition number is higher for the cut-FEM case than
+
+for the body-fitted reference, for both cases the con-
+
+dition number shows an exponential increase with the
+
+mesh refinement.
+
+4 Conclusions
+
+A finite element method is presented for the solution
+
+of subsonic potential flow problems. In order to embed
+
+the wake within the CFD mesh, a new wake element
+
+formulation has been introduced. Describing the wake
+
+geometry implicitly presents a major advantage in the
+
+context of fluid structure interaction and optimization,
+
+
+
+12 M.Davari1, R.Rossi1 , 2, P. Dadvand2, I. López3, R. Wüchner3
+
+Fig. 13: The condition number with respect to angle of attack of the velocity.
+
+Fig. 14: The condition number in respect of the wake angle which is ranged between 0◦ and 30◦.
+
+Fig. 15: A comparison of the condition number between standard body-fitted wake and proposed embedded wake
+
+cases with respect to the mesh size.
+
+where the position of the wake may change due to evo-
+
+lutionary steps of the geometry. The results show that
+
+the presented embedded wake method can handle such
+
+changes robustly without loss of accuracy and without
+
+additional computational cost due to remeshing. The
+
+proposed finite element formulation allows to capture
+
+the potential discontinuity within the element avoiding
+
+the drawbacks of blending elements. Furthermore, the
+
+wake boundary conditions are imposed weakly with-
+
+out introducing new unknown functions or a large pa-
+
+rameter factor in the stiffness matrix. Validation and
+
+verification on a NACA 0012 airfoil show the method
+
+provides robust, fast and accurate solutions within the
+
+range of application. Mesh-refinement studies show con-
+
+
+
+A cut finite element method for the solution of the full-potential equation with an embedded wake 13
+
+vergence of the solution for an airfoil element size 10−3
+
+smaller than the chord. Comparison between numerical
+
+and experimental results present an accurate matching
+
+for small angles of attack, where the boundary layer is
+
+attached.
+
+Acknowledgments
+
+The authors are grateful for the collaboration offered
+
+by Fernaß Daoud and Stepan Rechtik of Airbus Defence
+
+and Space. They also acknowledge the financial support
+
+of CIMNE via the CERCA programme/Generalitat de
+
+Catalunya.
+
+Appendix A: Pressure Variation across the Bound-
+
+ary Layer
+
+The goal of this appendix is to prove that in the bound-
+
+ary layer the pressure is constant along the lines per-
+
+pendicular to the surface of the body [30]. This ex-
+
+plains why potential models give accuracte predictions
+
+of lift. Here a two-dimensional, laminar and incompress-
+
+ible boundary layer is assumed. However, the results
+
+can be extended to the compressible unsteady case. It
+
+is also asssumed that the boundary layer is over a body
+
+whose surface has a radius of curvature much larger
+
+than the thickness of the layer. Thermal effects are ne-
+
+glected. Therefore, the conservation of mass and mo-
+
+mentum equations are sufficient for the analysis. As the
+
+density is constant, the equations are:
+
+∇ · u = 0, (53)
+ρu · ∇u = −∇p + µ∇2u. (54)
+
+which can be rewritten in nondimensional form as:
+
+∂u′
+
+∂x′
++
+∂w′
+
+∂z′
+= 0, (55)
+
+u′
+∂u′
+
+∂x′
++ w′
+
+∂u′
+
+∂z′
+= −
+
+∂p′
+
+∂x′
++
+
+1
+
+Re
+
+(
+∂2u′
+
+∂x′2
++
+∂2u′
+
+∂z′2
+
+)
+, (56)
+
+u′
+∂w′
+
+∂x′
++ w′
+
+∂w′
+
+∂z′
+= −
+
+∂p′
+
+∂z′
++
+
+1
+
+Re
+
+(
+∂2w′
+
+∂x′2
++
+∂2w′
+
+∂z′2
+
+)
+, (57)
+
+The main hypothesis to study the boundary layer is
+
+that its thickness is very small compared to the refer-
+
+ence length L. This means the nondimensional thick-
+
+ness of the boundary layer δ, satisfies: δ � 1. As the
+dimensionless velocity u′ is 0 at the surface of the body
+
+and increases up to a value of order 1 outside the bound-
+
+ary layer, one concludes u′ ∼ O(1). Similarly, x′ ∼ O(1)
+and z′ ∼ O(δ). Using this in the continuity equation
+(Eq.(53)), where all of the terms are of the same order,
+
+yields to the fact that the dimensionless velocity in z
+
+direction is of order δ, w′ ∼ O(δ). Therefore, w′ � u′.
+Bearing in mind that the pressure term always rules in
+
+the momentum equation (p′ ∼ O(1)), the orders of the
+terms that appear in Eq.(55) are:
+
+u′
+∂u′
+
+∂x′
+∼ O(1), w′
+
+∂u′
+
+∂z′
+∼ O(1),
+
+∂p′
+
+∂x′
+∼ O(1),
+
+(58)
+
+∂2u′
+
+∂x′2
+∼ O(1),
+
+∂2u′
+
+∂z′2
+∼ O(δ−2).
+
+(59)
+
+In the boundary layer the viscosity terms (at least some
+
+of them) are as important as the inertial terms. This
+
+means that the term:
+
+1
+
+Re
+
+∂2u′
+
+∂z′2
+∼ O(δ−2Re−1) (60)
+
+is of order one. This gives the following order of magni-
+
+tude of the boundary layer thickness depending on the
+
+Reynolds number:
+
+δ ∼ O(Re−1/2) (61)
+
+which states that the thickness of the boundary layer
+
+is of the order of the inverse of the square root of the
+
+Reynolds number. The order of magnitude of the other
+
+viscous term is:
+
+1
+
+Re
+
+∂2u′
+
+∂x′2
+∼ O(Re−1) (62)
+
+Therefore, it is negligible and Eq.(55) can be rewritten
+
+as:
+
+u′
+∂u′
+
+∂x′
++ w′
+
+∂u′
+
+∂z′
+= −
+
+∂p′
+
+∂x′
++
+
+1
+
+Re
+
+∂2u′
+
+∂z′2
+(63)
+
+Analogously, the orders of the terms that appear in
+
+Eq.(57) are:
+
+u′
+∂w′
+
+∂x′
+∼ O(δ), w′
+
+∂w′
+
+∂z′
+∼ O(δ),
+
+∂p′
+
+∂z′
+∼ O(δ−1),
+
+(64)
+
+1
+
+Re
+
+∂2w′
+
+∂x′2
+∼ O(δ3),
+
+1
+
+Re
+
+∂2w′
+
+∂z′2
+∼ O(δ).
+
+(65)
+
+From here, it can be inferred that in the momentum
+
+equation in z direction, the ruling term is −∂p′/∂z′ and
+all other terms are negligible. Consequently, Eq.(57) can
+
+be approximated to ∂p′/∂z′ = 0, which indicates that
+
+in the boundary layer the pressure is constant along
+
+the lines perpendicular to the surface of the body. This
+
+is a very important conclusion and explains why po-
+
+tential models, where the boundary layer is neglected,
+
+give such good approximations for the calculation of
+
+lift. Recall that lift depends mainly on the distribution
+
+of pressure along the airfoil.
+
+
+
+14 M.Davari1, R.Rossi1 , 2, P. Dadvand2, I. López3, R. Wüchner3
+
+References
+
+1. D Eller. Fast, unstructured-mesh finite-element
+
+method for nonlinear subsonic flow. Journal of air-
+
+craft, 49(5):1471–1479, 2012.
+
+2. T-L Holst. Transonic flow computations using non-
+
+linear potential methods. Progress in Aerospace
+
+Sciences, 36(1):1 – 61, 2000.
+
+3. T.Q Dang and L.T Chen. Euler correction method
+
+for two- and three-dimensional transonic flows.
+
+AIAA Journal, 27(10):1377–1386, 1989.
+
+4. B Lipman. Mathematical Aspects of Subsonic and
+
+Transonic Gas Dynamics, volume 164 of Surveys in
+
+applied mathematics,3. Wiley, New York, 1958.
+
+5. Y Huicheng and Z Chunhui. On global transonic
+
+shocks for the steady supersonic euler flows past
+
+sharp 2-d wedges. Journal of Differential Equa-
+
+tions, 246(11):4466–4496, 2009.
+
+6. G.Q Chen, J Chen, and M Feldman. Transonic
+
+flows with shocks past curved wedges for the full
+
+euler equations. Discrete and Continuous Dynam-
+
+ical Systems, 36(8):4179–4211, 2016.
+
+7. E.H. Dowell and D Bliss. New look at unsteady
+
+supersonic potential flow aerodynamics and piston
+
+theory. AIAA Journal, 51(8):2278–2281, 2013.
+
+8. Y Zhang. Global existence of steady supersonic
+
+potential flow past a curved wedge with a piecewise
+
+smooth boundary. SIAM Journal on Mathematical
+
+Analysis, 31(1):166–183, 1999.
+
+9. M Bae, G.Q Chen, and M Feldman. Prandtl-
+
+meyer reflection for supersonic flow past a solid
+
+ramp. Quarterly of Applied Mathematics, 71:583–
+
+600, 2011.
+
+10. V Elling and T.P Liu. Supersonic flow onto a solid
+
+wedge. Comm Pure Appl Math Systems, 61:1347–
+
+1448, 2008.
+
+11. B Nishida and M Drela. Fully simultaneous cou-
+
+pling for three-dimensional viscous/inviscid flows.
+
+In 13th AIAA Applied Aerodynamics Conference,
+
+San Diego, CA, AIAA Paper, pages 1995–1806,
+
+June 1995.
+
+12. P Bochev and M Gunzburger. Least-Squares Finite
+
+Element Methods, volume 166 of Applied Mathe-
+
+matical Sciences. Springer, New York, 2009.
+
+13. K Agathos, E Chatzi, and S Bordas. Stable 3d ex-
+
+tended finite elements with higher order enrichment
+
+for accurate non planar fracture. Computer Meth-
+
+ods in Applied Mechanics and Engineering, 306:19
+
+– 46, 2016.
+
+14. T Carraro and S Wetterauer. On the implementa-
+
+tion of the extended finite element method (xfem)
+
+for interface problems. Archive of Numerical Soft-
+
+ware, 4(2), 2016.
+
+15. S Henning and F Thomas-Peter. The extended fi-
+
+nite element method for two-phase and free-surface
+
+flows: A systematic study. Journal of Computa-
+
+tional Physics, 230(9):3369 – 3390, 2011.
+
+16. T Sawada and A Tezuka. Llm and x-fem based in-
+
+terface modeling of fluid-thin structure interactions
+
+on a non-interface-fitted mesh. Computational Me-
+
+chanics, 48(3):319 – 332, 2011.
+
+17. T Fries and T Belytschko. The ex-
+
+tended/generalized finite element method: An
+
+overview of the method and its applications.
+
+International Journal for Numerical Methods in
+
+Engineering, 84(3):253–304, 2010.
+
+18. G Sven and R Arnold. An extended pressure finite
+
+element space for two-phase incompressible flows
+
+with surface tension. Journal of Computational
+
+Physics, 224(1):40–58, 2007.
+
+19. J Chessa and T Belytschko. An extended finite el-
+
+ement method for two-phase fluid. Journal of Ap-
+
+plied Mechanics, 70(1):10–17, 2003.
+
+20. J Chessa, P Smolinski, and T Belytschko. The ex-
+
+tended finite element method (xfem) for solidifica-
+
+tion problems. International Journal for Numerical
+
+Methods in Engineering, 53(8):1959–1977, 2002.
+
+21. T Belytschko, N Moës, S Usui, and C Parimi. Ar-
+
+bitrary discontinuities in finite elements. Interna-
+
+tional Journal for Numerical Methods in Engineer-
+
+ing, 50(4):993–1013, 2001.
+
+22. GN Wells and LJ Sluys. A new method for mod-
+
+elling cohesive cracks using finite elements. Inter-
+
+national Journal for Numerical Methods in Engi-
+
+neering, 50(12):2667–2682, 2001.
+
+23. M Davari, R Rossi, and P Dadvand. Three embed-
+
+ded techniques for finite element heat flow problem
+
+with embedded discontinuities. Computational Me-
+
+chanics, 59(6):1003–1030, 2017.
+
+24. S Soghrati, A Aragón, C Duarte, and P Geubelle.
+
+An interface-enriched generalized fem for prob-
+
+lems with discontinuous gradient fields. Interna-
+
+tional Journal for Numerical Methods in Engineer-
+
+ing, 89(8):991–1008, 2012.
+
+25. S Soghrati, C Duarte, and P Geubelle. An adap-
+
+tive interface-enriched generalized fem for the treat-
+
+ment of problems with curved interfaces. Interna-
+
+tional Journal for Numerical Methods in Engineer-
+
+ing, 102(6):1352–1370, 2015. nme.4860.
+
+26. S Soghrati. Hierarchical interface-enriched finite el-
+
+ement method: An automated technique for mesh-
+
+independent simulations. Journal of Computational
+
+Physics, 275:41 – 52, 2014.
+
+27. A Aragón and A Simone. The discontinuity-
+
+enriched finite element method. International Jour-
+
+nal for Numerical Methods in Engineering, pages
+
+
+
+A cut finite element method for the solution of the full-potential equation with an embedded wake 15
+
+n/a–n/a, 2017. nme.5570.
+
+28. A Hansbo and P Hansbo. A finite element method
+
+for the simulation of strong and weak discontinu-
+
+ities in solid mechanics. Computer Methods in Ap-
+
+plied Mechanics and Engineering, 193(33–35):3523–
+
+3540, 2004.
+
+29. P Dadvand, Rossi R, and Oñate E. An object-
+
+oriented environment for developing finite ele-
+
+ment codes for multi-disciplinary applications.
+
+Archives of Computational Methods in Engineer-
+
+ing, 17(3):253–297, Sep 2010.
+
+30. M Drela. Flight vehicle aerodynamics. Cambridge,
+
+Massachusetts, 2014.
+
+31. J Hess and A.M.O Smith. Calculation of non-lifting
+
+potential flow about arbitrary three-dimensional
+
+bodies, the journal of ship research. Journal of Ship
+
+Research, 8(2):22 – 44, 1964.
+
+32. M Gennaretti, G Calcagno, A Zamboni, and
+
+L Morino. A high order boundary element formu-
+
+lation for potential incompressible aerodynamics.
+
+The Aeronautical Journal, 102:211–219, 1998.
+
+33. D Rodriguez, P Sturdza, Y Suzuki, H Martins-
+
+Rivas, and A Peronto. A rapid, robust, and ac-
+
+curate coupled boundary-layer method for cart3d.
+
+American Institute of Aeronautics and Astronau-
+
+tics, 2012.
+
+
+	Introduction
+	Method
+	Computational Results
+	Conclusions
+

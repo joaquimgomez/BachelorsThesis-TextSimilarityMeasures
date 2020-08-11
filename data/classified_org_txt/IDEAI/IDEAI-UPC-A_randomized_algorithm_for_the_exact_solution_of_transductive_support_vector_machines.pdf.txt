@@ -1,0 +1,1499 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+November 21, 2014 Applied Artificial Intelligence (AAI) Journal main
+
+To appear in the Applied Artificial Intelligence (AAI) Journal
+Vol. 00, No. 00, Month 20XX, 1–16
+
+A randomized algorithm for the exact solution of
+
+Transductive Support Vector Machines
+
+G. Espositoa∗ and M. Martina
+
+a Universitat Politecnica de Catalunya, Barcelona, Spain;
+
+(v1.0 released October 2014)
+
+Random sampling is an efficient method to deal with constrained optimization problems. In
+computational geometry, this method has been successfully applied, through Clarkson’s algo-
+rithm (Clarkson, 1996), to solve a general class of problems called violator spaces. In machine
+learning, TSVM is a learning method used when only a small fraction of labeled data is
+available, which implies to solve a non convex optimization problem. Several approximation
+methods have been proposed to solve it, but they usually find suboptimal solutions. However,
+global optimal solution may be obtained using exact techniques, but at the cost of suffering
+an exponential time complexity with respect to the number of instances. In this paper, an
+interpretation of TSVM in terms of violator space is given. Hence, a randomized method is
+presented extending the use of exact methods now reducing the time complexity to exponen-
+tial w.r.t. the number of support vectors of the optimal solution instead of exponential w.r.t.
+the number of instances.
+
+Keywords: Transduction, Semi-Supervised Learning, Support Vector Machine, Violator
+Spaces, Branch and Bound
+
+1. Introduction
+
+In computational geometry, random sampling is an efficient method to deal with con-
+strained optimization problems. Firstly one finds the optimal solution subject to a random
+subset of constraints. Likely, the expected number of constraints violating that solution
+is significantly smaller than the overall number of remaining constraints. Even in some
+lucky cases, the found solution does not violate the remaining constraints. Hence, one
+can exploit this property to build a simple randomized algorithm. Clarkson’s algorithm
+(Clarkson, 1996) is a two-staged random sampling technique able to solve linear pro-
+gramming problems, which can also be applied to the more general framework of violator
+spaces. The violator space framework has become a well-established tool in the field of
+geometric optimization, developing subexponential algorithms starting from a random-
+ized variant of the simplex method. The class of violator space includes the problem of
+computing the minimum-volume ball or ellipsoid enclosing a given point set in Rd, the
+problem of finding the distance of two convex polytopes in Rd and many other computa-
+tional geometry problems (Gartner, J. Matousek, and P.Skovron, 2008). Generalization
+to violator space problems makes it applicable to a number of non-linear and mostly
+geometric problems. Clarkson’s algorithm stages are based on random sampling and are
+conceptually very simple. Once it is shown that a particular optimization problem can be
+
+∗Corresponding author. Email: gesposit@lsi.upc.edu
+
+1
+
+
+
+November 21, 2014 Applied Artificial Intelligence (AAI) Journal main
+
+regarded as violator space problem, and certain algorithmic primitives are implemented
+for it, Clarkson’s algorithm is immediately applicable.
+
+In machine learning, Transductive Support Vector Machine (TSVM ) (Vapnik, 1995)
+extends the well know support vector machines to handle partially labeled datasets.
+TSVM learns the maximum margin hyperplane classifier using labeled training data
+that does not present unlabeled data inside its margin. Unfortunately, dealing with a
+TSVM implies to solve a non convex optimization problem. A wide spectrum of approx-
+imative techniques have been applied to solve the TSVM problem (Chapelle, 2008), but
+they do not guarantee finding the optimal global solution. In fact, when state-of-the-art
+approximative TSVM methods have been applied to different benchmark problems, far
+from optimal solutions have been found (Chapelle, 2008). Unfortunately exact methods
+can only be applied to small datasets due to the exponential time complexity cost with
+respect to the number of instances. In (J., Y., J., and O., 2008) Balcazar et alt. sug-
+gested that a hard margin SVM belongs to the class of violator space, proposing a
+random sampling technique for the determination of the maximum margin separating
+hyperplane. Note that the problem of solving a SVM is convex while solving a TSVM is
+a non convex problem, so they are very different in nature. In this paper we prove that
+the global optimal solution of a TSVM totally relies on the knowledge of the support
+vectors set, gathering a size smaller than the whole set of instances. Moreover, we also
+demonstrate that TSVM can be formulated as a violator space problem allowing the
+use of the Clarkson’s algorithm to find its optimal global solution. Fostering the TSVM
+sparsity property, we introduce a randomized algorithm able to reduce the time complex-
+ity of exact methods, scaling now exponentially w.r.t. the number of support vectors of
+the optimal solution instead of exponentially w.r.t. the number of instances. Using our
+method one may find the exact solution independently on the number of instances when
+the problem has few support vectors. This include problems where the dimensionality in
+the feature space is relatively small.
+
+2. Violator spaces and randomized algorithms
+
+Violator space problems were introduced as an abstract framework for randomized al-
+gorithms able to solve linear programs by a variant of the simplex algorithm. In com-
+putational geometry, an example problem that can be solved using this method is the
+Smallest Enclosing Ball (SEB). Here the goal is to compute the smallest ball enclosing
+a set of n points in a d dimensional space (fig. 1). In the following we introduce the
+main tools of the abstract framework of violators spaces in order to show how random-
+ized methods devised in computational geometry can be also applied to solve the TSVM
+problem. Details and proofs of the reported properties can be found in (Gartner et al.,
+2008).
+
+Definition 1: An abstract LP-type problem consists of a finite set H, representing the
+constraints of the problem, a weight function w giving for G ⊆ H the cost w(G) ∈W of
+the optimum solution, W linearly ordered (W,≤). (H,w,W,≤) satisfy:
+
+• Monotonicity: for all F ⊆ G ⊆ H we have w(F ) ≤ w(G) and
+
+• Locality: for all F ⊆ G ⊆ H and all h ∈ H with w(F ) = w(G) and w(G) <
+w(G ∪ {h}) we have w(F ) < w(F ∪ {h})
+
+For a G ⊆ H a basis is an inclusion-minimal subset B ⊆ H such that w(G) = w(B).
+The combinatorial dimension δ of an LP-type problem is the size of the largest basis.
+A violator of G is an additional constraint h ∈ H such that w(G) 6= w(G ∪ h). An
+
+2
+
+
+
+November 21, 2014 Applied Artificial Intelligence (AAI) Journal main
+
+Extreme
+
+Violators
+
+Figure 1. Smallest Enclosing Ball: extremes (red encircled in red) are the points essential for the solution, violators
+
+(in blue) are the points lying outside the ball, a basis is a minimal set of points having the same ball
+
+element h is an extreme of G if w(G − {h}) 6= w(G). From definition h violates G ⇔
+h is extreme in G∪{h}. The set of all constraints violating G is called violator mapping
+
+V (G) := {h ∈ H : w(G) < w(G ∪ {h})}
+
+. Using the violator mapping is possible to phrase in terms of violation tests the LP-type
+problem neglecting the explicit evaluation of w:
+
+Definition 2: A violator space is a pair (H,V ) with H a finite set and V a mapping.
+(H,V ) satisfy:
+
+• Consistency: G ∩ V (G) =Ø holds for all G ⊂ H and
+
+• Locality: for all F ⊂ G ⊂ H where G ∩ V (F ) =Ø we have V (G) = V (F ).
+
+Given an LP-type problem (H,w,W,≤) the pair (H,V ) is a violator space which is the
+most general framework to which apply the randomized algorithm described later. In a
+violator space (H,V ) of combinatorial dimension δ, in order to setup a basis evaluation
+algorithm we need to define the following primitive operation:
+
+Primitive 1: (Violation test) (H,V ) violator space can be implicitly defined by the prim-
+itive: given G ⊆ H and h ∈ H\G decide whether h ∈ V (G)
+
+Consider a suitable violator space and define
+
+V (R) := {h ∈ G\R | w(R ∪ {h}) 6= w(R)}
+
+the set of violators of R while
+
+X(R) := {h ∈ R | w(R\{h}) 6= w(R)}
+
+being the set of extremes of R. The following result holds:
+
+Lemma 2.1 (Sampling Lemma): For a set R of size r uniformly chosen at random from
+
+the set
+(
+G
+r
+
+)
+of all r-element subsets of G with (|G| = n), define two random variables
+
+Vr : R 7→ |V (R)| Xr : R 7→ |X(R)| with expected values vr := E(Vr), xr := E(Xr). Now
+for 0 ≤ r ≤ n we have vr = xr+1 n−rr+1 .
+
+3
+
+
+
+November 21, 2014 Applied Artificial Intelligence (AAI) Journal main
+
+Therefore in a violator space with |H| = n and combinatorial dimension δ choosing
+a subset R, the sampling lemma bounds the expected number of violators trough vr ≤
+δ n−r
+r+1
+
+.
+Clarkson (Clarkson, 1996) envisaged a smart randomized algorithm able to solve viola-
+
+tor space problems relying on the expected number of violators bounded according to the
+sampling lemma. In the SEB case, w is represented by the radius of the ball, H is the set
+of constraints requiring all the points inside the ball, violators are points outside the ball.
+It can be proved that SEB is a violator space problem and Clarkson’s algorithm can be
+used to solve it. The algorithm proceeds in rounds maintaining a voting box that initially
+contains one voting slip per point. In each round, a set R of r voting slips is drawn at
+random without repetitions from the voting box and the SEB of the corresponding set
+R is computed. For each new round the number of voting slips for the violators points is
+doubled. The algorithm terminates as soon as there are no violators (no points outside
+the ball). If r ≈ d2, the expected number of rounds is O(log n) reducing a problem of
+size n to O(log n) problems of size O(d2).
+
+In the Clarkson’s algorithm the problem of finding a basis is solved by using a Trivial
+algorithm able to find the solution for subsets of size at most δ. Clarkson’s Basis2 algo-
+rithm calls the Trivial algorithm as a subroutine, increasing the probability of obtaining
+a base in further iterations. Consider G as a multiset with µ(h) (initially set to one) de-
+noting the multiplicity of h. For a set F ⊂ G the compound multiplicity of all elements
+of F is µ(F ) :=
+
+∑
+h∈F µ(h). Sampling from G is done envisaging that it contains µ(h)
+
+copies of every element h. At each round, when the amount of violators is below a thresh-
+old, Basis2 doubles the multiplicity µ (weight) of violator points, which increments the
+probability of selecting a base in next rounds. Convergence of Basis2 algorithm relies
+on the fact that Trivial is correct. An iteration of the loop is successful if changes the
+weights of the elements. To estimate how many unsuccessful iterations pass between two
+successful ones, the sampling lemma bound can be used. Hence, it can be shown that
+after k δ successful iterations holds
+
+2k ≤ E[µ(B)] ≤ n ek/3
+
+for every basis B of G with |G| = n and in particular k < 3 log n. Summarizing Clarkson’s
+algorithm Basis2 computes a basis of G with an expected number of at most 6δn log n
+calls to primitive 1, and an expected number of at most 6δ log n calls to Trivial with sets
+of size 6δ2.
+
+3. Transductive Support Vector Machines
+
+TSVM can be described as a training set of l labeled examples {(xi, yi)} where xi ∈ Rd
+with labels yi = {±1} and i = 1, ..., l i.i.d. according to an unknown distribution p(x, y)
+together with u unlabeled examples {xk} with k = l + 1, ..., n and n = l + u the total
+number of examples, distributed according to some distribution p(x). Considering w the
+vector normal to the hyperplane and the constant b, the problem can be formulated as
+finding the vector of labels yu = {yl+1, ..., yn} (yi = {±1}) having the maximal geometric
+margin with a separating hyperplane (w, b) solving:
+
+4
+
+
+
+November 21, 2014 Applied Artificial Intelligence (AAI) Journal main
+
+I(w, b, yu) = min
+(w,b,yu)
+
+‖w‖22
+2
+
++ C
+∑l
+
+i=1 ξ
+p
+i + C
+
+∗∑n
+k=l+1 ξ
+
+p
+k (1)
+
+subj. to yi(w
+Tϕ(xi) + b) ≥ 1− ξi ξi ≥ 0 1 ≤ i ≤ l
+
+yk(w
+Tϕ(xk) + b) ≥ 1− ξk ξk ≥ 0 l + 1 ≤ k ≤ n
+
+with p = 1 or 2 respectively for linear (L1) losses and quadratic (L2) losses. The first
+term controls the generalization capacity while the others, through the slack variables
+ξi, the number of misclassified samples. The two regularization parameters (C and C
+
+∗)
+should akin our confidence in the known labels. The decision function in the hypothesis
+space f ∈ F is represented as
+
+f(xi) = w
+Tϕ(xi) + b
+
+and yi = sign (f(xi)) assuming there exist a given Hilbert H space and a mapping
+ϕ : Rd → H. The mapping sends the examples data into a feature space generating the
+kernel and satisfying the Mercer’s conditions. In this work we refer to quadratic losses,
+since once fixed the yu, the associated Hessian matrix is positive definite bringing to
+an objective function unique and strictly convex. Moreover, the optimization problem is
+considered computationally more stable for L2 losses. However, main results still apply
+for the L1 losses case. Early on, two main strategies have been adopted to minimize
+I(w, b, yu):
+
+• local approximation methods: starting from a tentative labeling yu they
+perform a local search in the space of labelings, using effective heuristics, to
+maximize I(w, b, yu). These methods are sensible to local minima. For instance,
+SVM ligth method (Joachims, 1999) uses a local search algorithm to find the
+solution which may fail in delivering a solution close to the global one.
+
+• exact combinatorial methods: fixing the unlabeled vector yu in I(w, b, yu) con-
+verts the optimization over (w, b) into a standard SVM. Combinatorial methods
+find the global optimal solution by searching on the entire space of possible labelings
+of yu the SVM with maximum margin.
+
+Focusing on exact combinatorial optimization of J (yu) = min(w,b) I(w, b, yu), the ob-
+jective becomes to minimize J (yu) over a set of binary variables. Such an optimization
+is non convex belonging to the computational class of NP-hard. It can be solved, for
+instance, by using Branch and Bound (BB) (Chapelle, Sindhwani, and Keerthi, 2006) or
+Integer Programming (IP) (Bennett and Demiriz, 1998), but they are computationally
+very demanding because of the large number of different possible labelings of unlabeled
+instances.
+
+3.1. Critical analysis of TSVM exact global solution
+
+An examination of the optimization problem shows that the optimal solution does not
+depend on the labelling of all unlabeled data, but on the labeling of the support vectors
+of the optimal solution due to the sparsity property of SVMs.
+
+Observation 1: Assume having a set L of labelled and R unlabelled examples. Name
+yR the vector of labels solving the TSVM with cost J (yR) (i.e. the labelling of instances
+R with lower cost). Now consider SVMyR to be the inductive SVM with labels (yL∪yR).
+
+5
+
+
+
+November 21, 2014 Applied Artificial Intelligence (AAI) Journal main
+
+Therefore, adding an unlabelled point x to the set L ∪ R, lying outside the margin of
+SVMyR, induce the optimal labelling for the transduction problem on L ∪ R ∪ {x} to be
+yR∪{x} = (yR ∪ {yx}) (yx being the label induced by SVMyR on x).
+
+Proof. Assuming the existence of a different labelling y′R∪{x} better than yR∪{x} such
+
+that J (y′R∪{x}) < J (yR∪{x}) leads to a contradiction. Consequently yR∪{x} must be the
+optimal labelling. In fact, from the assumption we have J (y′R∪{x}) < J (yR∪{x}) but due
+to the fact that adding a point x lying outside the margin of SVM yR does not change the
+SVM solution follows J (yR∪{x}) = J (yR). Finally, stems J (y′R) ≤ J (y
+
+′
+R∪{x}) because
+
+adding one point to a given labelling can only increase or leave unchanged its cost.
+Therefore J (y′R) ≤ J (y
+
+′
+R∪{x}) < J (yR∪{x}) = J (yR) and consequently J (y
+
+′
+R) < J (yR)
+
+a contradiction, due to the hypothesis that yR represents the optimal labelling for set
+R.
+
+Observation 2: Assume having a set L of labelled and U unlabelled examples. Consider
+a subset R ⊂ U with a given vector of labels yR solving the TSVM for the set L ∪ R
+and be SVMyR the inductive SVM with labels (yL ∪ yR). Assume we don’t have points
+in U \ R lying inside the margin of SVMyR. In this case, the optimal labelling for the
+TSVM on L∪U is represented by yL∪U = (yL∪ yU ), yU being the vector of labels induced
+by the solution of SVMyR on the set U .
+
+Proof. This can be proved by applying observation 1 for any point in U \ R. Starting
+with label vector yR, and noticing that any point in U \ R lies outside the margin of
+SVM yR then iteratively applying the observation 1 we end up with the global solution
+for L ∪ U .
+
+Observation 3: Necessary condition to find the global optimal solution for the set of
+points L ∪ U using the subset L ∪ R is that R must contains all support vectors of the
+global optimal solution in L ∪ U
+
+Proof. This can be proved by applying observation 2. Note that the optimal solution for
+L ∪ U can be built from L ∪ R. The only condition is that points in U \ R do not lie
+inside the margin. Henceforth, there won’t be support vectors in U \R being all of them
+in R.
+
+According to the observations above we may come to the following conclusion: Given
+a TSVM, most of data points may be unnecessary to build the global optimal solution.
+The set support vectors completely define the global optimal solution (TSVM sparsity
+property). This suggests that it can be feasible to obtain the TSVM optimal global
+solution when the set L ∪ R includes the whole set of support vectors. Therefore the
+question becomes how to get the right subset of points. We claim that the TSVM solution
+may be obtained working on a reduced subset of examples L ∪ R with computational
+leverages when |R| � |U|. Noticeably, for a TSVM we may show how to build a violator
+space solving the problem by using randomized algorithms. It is worth noting that this
+method might be of practical use whenever the number of support vector in the solution
+of the TSVM problem scales with O(log n), which is not usually the case. However,
+the method can still be applied when the solution has few support vectors or when the
+dimension of the feature space of the problem is relatively small.
+
+6
+
+
+
+November 21, 2014 Applied Artificial Intelligence (AAI) Journal main
+
+4. Randomized algorithms for TSVM
+
+In this section we are ready to show that a TSVM problem belongs to the class of
+violator space. Therefore, Clarkson’s algorithm can be used to find its optimal global
+solution. In this case, the weighting function w is represented by I(w, b, yu) evaluated
+over subset of constraints L ∪ R ⊆ L ∪ U with combinatorial dimension depending on
+the number of support vectors. Given a subset of partially labeled points, TSVM global
+optimal solution (a basis) can be obtained using an exact method like IP or BB (our
+Trivial algorithm). Moreover we need to define a violation test as Clarkson’s algorithm
+rely on the probability of selecting a basis increasing the weight of violating points. Then
+we will show that violators can be easily detected as the remaining points lying in the
+TSVM separating margin. TSVM may also arouse a formulation in terms of violator
+space problem. Endowing the constrained formulation of TSVM problem and violator
+space definition we formally propose:
+
+Proposition 4.1: Given a TSVM with constraints HF , wF (GF ) : 2
+HF →WF a map-
+
+ping defined for each subset GF ⊆ HF as wF (GF ) = minHF F (GF ) = F (wg, bg, yg)
+and WF bounded and linearly ordered by ≤, the quadruple
+(HF , wF ,WF ,≤) represents an associated violator space problem.
+
+In order to verify locality and monotonicity we need to prove the lemma:
+
+Lemma 4.2: Given a TSVM with constraints HF and a subset GF ⊆ HF with global
+optimum F (GF ), adding a constraint hF ∈ HF to GF will change the global optimum
+according to F (GF ) ≤ F (GF ∪ hF )
+
+Proof. The lemma may be easily proved by contradiction. Suppose the lemma is not
+true then F (GF ) > F (GF ∪ hF ). Now the solution to the TSVM problem on the set
+of constraints GF ∪ hF is also a feasible solution for the TSVM problem on the set of
+constraints GF . Hence the hypothesis F (GF ) > F (GF ∪hF ) contradict the minimality
+of the TSVM solution F (GF ). However, as we need to provide the primitive to build the
+violator space, we need a more constructive proof of the lemma following the incremental
+solution of the TSVM. Therefore consider the subset of constraints GF ⊆ HF , getting the
+objective F (GF ) means to find the global optimal solution of the TSVM problem using
+a subset of labeled and unlabeled data L∪R ⊆ L∪U . With an exact method the quest for
+the global optimum over the subset of constraints GF entails that among the 2
+
+r possible
+configurations of vector of labels yr, we cast the corresponding SVM with minimum
+objective F (GF ) which solving the dual problem can be written as W (αs, b) . Adding
+another constraint GF ∪ hF with vector of labels yr+1 means that among 2r+1 possible
+configurations, we select the corresponding SVM with minimum objective F (GF ∪ hF )
+which solving the dual can be expressed as W (α
+
+′
+
+s, α
+′
+
+h, b
+′
+). Hence, the relationship between
+
+the two objective values can be found considering the incremental training analysis of a
+SVM as reported in (Cauvemberghs and Poggio, 2001) with some differences in our case
+gathered from quadratic losses.
+
+The SVM dual problem might be obtained introducing αi ∈ R+ the Lagrangian multi-
+pliers and considering that for the optimal solution theKKT conditions must be satisfied.
+After elimination of w, ξi (note that for quadratic losses if αi 6= 0 then ξi 6= 0) one get
+the dual problem
+
+W (α, b) = max
+(α∈R+,b∈R)
+
+s∑
+i=1
+
+αi −
+1
+
+2
+
+s∑
+i,j=1
+
+yiyjαiαj(K(xi,xj) +
+δij
+
+Ĉ
+) + b
+
+s∑
+i=1
+
+αiyi
+
+7
+
+
+
+November 21, 2014 Applied Artificial Intelligence (AAI) Journal main
+
+(where Ĉ = C or C∗ accordingly) and defining
+
+Ω = [Ωij ] = [yiyjK(xi,xj) +
+δij
+
+Ĉ
+]
+
+(δij = 1 if i = j, 0 otherwise), the KKT conditions for the support vectors (αi 6= 0)
+are
+
+∑s
+i=1 yiαi = 0 and gs = yif(xi) + ξi − 1 = 0 which defining the vectors Y and α can
+
+be equivalently expressed in a more compact form as
+
+[
+0 Y T
+
+Y Ω
+
+] [
+b
+α
+
+]
+=
+
+[
+0
+1
+
+]
+(2)
+
+The KKT for non support vectors (αi = 0) can be expressed as gr = yif(xi) − 1 ≥ 0.
+Finally the solution of the dual problem αs gives the maximum value of the W (αs) which
+substituting the KKT conditions and defining
+
+Ω̂s =
+
+(
+0 Y Ts
+Ys Ωs
+
+)
+
+can be written as W (αs) =
+1
+2
+αTs Ω̂sαs. In incremental training adding a new point h
+
+consists adiabatically incrementing αh starting from αh = 0 and changing the other
+parameters until the KKT conditions for point h are fulfilled. The increment of αh is
+done ensuring that the KKT conditions for the other points are maintained. In the
+following, ∆α is defined as the difference between the new alpha value α’ and the old
+value α. The KKT conditions before and after αh update connect the variations of the
+support vectors ∆αs, ∆b and the added one ∆αh according to:
+
+
+
+
+0
+∆gs
+∆gr
+∆gh
+
+
+ =
+
+
+
+
+0 yTs
+ys Ωss
+yr Ωrs
+yh Ωhs
+
+
+
+[
+
+∆b
+∆αs
+
+]
++
+
+
+
+yh
+
+ΩThs
+ΩThr
+ΩThh
+
+
+∆αh
+
+For support vectors ∆gs = 0 then
+
+[
+∆b
+
+∆αs
+
+]
+= −
+
+[
+0 yTs
+ys Ωss
+
+]−1 [
+yh
+
+ΩThs
+
+]
+∆αh = −Q−1s zh∆αh (3)
+
+gathering
+
+[
+∆gr
+∆gh
+
+]
+=
+
+[
+yh Ωhs
+yr Ωrs
+
+] [
+∆b
+
+∆αs
+
+]
++
+
+[
+ΩThr
+ΩThh
+
+]
+∆αh
+
+Tackling those equations we may infer the change due to the presence of a new data as
+a function of the ∆αh. Unfortunately, with a generic value ∆αh we cannot directly use
+the systems above to obtain the new state, due to the possible change of composition
+in the sets of support vectors and non support vectors while αh increases. Handling this
+situation demands a book keeping of possible adiabatic modifications. So, the procedure
+consists in incrementing αh to the maximum until one of the following cases arise: the
+problem is solved, or the keeping of the KKT conditions of the other points forces to
+
+8
+
+
+
+November 21, 2014 Applied Artificial Intelligence (AAI) Journal main
+
+change the set of support vectors1. In particular dealing with the increment of ∆αh > 0
+may bring to changes in the support vectors composition depending on the amount of
+∆αh. Here we detail the possible situations:
+
+• ∆αh = 0 and gh ≥ 0, the new point with the chosen label yh won’t change the set
+of support vector and we keep the same solution W (αs)
+
+• ∆αh > 0 and g′h = 0 (g value after the increment of αh), the new point with the
+chosen label yh is a new support vector while the support vector set does not change
+composition (no migrations) hence the new KKT can be written as
+
+ 0 yTs yhys Ωss ΩThs
+yh Ωsh Ωhh
+
+
+
+
+ b′α′s
+α
+
+′
+
+h
+
+
+ =
+
+
+01
+
+1
+
+
+
+
+ensuing a connection with the old solution across the Sherman-Morison-Woodbury
+formula for block matrix inversion
+
+ 0 yTs yhys Ωss ΩThs
+yh Ωsh Ωhh
+
+
+−1 = [Q−1s 0
+
+0 0
+
+]
++ q−1h
+
+[
+−Q−1s zh
+
+1
+
+] [
+−zThQ
+
+−1
+s 1
+
+]
+with
+
+qh =
+[
+−Qs zh 1
+
+]T  0 yTs yhys Ωss ΩThs
+yh Ωsh Ωhh
+
+
+[−Qs zh
+
+1
+
+]
+= Ωhh − zThQ
+
+−1
+s zh (4)
+
+where qh ≥ 0 due to semidefinite positive kernel wherefrom we can express the
+updated values
+
+∆αh = α
+′
+
+h =
+max(0, 1− yhb− Ωshαs)
+
+Ωhh − zThQ
+−1
+s zh
+
+=
+1− yhf(xh)
+
+qh
+=
+ηh
+qh
+
+and [
+b
+′
+
+α
+′
+
+s
+
+]
+=
+
+[
+b
+αs
+
+]
+−Q−1s zh∆αh
+
+using ηh = max(0, 1− yhf(xh)) with optimum update
+
+W (α
+′
+
+s, α
+′
+
+h) = W (αs) +
+1
+
+2
+∆α2hqh = W (αs) +
+
+1
+
+2
+
+η2h
+qh
+
+which entails W (αs) ≤ W (α
+′
+
+s, α
+′
+
+h)
+
+• ∆αh > 0 and g′h < 0, the new point with the chosen label yh is a new support
+vector while the support vectors set changes composition. For quadratic losses this
+
+1Note that in the case of quadratic losses we only need to divide set of points in two sets: supports (S) and others
+(O) , while in the case of linear losses, points can belong to three different sets: supports (S), errors (E) and others
+
+(O).
+
+9
+
+
+
+November 21, 2014 Applied Artificial Intelligence (AAI) Journal main
+
+means two possibilities: weather one support vector, say it k with αk > 0 and
+gk = 0, becomes non support vector hence α
+
+′
+
+k = 0 and g
+′
+
+k ≥ 0 or viceversa (from
+αk = 0 and gk ≥ 0 to α
+
+′
+
+k > 0 and g
+′
+
+k = 0). In each one on this cases the g
+′
+
+h < 0
+condition holds. As the set of support vector does not change during increment
+∆αh (it changes after the increment), the global optimum after and before each
+increment according may be evaluated as:
+
+W (α
+′
+
+s, α
+′
+
+h) = 1
+Tα
+
+′
+
+s + α
+′
+
+h −
+1
+
+2
+
+[
+α
+
+′
+
+s
+
+α
+′
+
+h
+
+]T [
+Ωss Ωsh
+Ωhs Ωhh
+
+] [
+α
+
+′
+
+s α
+′
+
+h
+
+]
+W (αs, αh) = 1
+
+Tαs + αh −
+1
+
+2
+
+[
+αs
+αh
+
+]T [
+Ωss Ωsh
+Ωhs Ωhh
+
+] [
+αs αh
+
+]
+where α
+
+′
+
+s = αs + ∆αs and α
+′
+
+h = αh + ∆αh allowing to evaluate the global optimum
+increment as
+
+∆W = W (α
+′
+
+s, α
+′
+
+h)−W (αs, αh)
+
+. Now using equations (3) to express the change in the global optimum as a function
+of ∆αh can be written as:
+
+g
+′
+
+h = −1 + b
+′
+yh +
+
+s∑
+j=1
+
+Ωhjα
+′
+
+j + Ωhhα
+′
+
+h < 0
+
+and
+
+gh = −1 + byh +
+s∑
+j=1
+
+Ωhjαj + Ωhhαh < 0
+
+one can easily show that
+
+∆W =
+1
+
+2
+qh∆α
+
+2
+h − gh
+
+′∆αh ≥ 0
+
+because g′h is negative (see assumptions of this case) and qh is always positive.
+We have assumed that the set of equations describing the evolution of the αi for
+
+all points does not change during each step. However, while increasing the ∆αh,
+we have to check if the KKT conditions are still verified. Consequently, if such
+conditions are not longer fulfilled for a given point, his status has to change (from
+support to non support vector or vice versa depending on the case) and therefore
+the equations must be modified according to the bookkeeping. Finally it remains to
+see if the objective function is still monotonous when we change the equations and
+the support vector set. It is easy to see that for the L2 losses the bookkeeping does
+not change the value of the objective function. In fact bookkeeping is necessary
+when one support vector becomes a non-support vector or the other way round. In
+both cases, the αk of the point changing its status is 0 (if the point is a new support
+vector its αk will increase up from 0, or if it leaves the status of support vector,
+its alpha value has been decreased to 0). When αk = 0 adding or removing it does
+not modify the objective function. Consequently the objective function does not
+change by doing a bookkeeping.
+
+10
+
+
+
+November 21, 2014 Applied Artificial Intelligence (AAI) Journal main
+
+We end up to the conclusion that for an incremental SVM the optimum grows monoton-
+ically. Henceforth, using an exact method to solve the TSVM over GF means that we
+look for the global optimal solution among the 2r SVMs, corresponding to the possible
+labellings F (GF ) = min{yr 1 : 2r | W (αs, b)} while over GF ∪ hF we look for the
+global optimal solution among the 2r+1 SVMs, corresponding to the possible labellings
+F (GF∪hF ) = min{yr+1 1 : 2r+1 | W (α
+
+′
+
+s, α
+′
+
+h, b
+′
+)} Then we may realize that the labelling
+
+for the global optimum over GF , except for the new constraint hF , may be different from
+the labelling corresponding to the global optimum over GF ∪ hF . Therefore, thanks to
+the fact that the SVM global optimal solution monotonically increases moving from GF
+to GF ∪ hF and that the global optimal solution for an exact method seeks for the
+minimum among the all possible SVMs follows F (GF ) ≤ F (GF ∪ hF ).
+
+Last lemma providing monotonicity of the incremental optimal solution for a TSVM
+allow to infer that (HF , wF ,WF ,≤) represents a violator space (from LP-type) problem
+and we report here the proof for the proposition 4.1.
+
+Proof. We only need to show that monotonicity and locality hold:
+
+• Monotonicity: Given the subsets of constraints FF and GF such that
+FF ⊆ GF ⊆ HF we can always build GF from FF through an incremen-
+tal process adding new constraint h ∈ HF\FF . From lemma (4.2) follows
+F (FF ) ≤ F (GF )
+
+• Locality: Given the subsets of constraints FF and GF such that FF ⊆ GF ⊆ HF
+and a constraint h ∈ HF . If F (FF ) = F (GF ) the two sets entail the same global
+solution. Adding incrementally the constraint h ∈ HF to the subset GF with
+F (GF ) ≤ F (GF ∪ {h}) conveys that the new constraint has changed the global
+solution. Consequently adding h ∈ HF to FF will also change the global solution
+then F (GF ) = F (FF ) ≤ F (FF ∪ {h})
+
+Facing our definition of the associated violator space problem for a TSVM, a basis
+is represented by a set of the support vectors in the global solution, the cardinality of
+the largest one being the combinatorial dimension. At this stage we have shown that is
+indeed feasible to formulate a TSVM as violator space problem. In addition, adopting
+the Clarkson’s algorithm we may also use the violator mapping through the violation
+test.
+
+Primitive 2: ( TSVM violation test) Given a TSVM with global solution F (GF )
+over subset of constraints GF and decision function fGF (xh), any other constraint
+h ∈ HF\GF will violate the solution (h ∈ VF (GF )), if ηh = max(0, 1− yhfGF (xh)) ≥ 0
+with the label obtained through yh = sign(fGF (xh)).
+
+Beforehand we have shown that we may associate a violator space problem to a TSVM
+once we deal with an exact method to get the optimal global solution. Remarkably,
+Clarkson’s randomized method is viable to solve a TSVM acquiring a basis using the
+violation test primitive 2. Efficiency relies on the sparsity property of TSVM.
+
+5. Algorithm implementation
+
+Exact methods like Integer Programming (IP) (Bennett and Demiriz, 1998) and Branch
+and Bound (BB) (Chapelle et al., 2006) have been investigated for TSVM. The basic
+
+11
+
+
+
+November 21, 2014 Applied Artificial Intelligence (AAI) Journal main
+
+Algorithm 1 STSVM (Xl, Yl, Xu,maxit,r)
+
+Require: r = 2goδ � |Xl ∪Xu|
+repeat
+
+Choose Xr at random according to µ distribution: Xr ⊂
+(
+u
+r
+
+)
+Base(objR, Yr, α,w, b) := BB(Xl, Xr, Yl) // call branch and bound
+Yu\r := sign(f(w,b)(xu\r)) // compute labels...
+
+ξ2
+u\r := max(0, 1− Yu\rf(w,b)(xu\r))
+
+2 // ... and slacks
+
+VBase := {h ∈ U\R : ξu\r 6= 0} // check violators
+if µ(VBase) ≤ µ(U)/g0 then
+µ(h) := 2µ(h), h ∈ VBase // update weights of violators
+
+end if
+OBJR := objR + 1/2
+
+∑
+u\r η
+
+2
+u\r/qu\r // update best...
+
+Basebest := minOBJ(Base(OBJR, Yr, α,w, b), Basebest) // ...known solution
+until maxit or VBase = ∅
+if VBase =Ø then
+
+return Base(objR, Yr, α,w, b) // global optimum
+else
+
+return Basebest // best solution found
+end if
+
+idea of IP for TSVM is to add an integer decision variable indicating the class for
+each point in the working set. Hence the solution can be found using any mixed integer
+programming code provided that the computer resources are suitable for the size of the
+problem. Branch and Bound is another method able to solve combinatorial optimization
+problems using an enumerative technique to implicitly and efficiently search into the
+entire space of solutions.
+
+Clearly both methods, or even any other exact TSVM could be used to implement
+the Trivial algorithm. For practical reasons in the following we only focus on BB imple-
+mentation indicating with BBTSVM the one devised by Chapelle for TSVM. It solves
+the problem over a set of binary variables were each evaluation of J (yu) embodies an
+inductive SVM. BBTSVM minimizes over 2u possible choices of yu. At each node in the
+binary search tree, a partial labelling of the data sets is generated and for the corre-
+sponding sons casts the labelling of some unlabelled data. Core of the BBTSVM is a
+subroutine akin the primitive evaluation of a SVM on the data already labelled as we
+proceed in the search tree. SVM are usually solved as constrained quadratic program-
+ming problem in the dual, but they can also worked out in the primal as unconstrained.
+BBTSVM uses this method requiring few iterations to get an approximate solution with
+a (worst case) complexity O(n3). SVM being convex quadratic program problems are
+polynomial-time solvable, the currently best method raising (worst case) a complexity of
+O(n3/2d2). By the enumeration process BBTSVM may reach a complexity from O(2nn3)
+to O(2nn3/2d2) depending on the SVM solver used.
+
+5.1. Implementation of randomized TSVM
+
+Having set out the matter in this way, we are ready to encompass the details of our
+implementation of a randomized version for an exact method to solve TSVM which
+we will refer as STSVM. The algorithm (1) implementing the STSVM slightly revise
+the Clarkson’s scheme. In general we may ignore the combinatorial dimension of the
+corresponding violator space. In fact, apart for the linear case, theoretical bound on the
+number of support vectors are not of practical use. Henceforth, we start with a fixed given
+
+12
+
+
+
+November 21, 2014 Applied Artificial Intelligence (AAI) Journal main
+
+value for ro. According to Basis2, to stress the probability of selecting a given violator
+in further rounds we double the corresponding weight whenever the slack ξu\r 6= 0.
+In the quadratic loss implementation for example, where ηu\r = αu\r it means that
+the point would change the margin if added to the basis. The basic implementation of
+Trivial makes use of an implementation of an exact method working over random samples
+L ∪ R ⊆ L ∪ U . As envisaged, in the practical implementation of Trivial we will make
+use of BB. However, using a different exact algorithm to provide the implementation of
+Trivial does not change the convergence of STSVM but can only affects the performances.
+Two stop conditions are foreseen: (1) VBase =Ø (no violators condition: returns global
+optimum) or (2) max number of iterations (returns best known solution). In the last case
+the best known solution is represented by the minimum of Fbest = minOBJR BB(L∪R)
+where OBJR = objR + ∆(VR) = objR + 1/2
+
+∑
+u\r η
+
+2
+u\r/qu\r, with qu\r the correction
+
+factor in the incremental update of the equation 4. Such criterium takes into account
+objR the best result from BB, also minimizing the violators contribution ∆(VR). Our
+implementation of BB is able to optimize the undergoing SVM either in the primal or
+dual formulation with quadratic or linear losses.
+
+5.2. Convergence and complexity of STSVM
+
+Applying the sampling lemma, the expected value E[VBase] for elements in U (with
+u = |U|) violating the random set R, (casting r = 2g0δ < rmax with 1 ≤ g0 ≤ δ) can be
+bound as
+
+E[|VBase|] ≤ δ
+µ(U)− r
+r + 1
+
+< δ
+µ(U)
+2g0δ
+
+=
+µ(U)
+2g0
+
+Markov inequality predicts
+
+Pr(|VBase| ≤
+µ(U)
+g0
+
+) ≥ Pr(|VBase| ≥ 2E[|VBase|]) ≤ 1/2
+
+implying that the expected number of rounds is at most twice as large as the number of
+successful ones. Let SV be the set of support vectors for the TSVM, at each successful
+iteration some xi ∈ SV won’t be in L ∪ R hence µ(xi) gets doubled. Since |SV| ≤ δ it
+means some xi gets doubled at least once every δ successfully round and after k rounds
+µ(xi) ≥ 2k/δ. On the other hand, every successful round raise the total weight by at most
+
+(1 +
+δ
+
+r
+) = (1 +
+
+1
+
+2go
+)
+
+giving the bound
+
+2k/δ ≤ E[µ(U)] ≤ u(1 +
+1
+
+2g0
+)kδ ≤ n e
+
+kδ
+
+2g0 ≤ n e
+k
+
+2
+
+. After kδ successful iterations the lower bound exceeds the upper when k ≥ 2log n.
+Finally the expected number of violation tests is at most O(δn log n) while the expected
+number of calls to BBTSVM is at most g0log n = O(δlog n) and sets R have average
+size r = 2g0δ = O(δ
+
+2) (at most rmax).
+Time complexity of STSVM shows that the sparsity property allows for a relative
+
+gain with respect to the use of a BB over the whole set of data from O(2nn3/2d2) to
+
+13
+
+
+
+November 21, 2014 Applied Artificial Intelligence (AAI) Journal main
+
+−4 −3 −2 −1 0 1 2 3 4
+−2.5
+
+−2
+
+−1.5
+
+−1
+
+−0.5
+
+0
+
+0.5
+
+1
+
+1.5
+
+2
+
+2.5
+
+x
+1
+
+x 2
+
+SBBTSVM  TwoMoons Complete
+
+0 500 1000 1500 2000 2500 3000 3500 4000 4500
+0
+
+100
+
+200
+
+300
+
+400
+
+500
+
+600
+
+SV Reduced index
+
+S
+V
+
+ R
+e
+
+d
+u
+
+ce
+d
+
+ f
+re
+
+q
+u
+
+e
+n
+
+cy
+ 
+
+(a) (b)
+
+Figure 2. (a) Distribution and exact solution for the two moons data set (4.000 unlabelled, 2 labelled as triangle
+
+and cross). (b) Weights distribution for the whole set of points at the final round. Support vectors of the optimal
+solution are encircled.
+
+O(δ log n 2r (r+ l)3/2d2). Our method being more effective when the number of support
+vectors is much lower than the number of instances.
+
+6. Experiments
+
+In this section we briefly describe results obtained using the proposed randomized method
+in two well known benchmark problems that have not been previously solved using exact
+methods.
+
+STSVM stands out on the well known benchmark problem of two moons now com-
+posed of 4.000 unlabeled examples (Figure 2). Two moons problem has been reported
+burdensome to solve for state-of-the-art transduction methods (Chapelle, 2008). Table 1
+shows error rates produced by some of these methods in a small data set containing
+200 unlabeled points. All these methods fall in local minima very far from the global
+one. However, this problem has been solved previously applying BB over the space of all
+possible labelling of instances (Chapelle et al., 2006). Unfortunately, albeit the method
+is able to find out the optimal solution, it has an exponential time complexity on the
+number of unlabeled instances, consequently, it is only able to solve the two moons for
+data sets up to few hundreds of unlabeled instances. The method described in this paper
+finds out the optimal solution but instead of scaling with the number of instances, it
+scales with the number of support vectors. In the case of the two moons, the number of
+support vectors does not scale with the number of points. Henceforth, facing with 4.000
+unlabeled examples through STSVM allows us to find out the exact solution within few
+minutes.
+
+STSVM is also able to find the exact solution for another well known benchmark
+problem that has not been previously solved using exact methods: the Coil20 data set
+(described in (Nene, Nayar, and Murase, 1996)). It contains 1440 images of 20 objects
+photographed with different perspectives (72 images per object) with 2 labeled images
+for each object. Coil20 belongs to multi-class problems commonly solved through a one-
+vs-all scheme. This scheme, builds a SVM for each class assigning labels according to the
+class returning a maximum output for a given point, which is a measure of confidence
+of classification for that point. Table 1 shows the success of state-of-the-art transduction
+
+14
+
+
+
+November 21, 2014 Applied Artificial Intelligence (AAI) Journal main
+
+data sets SVM ∇S3VM cS3VM CCCP S3VMlight ∇DA Newton STSVM
+TwoMoons 50.2 61 37.7 63.1 68.8 22.5 11 0
+Coil3 66.6 61.6 61 56.6 56.7 61.6 61.5 0
+Coil20 24.1 25.6 30.7 26.6 25.3 12.3 24.1 1.4
+
+Table 1. Error rate on datasets for supervised SVM, state of the art transduction algorithms (as reported
+in (Chapelle, 2008)), and STSVM.
+
+algorithms on this data set as is described in Chapelle (2008). BBTSVM is not able
+to solve this problem, due to the large number of instances, albeit it can manage the
+Coil3 with pictures of solely 3 classes but hard to discriminate. STSVM finds a solution
+with 0 error for Coil3 data set while Table 1 illustrate the errors produced by state-
+of-the-art transduction methods (from Chapelle (2008)). In the last two columns the
+error rate of a L2 losses (used in the search tree of STSVM ) applied only to the labeled
+examples are reported, as well as the results obtained by STSVM with the one-vs-
+all scheme acting over labeled and unlabeled. Remarkably, the difference between the
+baseline results shown in Chapelle (2008) and ours, come from the different losses used
+for the SVM (L2 in our case, L1 for the others). Even though STSVM might be used
+with different losses, here we stress the error reduction (from to 10.9% in Coil20, and 0%
+in Coil3), more that its absolute value. However, examining the 20 TSVMs produced
+in the one-vs-all scheme (one for each class), it may be noticed that some TSVMs have
+not found 0 violators after 100 iterations or that when a solution with 0 violators was
+found, it did not show the right balance between positive and negative examples. On the
+other side, some TSVMs returned solutions with 0 violators and the right rate between
+positive and negative examples. We considered these TSVMs as good predictors for the
+classes they represent and keep them. The points labeled as positive for these classes were
+removed from the whole data set, delivering a smaller one. Afterwards, we tried to solve
+this smaller data set applying the one-vs-all scheme again on the remaining classes. As
+the problem has been simplified, now appear new good predictors for some classes and
+the procedure is repeated until the whole data set is completely solved. The final error
+following this procedure was 20 errors from the 1400 unlabeled initial examples reducing
+the error for Coil20 to 1.4%. Quite remarkably the irreducible errors were produced
+between classes 5 and 19, the last classes for which the method found a good predictor.
+It seems that for these 2 classes does not hold the maximum margin hypothesis and
+that some additional constraints must be used to correctly classify them; in fact only
+modifying the ratio amongst labeled and unlabeled largely increasing the formers, this
+problem can be correctly solved.
+
+7. Conclusions and Future Work
+
+In this paper, we have shown an original interpretation of the TSVM problem in terms
+of violator space, which is able to extend the use of any exact method to find the optimal
+solution but now scaling in time complexity with the number of support vectors instead
+of the number of points. The most suitable situation for our method apply with datasets
+entailing a small amount of support vectors, independently of the size of the data set.
+Limitations of our approach appear when the size of the support vectors set is higher than
+few hundreds, a common situation in real data sets. In the future, we plan to investigate
+an implementation using very sparse SVMs formulations, which might allow to extend
+the application of our method to larger datasets.
+
+Also, preliminary experiments with larger benchmark datasets (where the number of
+support vector were in the range of hundreds) show that the method is, as we expected,
+
+15
+
+
+
+November 21, 2014 Applied Artificial Intelligence (AAI) Journal main
+
+not able to find the optimal solution in a reasonable time. However, in these cases we
+kept the best solution as described in section 5.1. In all cases, the returned solution was
+better than the returned one by a SVM on only the labeled examples. These experiments
+encourage us to explore error bounds for the proposed methods and try to apply it to
+find good approximations to the optimal solution.
+
+Finally, we consider interesting a possible interpretation of the weight obtained for
+each example in the randomized method. Samples with high weights usually appear as
+violators which could help us to identify points interesting for the final solution even if
+the method is not able to find the exact one.
+
+Acknowledgements
+
+This work was partially supported by the FI-DGR programme of AGAUR
+ECO/1551/2012.
+
+References
+
+K. Bennett and A. Demiriz. Semi supervised support vector machines. In Adv. in Neural Infor-
+mation Processing Systems, 12:368–374, 1998.
+
+G. Cauvemberghs and T. Poggio. Incremental and decremental support vector machine learning.
+Adv. in Neural Inform. procesing, MIT Press(13):409–415, 2001.
+
+O. Chapelle. Optimization techniques for semi supervised support vector machines. Journal of
+Machine Learning Research, 9:203–233, 2008.
+
+O. Chapelle, V. Sindhwani, and S. Keerthi. Branch and bound for semi-supervised support vector
+machines. In Adv. in Neural Information Proc. Systems, 2006.
+
+K. L. Clarkson. Las vegas algorithms for linear and integer programming when the dimension is
+small. Journal of the ACM, 42, 1996.
+
+B. Gartner, L.Rust J. Matousek, and P.Skovron. Violator spaces: Structure and algorithms.
+Discrete Applied Mathematics, 156(11), 2008.
+
+Balcazar J., Dai Y., Tanaka J., and Watanabe O. Provably fast training algorithms for support
+vector machines. Theory of Computing Systems, 2008.
+
+T. Joachims. Transductive inference for text classification using support vector machines. In
+International Conference on Machine Learning, 1999.
+
+S. A. Nene, S. K. Nayar, and H. Murase. Columbia object image library (coil-20). Technical
+report, Columbia University, USA, 1996.
+
+V. Vapnik. The nature of statistical learning theory. Springer, New York, 1995.
+
+16
+
+

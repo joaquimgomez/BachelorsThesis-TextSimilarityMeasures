@@ -1,0 +1,4954 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+ 
+
+Conserving algorithms for frictionless and                       
+full stick friction dynamic contact problems using the         
+
+direct elimination method 
+ 
+ 
+
+C. Agelet de Saracibar1,3, D. Di Capua2,3 
+ 
+
+1ETS Ingenieros de Caminos, Canales y Puertos, Universidad Politécnica de Cataluña (UPC),                         
+Edificio C1, Campus Norte, UPC, Jordi Girona 1-3, 08034 Barcelona, Spain 
+
+2Escola d’Enginyeria Barcelona Est (EEBE), Universidad Politécnica de Cataluña (UPC),                                   
+Av. d’Eduard Maristany, 10-14, 08930 Barcelona, Spain 
+
+3International Center for Numerical Methods in Engineering (CIMNE), Gran Capitán s/n, 08034 Barcelona, Spain 
+ 
+
+agelet@cimne.upc.edu, dicapua@cimne.upc.edu,  
+ 
+ 
+
+First version on 1 April 2017 
+Revised on 15 June 2017 
+
+ 
+Submitted to 
+
+International Journal for Numerical Methods in Engineering 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+
+mailto:agelet@cimne.upc.edu
+mailto:dicapua@cimne.upc.edu
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  1 
+ 
+
+ 
+ 
+ 
+ 
+ 
+
+Conserving algorithms for frictionless and                      
+full stick friction dynamic contact problems using the         
+
+direct elimination method 
+ 
+ 
+
+C. Agelet de Saracibar1,3, D. Di Capua2,3 
+ 
+
+1ETS Ingenieros de Caminos, Canales y Puertos, Universidad Politécnica de Cataluña (UPC),                         
+Edificio C1, Campus Norte, UPC, Jordi Girona 1-3, 08034 Barcelona, Spain 
+
+2Escola d’Enginyeria Barcelona Est (EEBE), Universidad Politécnica de Cataluña (UPC),                                   
+Av. d’Eduard Maristany, 10-14, 08930 Barcelona, Spain 
+
+3International Center for Numerical Methods in Engineering (CIMNE), Gran Capitán s/n, 08034 Barcelona, Spain 
+ 
+
+agelet@cimne.upc.edu, dicapua@cimne.upc.edu,  
+  
+ 
+ 
+Summary 
+ 
+In this paper, conserving time-stepping algorithms for frictionless and full stick friction dynamic 
+contact problems are presented. Time integration algorithms for frictionless and full stick 
+friction dynamic contact problems have been designed in order to preserve the conservation of 
+key discrete properties satisfied at the continuum level. Energy and energy-momentum 
+preserving algorithms for frictionless and full stick friction dynamic contact problems, 
+respectively, have been designed and implemented within the framework of the direct 
+elimination method, avoiding the drawbacks linked to the use of penalty-based or Lagrange 
+multipliers methods. An assessment of the performance of the resulting formulation is shown in 
+a number of selected and representative numerical examples, under full stick friction and slip 
+frictionless contact conditions. Conservation of key discrete properties exhibited by the time 
+stepping algorithm is shown. 
+ 
+Keywords: contact mechanics, full stick friction, frictionless, finite elements, dynamics, 
+conserving algorithms, direct elimination method 
+ 
+
+1 Introduction, motivation and goals 
+
+Numerical analysis of contact problems has been one of the hot research topics of interest over 
+the last decades. Contact problems arise in many applications, such as in crashworthiness, 
+projectile impact, and material forming processes, i.e. sheet metal forming, bulk forming, 
+casting, friction stir welding, cutting, powder compaction, and additive manufacturing. Despite 
+the important progresses achieved in computational contact mechanics, the numerical 
+simulation of contact problems is still nowadays a complex task, mainly due to the highly 
+nonlinear nature of the problem, potentially involving fully nonlinear kinematics, finite strains, 
+
+mailto:agelet@cimne.upc.edu
+mailto:dicapua@cimne.upc.edu
+
+
+2  C. Agelet de Saracibar, D. Di Capua  
+    
+
+  
+
+large slips, nonlinear boundary conditions, complex frictional behavior phenomena, 
+thermomechanical contact, etc. 
+
+Mathematically, the numerical analysis of a contact problem amounts to finding the 
+solution of an Initial Boundary Value Problem (IBVP) within a constrained solution space. The 
+variational formulation of a contact problem includes restrictions on the admissible variations in 
+the tangent solution space induced by the contact constraints, yielding to Variational 
+Inequalities (VI). See, for instance, Kikuchi & Oden (1988) [22] and Duvaut & Lions (1972) 
+[10]. The solution of contact problems has been typically tackled using two approaches: 
+Lagrange multipliers and penalty-based methods. A good overview of those approaches can be 
+found in the classical books written by Laursen (2002) [26] and Wriggers (2006) [40]. An 
+alternative approach to solve contact problems, the direct elimination algorithm (DEA), is 
+briefly addressed by Wriggers [40]. 
+
+Within the Lagrange multipliers method the kinematical contact constraints are exactly 
+satisfied. On the other hand, Lagrange multiplier methods are cumbersome to implement and 
+the total number of equations increases and changes during the solution process. Within the 
+penalty-based methods, a regularization of the contact constraints, using penalty or augmented 
+Lagrangian approaches, allows us to bypass the need to find a solution within a constrained 
+solution space and provides a very convenient displacement driven contact formulation. Well 
+known drwabacks linked to the penalty method are the penalty sensitivity and possible ill-
+conditioning of the system of equations. To avoid those main drawbacks exhibited by the 
+penalty method, while retaining his advantages, the augmented Lagrangian method, using 
+Uzawa’s algorithm, has been used as an alternative regularization procedure [26],[40]. The 
+DEA for quasi-static and dynamic frictionless and full stick friction contact problems has been 
+addressed by Di Capua & Agelet de Saracibar (2015) [9]. Using the DEA, Lagrange multipliers 
+and penalty-based regularized formulations of the contact problem, such as penalty or 
+Augmented Lagrangian methods, are fully avoided and the contact constraints are directly 
+imposed yielding a modified set of residual equations. 
+
+At the contact discrete level, two classical approaches, node-to-segment (NTS) and 
+segment-to-segment (STS) are widely used. NTS is one of the most popular approaches to 
+tackle contact problems, particularly within the framework of large deformations. This 
+popularity mainly comes due to the simplicity of its implementation, compared to other 
+methods. Key references on NTS contact methods, addressing penalty, Lagrange multipliers, 
+and augmented Lagrangian methods, are the now classical books written by Laursen (2002) [26] 
+and Wriggers (2006) [40]. Its popularity has been maintained despite the fact that, as it is well 
+know now, NTS methods do not pass the patch test and exhibits poor convergence properties 
+[28]. In particular, local errors at the contact surface do not necessarily diminish when the mesh 
+is refined [11]. To avoid those drawbacks inherent to NTS methods, a new family of STS 
+contact methods, called mortar methods, was developed and it is now well established for 
+contact problems. For applications of the mortar method to two-dimensional contact problems, 
+see McDevitt & Laursen (2000) [27], Yang [41], Flemish et al. (2005) [13], and Fischer & 
+Wriggers (2005) [12]. A STS mortar contact method for quadratic elements is proposed by Puso 
+et al. (2008) [32]. Three-dimensional applications of the mortar method can be find in Puso & 
+Laursen [30],[31]. Dual active set strategies based on the mortar method have been presented by 
+
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  3 
+ 
+
+Wohlmuth (2000) [39], Hüeber & Wohlmuth (2005) [21], Brunssen et al. (2007) [8], and Popp 
+et al. (2010) [29].  
+
+Energy-momentum algorithms for non-linear elastodynamics problems have been first 
+developed by Simo & Tarnow [34] and Simo et al. [35]. Further improvements for general 
+models in nonlinear elasticity were developep by Gonzalez [14]. First applications of the 
+energy-momentum scheme to unilateral contact constraints within the framework of the NTS 
+methods can be found in Laursen & Chawla (1997) [24] and in Armero & Petocz (1998, 1999) 
+[3],[4]. Further developments, also within the NTS framework, can be found in Laursen & Love 
+(2002) [25], Hauret & Le Tallec (2006) [16], Haikal & Hjelmstad (2007) [15], Betsch & Hesch 
+(2007) [7], and Hesch & Betsch (2011) [18]. Applications of the energy-momentum scheme 
+using the mortar method can be found in Hesch & Betsch (2010) [19] for transient 3d domain 
+decomposition problems, in Hesch & Betsch (2009) [20] for two-dimensional contact problems, 
+and in Hesch & Betsch (2011) [17] for three-dimensional contact problems. 
+
+This work is a follow-up of the one published by Di Capua & Agelet de Saracibar 
+(2015) [9] where the main aspects of the DEA for quasi-static and dynamic contact problems 
+were introduced. Here now the focus is placed on the development, implementation and 
+validation of energy-momentum conserving schemes formulated within the framework of the 
+direct elimination method. In particular conserving algorithms are presented for the two cases of 
+interest in dynamic contact problems: a energy conserving scheme for the full stick frictional 
+case, and an energy-momentum conserving scheme for the slip frictionless case. Finite 
+deformation kinematics is considered. On the other hand, a more convenient and natural 
+formulation of the direct elimination method for the slip frictionless case is derived. This 
+formulation is given now in terms of the contravariant components of the iso-parametric 
+coordinates of the incremental slip of the closest-point-projection on the covariant basis vectors 
+evaluated at the mid-point configuration. 
+
+The outline of the paper is as follows. In Section 2, the main aspects of the contact 
+problem at a continuum setting are briefly presented. Section 3 deals with the finite element 
+formulation of the contactless problem. Section 4 deals with the main aspects of the finite 
+element formulation and numerical solution of the full stick and slip frictionless contact cases, 
+using the proposed DEA. Section 5 shows the key conservation properties exhibited by the time 
+stepping algorithms used in the numerical analysis of dynamic contact problems, for both the 
+full stick and slip frictionless cases. Finally, Section 6 deals with an assessment of the energy-
+momentum conserving schemes proposed within the framework of the DEA, through a number 
+of representative numerical examples, under full stick and slip frictionless dynamic contact 
+conditions. The paper concludes with some final remarks. An Appendix, including the 
+computation of the variations of the covariant tangent vectors ,nξ α+τ  and ,nη α+τ  at the 
+configuration n α+  of the closest-point-projection on the master surface, has been added. 
+ 
+ 
+
+2 Continuum formulation of the contact mechanics problem 
+ 
+2.1 Local formulation 
+
+
+
+4  C. Agelet de Saracibar, D. Di Capua  
+    
+
+  
+
+Let dim2 3n≤ ≤  be the space dimension and [ ]: 0,T += ⊂   the time interval of interest. Let 
+the open sets dim(1) nΩ ⊂   and dim(2) nΩ ⊂  , with smooth boundaries (1)∂Ω and (2)∂Ω  and 
+closures 
+
+(1) (1) (1)Ω = Ω ∂Ω  and 
+(2) (2) (2)Ω = Ω ∂Ω , be the reference placement of two 
+
+continuum bodies (1)  and (2) . 
+ For each body ( )i  we denote by 
+
+( )( ) ii ∈ΩX  the vector position of the material 
+particles at the reference configuration, dim
+
+( )( ) :
+i ni  Ω × →ϕ  the orientation preserving 
+
+deformation maps, ( ) ( ):i it= ∂V ϕ  the material velocities, 
+( ) ( ) ( ):i i i= −u Xϕ  the material 
+
+displacements, ( )0
+iρ  the reference mas densities, and ( ) ( ): GRADi i=F ϕ  the deformation 
+
+gradients, where GRAD  denotes the material gradient operator. For each time t ∈  , the 
+mapping ( )( ) ( ): ,i itt t∈ = ⋅ϕ ϕ  represents a one-parameter family of configurations indexed 
+by time t , which maps the reference placement of body ( )i  onto its current placement 
+
+( ) dim( ) ( ) ( ): ni i it tϕ ⊂   . The current placement of particles 
+( )( ) ii ∈ΩX  at time t ∈   is 
+
+denoted as ( )( ) ( ) ( ): ,i i i t=x Xϕ . 
+We will asume that no contact forces are present between the two bodies at the 
+
+reference configuration. Subsequent configurations cause the two bodies to physically come 
+into contact and produce contact interactive forces during some portion of the time interval of 
+interest [ ]: 0,T += ⊂  . 
+
+For each body ( )i  we will consider the following partitions of the boundary
+( ) ( ) ( ) ( )i i i i
+
+u cσ∂Ω = ∂ Ω ∂ Ω ∂ Ω  , where 
+( )i
+
+u∂ Ω , 
+( )i
+
+σ∂ Ω  and 
+( ) ( ):i ic cΓ = ∂ Ω  represent the 
+
+prescribed displacements, prescribed nominal tractions and contact boundaries, respectively, 
+such that the conditions ( ) ( )i iu σ∅ = ∂ Ω ∂ Ω , 
+
+( ) ( )i i
+u c∅ = ∂ Ω ∂ Ω  and 
+
+( ) ( )i i
+cσ∅ = ∂ Ω ∂ Ω , 
+
+hold. 
+The local material form of the momentum balance equation, prescribed traction and 
+
+prescribed displacement boundary conditions, and initial conditions for body ( )i  take the 
+form, 
+ 
+
+ 
+
+[ ]
+[ ]
+[ ]
+
+( ) ( ) ( ) ( ) ( ) ( )
+0 0
+
+( ) ( ) ( ) ( )
+
+( ) ( ) ( )
+
+( ) ( ) ( )
+0
+
+DIV in 0,
+
+on 0,
+
+on 0,
+
+in
+
+i i i i i i
+
+i i i i
+
+i i i
+u
+
+i i i
+
+T
+
+T
+
+T
+σ
+
+ρ ρ+ = Ω ×
+
+= ∂ Ω ×
+
+= ∂ Ω ×
+
+= Ω
+
+P B V
+
+P N T
+
+u u
+
+V V
+
+
+
+  (1) 
+
+ 
+where ( ) ( ) ( ):i i i=P F S  is the First Piola-Kirchhoff stress tensor for body ( )i , ( )iS  is the second 
+Piola-Kirchhoff stress tensor for body ( )i , DIV  denotes the material divergence operator, 
+
+( )iN  is the outward unit normal to the boundary ( )iσ∂ Ω , 
+( )iT  is the prescribed nominal traction 
+
+vector on the boundary ( )iσ∂ Ω , 
+( )iu  is the prescribed displacement vector on the boundary 
+
+( )i
+u∂ Ω , and 
+
+( )
+0
+
+iV  is the initial velocity in ( )iΩ . The superimposed dot refers to the material 
+time derivative. 
+
+Assuming a linear Saint-Venant Kirchhoff elastic constitutive model for the body ( )i , 
+the free energy per unit of mass can be expressed as, 
+ 
+
+ 
+( )( ) ( ) ( ) ( ) ( )
+
+0
+
+1
+: :
+
+2
+i i i i i
+
+ρ
+Ψ =E E E  (2) 
+
+ 
+
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  5 
+ 
+
+where ( )i  is the constant fourth order elastic constitutive tensor and ( )iE  is the Green-
+Lagrange strain tensor defined as, 
+ 
+
+ 
+( )( ) ( ) ( )1:
+
+2
+i i T i= −E F F 1  (3) 
+
+ 
+where 1  is the second order unit tensor.  
+
+Following a standard procedure, using the Clausius-Planck inequality and following 
+Coleman’s method, the Second Piola-Kirchhoff stress tensor takes the form [38], 
+ 
+
+ 
+
+( )( ) ( )( ) ( ) ( )
+0 ( ): :
+
+i i
+i i i
+
+iρ
+∂Ψ
+
+= =
+∂
+
+E
+S E
+
+E
+  (4) 
+
+ 
+and the First Piola-Kirchhoff stress tensor is computed as ( ) ( ) ( ):i i i=P F S . 
+ 
+2.2 Local formulation of the contact problem 
+
+Using the classical slave-master formulation of contact mechanics [1],[2],[23],[26],[40] let us 
+denote the contact surfaces (1)cΓ  and 
+
+(2)
+cΓ  as slave and master contact surfaces, respectively. 
+
+Particles of the slave and master contact surfaces will be denoted as slave particles and master 
+particles, respectively.  
+
+ Let us consider a slave particle (1) (1)c∈ΓX , being ( )(1) (1) (1) (1), ct γ= ∈x Xϕ  its current 
+spatial vector position of the slave particle at time t ∈  , and ( )(1) (2), ct γ∈y X  its closest-point-
+projection onto the spatial configuration (2)cγ  of the master surface 
+
+(2)
+cΓ  at time t ∈  , defined 
+
+as, 
+ 
+
+ 
+
+( ) ( )( )
+( ) ( ) ( )
+
+( 2) ( 2)
+
+(1) (2) (1)
+
+(1) (1) (1) (2) (2)
+
+, : , ,
+
+, : arg min , ,
+c
+
+t t t
+
+t t t
+∈Γ
+
+=
+
+= −
+X
+
+y X Y X
+
+Y X X X
+
+ϕ
+
+ϕ ϕ
+ (5) 
+
+ 
+The contact normal gap function ( )(1) ,Ng tX  for a slave particle (1) (1)c∈ΓX  at time 
+
+t ∈   is defined as, 
+ 
+
+ 
+( ) ( ) ( )( )( )(1) (1) (1) (2) (1), : , , ,Ng t t t t= − ⋅X X Y X nϕ ϕ  (6) 
+
+ 
+where n  is the outward unit normal to the spatial configuration of the master surface at the 
+closest-point-projection. Assuming enough smooth contact surfaces, when a slave particle 
+
+(1) (1)
+c∈ΓX  comes into contact with a master surface 
+
+(2)
+cγ , it is assumed that the following 
+
+condition holds, 
+ 
+
+ 
+( )( ) ( )(2) (1) (1) (1), , ,t t t= = −n n Y X n X  (7) 
+
+ 
+The nominal frictional contact traction vector at a material particle on the contact 
+
+surface ( ) ( ):i ic cΓ = ∂ Ω  is given by, 
+ 
+
+
+
+6  C. Agelet de Saracibar, D. Di Capua  
+    
+
+  
+
+ 
+
+( ) ( ) ( ) ( ) ( ) ( ):i i i i i i= =T P N F S N  (8) 
+ 
+where ( )iN  is the outward unit normal to the contact surface ( ) ( ):i ic cΓ = ∂ Ω  on the material 
+configuration of the body ( )i . The nominal frictional contact vector ( )(1) (1) , tT X  at a slave 
+particle (1) (1)c∈ΓX  at time t ∈   can be additively split as, 
+ 
+
+( ) ( ) ( ) ( ) ( ) ( )(1) (1) (1) (1) (1) (1) (1), : , , , ,N T Nt t t t t t= − = + − ⊗T X t X t X X n 1 n n T X  (9) 
+ 
+where ( )(1) ,Nt tX  and ( )(1) ,T tt X  are the nominal contact pressure and nominal frictional 
+tangent traction vector, respectively. 
+
+The unilateral contact constrained problem can be characterized by the following Kuhn-
+Tucker and contact persistency conditions [1],[2],[23],[26],[40]: 
+ 
+
+ 
+( ) ( ) ( ) ( )(1) (1) (1) (1), 0, , 0, , , 0N N N Ng t t t t t g t≥ ≥ =X X X X  (10) 
+
+ 
+( ) ( ) ( )(1) (1) (1)if , 0 then , , 0N N Ng t t t g t= =X X X  (11) 
+
+ 
+where 
+ 
+
+ 
+( ) ( ) ( )( )( )(1) (1) (1) (2) (1), : , , ,Ng t t t t= − ⋅X V X V Y X n  (12) 
+
+ 
+2.3 Variational formulation 
+
+The variational form of the momentum balance equation for a problem involving contact 
+between two bodies (1)  and (2)  can be written as [1],[2],[23],[26],[40]: 
+ 
+
+ 
+( ) ( ) ( )
+
+( ) ( )( ) (1)
+
+2 2 2( ) ( ) ( ) ( ) ( ) ( ) ( ) ( )
+0 01 1 1
+
+2 ( ) ( ) (1) (1) (2)
+1
+
+, ,GRAD ,
+
+, ,
+i
+
+c
+
+i i i i i i i i
+i i i
+
+i i
+i
+
+σ
+
+ρ ρ
+= = =
+
+= ∂ Ω Γ
+
++ =
+
++ + −
+
+∑ ∑ ∑
+∑
+
+V P B
+
+T T
+
+ η η η
+
+η η η
+ (13) 
+
+ 
+for any admissible variations dim( ) ( ): ni iΩ →η   such that ( )i = 0η  on ( )iu∂ Ω . 
+ 
+2.4 Linear momentum, angular momentum and total energy of the system 
+
+The material form of the linear momentum L  and angular momentum J  of the system are 
+given by: 
+ 
+
+ 
+( )
+
+( )
+
+2 ( ) ( )
+01
+
+2 ( ) ( ) ( )
+01
+
+:
+
+:
+
+i
+
+i
+
+i i
+i
+
+i i i
+i
+
+dV
+
+dV
+
+ρ
+
+ρ
+
+= Ω
+
+= Ω
+
+=
+
+= ×
+
+∑ ∫
+∑ ∫
+
+L V
+
+J x V
+ (14) 
+
+ 
+ The total energy of a system E  can be additively split as: 
+ 
+ : extE K W= + + Π  (15) 
+ 
+where K , W  and extΠ  are the kinetic energy, elastic strain energy, and potential energy for the 
+external loads, respectively, given by: 
+
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  7 
+ 
+
+ 
+
+ 
+
+( )
+
+( )
+
+2 ( ) ( ) ( )
+01
+
+2 ( ) ( )
+01
+
+2 ( )
+1
+
+1
+:
+
+2
+
+:
+
+:
+
+i
+
+i
+
+i i i
+i
+
+i i
+i
+
+ext ext i
+i
+
+K dV
+
+W dV
+
+ρ
+
+ρ
+
+= Ω
+
+= Ω
+
+=
+
+= ⋅
+
+= Ψ
+
+Π = Π
+
+∑ ∫
+
+∑ ∫
+∑
+
+V V
+
+ (16) 
+
+ 
+where ( )ext iΠ  is the potential energy for the external forces of body ( )i . 
+ It can be shown [5],[6],[14],[24],[34],[35],[36],[37] that the linear momentum L , 
+angular momentum J , and total energy E  are conserved for a homogeneous Neumann 
+boundary problem, characterized by zero body forces and zero natural boundary conditions, 
+yielding zero potential energy for the external loads, i.e. 0extΠ = . The total energy E  is also 
+conserved if the external loading is conservative. A typical case of conservative external loading 
+is the case of gravitational body forces and constant prescribed nominal tractions. 
+ 
+ 
+3 Finite element formulation of the continuum problem without frictional contact 
+
+constraints 
+ 
+Let us consider first the finite element discretization of the dynamic continuum problem without 
+frictional contact constraints. Using a standard finite element discretization, the material vector 
+position ( ) ( )i ih∈ΩX , displacement 
+
+( )iu  and material velocitie ( )iV  of the particles of body ( )i
+, take the form, 
+ 
+
+( ) ( ) ( )
+( ) ( ) ( )
+
+( ) ( ) ( ) ( ) ( ) ( )
+1 1 1
+
+: , : , :
+i i i
+
+node node noden n ni i i i i i
+A A A A A AA A A
+
+N N N
+= = =
+
+= = =∑ ∑ ∑X X u u V Vξ ξ ξ  (17) 
+ 
+where ( ) ( ) ( ):i i i= +x X u  gives the current placement of the particle ( ) ( )i ih∈ΩX  of body 
+
+( )i , 
+( ) ( )i i
+A h∈ΩX , 
+
+( )i
+Au  and 
+
+( )i
+AV  are the vectors of material coordinates, displacements and material 
+
+velocities, respectively, of a node A of the triangulation of body ( )i , ( ) :AN  ξ  is the 
+interpolation shape function for node A, ∈ξ  are the isoparametric coordinates defined in the 
+unit domain  , and ( )inoden  is the number of nodes used in the triangulation of body 
+
+( )i . 
+Consider the time interval of interest [ ]0,T=�  discretized into a series of non-
+
+overlapping sub-intervals [ ]1,n nt t += � . Using the standard convention, we denote by either  
+( )n α+⋅  the discrete approximations at time nt α+  of the continuum variable at time t . 
+
+Using a mid-point time integration algorithm, the time discretization and finite element 
+discretization of the variational form of the momentum balance equation for the dynamic case 
+yields a discrete energy and momentum conserving time stepping algorithm, where the residual 
+force vector of a node A of body ( )i  at time 1n + , takes the form 
+[5],[6],[14],[24],[34],[35],[36],[37], 
+ 
+
+ ( ) ( ) ( )( ) ( ) ( ) ( ) ( ) int ( ) ( ) ( )1 , 1 , , 1/2 1 , 1/2
+1
+
+:i i i i i i i ext iA n AB B n B n A n n A nt+ + + + +
+= − + − =
+
+∆
+g u M V V f u f 0  (18) 
+
+ 
+
+
+
+8  C. Agelet de Saracibar, D. Di Capua  
+    
+
+  
+
+where ( )iABM  is the mass matrix of nodes A and B of body 
+( )i , ( ), 1
+
+i
+B n+V  is the vector of velocities 
+
+of node B of body ( )i  at the time 1n + , given by, 
+ 
+
+ ( )( ) ( ) ( ) ( ) ( ) ( ), 1 , 1/2 , , 1 , ,
+2
+
+2i i i i i iB n B n B n B n B n B nt+ + +
+= − = − −
+
+∆
+V V V u u V  (19) 
+
+ 
+and ( )int ( ) ( ), 1/2 1i iA n n+ +f u  and ( ), 1/2ext iA n+f  are the nodal vectors of internal forces and external forces of 
+node A of body ( )i  at the time 1/ 2n + , respectively.  
+
+Substituting (19) into (18), the residual force vector of a node A of body ( )i  at time 
+1n + , takes the form, 
+
+ 
+
+   ( ) ( ) ( )( ) ( ) ( ) ( ) ( ) ( ) ( ) int ( ) ( ) ( )1 , 1 , , , 1/2 1 , 1/22
+2 2
+
+:i i i i i i i i i ext iA n AB B n B n AB B n A n n A nt t+ + + + +
+= − − + − =
+
+∆ ∆
+g u M u u M V f u f 0       (20) 
+
+ 
+Using an incremental iterative Newton-Raphson solution scheme, the 
+
+linearization of the discrete residual force vector given by (18) yields, 
+ 
+ ( ) ( ) ( )( ) ( ) 1 ( ) ( ) ( ) ( ) ( )1 1 1 1:i i k i i k i i k i kA n A n A n nD++ + + += + ⋅∆ =g u g u g u u 0  (21) 
+ 
+where  
+ 
+
+ 
+( ) ( )( ) ( ) ( ) ( ) ( ) int ( ) ( ) ( )1 1 , 1 , 1/2 1 12
+
+( ) ( ) ( ) ( ) ( )
+, 1 , 1 , 1 , 12
+
+2
+
+2 ˆ :
+
+i i k i k i i k i k i k i k
+A n n AB B n A n n n
+
+i i k i k i k i k
+AB AB n B n AB n B n
+
+D D
+t
+
+t
+
++ + + + + +
+
++ + + +
+
+⋅∆ = ∆ + ⋅∆
+∆
+ 
+
+= + ∆ = ∆ ∆ 
+
+g u u M u f u u
+
+M K u K u
+ (22) 
+
+ 
+where k  denotes the iteration number, ( ) , 1
+
+i k
+AB n+K  is the AB  component of the tangent stiffness 
+
+matrix evaluated at the iteration k  of the time step 1n + , and ( ) ( ) 1 ( ), 1 , 1 , 1
+i k i k i k
+
+B n B n B n
++
+
++ + +∆ = −u u u . 
+The space semi-discrete versions hL , hJ  and hE  of the linear momentum, angular 
+
+momentum and total energy, respectively, take the form [3],[4],[5],[6],[34]: 
+ 
+
+ 
+
+( )2 ( ) ( )
+1 1
+
+2 ( ) ( ) ( )
+1
+
+2 ( ) ( ) ( )
+1
+
+:
+
+:
+
+1
+:
+
+2
+
+i
+noden i i
+
+h AB Bi A
+
+i i i
+h A AB Bi
+
+ext i i i ext
+h h h h A AB B h hi
+
+E K W W
+
+= =
+
+=
+
+=
+
+=
+
+= ×
+
+= + + Π = ⋅ + + Π
+
+∑ ∑
+∑
+
+∑
+
+L M V
+
+J x M V
+
+V M V
+
+ (23) 
+
+ 
+where Einstein’s notation has been assumed for repeated indices A and B. 
+ It can be shown [3],[4],[5],[6] that using this conserving time integration scheme, the 
+full discrete version of the linear momentum hL , angular momentum hJ , and total energy hE  
+are conserved for a homogeneous Neumann boundary problem, characterized by no imposed 
+boundary displacements and zero external loading, zero body forces and zero natural boundary 
+conditions, yielding zero semi-discrete external force vector, ( )ext iA =f 0 , and zero semi-discrete 
+potential energy for the external loads, 0exthΠ = . The discrete versión of the total energy hE  is 
+also conserved if the external loading is conservative. The full discrete versión of the total 
+
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  9 
+ 
+
+energy hE  is also conserved if the external loading is conservative, such as, for instance, if 
+gravitational forces are the only external forces. In this case, if the external loading is 
+conservative, the semi-discrete versión of the potential energy for the external loads can be 
+written as, 
+ 
+ 
+
+2 2( ) ( ) ( )
+1 1
+
+ext ext i ext i i
+h h A Ai i= =
+
+Π = Π = − ⋅∑ ∑ f u  (24) 
+ 
+where Einstein’s notation has been assumed for repeated index A and the nodal vectors of 
+external forces are constant, i.e. ( )ext iA cte=f . 
+
+The conserving time integration scheme exhibits the following key properties 
+[3],[4],[5],[6],[34]: 
+ 
+
+ 
+
+( )
+
+( )2 int ( )
+, 1/21 1
+
+2 int ( )
+, 1/2 , 1/21
+
+2 int ( ) ( ) ( )
+, 1/2 , 1 , , 1 ,1
+
+i
+noden i
+
+A ni A
+
+i
+A n A ni
+
+i i i
+A n A n A n h n h ni
+
+W W
+
++= =
+
++ +=
+
++ + +=
+
+=
+
+× =
+
+⋅ − = −
+
+∑ ∑
+∑
+
+∑
+
+f 0
+
+x f 0
+
+f u u
+
+ (25) 
+
+ 
+where Einstein’s notation has been assumed for repeated index A. 
+
+Furthermore, the conserving time integration scheme exhibits also the following key 
+property, crucial to derive the conservation properties of the dynamic contact problem [3]: 
+ 
+ ( )2 ( ) ( ) ( ) ( ), 1 , , 1/21 i i i iA n A n AB B ni + += − × =∑ x x M V 0  (26) 
+ 
+where Einstein’s notation has been assumed for repeated indices A and B. 
+ 
+ 
+4 Direct elimination algorithm for contact problems 
+ 
+4.1 Introduction and notation 
+
+Within the direct elimination algorithm for contact problems proposed in this work, the 
+restrictions arising by the contact between the bodies are introduced through the direct 
+elimination of the displacements of the slave nodes. From a computational implementation point 
+of view, this direct elimination method is carried out through a number of transformations made 
+on the global tangent operator. In order to conveniently visualize those transformations, let us 
+introduce the following notation.  
+
+Let us consider a generic slave node s  which is in contact with a given master element. 
+Let us denote by { }1, , mnodm m  the set of master nodes of the master element which is in 
+contact with the slave node s , where mnod  is the number of nodes of the master element. 
+
+Furthermore, let us introduce the following notation for the set of nodes of the slave 
+body which are connected to the slave node s , including both the nodes on the slave surface 
+and the nodes in the interior domain of the slave body, and to the set of nodes of the master 
+surface which are connected to the master nodes { }1, , mnodm m , including both the nodes of 
+the master surface and the nodes in the interior domain of the master body.  
+
+
+
+10  C. Agelet de Saracibar, D. Di Capua  
+    
+
+  
+
+Let us denote by { }1, , gsnodgs gs  the set of nodes of the slave body connected to the 
+given slave node s , where gsnod  is the number of nodes of this set, and let us denote by 
+{ }1, , gmnodgm gm  the set of nodes of the master body connected to the set of nodes 
+{ }1, , mnodm m , where gmnod  is the number of nodes of this set.  
+
+Figure 1 shows the notation introduced for a typical slave node-master segment 2D 
+contact problem using linear elements. 
+
+Linked to the notation introduced above for the slave and master nodes, let us introduce 
+the following notation for the vector of displacements. Let us denote as su  the vector of 
+displacements of the slave node s , mu  the vector collecting the displacements of the set of 
+nodes { }1, , mnodm m , gsu  the vector collecting the displacements of the set of nodes 
+{ }1, , gsnodgs gs , and gmu  the vector collecting the displacements of the set of nodes 
+{ }1, , gmnodgm gm , 1gu  the vector collecting the vector of displacements of the remaining set 
+of nodes of body (1)  and 2gu  the vector collecting the vector of displacements of the 
+remaining nodes of body (2) . 
+ 
+
+ 
+ 
+
+Figure 1. Definition and notation used for a slave node-to-master segment contact problem.  
+ 
+
+The vector position of an arbitrary point of a master surface element can be defined as, 
+ 
+ ( ) ( )1 1
+
+mnod mnodn n
+i mi i mii i
+
+N
+= =
+
+= =∑ ∑x x N xξ ξ  (27) 
+ 
+where ∈ξ  are the isoparametric coordinates defined in the isoparametric unit domain  , 
+
+( )iN ξ  are the interpolation shape functions of the nodes of the master element, 
+( ) ( )i iN=N 1ξ ξ  is a diagonal matrix of shape functions. 
+
+The vector position of the closest-point-projection (CPP) of the slave node s  on the 
+master element can be defined as, 
+
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  11 
+ 
+
+ 
+ ( ) ( )1 1
+
+mnod mnodn n
+CPP i mi i mi mi i
+
+N
+= =
+
+= = =∑ ∑x x N x Nxξ ξ  (28) 
+ 
+where ∈ξ  are the isoparametric coordinates of the closest-point-projection defined in the 
+isoparametric unit domain  , and ( ) ( )1 , , mnod =  N N Nξ ξ  is the matrix of nodal shape 
+functions of the master nodes evaluated at ∈ξ . 
+ Using the notation introduced above, the semi-discrete contact normal gap Ng  can be 
+defined as, 
+ 
+
+ ( ) ( )( ) ( )1: mnodnN s CPP s i mi s mig N== − ⋅ = − ⋅ = − ⋅∑x x n x x n x Nx nξ  (29) 
+ 
+where sx  is the current vector position of the slave node s  and n  is the outward unit normal to 
+the master element at the closest-point-projection of the slave node s .  
+ 
+4.2 Contactless case 
+
+Let us consider first a slave node s  which is not yet in contact with a master surface at time 
+1n + . Using the notation introduced above, the residual force vectors can be written as: 
+
+ 
+
+ 
+
+( )
+( )
+
+( )
+( )
+
+( )
+( )
+
+, 1 , 1
+
+, 1 , 1 1, 1
+
+1 , 1 1, 1
+
+, 1 , 1
+
+, 1 , 1 2, 1
+
+2 , 1 2, 1
+
+,
+
+, ,
+
+,
+
+,
+
+, ,
+
+,
+
+s s n gs n
+
+gs s n gs n g n
+
+g gs n g n
+
+m m n gm n
+
+gm m n gm n g n
+
+g gm n g n
+
++ +
+
++ + +
+
++ +
+
++ +
+
++ + +
+
++ +
+
+=
+
+=
+
+=
+
+=
+
+=
+
+=
+
+g u u 0
+
+g u u u 0
+
+g u u 0
+
+g u u 0
+
+g u u u 0
+
+g u u 0
+
+ (30) 
+
+ 
+Using an incremental iterative Newton-Raphson solution scheme, the linearization of 
+
+the above expressions (30) yields the following linearized system of equations, 
+ 
+
+  
+
+( )
+( )
+
+, , 1 , 1 , , 1 , 1 , 1 , 1
+
+, , 1 , 1 , , 1 , 1 , 1, 1 1, 1 , 1 , 1 1, 1
+
+1, , 1 , 1 1, 1, 1 1, 1 1 , 1
+
+,
+
+, ,
+
+k k k k k k
+s s n s n s gs n gs n s s n gs n
+
+k k k k k k k k k
+gs s n s n gs gs n gs n gs g n g n gs s n gs n g n
+
+k k k k
+g gs n gs n g g n g n g gs n
+
++ + + + + +
+
++ + + + + + + + +
+
++ + + + +
+
+∆ + ∆ = −
+
+∆ + ∆ + ∆ = −
+
+∆ + ∆ = −
+
+K u K u g u u
+
+K u K u K u g u u u
+
+K u K u g u( )
+( )
+( )
+
+1, 1
+
+, , 1 , 1 , , 1 , 1 , 1 , 1
+
+, , 1 , 1 , , 1 , 1 , 2, 1 2, 1 , 1 , 1 2, 1
+
+2, , 1 , 1 2, 2, 1 2, 1
+
+,
+
+,
+
+, ,
+
+k k
+g n
+
+k k k k k k
+m m n m n m gm n gm n m m n gm n
+
+k k k k k k k k k
+gm m n m n gm gm n gm n gm g n g n gm m n gm n g n
+
+k k k k
+g gm n gm n g g n g n
+
++
+
++ + + + + +
+
++ + + + + + + + +
+
++ + + +
+
+∆ + ∆ = −
+
+∆ + ∆ + ∆ = −
+
+∆ + ∆ = −
+
+u
+
+K u K u g u u
+
+K u K u K u g u u u
+
+K u K u ( )2 , 1 2, 1,k kg gm n g n+ +g u u
+
+ (31) 
+
+ 
+where , , 1
+
+k
+s s n+K  and , , 1
+
+k
+s gs n+K  are the tangent stiffness blocks corresponding to row s  and 
+
+columns s  and gs , respectively, , , 1
+k
+gs s n+K , , , 1
+
+k
+gs gs n+K  and , 1, 1
+
+k
+gs g n+K  are the tangent stiffness 
+
+blocks corresponding to row gs  and columns s , gs  and 1g , respectively, 1, , 1
+k
+g gs n+K  and 
+
+1, 1, 1
+k
+g g n+K  are the tangent stiffness blocks corresponding to row 1g  and columns gs  and 1g , 
+
+
+
+12  C. Agelet de Saracibar, D. Di Capua  
+    
+
+  
+
+respectively, , , 1
+k
+m m n+K  and , , 1
+
+k
+m gm n+K  are the tangent stiffness blocks corresponding to row m  
+
+and columns m  and gm , respectively, , , 1
+k
+gm m n+K , , , 1
+
+k
+gm gm n+K  and , 2, 1
+
+k
+gm g n+K  are the tangent 
+
+stiffness blocks corresponding to row gm  and columns m , gm  and 2g , respectively, and  
+2, , 1
+
+k
+g gm n+K  and 2, 2, 1
+
+k
+g g n+K  are the tangent stiffness blocks corresponding to row 2g  and 
+
+columns gm  and 2g , respectively, all of them evaluated at the iteration k  of time 1n + . 
+The resulting global linearized system of equations for the contactless case can be 
+
+written in matrix form as, 
+ 
+
+  
+
+, ,
+
+, , , 1
+
+1, 1, 1 1 1
+
+, ,
+
+, , , 2
+
+2, 2, 2 2 21 1
+
+k k
+
+s s s gs s s
+
+gs s gs gs gs g gs gs
+
+g gs g g g g
+
+m m m gm m m
+
+gm m gm gm gm g gm gm
+
+g gm g g g gn n+ +
+
+     ∆
+     
+
+∆     
+    ∆
+
+= −    
+∆    
+
+    ∆
+    
+
+∆         
+
+K K 0 0 0 0 u g
+K K K 0 0 0 u g
+
+0 K K 0 0 0 u g
+0 0 0 K K 0 u g
+0 0 0 K K K u g
+0 0 0 0 K K u g
+
+1
+
+k
+
+n+
+
+
+
+
+
+
+
+
+ (32) 
+
+ 
+ 
+4.3 Full stick frictional and frictionless contact cases 
+
+Let us denote as ,s n α+f  the discrete contact force acting on the slave node s  at time n α+ , and 
+,m n α+f  the vector collecting the discrete contact forces acting on the nodes of the master element 
+
+at time n α+ , where, typically, 1/ 2α =  for the dynamic case. The discrete residual force 
+vectors can be written as: 
+ 
+
+ 
+
+( )
+( )
+
+( )
+( )
+( )
+
+( )
+
+, 1 , 1 ,
+
+, 1 , 1 1, 1
+
+1 , 1 1, 1
+
+, 1 , 1 ,
+
+, 1 , 1 2, 1
+
+2 , 1 2, 1
+
+,
+
+, ,
+
+,
+
+,
+
+, ,
+
+,
+
+s s n gs n s n
+
+gs s n gs n g n
+
+g gs n g n
+
+m m n gm n m n
+
+gm m n gm n g n
+
+g gm n g n
+
+α
+
+α
+
++ + +
+
++ + +
+
++ +
+
++ + +
+
++ + +
+
++ +
+
+− =
+
+=
+
+=
+
+− =
+
+=
+
+=
+
+g u u f 0
+
+g u u u 0
+
+g u u 0
+
+g u u f 0
+
+g u u u 0
+
+g u u 0
+
+ (33) 
+
+ 
+ 
+4.3.1 Full stick frictional contact case 
+
+Once contact penetration is detected, the position of the slave node s  is subjected to the 
+constraints arising from the full stick frictional contact condition. Note that for the full stick 
+frictional case, once the slave node comes into contact with a master surface, the isoparametric 
+coordinates of the closest-point-projection are time-independent, remaining constant in time 
+while contact is active. 
+
+Using a discrete linear momentum and energy conserving time integration scheme, the 
+mid-point velocity of the slave node s  is matched to the mid-point velocity of its closest-point-
+projection, yielding the following expression [3]: 
+ 
+
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  13 
+ 
+
+ ( ) ( ), 1/2 , 1/2 , 1/2 , 1/21 1
+mnod mnodn n
+
+s n i mi n i mi n m ni i
+N+ + + += == = =∑ ∑v v N v Nvξ ξ  (34) 
+
+ 
+where the (time-independent) isoparametric coordinates of the closest-point-projection are 
+computed at the mid-point configuration.  
+
+Using a mid-point rule time integration scheme, (34) yields, 
+ 
+ ( ), 1 , , 1 , , 1 , 1,s n s n m n m n s n m n+ + + += + − ∆ = ∆x x N x x u N u  (35) 
+ 
+
+Note that it is not posible to get an algorithm simultaneously satisfying discrete energy 
+and angular momentum conservation [3]. The discrete contact constraint (34) yields a time 
+discrete energy conservation algorithm, but the conservation of the discrete angular momentum 
+is not satisfied.  
+
+ 
+Remark 1. Alternatively, imposing as contact constraint that the mid-point position of the slave 
+node s  has to be equal to the mid-point position of its closest-point-projection, would yield a 
+discrete momentum conservation algorithm, but then the discrete energy conservation would not 
+be satisfied [3].  
+ 
+4.3.1.1 Virtual contact work 
+
+Applying the virtual work principle to the discrete contact force vectors ,s n α+f  and ,m n α+f  reads, 
+ 
+ , , 0s s n m m nα αδ δ+ +⋅ + ⋅ =u f u f  (36) 
+ 
+where sδu  and mδu  are virtual displacements of the slave and master element nodes, such 
+that, taking into account that the isoparametric coordinates of the closest-point-projection 
+remain constant, yields, 
+ 
+ s mδ δ=u N u  (37) 
+ 
+
+Substituting (37) into (36) yields,  
+ 
+ , , , , 0
+
+T
+s s n m m n m s n m m nα α α αδ δ δ δ+ + + +⋅ + ⋅ = ⋅ + ⋅ =u f u f u N f u f  (38) 
+
+ 
+and the discrete contact force vectors ,s n α+f  and ,m n α+f  satisfy the following expression, 
+ 
+ , ,
+
+T
+m n s nα α+ += −f N f  (39) 
+
+ 
+ Using (33)1 and (39), the discrete contact force vectors acting on a slave node s  and on 
+the master nodes m  at time n α+  can be written as, 
+ 
+
+ 
+( )
+
+( )
+, , 1 , 1
+
+, , , 1 , 1
+
+,
+
+,
+
+s n s s n gs n
+
+T T
+m n s n s s n gs n
+
+α
+
+α α
+
++ + +
+
++ + + +
+
+=
+
+= − = −
+
+f g u u
+
+f N f N g u u
+ (40) 
+
+ 
+yielding the following transformed discrete residuals, 
+
+
+
+14  C. Agelet de Saracibar, D. Di Capua  
+    
+
+  
+
+ 
+
+ 
+
+( )
+( ) ( )
+
+( ) ( )
+( ) ( ) ( )
+
+, 1 , 1
+
+, 1 , 1 1, 1 , 1 , 1 1, 1
+
+1 , 1 1, 1 1 , 1 1, 1
+
+, 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1
+
+, 1 , 1
+
+, :
+
+, , : , ,
+
+, : ,
+
+, , , : , ,
+
+,
+
+s s n gs n
+
+gs s n gs n g n gs s n gs n g n
+
+g gs n g n g gs n g n
+
+T
+m m n gm n s n gs n m m n gm n s s n gs n
+
+gm m n gm n
+
++ +
+
++ + + + + +
+
++ + + +
+
++ + + + + + + +
+
++ +
+
+=
+
+= =
+
+= =
+
+= + =
+
+r u u 0
+
+r u u u g u u u 0
+
+r u u g u u 0
+
+r u u u u g u u N g u u 0
+
+r u u( ) ( )
+( ) ( )
+
+2, 1 , 1 , 1 2, 1
+
+2 , 1 2, 1 2 , 1 2, 1
+
+, : , ,
+
+, : ,
+
+g n gm m n gm n g n
+
+g gm n g n g gm n g n
+
++ + + +
+
++ + + +
+
+= =
+
+= =
+
+u g u u u 0
+
+r u u g u u 0
+
+ (41) 
+
+ 
+Using an incremental iterative Newton-Raphson solution scheme, taking into account 
+
+that the isoparametric coordinates of th closest-point-projection remains constant, and using the 
+notation introduced in (31) and (35), the linearization of the (non-trivial) modified residuals of 
+interest in the above expressions (41) yields the following linearized system of equations, 
+ 
+
+        
+
+( )
+( )
+
+( )
+
+, , 1 , 1 , , 1 , 1 , 1, 1 1, 1
+
+, 1 , 1 1, 1
+
+, , 1 , , 1 , 1 , , 1 , 1 , , 1 , 1
+
+, 1 , 1 , 1 ,
+
+, ,
+
+, ,
+
+k k k k k k
+gs s n m n gs gs n gs n gs g n g n
+
+k k k
+gs s n gs n g n
+
+k T k k k k T k k
+m m n s s n m n m gm n gm n s gs n gs n
+
+k k T k
+m m n gm n s s n gs
+
++ + + + + +
+
++ + +
+
++ + + + + + +
+
++ + +
+
+∆ + ∆ + ∆
+
+= −
+
++ ∆ + ∆ + ∆
+
+= − −
+
+K N u K u K u
+
+g u u u
+
+K N K N u K u N K u
+
+g u u N g u u( )
+
+( )
+
+1
+
+, , 1 , 1 , , 1 , 1 , 2, 1 2, 1
+
+, 1 , 1 2, 1, ,
+
+k
+n
+
+k k k k k k
+gm m n m n gm gm n gm n gm g n g n
+
+k k k
+gm m n gm n g n
+
++
+
++ + + + + +
+
++ + +
+
+∆ + ∆ + ∆
+
+= −
+
+K u K u K u
+
+g u u u
+
+ (42) 
+
+ 
+ The resulting modified global linearized system of equations for the full stick frictional 
+contact case can be written in matrix form as, 
+
+         
+
+, , 1 ,
+
+1, 1, 1 11
+
+, , , ,
+
+, , , 2
+
+2, 2, 2 221 1
+
+kk
+s
+
+gs gs gs g gs s gsgs
+
+g gs g g gg
+T T T
+
+s gs m m s s m gm m sm
+
+gm m gm gm gm g gmgm
+
+g gm g g ggn n
+
+β
+
++ +
+
+ ∆  
+   ∆  
+   ∆
+
+= −  
++ +∆  
+
+   ∆
+  
+∆     
+
+1 0 0 0 0 0 0u
+0 K K K N 0 0 gu
+0 K K 0 0 0 gu
+0 N K 0 K N K N K 0 g N gu
+0 0 0 K K K gu
+0 0 0 0 K K gu
+
+1
+
+k
+
+n+
+
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+  
+
+  (43) 
+ 
+The matrix 1
+
+k
+nβ + 1  is added in order to avoid the ill-conditioning (zero terms in the main 
+
+diagonal) of the system, where the scalar parameter 1
+k
+nβ +  is defined as, 
+
+ 
+
+         1 , , 1 , , 1
+dim dim
+
+1 1
+: trk k kn s s n s s nn n
+
+β + + + = =  1 K K  (44) 
+
+ 
+where [ ]tr ⋅  denotes the trace operator and dimn  is the number of dimensions of the problem. 
+
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  15 
+ 
+
+ 
+Remark 3. Note that block-symmetry of the resulting global tangent stiffness matrix for the full 
+stick friction case is preserved.  
+ 
+4.3.1.2 Update of slave and master displacements and contact status 
+
+Once the resulting incremental iterative problem has been solved, the slave and master 
+displacements are updated according to the following expressions. 
+ Using a discrete linear momentum and energy conserving algorithm, the update of the 
+master and slave and displacements takes the form, 
+ 
+
+ 
+1
+
+, 1 , 1 , 1
+
+1
+, 1 , 1 , 1 , 1 , 1
+
+k k k
+m n m n m n
+
+k k k k k
+s n s n s n s n m n
+
++
++ + +
+
++
++ + + + +
+
+= + ∆
+
+= + ∆ = + ∆
+
+u u u
+
+u u u u N u
+ (45) 
+
+ 
+Once the displacements of the slave and master nodes have been updated, the nodal 
+
+velocities of the slave and master nodes are updated using (19). 
+The contact status at time n α+  has to be verified, checking out if the contact is still 
+
+active or not. The contact will be still active if the contact normal force ,:nN s n nf α α α+ + += ⋅f n  
+satisfies the following condition: 
+ 
+ ( ), , 1 , 1: , 0nN s n n s s n gs n nf α α α α+ + + + + += ⋅ = ⋅ ≥f n g u u n  (46) 
+ 
+
+Otherwise, contact is lost and the contact status for the slave node s  has to be 
+deactivated for the next time step. 
+ 
+
+4.3.2 Frictionless contact case 
+
+Once contact penetration is detected, the position of the slave node s  is subjected to the 
+constraints arising from the frictionless contact condition. Note that, contrary to the full stick 
+frictional case, for the frictionless case, the isoparametric coordinates of the closest-point-
+projection are not constant in time. For the sake of concreteness, only 3D dynamic frictionless 
+contact cases will be presented here, being straightforward to particularize the formulation for 
+2D cases.  
+
+A discrete linear momentum, angular momentum and energy conserving algorithm is 
+obtained, imposing that the normal component of the slave node at the mid-point configuration 
+has to be equal to the normal component of the velocity of its closest-point-projection at the 
+mid-point configuration, yielding,  
+ 
+ ( ), 1/2 1/2 1/2 , 1/2 1/2 1/2 , 1/2 1/21
+
+mnodn
+s n n i n mi n n n m n ni
+
+N+ + + + + + + +=⋅ = ⋅ = ⋅∑v n v n N v nξ  (47) 
+ 
+where 1/2n+n  is the outward unit normal to the closest-point-projection at the configuration at 
+time 1/ 2n + . 
+ Using a mid-point time integration scheme, the normal velocity constraint given by (46) 
+yields the following kinematic constraint,  
+ 
+
+
+
+16  C. Agelet de Saracibar, D. Di Capua  
+    
+
+  
+
+ ( )( ), 1 1/2 , 1/2 , 1 , 1/2s n n s n n m n m n n+ + + + +⋅ = + − ⋅x n x N x x n  (48) 
+ 
+
+Then, the mid-point velocity of the slave node s  at time 1/ 2n + , and the current 
+placement and current increment of displacement of the slave node s  at time 1n +  can be 
+written as, 
+ 
+
+ ( )
+, 1/2 1/2 , 1/2 1/2 , 1/2 1/2 , 1/2
+
+, 1 , 1/2 , 1 , 1 , 1/2 1 , 1/2
+
+, 1 1/2 , 1 1 , 1/2 1 , 1/2
+
+s n n m n n n n n
+
+s n s n n m n m n n n n n
+
+s n n m n n n n n
+
+ξ η
+
+ξ η
+
+ξ η
+
+ξ η
+
+ξ η
+
+ξ η
+
++ + + + + + +
+
++ + + + + + +
+
++ + + + + + +
+
+= + +
+
+= + − + ∆ + ∆
+
+∆ = ∆ + ∆ + ∆
+
+v N v
+
+x x N x x
+
+u N u
+
+
+
+τ τ
+
+τ τ
+
+τ τ
+
+ (49) 
+
+ 
+where ( )1 1,n nξ η+ +∆ ∆  are the contravariant components of the isoparametric coordinates of the 
+incremental slip of the closest-point-projection on the covariant basis vectors at the mid-point 
+configuration ( ), 1/2 , 1/2,n nξ η+ +τ τ . Note that the vectors defining the covariant tangent basis do 
+not need to be neither unit vectors, nor orthogonal. 
+ 
+4.3.2.1 Virtual contact work 
+
+Applying the virtual work principle to the discrete contact force vectors ,s n α+f  and ,m n α+f  reads, 
+ 
+ , , 0s s n m m nα αδ δ+ +⋅ + ⋅ =u f u f  (50) 
+ 
+where sδu  and mδu  are virtual displacements of the slave node and master element nodes, 
+respectively, such that, 
+ 
+ 1/2 , 1/2 1 , 1/2 1 1/2 1/2 1s n m n n n n n m n nξ ηδ δ δξ δη δ δ+ + + + + + + += + + = +u N u N u Tτ τ ξ  (51) 
+ 
+where 1nδ +ξ  and  1/2n+T  have been defined, conveniently expanded, as, 
+ 
+ 1 1 1 1/2 , 1/2 , 1/2, ,0 , , ,
+
+T
+
+n n n n n nξ ηδ δξ δη+ + + + + +   = =   T 0ξ τ τ  (52) 
+ 
+ Substituting (50) into (49), and taking into account that for a frictionless case, 
+
+, 1/2 , 0n s nξ α+ +⋅ =fτ  and , 1/2 , 0n s nη α+ +⋅ =fτ , yields, 
+ 
+ 1/2 , , 0
+
+T
+m n s n m m nα αδ δ+ + +⋅ + ⋅ =u N f u f  (53) 
+
+ 
+and the discrete contact force vectors ,s n α+f  and ,m n α+f  have to satisfy the following 
+expressions, 
+ 
+
+ 
+, 1/2 ,
+
+1/2 ,
+
+T
+m n n s n
+
+T
+n s n
+
+α α
+
+α
+
++ + +
+
++ +
+
+= −
+
+=
+
+f N f
+
+0 T f
+ (54) 
+
+ 
+Using (33)1 and (53) and, the discrete contact force vectors acting on a slave node s  
+
+and on the master nodes m  at time n α+  can be written as, 
+
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  17 
+ 
+
+ 
+
+ 
+
+( )
+( )
+
+( )
+
+, , 1 , 1
+
+, 1/2 , 1/2 , 1 , 1
+
+1/2 , 1/2 , 1 , 1
+
+,
+
+,
+
+,
+
+s n s s n gs n
+
+T T
+m n n s n n s s n gs n
+
+T T
+n s n n s s n gs n
+
+α
+
+α α
+
+α
+
++ + +
+
++ + + + + +
+
++ + + + +
+
+=
+
+= − = −
+
+= =
+
+f g u u
+
+f N f N g u u
+
+0 T f T g u u
+
+ (55) 
+
+ 
+yielding the following modified residuals, 
+ 
+
+      
+
+( ) ( )
+( ) ( )
+
+( ) ( )
+( ) ( )
+
+, 1 , 1 1/2 , 1 , 1
+
+, 1 , 1 1, 1 , 1 , 1 1, 1
+
+1 , 1 1, 1 1 , 1 1, 1
+
+, 1 , 1 , 1 , 1 , 1 , 1 1/2 ,
+
+, : ,
+
+, , : , ,
+
+, : ,
+
+, , , : ,
+
+T
+s s n gs n n s s n gs n
+
+gs s n gs n g n gs s n gs n g n
+
+g gs n g n g gs n g n
+
+T
+m m n gm n s n gs n m m n gm n n s s n
+
++ + + + +
+
++ + + + + +
+
++ + + +
+
++ + + + + + +
+
+= =
+
+= =
+
+= =
+
+= +
+
+r u u T g u u 0
+
+r u u u g u u u 0
+
+r u u g u u 0
+
+r u u u u g u u N g u( )
+( ) ( )
+
+( ) ( )
+
+1 , 1
+
+, 1 , 1 2, 1 , 1 , 1 2, 1
+
+2 , 1 2, 1 2 , 1 2, 1
+
+,
+
+, , : , ,
+
+, : ,
+
+gs n
+
+gm m n gm n g n gm m n gm n g n
+
+g gm n g n g gm n g n
+
++ +
+
++ + + + + +
+
++ + + +
+
+=
+
+= =
+
+= =
+
+u 0
+
+r u u u g u u u 0
+
+r u u g u u 0
+
+ (56) 
+
+ 
+Using an incremental iterative Newton-Raphson solution scheme, taking into account 
+
+the variation of the closest-point-projection, the linearization of the modified residuals in the 
+above expressions takes the form: 
+ 
+
+       
+
+( ) ( )
+( ) ( )
+( )
+
+( )
+
+1 1
+, 1 , 1 1/2 , 1 , 1
+
+1/2 , 1 , 1 , 1 1/2 , 1 , 1 , 1
+
+1/2 , 1 , 1
+
+1 1 1
+, 1 , 1 1, 1 , 1
+
+, : ,
+
+, ,
+
+,
+
+, , :
+
+k k T k k k
+s s n gs n n s s n gs n
+
+T k k k k T k k k k
+n s s n gs n s n n s s n gs n gs n
+
+T k k k
+n s s n gs n
+
+k k k
+gs s n gs n g n gs s n
+
+D D
+
++ +
++ + + + +
+
++ + + + + + + +
+
++ + +
+
++ + +
++ + + +
+
+=
+
++ ⋅∆ + ⋅∆
+
++ ∆ =
+
+=
+
+r u u T g u u
+
+T g u u u T g u u u
+
+T g u u 0
+
+r u u u g u( )
+( ) ( )
+( )
+
+( )
+
+, 1 1, 1
+
+, 1 , 1 1, 1 , 1 , 1 , 1 1, 1 , 1
+
+, 1 , 1 1, 1 1, 1
+
+1 1 1 1
+, 1 , 1 , 1 , 1 , 1 ,
+
+, ,
+
+, , , ,
+
+, ,
+
+, , , : ,
+
+k k k
+gs n g n
+
+k k k k k k k k
+gs s n gs n g n s n gs s n gs n g n gs n
+
+k k k k
+gs s n gs n g n g n
+
+k k k k k
+m m n gm n s n gs n m m n gm n
+
+D D
+
+D
+
++ +
+
++ + + + + + + +
+
++ + + +
+
++ + + +
++ + + + +
+
++ ⋅∆ + ⋅∆
+
++ ⋅∆ =
+
+=
+
+u u
+
+g u u u u g u u u u
+
+g u u u u 0
+
+r u u u u g u u( ) ( )
+( ) ( )
+
+( ) ( )
+( )
+
+1 1/2 , 1 , 1
+
+, 1 , 1 , 1 , 1 , 1 , 1
+
+1/2 , 1 , 1 , 1 1/2 , 1 , 1 , 1
+
+1/2 , 1 , 1
+
+,
+
+,
+
+, ,
+
+, ,
+
+,
+
+k T k k k
+n s s n gs n
+
+k k k k k k
+m m n gm n m n m m n gm n gm n
+
+T k k k k T k k k k
+n s s n gs n s n n s s n gs n gs n
+
+T k k k
+n s s n gs n
+
+gm m
+
+D D
+
+D D
+
++ + + +
+
++ + + + + +
+
++ + + + + + + +
+
++ + +
+
++
+
++ ⋅∆ + ⋅∆
+
++ ⋅∆ + ⋅∆
+
++ ∆ =
+
+N g u u
+
+g u u u g u u u
+
+N g u u u N g u u u
+
+N g u u 0
+
+r u( ) ( )
+( ) ( )
+( )
+
+1 1 1
+1 , 1 2, 1 , 1 , 1 2, 1
+
+, 1 , 1 2, 1 , 1 , 1 , 1 2, 1 , 1
+
+, 1 , 1 2, 1 2, 1
+
+, , : , ,
+
+, , , ,
+
+, ,
+
+k k k k k k
+n gm n g n gm m n gm n g n
+
+k k k k k k k k
+gm m n gm n g n m n gm m n gm n g n gm n
+
+k k k k
+gm m n gm n g n g n
+
+D D
+
+D
+
++ + +
++ + + + + +
+
++ + + + + + + +
+
++ + + +
+
+=
+
++ ⋅∆ + ⋅∆
+
++ ⋅∆ =
+
+u u g u u u
+
+g u u u u g u u u u
+
+g u u u u 0
+ (57) 
+
+ 
+The resulting global linearized system of equations for the frictionless contact case can 
+
+be written in matrix form as, 
+
+
+
+18  C. Agelet de Saracibar, D. Di Capua  
+    
+
+  
+
+         
+
+, 001 , ,
+
+, , , 1 ,
+
+1, 1, 1 1
+
+, , , , ,
+
+, , , 2
+
+2, 2, 2 21
+
+kT T T T
+s s s gs s s
+
+gs s gs gs gs g gs s gs
+
+g gs g g g
+T T T
+
+s s s gs m m s s m gm m
+
+gm m gm gm gm g gm
+
+g gm g g gn
+
+β
+
++
+
+  + + + ∆
+  
+
+∆  
+  ∆
+  
+
++ + ∆  
+  ∆
+ 
+
+∆   
+
+T K T A 1 T K 0 T K N A 0 0
+K T K K K N 0 0 u
+
+0 K K 0 0 0 u
+N K T A N K 0 K N K N K 0 u
+
+0 0 0 K K K u
+0 0 0 0 K K u
+
+ξ
+
+1
+
+21 1
+
+k kT
+s
+
+gs
+
+g
+T
+
+m s
+
+gm
+
+gn n+ +
+
+  
+  
+  
+  
+
+= −  
++  
+
+   
+   
+     
+
+T g
+g
+g
+
+g N g
+g
+g
+
+ 
+
+  (58) 
+ 
+where note that matrices , , ,T A A N  have to be evaluated at the configuration 1/ 2n + , as 
+indicated in (57), and 0011  is a dim dimn n× matrix with zero entries everywhere, except a 1 entry 
+in the diagonal position ( )dim dim,n n . The matrix 1 001knβ + 1  is added in order to avoid the ill-
+conditioning (zero terms in the main diagonal) of the system, where the scalar parameter 1
+
+k
+nβ +  is 
+
+defined as, 
+ 
+
+         1 , , 1 , , 1
+dim dim
+
+1 1
+: trk k kn s s n s s nn n
+
+β + + + = =  1 K K  (59) 
+
+ 
+where [ ]tr ⋅  denotes the trace operator and dimn  is the number of dimensions of the problem. 
+Matrices ,A A  arise from the variation of the covariant tangent basis vectors ,
+
+k
+nξ α+τ  and ,
+
+k
+nη α+τ , 
+
+and the variation of kn α+N  in (57), respectively. For convenience, those variations are given in 
+the Appendix 1. Note that for linear elements the condition =A 0  holds. 
+ Note that, following this procedure, the number of equations of the system is kept 
+constant. Once convergence has been achieved, the increment of displacements , 1s n+∆u  is 
+computed in terms of , 1m n+∆u  and 1n+∆ξ  using (49)3. 
+ 
+Remark 4. Note that, using the formulation presented here, block-symmetry of the resulting 
+global tangent stiffness matrix for the frictionless case is also maintained, in contrast to what 
+happened in the formulation shown in Di Capua & Agelet de Saracibar (2015) [9]. 
+ 
+4.3.3 Update of slave and master displacements and contact status 
+
+The displacements of the master nodes at the iteration 1k +  of time 1n +  are updated according 
+to the following expression, 
+ 
+ 1, 1 , 1 , 1
+
+k k k
+m n m n m n
+
++
++ + += + ∆u u u  (60) 
+
+ 
+The displacements of the slave nodes at the iteration 1k +  of time 1n +  are updated 
+
+according to the following procedure: 
+
+Step 1. Compute the current displacements and coordinates of the slave node at the 
+iteration 1k +  of time 1n + , using the isoparametric coordinates 1/2
+
+k
+n+ξ  of the closest-point-
+
+projection at the iteration k , 
+ 
+
+ 
+1
+
+, 1 , 1 1/2 , 1 1 , 1/2 1 , 1/2
+
+1 1
+, 1 , 1
+
+k k k k k k k k
+s n s n n m n n n n n
+
+k k
+s n s s n
+
+ξ ηξ η
++
+
++ + + + + + + +
+
++ +
++ +
+
+= + ∆ + ∆ + ∆
+
+= +
+
+u u N u
+
+x X u
+
+τ τ
+ (61) 
+
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  19 
+ 
+
+ 
+Step 2. Update the isoparametric coordinates 11/2
+
+k
+n
+
++
++ξ  of the closest-point-projection of the 
+
+slave node at the iteration 1k +  using the coordinates 1, 1/2
+k
+s n
+
++
++x  of the slave node defined as, 
+
+ 
+
+ ( )1 1, 1/2 , 1 ,
+1
+2
+
+k k
+s n s n s n
+
++ +
++ += +x x x  (62) 
+
+ 
+Step 3. Update the current displacements of the slave node at the iteration 1k +  of time 
+
+1n +  according to the following expression:  
+ 
+ 1 1 1 1, 1 , 1 , 1/2 1/2
+
+k k k k
+s n s n N n n sg
+
++ + + +
++ + + += − ∆ −u x n X  (63) 
+
+ 
+where,  
+ 
+ ( )( )1 1 1 1 1, 1/2 , 1 , 1/2 , 1 , 1/2k k k k kN n s n s n n m n m n ng + + + + ++ + + + +∆ = − − − ⋅x x N x x n  (64) 
+ 
+such that, it is ensured that the discrete frictionless contact kinematic constraint given by (48) 
+and (49) is satisfied, and the discrete linear momentum, angular momentum and energy are 
+conserved. 
+
+Once the displacements of the slave and master nodes have been updated, the nodal 
+velocities of the slave and master nodes are updated using (19). 
+
+Once the displacements have been updated, the contact status has to be checked out in 
+order to decide if it has to be keep as active or if it has to be deactivated for the next step. The 
+contact will be still active if the contact normal force ,:nN s n nf α α α+ + += ⋅f n  satisfies the following 
+condition: 
+ 
+ ( ), , 1 , 1: , 0nN s n n s s n gs n nf α α α α+ + + + + += ⋅ = ⋅ ≥f n g u u n  (65) 
+ 
+
+Otherwise, contact is lost and the contact status for the slave node s  has to be 
+deactivated for the next time step. 
+ 
+ 
+5 Conservation properties of the proposed algorithm for the dynamic contact case 
+ 
+5.1 Full stick frictional contact case 
+
+The proposed contact algorithm exhibits the following conservation properties for the full stick 
+frictional contact case: conservation of the discrete linear momentum for a homogeneous 
+Neumann problem, and conservation of the discrete total energy for constant gravitational 
+loading. It must be pointed out that for the full stick frictional contact case the discrete angular 
+momentum is not conserved. 
+ 
+5.1.1 Conservation of the discrete linear momentum 
+
+Assuming a homogeneous Neumann problem, characterized by no imposed boundary 
+displacements and zero external forces, such that, 
+ 
+
+
+
+20  C. Agelet de Saracibar, D. Di Capua  
+    
+
+  
+
+ ( ), 1/2
+ext i
+A n+ =f 0  (66) 
+
+ 
+the following expression holds for the discrete linear momentum, 
+ 
+
+              
+
+( )
+( )
+
+( )( ) ( )
+
+( )
+
+( )
+
+2 ( ) ( ) ( )
+, 1 , , 1 ,1 1
+
+2 ( )int ( )
+, 1/2 , 1/2 , 1/21 1 1 1
+
+( )
+, 1 , 11 1
+
+1 ,
+
+i
+node
+
+i
+node
+
+n i i i
+h n h n AB B n B ni A
+
+n snod mnod si
+A n s n mi ni A s i
+
+snod mnod s
+i s s n gs ns i
+
+t t
+
+t N
+
++ += =
+
++ + += = = =
+
++ += =
+
+− = −
+
+= −∆ + ∆ +
+
+= ∆ −
+
+=
+
+∑ ∑
+∑ ∑ ∑ ∑
+
+∑ ∑
+
+L L M V V
+
+f f f
+
+g u u
+
+0
+
+ξ
+
+ (67) 
+
+ 
+where Einstein’s notation has been assumed for repeated index B and the following expressions 
+have been used, 
+ 
+
+ 
+( )2 int ( )
+
+, 1/21 1
+
+i
+noden i
+
+A ni A += =
+=∑ ∑ f 0  (68) 
+
+ ( ) ( ) ( ), 1/2 , 1 , 1 , 1/2 , 1 , 1, , ,s n s s n gs n mi n i s s n gs nN+ + + + + += = −f g u u f g u uξ  (69) 
+ 
+
+Then, for a homogeneous Neumann problem, characterized by no imposed boundary 
+displacements and zero external loading, the discrete linear momentum is conserved, yielding, 
+ 
+ , 1 ,h n h n+ =L L  (70) 
+ 
+ 
+5.1.2 Conservation of the discrete total energy 
+
+Assuming no imposed boundary displacements and (constant) gravitational forces as only 
+external loading, such that, 
+ 
+ ( ) ( ) ( ), , 1/2 , 1
+
+ext i ext i ext i
+A n A n A n cte+ += = =f f f  (71) 
+
+ 
+the following expressions hold for the discrete external potential energy, discrete elastic strain 
+energy and discrete kinetic energy, 
+ 
+
+ 
+
+( )
+( )
+
+2 ( ) ( )
+, 1 , , 1/2 , 11
+
+2 int ( ) ( )
+, 1 , , 1/2 , 11
+
+2 ( ) ( ) ( ) ( ) ( ) ( )
+, 1 , , 1 , 1 , ,1
+
+2 ( ) ( ) ( ) ( )
+, 1/2 , 1 ,1
+
+1
+2
+
+ext ext ext i i
+h n h n A n A ni
+
+i i
+h n h n A n A ni
+
+i i i i i i
+h n h n A n AB B n A n AB B ni
+
+i i i i
+A n AB B n B ni
+
+W W
+
+K K
+
++ + +=
+
++ + +=
+
++ + +=
+
++ +=
+
+Π − Π = − ⋅∆
+
+− = ⋅∆
+
+− = ⋅ − ⋅
+
+= ⋅ −
+
+=
+
+∑
+∑
+
+∑
+
+∑
+
+f u
+
+f u
+
+V M V V M V
+
+V M V V
+
+f
+
+( )
+( ) ( )
+
+2 2( ) ( ) int ( ) ( )
+, 1/2 , 1 , 1/2 , 11 1
+
+, 1/2 , 1 , 1/2 , 11
+
+, 1 , , 1 ,
+
+ext i i i i
+A n A n A n A ni i
+
+snod
+s n s n m n m ns
+
+ext ext
+h n h n h n h nW W
+
++ + + += =
+
++ + + +=
+
++ +
+
+⋅∆ − ⋅∆
+
++ ⋅∆ + ⋅∆
+
+= − Π − Π − −
+
+∑ ∑
+∑
+
+u f u
+
+f u f u
+
+ (72) 
+
+ 
+
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  21 
+ 
+
+where Einstein’s notation has been assumed for repeated indices A and B and the following 
+expression has been used, 
+ 
+
+ 
+( )
+
+( ) ( )( )
+, 1/2 , 1 , 1/2 , 11
+
+, 1 , 1 , 1 , 1 , 1 , 11
+
+0
+
+, ,
+
+snod
+s n s n m n m ns
+
+snod T
+s s n gs n m n s s n gs n m ns
+
++ + + +=
+
++ + + + + +=
+
+= ⋅∆ + ⋅∆
+
+= ⋅ ∆ − ⋅∆
+
+∑
+∑
+
+f u f u
+
+g u u N u N g u u u
+ (73) 
+
+ 
+Then, for no imposed boundary displacements and constant gravitational forces as only 
+
+external loading, the discrete total energy is conserved, yielding, 
+ 
+ , 1 , 1 , 1 , 1 , , , ,
+
+ext ext
+h n h n h n h n h n h n h n h nE K W K W E+ + + += + + Π = + + Π =  (74) 
+
+ 
+ 
+5.2 Frictionless contact case 
+
+The proposed contact algorithm exhibits the following conservation properties for the 
+frictionless contact case: conservation of the discrete linear momentum for a homogeneous 
+Neumann problem, conservation of the discrete angular momentum for a homogeneous 
+Neumann problem, and conservation of the discrete total energy for constant gravitational 
+forces as only external loading. 
+ 
+5.2.1 Conservation of the discrete linear momentum 
+
+Assuming a homogeneous Neumann problem, characterized by no imposed boundary 
+displacements and zero external loading, such that, 
+ 
+ ( ), 1/2
+
+ext i
+A n+ =f 0  (75) 
+
+ 
+and following a similar development to the one used for the full stick frictional case, it can be 
+shown that the discrete linear momentum is conserved, yielding, 
+ 
+ , 1 ,h n h n+ =L L  (76) 
+ 
+ 
+5.2.2 Conservation of the discrete angular momentum 
+
+Assuming a homogeneous Neumann problem, characterized by no imposed boundary 
+displacements and zero external loading, such that, 
+ 
+ ( ), 1/2
+
+ext i
+A n+ =f 0  (77) 
+
+ 
+the following expression holds for the discrete angular momentum, 
+ 
+
+
+
+22  C. Agelet de Saracibar, D. Di Capua  
+    
+
+  
+
+( ) ( )
+
+2 2( ) ( ) ( ) ( ) ( ) ( )
+, 1 , , 1 , 1 , ,1 1
+
+2 2( ) ( ) ( ) ( ) ( ) ( ) ( ) ( )
+, 1/2 , 1 , , 1 , , 1/21 1
+
+2 ( ) int ( )
+, 1/2 , 1/21
+
+, 1/2
+
+i i i i i i
+h n h n A n AB B n A n AB B ni i
+
+i i i i i i i i
+A n AB B n B n A n A n AB B ni i
+
+i i
+A n A ni
+
+s n s
+
+t
+
+t
+
++ + += =
+
++ + + += =
+
++ +=
+
++
+
+− = × − ×
+
+= × − − − ×
+
+= −∆ ×
+
++∆ ×
+
+∑ ∑
+∑ ∑
+
+∑
+
+J J x M V x M V
+
+x M V V x x M V
+
+x f
+
+x f( )
+( )( ) 1/2
+
+1/2 1/2
+
+( )
+, 1/2 , 1/2 , 1/21 1
+
+( )
+, 1/2 1/2 , 1/2 1/21 1
+
+1/2 1/21
+
+n
+
+n n
+
+snod mnod s
+n mi n mi ns i
+
+snod mnod s
+s n i n mi n N ns i
+
+snod
+N N n ns
+
+t N f
+
+t f g
+
++
+
++ +
+
++ + += =
+
++ + + += =
+
++ +=
+
++ ×
+
+= −∆ − ×
+
+= −∆ ×
+
+=
+
+∑ ∑
+
+∑ ∑
+∑
+
+x f
+
+x x n
+
+n n
+
+0
+
+ξ
+
+ (78) 
+
+ 
+where the following expressions have been used, 
+ 
+ ( )2 ( ) ( ) ( ) ( ), 1 , , 1/21 i i i iA n A n AB B ni + += − × =∑ x x M V 0  (79) 
+
+( )
+( )
+
+1/2 1/2 1/2
+
+1/2
+
+, 1/2 1/2 , 1/2 1/2 1/2 1/2 1/2
+
+( )
+1/2 , 1/2 1/2 , 1/2 , 1/2 1/2 , 1/21
+
+,
+n n n
+
+n
+
+s n N n mi n i n N n n N n
+
+mnod s
+N n s n i n mi n s n n m ni
+
+f N f f
+
+g N
++ + +
+
++
+
++ + + + + + +
+
++ + + + + + +=
+
+= = − = −
+
+= − = −∑
+f n f n N n
+
+n x x x N x
+
+ξ
+
+ξ
+ (80) 
+
+ 
+where 
+
+ 
+ ( )
+
+1/2 , 1/2 1/2 , 1/2 1/2nN s n n m n n
+g
+
++ + + + +
+= − ⋅x N x n  (81) 
+
+ 
+and Einstein’s notation has been assumed for repeated indices A and B. 
+
+Then, for a homogeneous Neumann problem, characterized by no imposed boundary 
+displacements and zero external loading, the discrete angular momentum is conserved, yielding, 
+ 
+ , 1 ,h n h n+ =J J  (82) 
+ 
+ 
+5.2.3 Conservation of the discrete total energy 
+
+Assuming no imposed boundary displacements and (constant) gravitational force as only 
+external loading, i.e. such that, 
+ 
+ ( ) ( ) ( ), , 1/2 , 1
+
+ext i ext i ext i
+A n A n A n cte+ += = =f f f  (83) 
+
+ 
+the following expressions hold for the discrete external potential energy, discrete elastic strain 
+energy and discrete kinetic energy, 
+ 
+
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  23 
+ 
+
+ 
+
+( )
+( )
+
+2 ( ) ( )
+, 1 , , 1/2 , 11
+
+2 int ( ) ( )
+, 1 , , 1/2 , 11
+
+2 ( ) ( ) ( ) ( ) ( ) ( )
+, 1 , , 1 , 1 , ,1
+
+2 ( ) ( ) ( ) ( )
+, 1/2 , 1 ,1
+
+1
+2
+
+ext ext ext i i
+h n h n A n A ni
+
+i i
+h n h n A n A ni
+
+i i i i i i
+h n h n A n AB B n A n AB B ni
+
+i i i i
+A n AB B n B ni
+
+W W
+
+K K
+
++ + +=
+
++ + +=
+
++ + +=
+
++ +=
+
+Π − Π = − ⋅∆
+
+− = ⋅∆
+
+− = ⋅ − ⋅
+
+= ⋅ −
+
+=
+
+∑
+∑
+
+∑
+
+∑
+
+f u
+
+f u
+
+V M V V M V
+
+V M V V
+
+f
+
+( )
+( ) ( )
+
+2 2( ) ( ) int ( ) ( )
+, 1/2 , 1 , 1/2 , 11 1
+
+, 1/2 , 1 , 1/2 , 11
+
+, 1 , , 1 ,
+
+ext i i i i
+A n A n A n A ni i
+
+snod
+s n s n m n m ns
+
+ext ext
+h n h n h n h nW W
+
++ + + += =
+
++ + + +=
+
++ +
+
+⋅∆ − ⋅∆
+
++ ⋅∆ + ⋅∆
+
+= − Π − Π − −
+
+∑ ∑
+∑
+
+u f u
+
+f u f u
+
+ (84) 
+
+ 
+where Einstein’s notation has been assumed for repeated indices A and B and the following 
+expression has been used, 
+ 
+
+ 
+( )
+( )
+
+1/2
+
+, 1/2 , 1 , 1/2 , 11
+
+, 1 1/2 , 1 1/21
+
+0
+
+n
+
+snod
+s n s n m n m ns
+
+snod
+s n n m n N ns
+
+f
++
+
++ + + +=
+
++ + + +=
+
+= ⋅∆ + ⋅∆
+
+= ∆ − ∆ ⋅
+
+∑
+∑
+
+f u f u
+
+u N u n
+ (85) 
+
+ 
+Then, for no imposed prescribed displacements and constant gravitational force as only 
+
+external loading, the discrete total energy is conserved, yielding, 
+ 
+ , 1 , 1 , 1 , 1 , , , ,
+
+ext ext
+h n h n h n h n h n h n h n h nE K W K W E+ + + += + + Π = + + Π =  (86) 
+
+ 
+ 
+6 Numerical examples 
+
+In this section a selection of representative dynamic contact numerical examples, that illustrate 
+the performance and conservation properties inherited by the contact formulation proposed, is 
+shown. Two frictionless and one full stick friction dynamic contact numerical examples have 
+been chosen. 
+ The first example deals with the numerical simulation of the dynamic impact of three 
+aligned quasi-rigid cylinders sliding on a frictionless rigid surface. Here the goal is to show the 
+conservation of the discrete total linear momentum, discrete total angular momentum and 
+discrete total energy exhibited by the contact algorithm proposed. 
+ The second example deals with the numerical simulation of the dynamic impact of two 
+elastic hollow cylinders sliding on a frictionless rigid surface. Here, once again, the goal is to 
+show that the proposed formulation exhibits the conservation of the discrete total linear 
+momentum, discrete total angular momentum and discrete total energy.  
+
+Finally, the last example deals with the numerical simulation of an elastic ball bouncing 
+on a rigid surface. Full stick friction conditions are considered here. Now the goal is to show 
+that the proposed contact formulation exhibits the conservation of the discrete total energy. 
+ The numerical simulations have been performed using an enhanced version of the finite 
+element program RamSeries [33] developed by COMPASS, a spin-off company of CIMNE. 
+ 
+
+
+
+24  C. Agelet de Saracibar, D. Di Capua  
+    
+
+  
+
+ 
+6.1 Impact of three aligned quasi-rigid cylinders sliding on a frictionless rigid surface 
+
+This example leads with the impact of three aligned quasi-rigid cylinders sliding on a rigid 
+surface. Frictionless contact conditions between each one of the cylinders and between each one 
+of the cyinders and the sliding surface have been considered. The radius of the cylinders is 0.1 
+m. Elastic Saint-Venant material models with Young’s elastic modulus E=2.1E+09 Pa and 
+Poisson’s coefficient ν=0.3, have been considered. The mass density of the material is 2500 
+Kg/m3. Cylinder 1 has an initial velocity of 1.0 m/sec in the x-direction. 
+
+The cylinders have been discretized using standard Galerkin P1 linear displacement 
+tetrahedral finite elements. Figure 2 shows the geometry, initial conditions and finite element 
+meshes of the three cylinders. Time increments of 0.002 sec have been considered.  
+ 
+
+ 
+ 
+
+Figure 2. Impact of three aligned quasi-rigid cylinders sliding on a frictionless rigid surface. Geometry, 
+mesh and initial conditions  
+
+ 
+ 
+
+Figure 3 shows the evolution of the positions of the three cylinders at different time 
+steps. It can be shown that when the first cylinders impact on the second one, the first one stops 
+and transfers its full velocity to the second one. This effect is repeated when the second cylinder 
+impacts the third one. This phenomen, which can be usually observed in the pool game when 
+aligned balls impact, is due to the conservation of the total linear momentum and total energy 
+conservation.The proposed contact model is able to conserve the total linear momentum, total 
+angular momentum and the total energy, as it is shown in Figures 4, 5 and 6, respectively. 
+ 
+
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  25 
+ 
+
+ 
+ 
+
+Figure 3. Impact of three aligned quasi-rigid cylinders sliding on a frictionless rigid surface. 
+Configurations at different time steps. 
+
+ 
+ 
+
+
+
+26  C. Agelet de Saracibar, D. Di Capua  
+    
+
+  
+
+ 
+
+Figure 4. Impact of three aligned quasi-rigid cylinders sliding on a frictionless rigid surface. Linear 
+momentum evolution. 
+
+ 
+
+ 
+
+Figure 5. Impact of three aligned quasi-rigid cylinders sliding on a frictionless rigid surface. Angular 
+momentum evolution.   
+
+ 
+
+-0,05
+
+0
+
+0,05
+
+0,1
+
+0,15
+
+0,2
+
+0,25
+
+0,3
+
+0,35
+
+0,4
+
+0,45
+
+0 0,2 0,4 0,6 0,8 1 1,2
+
+Li
+ne
+
+ar
+ m
+
+om
+en
+
+tu
+m
+
+ [k
+g·
+
+m
+·s
+
+-1
+] 
+
+Time [sec] 
+
+Lx
+
+Ly
+
+0
+
+0,02
+
+0,04
+
+0,06
+
+0,08
+
+0,1
+
+0,12
+
+0,14
+
+0,16
+
+0,18
+
+0 0,2 0,4 0,6 0,8 1 1,2
+
+A
+ng
+
+ul
+ar
+
+ M
+om
+
+en
+tu
+
+m
+ [k
+
+g·
+m
+
+2 /
+s]
+
+ 
+
+Time [sec] 
+
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  27 
+ 
+
+ 
+ 
+
+Figure 6. Impact of three aligned quasi-rigid cylinders sliding on a frictionless rigid surface. Evolution of 
+the different energies.  
+
+ 
+ 
+6.2 Impact of two elastic hollow cylinders sliding on a frictionless rigid surface  
+
+This example leads with the impact of two elastic hollow cylinders sliding on a rigid surface. 
+Frictionless contact conditions between the three cylinders and between each one of the 
+cyinders and the sliding surface have been considered. The radius of the cylinders is 0.1 m. 
+Elastic Saint-Venant material models with Young’s elastic modulus E=2.1E+05 Pa and 
+Poisson’s coefficient ν=0.3, have been considered. The mass density of the material is 2500 
+Kg/m3. Cylinder 1 has an initial velocity of 1.0 m/sec in the x-direction. 
+
+The cylinders have been discretized using standard Galerkin P1 linear displacement 
+tetrahedral finite elements. Figure 7 shows the geometry, initial conditions and finite element 
+meshes of the two cylinders. Time increments of 2.0e-4 sec have been considered. 
+
+ 
+
+ 
+Figure 7. Impact of two aligned elastic hollow cylinders sliding on a frictionless rigid surface. Geometry, 
+
+mesh and initial conditions.  
+
+-0,02
+0,00
+0,02
+0,04
+0,06
+0,08
+0,10
+0,12
+0,14
+0,16
+0,18
+0,20
+0,22
+
+0 0,1 0,2 0,3 0,4 0,5 0,6 0,7 0,8 0,9 1 1,1 1,2
+
+E
+ne
+
+rg
+y 
+
+[J
+] 
+
+Time [sec] 
+
+Total energy
+
+Kinetic energy
+
+Elastic energy
+
+
+
+28  C. Agelet de Saracibar, D. Di Capua  
+    
+
+  
+
+ 
+ 
+
+Figure 8. Impact of two aligned elastic hollow cylinders sliding on a frictionless rigid surface. 
+Configurations at different time steps. 
+
+ 
+ 
+
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  29 
+ 
+
+Figure 8 shows the evolution of the positions of the three cylinders at different time 
+steps. Despite the fact that frictionless conditions have been considered, Figure 8 shows that the 
+cylinders rotate around their axes. This is an undesirable effect due to the finite element 
+discretization of the cylinders. Unless an extremely fine mesh is used, the unit normal to the 
+master surface at the closest-point-projection does not pass through the axis of the cylinder, 
+leading to a moment when the cylinders come into contact. A similar effect can be found in the 
+results shown in [3]. Despite those undesirable effects, the proposed contact model is able to 
+conserve the total linear momentum, total angular momentum and the total energy, as it is 
+shown on Figures 9, 10 and 11, respectively. 
+ 
+
+ 
+
+ 
+ 
+
+Figure 9. Impact of two aligned elastic hollow cylinders sliding on a frictionless rigid surface. Linear 
+momentum evolution 
+
+ 
+ 
+
+ 
+ 
+Figure 10. Impact of two aligned elastic hollow cylinders sliding on a frictionless rigid surface. Angular 
+
+momentum evolution 
+ 
+
+-0,05
+
+0,00
+
+0,05
+
+0,10
+
+0,15
+
+0,20
+
+0,25
+
+0,30
+
+0,35
+
+0,40
+
+0,00 0,03 0,05 0,08 0,10 0,13 0,15 0,18 0,20
+
+Li
+ne
+
+ar
+ m
+
+om
+en
+
+tu
+m
+
+ [k
+g·
+
+m
+·s
+
+-1
+] 
+
+Time [sec] 
+
+Lx
+
+Ly
+
+0,00
+
+0,01
+
+0,01
+
+0,02
+
+0,02
+
+0,03
+
+0,03
+
+0,04
+
+0,04
+
+0,05
+
+0,05
+
+0 0,02 0,04 0,06 0,08 0,1 0,12 0,14 0,16 0,18 0,2
+
+A
+ng
+
+ul
+ar
+
+ M
+om
+
+en
+tu
+
+m
+ [k
+
+g·
+m
+
+2 /
+s]
+
+ 
+
+Time [sec] 
+
+
+
+30  C. Agelet de Saracibar, D. Di Capua  
+    
+
+  
+
+ 
+ 
+Figure 11. Impact of two aligned elastic hollow cylinders sliding on a frictionless rigid surface. Evolution 
+
+of the different energies. 
+ 
+ 
+ 
+6.3 Elastic ball bouncing on a rigid rough surface 
+
+This example deals with the numerical simulation of an elastic ball bouncing on a rigid surface. 
+The ball is a spherical crown with internal radius of 0.20 m and external radius of 0.40 m. An 
+elastic Saint-Venant material model with Young’s elastic modulus of 4.0E+06 Pa and Poisson’s 
+coefficient of 0.45 is used. The mass density of the ball is 1000 Kg/m3. Only the self-weight of 
+the ball is considered as loading conditions. The center of the ball is initially located at 1 m of 
+the rigid surface. An initial velocity of 2.0 m/sec in the y-direction is considered. Full stick 
+contact conditions are considered. 
+
+The ball has been discretized using standard Galerkin P1 linear displacement tetrahedral 
+finite elements. The finite element mesh used for the discretization of the ball consists of 8299 
+elements and 1571 nodes. The rigid surface has been discretized using 4 shell elements. All the 
+degrees of freedom of the shell elements have been prescribed to zero. Time increments of 
+0.001 secs have been used. Figure 12 shows the geometry and finite element meshes used in the 
+numerical simulation. 
+
+Figure 13 shows the deformed configurations of the ball at different time steps. It can be 
+observed that the ball impact the rigid surface at the time steps 0.42 sec, 1.25 sec and 2.01 sec. 
+Due to the full stick contact condition, a rotation of the ball takes place when it impacts on the 
+rigid surface. The angular momentum of the ball is increasing each time it contacts the rigid 
+surface. It can be also observed that the translation velocity of the ball is decreasing in order to 
+keep constant the kinetic energy.  
+
+Figure 14 shows the time evolution of the total, kinetic, elastic and potential energies. 
+Despite the fact that a full stick contact condition has been considered, the total energy is 
+conserved. This is due to the fact that the work done by the frictional tractions is zero, because 
+
+-0,02
+
+0,00
+
+0,02
+
+0,04
+
+0,06
+
+0,08
+
+0,10
+
+0,12
+
+0,14
+
+0,16
+
+0,18
+
+0,00 0,02 0,04 0,06 0,08 0,10 0,12 0,14 0,16 0,18 0,20
+
+E
+ne
+
+rg
+y 
+
+[J
+] 
+
+Time [sec] 
+
+Total energy
+
+Kinetic energy
+
+Elastic energy
+
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  31 
+ 
+
+the frictional slip is zero due to the full stick contact condition. This results in a perfect rotation 
+of the ball on the rigid surface, without any slip motion.  
+
+It can be also observed that different effects take place every time the ball comes into 
+contact with the rigid surface. The kinetic energy is increasing due to the elastic vibration of the 
+ball generated by the impact. Similarly, the potential energy is decreasing because the ball is 
+falling due to the increase of the elastic energy. It can be also observed a slight decrease of the 
+maximum kinetic energy, being also compatible with the increase of the elastic energy. 
+ 
+
+ 
+
+Figure 12. Elastic ball bouncing on a rigid surface. Geometry and finite element meshes. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+
+
+
+32  C. Agelet de Saracibar, D. Di Capua  
+    
+
+  
+
+ 
+ 
+
+Figure 13. Elastic ball bouncing on a rigid surface. Deformation configuration at different time steps.  
+
+ 
+
+ 
+
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  33 
+ 
+
+ 
+
+Figure 14. Elastic ball bouncing on a rigid surface. Evolution of the different energies.   
+ 
+ 
+7 Conclusions 
+
+The focus of this work has been placed on energy-momentum conserving schemes formulated 
+within the framework of the direct elimination method. Energy-momentum conservation 
+properties have been addressed for two particular cases of interest in dynamic contact problems 
+using the DEA: full stick friction and slip frictionless. For the full stick frictional case the main 
+goal was to show that the resulting algorithm was inheriting the energy conservation property 
+shown at the continuum level. For the slip frictionless case the goal was to show that the 
+resulting algorithm was inheriting both the energy and momentum conservation properties 
+shown at the continuum level. Note that, as those conservation properties do not hold under slip 
+frictional conditions, this case has not been considered and its formulation within the framework 
+of the DEA is out of the scope of interest of this work. 
+
+Constraints arising in full stick and frictionless contact problems have been imposed in 
+a strong fashion by a direct elimination of the involved degrees of freedom of the resulting 
+system of equations. A more convenient and natural formulation of the direct elimination 
+method for the slip frictionless case has been derived. This formulation has been given in terms 
+of the contravariant components of the iso-parametric coordinates of the incremental slip of the 
+closest-point-projection on the covariant basis vectors evaluated at the mid-point configuration. 
+
+An assessment of the performance of the resulting algorithms has been shown in a 
+number of selected dynamic contact numerical examples, under full stick friction and slip 
+frictionless conditions. The first two examples deal with the numerical simulation of the 
+dynamic impact of three aligned quasi-rigid cylinders sliding on a frictionless rigid surface, and 
+the numerical simulation of the dynamic impact of two elastic hollow cylinders sliding on a 
+frictionless rigid surface. Here the goal was to show the conservation of the key discrete 
+properties (total linear momentum, total angular momentum, and total energy) exhibited by the 
+time stepping contact algorithm proposed. It has been shown that conservation of those key 
+discrete properties exhibited at the continuum level, are also preserved by the time stepping 
+algorithm. The last example deals with the numerical simulation of an elastic ball bouncing on a 
+
+
+
+34  C. Agelet de Saracibar, D. Di Capua  
+    
+
+  
+
+rough rigid surface. Full stick friction conditions were considered. Here the goal was to show 
+that the proposed contact formulation exhibits the conservation of the discrete total energy. It 
+has been shown that discrete total energy is fully conserved by the time stepping algorithm. 
+ 
+ 
+Acknowledgements 
+
+Authors would like to acknowledge COMPASS for providing the code RamSeries where the 
+contact algorithms shown in this work have been implemented. Partial financial support by the 
+Ministerio de Economía y Competitividad, through the project RTC-2016-4826-5 "Desarrollo de 
+nuevos métodos y herramientas para la optimización del proceso de fabricación de envases de 
+vidrio (MOVASE)" is also acknowledged. 
+ 
+ 
+ 
+Appendix 1 
+
+This Appendix contents the computation of the variations of the covariant tangent vectors 
+
+,nξ α+τ  and ,nη α+τ  at the configuration n α+  of the closest-point-projection on the master 
+surface. 
+ Covariant tangent vectors ,nξ α+τ  and ,nη α+τ  to the isoparametric coordinates at the 
+closest-point-projection at the configuration n α+  are defined as, 
+ 
+ , , , , , ,: , :n n m n n n m nξ α ξ α α η α η α α+ + + + + += =N x N xτ τ  (87) 
+ 
+where the dim dim mnodn n n×  matrices , ,,n nξ α η α+ +N N  are given by,  
+ 
+
+ 
+
+( )
+
+( )
+
+1
+
+1
+
+, , , ,
+
+, , , ,
+
+: , , , :
+
+: , , , :
+
+mnod A
+
+n
+
+mnod A
+
+n
+
+A
+n n n n
+
+A
+n n n n
+
+N
+
+N
+α
+
+α
+
+ξ α ξ α ξ α ξ α
+
+η α η α η α η α
+
+ξ
+
+η
+
++
+
++
+
++ + + +
+
++ + + +
+
+∂
+ = =  ∂
+
+∂
+ = =  ∂
+
+N N N N 1
+
+N N N N 1
+
+
+
+
+
+ξ
+
+ξ
+
+ξ
+
+ξ
+ (88) 
+
+ 
+The variation of the covariant tangent vectors ,nξ α+τ  and ,nη α+τ  given by (87) takes the 
+
+form, 
+ 
+
+ 
+, , , , ,
+
+, , , , ,
+
+n n m n n m n
+
+n n m n n m n
+
+ξ α ξ α α ξ α α
+
+η α η α α η α α
+
++ + + + +
+
++ + + + +
+
+∆ = ∆ + ∆
+
+∆ = ∆ + ∆
+
+N u N x
+
+N u N x
+
+τ
+
+τ
+ (89) 
+
+ 
+where the variations , ,,n nξ α η α+ +∆ ∆N N  are given by, 
+ 
+
+ 
+, , ,
+
+, , ,
+
+n n n n n
+
+n n n n n
+
+ξ α ξξ α α ξη α α
+
+η α ηξ α α ηη α α
+
+ξ η
+
+ξ η
++ + + + +
+
++ + + + +
+
+∆ = ∆ + ∆
+
+∆ = ∆ + ∆
+
+N N N
+
+N N N
+ (90) 
+
+ 
+where the dim dim mnodn n n×  matrix operators , , , ,, ,n n n nξξ α ξη α ηξ α ηη α+ + + +=N N N N  are defined as,  
+ 
+
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  35 
+ 
+
+ 
+
+( )
+
+( )
+
+( )
+
+1
+
+1
+
+1
+
+2
+
+, , , ,
+
+2
+
+, , , ,
+
+2
+
+, , , ,
+
+: , , , :
+
+: , , , :
+
+: , , , :
+
+mnod A
+
+n
+
+mnod A
+
+n
+
+mnod A
+
+n
+
+A
+n n n n
+
+A
+n n n n
+
+A
+n n n n
+
+N
+
+N
+
+N
+
+α
+
+α
+
+α
+
+ξξ α ξξ α ξξ α ξξ α
+
+ξη α ξη α ξη α ξη α
+
+ηη α ηη α ηη α ηη α
+
+ξ ξ
+
+ξ η
+
+η η
+
++
+
++
+
++
+
++ + + +
+
++ + + +
+
++ + + +
+
+∂
+ = =  ∂ ∂
+
+∂
+ = =  ∂ ∂
+
+∂
+ = =  ∂ ∂
+
+N N N N 1
+
+N N N N 1
+
+N N N N 1
+
+
+
+
+
+
+
+ξ
+
+ξ
+
+ξ
+
+ξ
+
+ξ
+
+ξ
+
+ (91) 
+
+ 
+Substituting (90) into (89), the variation of the covariant tangent vectors ,nξ α+τ  and 
+
+,nη α+τ  given by (89) takes the form, 
+ 
+
+ 
+, , , , , , ,
+
+, , , , , , ,
+
+n n m n n m n n n m n n
+
+n n m n n m n n n m n n
+
+ξ α ξ α α ξξ α α α ξη α α α
+
+η α η α α ηξ α α α ηη α α α
+
+ξ η
+
+ξ η
++ + + + + + + + +
+
++ + + + + + + + +
+
+∆ = ∆ + ∆ + ∆
+
+∆ = ∆ + ∆ + ∆
+
+N u N x N x
+
+N u N x N x
+
+τ
+
+τ
+ (92) 
+
+ 
+and taking into account that , , 1m n m nα α+ +∆ = ∆u u , 1n nαξ α ξ+ +∆ = ∆  and 1n nαη α η+ +∆ = ∆  the 
+variation of the covariant tangent vectors ,nξ α+τ  and ,nη α+τ  given by (89) takes the form, 
+ 
+
+ 
+( )
+( )
+
+, , , 1 , , 1 1 , , 1
+
+, , , 1 , , 1 , , 1
+
+n n m n n m n n n m n n
+
+n n m n n m n n n m n n
+
+ξ α ξ α ξξ α ξη α α
+
+η α η α ηξ α α ηη α α
+
+α ξ η
+
+α ξ η
+
++ + + + + + + + +
+
++ + + + + + + + +
+
+∆ = ∆ + ∆ + ∆
+
+∆ = ∆ + ∆ + ∆
+
+N u N x N x
+
+N u N x N x
+
+τ
+
+τ
+ (93) 
+
+ 
+Note that for linear elements, the matrix operators given by (91) are zero, and thus the 
+
+variations of the matrices given by (91) is zero, yielding the following simplified expressions 
+for the variations of the covariant tangent vectors ,nξ α+τ  and ,nη α+τ , 
+ 
+
+ 
+, , , , , 1
+
+, , , , , 1
+
+n n m n n m n
+
+n n m n n m n
+
+ξ α ξ α α ξ α
+
+η α η α α η α
+
+α
+
+α
++ + + + +
+
++ + + + +
+
+∆ = ∆ = ∆
+
+∆ = ∆ = ∆
+
+N u N u
+
+N u N u
+
+τ
+
+τ
+ (94) 
+
+ 
+ 
+References 
+ 
+1. Agelet de Saracibar C. A new frictional time integration algorithm for large slip multi-body 
+
+frictional contact problems, Computer Methods in Applied Mechanics and Engineering 
+1997; 142: 303-334.   
+
+2. Agelet de Saracibar C. Numerical analysis of coupled thermomechanical contact problems. 
+Computational model and applications, Archives of Computational Methods in Mechanics 
+1998; 5: 243-301. doi: 10.1007/BF02897875. 
+
+3. Armero F, Petocz E. Formulation and analysis of conserving algorithms for frictionless 
+dynamic contact/impact problems, Computer Methods in Applied Mechanics and 
+Engineering 1998; 158: 269-300. 
+
+4. Armero F, Petocz E. A new dissipative time-stepping algorithm for frictional contact 
+problems: Formulation and analysis, Computer Methods in Applied Mechanics and 
+Engineering 1999; 179: 151-178. 
+
+
+
+36  C. Agelet de Saracibar, D. Di Capua  
+    
+
+  
+
+5. Armero F, Romero I. On the formulation of high-frequency dissipative time-stepping 
+algorithms for nonlinear dynamics. Part I: low-order methods for two model problems and 
+nonlinear elastodynamics, Computer Methods in Applied Mechanics and Engineering 2001; 
+190: 2603-2649. 
+
+6. Armero F. Energy-Momentum Algorithms for the Nonlinear Dynamics of Elastoplastic 
+Solids, IUTAM Symposium on Theoretical, Computational and Modelling Aspects of 
+Inelastic Media, IUTAM Book Series, Volume 11, 2008, pp. 251-262. 
+
+7. Betsch P, Hesch C. Energy-momentum conserving schemes for frictionless dynamic contact 
+problems. Part I: NTS method. In: Wriggers P, Nackenhorst U. (eds.) IUTAM symposium 
+on computational methods in contact mechanics, vol 3 of IUTAM Bookseries, Springer, 
+Berlin, 2007, pp. 77–96 
+
+8. Brunssen S, Hartmann S, Ramm E, Wohlmuth B. Unilateral non-linear dynamic contact of 
+thin-walled structures using a primal-dual active set strategy, International Journal for 
+Numerical Methods Engineering 2007; 70: 883-912. 
+
+9. Di Capua D, Agelet de Saracibar C. A direct elimination algorithm for quasi-static and 
+dynamic contact problems, Finite Elements in Analysis and Design 2015; 93: 107-125. 
+
+10. Duvaut G, Lions JL. Les Inequations en Mecanique et en Physique, Dunod, Paris, 1972. 
+11. El-Abbasi N, Bathe KJ. Stability and patch test performace of contact discretizations and a 
+
+new solution algorithm, International Journal for Numerical Methods in Engineering 2001; 
+79:1473-1486. 
+
+12. Fischer KA, Wriggers P. Frictionless 2d contact formulations for finite deformations based 
+on the mortar method. Computational Mechanics 2005, 36:226-244 
+
+13. Flemish B, Puso MA, Wohlmuth BI. A new dual mortar method for curved interfaces: 2d-
+elasticity. International Journal for Numerical Methods in Engineering 2005,  63:813-832. 
+
+14. Gonzalez O. Exact energy-momentum conserving algorithms for general models in 
+nonlinear elasticity, Computer Methods in Applied Mechanics and Engineering 2000; 190: 
+1763-1783. 
+
+15. Haikal G, Hjelmstad KD. A finite element formulation of non-smooth contact based on 
+oriented volumes for quadrilateral and hexahedral elements. Computer Methods in Applied 
+Mechanics and Engineering 2007, 196:4690–4711 
+
+16. Hauret P, LeTallec P. Energy-controlling time integration methods for nonlinear 
+elastodynamics and low-velocity impact. Computer Methods in Applied Mechanics and 
+Engineering 2006; 195:4890-4916. 
+
+17. Hesch C, Betsch P. Transient three-dimensional contact problems: mortar method. Mixed 
+methods and conserving integration. Computational Mechanics 2011; 48(4):461-475 
+
+18. Hesch C, Betsch P. Transient 3d contact problems—NTS method: mixed methods and 
+conserving integration. Computational Mechanics 2011; 48(4):437-449 
+
+19. Hesch C, Betsch P. Transient 3d domain decomposition problems: frame-indifferent mortar 
+constraints and conserving integration. International Journal for Numerical Methods in 
+Engineering 2010; 82:329-358. 
+
+20. Hesch C, Betsch P. A mortar method for energy-momentum conserving schemes in 
+frictionless dynamic contact problems. International Journal for Numerical Methods in 
+Engineering 2009; 77:1468-1500. 
+
+21. Hüeber S, Wohlmuth B. A primal-dual active set strategy for non-linear multibody contact 
+problems, Computer Methods in Applied Mechanics and Engineering 2005; 194: 3147-
+3155. 
+
+22. Kikuchi N, Oden JT. Contact Problems in Elasticity: A Study of Variational Inequalities 
+and Finite Element Methods, SIAM, Philadelphia, 1988.  
+
+
+
+                          Conserving algorithms for frictionless and full stick friction contact dynamic problems using the direct elimination method  37 
+ 
+
+23. Laursen TA. Formulation and Treatment of Frictional Contact Problems Using Finite 
+Elements, Ph.D. Dissertation, Department of Mechanical Engineering, Stanford University, 
+1992. 
+
+24. Laursen TA, Chawla V. Design of energy conserving algorithms for frictionless dynamic 
+contact problems, International Journal for Numerical Methods in Engineering 1997; 40: 
+863-886. 
+
+25. Laursen TA, Love GR. Improved implicit integrators for transient impact problems 
+geometric admissibility within the conserving framework. International Journal for 
+Numerical Methods in Engineering 2002, 53:245–274 
+
+26. Laursen TA. Computational Contact and Impact Mechanics, Springer, 2002 
+27. McDevitt TW, Laursen TA. A mortar-finite element formulation for frictional contact 
+
+problems. International Journal for Numerical Methods in Engineering 2000; 48: 1525-
+1547. 
+
+28. Papadopoulos P, Taylor RL. A mixed formulation for the finite element solution of contact 
+problems, UCB/SEMM Report 90/18, University of California, Berkeley, 1990. 
+
+29. Popp A, Gitterle M, Gee MW, Wall WA. A dual mortar approach for 3D finite deformation 
+contact with consistent linearization. International Journal for Numerical Methods in 
+Engineering 2010, 83:1428–1465. 
+
+30. Puso MA, Laursen TA. A mortar segment-to-segment contact method for large deformation 
+solid mechanics, Computer Methods in Applied Mechanics and Engineering 2004; 193: 
+601-629. 
+
+31. Puso MA, Laursen TA. A mortar segment-to-segment frictional contact method for large 
+deformations, Computer Methods in Applied Mechanics and Engineering 2004; 193: 4891-
+4913. 
+
+32. Puso MA, Laursen TA, Solberg JM (2008) A segment-to-segment mortar contact method 
+for quadratic elements and large deformations. Computer Methods in Applied Mechanics 
+and Engineering 2008; 197: 555-566. 
+
+33. RamSeries code, http://www.compassis.com/compass/en/Productos/RamSeries. 
+34. Simo JC, Tarnow N. The discrete energy-momentum method. Conserving algorithm for 
+
+non-linear elastodynamics, ZAMP 1992; 43: 757-793. 
+35. Simo JC, Tarnow N, Wong KK. Exact energy-momentum conserving algorithms and 
+
+symplectic schemes for nonlinear dynamics, Computer Methods in Applied Mechanics and 
+Engineering 1992; 1: 63-116. 
+
+36. Simo JC, Tarnow N. A new energy and momentum conserving algorithm for the non-linear 
+dynamics of shells, International Journal for Numerical methods in Engineering 1994; 37: 
+2525-2550. 
+
+37. Simo JC, Tarnow N, Doblaré M. Non-linear dynamics of three-dimensional rods: exact 
+energy and momentum conserving algorithms, International Journal for Numerical 
+Methods in Engineering 1995; 38: 1431-1474. 
+
+38. Truesdell CA, Noll WM. The Nonlinear Field Theories of Mechanics, Handbuch der 
+Physik, vol. III/3, Springer, Berlin, 1965. 
+
+39. Wohlmuth B. A mortar finite element method using dual spaces for the Lagrange multiplier, 
+SIAM Journal Numerical Analysis 2000; 38: 989-1012 
+
+40. Wriggers P. Computational Contact Mechanics, Springer, 2006. 
+41. Yang B. Mortar Finite Element Methods for Large Deformation Contact Mechanics, Ph.D. 
+
+Dissertation, Duke University, 2006. 
+ 
+ 
+ 
+
+http://www.compassis.com/compass/en/Productos/RamSeries
+

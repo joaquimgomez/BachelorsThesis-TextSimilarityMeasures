@@ -1,0 +1,3840 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Formulación mixta estabilizada explícita de elementos finitos para sólidos compresibles y quasi-incompresibles
+
+
+F
+p
+
+N
+C
+
+i
+
+H
+R
+A
+O
+
+P
+E
+F
+F
+
+K
+S
+I
+E
+
+r
+m
+
+0
+l
+
+Rev. int. métodos numér. cálc. diseño ing. 2017;33(1-2):35–44
+
+Revista  Internacional  de  Métodos  Numéricos  para
+Cálculo  y  Diseño  en  Ingeniería
+
+www.elsev ier .es / r imni
+
+ormulación  mixta  estabilizada  explícita  de  elementos  finitos
+ara  sólidos  compresibles  y  quasi-incompresibles
+
+.  Lafontaine ∗,  R.  Rossi,  M.  Cervera  y  M.  Chiumenti
+IMNE – Centre Internacional de Mètodes Numèrics en Enginyeria, UPC – Universitat Politècnica de Catalunya, Gran Capitán s/n, Edificio C1, Campus Nord, 08034, Barcelona, España
+
+nformación  del  artículo
+
+istoria del artículo:
+ecibido el 27 de mayo de 2015
+ceptado el 8 de septiembre de 2015
+n-line el 16 de enero de 2016
+
+alabras clave:
+stabilización
+ormulación irreducible
+ormulación mixta explícita
+
+r  e  s  u  m  e  n
+
+El  presente  estudio  presenta  una  formulación  mixta  de  elementos  finitos  capaz  de  abordar  problemas
+quasi-incompresibles  en  forma  explícita.  Esta  formulación  se  aplica  a elementos  con  interpolaciones
+independientes  e iguales  de  desplazamientos  y deformaciones,  estabilizadas  mediante  subescalas  varia-
+cionales  (VMS).  Como  continuación  del estudio  presentado  en  la  referencia  [23], en  la  que  se  introdujo
+la  sub-escala  de  las deformaciones,  en  este  trabajo  se  incluyen  los  efectos  de la  sub-escala  de  los  des-
+plazamientos,  con  el  fin de estabilizar  el  campo  de las  presiones.  La  formulación  evita  la  condición  de
+Ladyzhenskaya-Babuska-Brezzi  (LBB)  y sólo  requiere  la  resolución  de  un  sistema  diagonal  de  ecuaciones.
+En este  artículo  se  tratan  también  los  principales  aspectos  de  implementación.  Finalmente,  ejemplos  de
+validación  numérica  muestran  el  comportamiento  de  estos  elementos  en  comparación  con  la  formulación
+irreducible.
+
+© 2015  Los  Autores.  Publicado  por  Elsevier  España,  S.L.U.  en  nombre  de  CIMNE  (Universitat
+Politècnica  de  Catalunya).  Este  es un  artı́culo  Open  Access  bajo  la  licencia  CC  BY-NC-ND  (http://
+
+creativecommons.org/licenses/by-nc-nd/4.0/).
+
+Stabilized  mixed  explicit  finite  element  formulation  for  compressible
+and  nearly-incompressible  solids
+
+eywords:
+tabilization
+rreductible formulation
+xplicit mixed formulation
+
+a  b  s  t  r  a  c  t
+
+This  study  presents  a mixed  finite  element  formulation  able  to address  nearly-incompressible  pro-
+blems  explicitly.  This  formulation  is  applied  to elements  with  independent  and  equal  interpolation  of
+displacements  and  strains,  stabilized  by  variational  subscales  (VMS).  As a  continuation  of  the  study
+presented  in  reference  [23], in which  the  strains  sub-scale  was  introduced,  in this  work  the  effects  of
+sub-scale  displacements  are  included,  in  order  to  stabilize  the pressure  field.  The  formulation  avoids  the
+
+Ladyzhenskaya-Babuska-Brezzi  (LBB) condition  and  only  requires  the  solution  of  a diagonal  system  of
+equations.  The  main  aspects  of  implementation  are  also  discussed.  Finally,  numerical  examples  validate
+the  behaviour  of  these  elements  compared  with  the  irreductible  formulation.
+
+©  2015 The  Authors.  Published  by  Elsevier  España,  S.L.U.  on  behalf  of CIMNE  (Universitat  Politècnica
+de  Catalunya).  This  is an  open  access  article  under  the  CC  BY-NC-ND  license  (http://creativecommons.
+∗ Autores para correspondencia. Tel.: +34 93 401 56 96; fax: +34 93 401 10 48.
+Correos electrónicos: maireni@cimne.upc.edu (N. Lafontaine),
+
+rossi@cimne.upc.edu (R. Rossi), mcervera@cimne.upc.edu (M. Cervera),
+ichele@cimne.upc.edu (M.  Chiumenti).
+
+URL: http://www.cimne.upc.edu (N. Lafontaine).
+
+http://dx.doi.org/10.1016/j.rimni.2015.09.003
+213-1315/© 2015 Los Autores. Publicado por Elsevier España, S.L.U. en nombre de CIM
+
+icencia  CC BY-NC-ND (http://creativecommons.org/licenses/by-nc-nd/4.0/).
+org/licenses/by-nc-nd/4.0/).
+
+1. Introducción
+
+En mecánica computacional de sólidos y estructuras es habi-
+tual elegir los desplazamientos como incógnitas y calcular las
+deformaciones por diferenciación del campo de los desplazamien-
+tos. Dado que no es posible realizar una reducción adicional en la
+
+elección del campo incógnita, los enfoques basados en la formula-
+ción estándar de desplazamientos se conocen como formulaciones
+irreducibles. Estas formulaciones son muy  efectivas en el trata-
+miento de una amplia gama de problemas prácticos; sin embargo,
+
+NE (Universitat Politècnica de Catalunya). Este es un artı́culo Open Access bajo la
+
+dx.doi.org/10.1016/j.rimni.2015.09.003
+www.elsevier.es/rimni
+http://crossmark.crossref.org/dialog/?doi=10.1016/j.rimni.2015.09.003&domain=pdf
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+mailto:maireni@cimne.upc.edu
+mailto:rrossi@cimne.upc.edu
+mailto:mcervera@cimne.upc.edu
+mailto:michele@cimne.upc.edu
+http://www.cimne.upc.edu
+dx.doi.org/10.1016/j.rimni.2015.09.003
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+http://creativecommons.org/licenses/by-nc-nd/4.0/
+
+
+3 umér
+
+e
+d
+e
+y
+t
+r
+t
+c
+v
+
+e
+m
+t
+e
+d
+v
+
+e
+e
+a
+p
+c
+p
+e
+a
+s
+
+s
+c
+e
+n
+p
+m
+r
+
+2
+
+2
+
+d
+c
+p
+i
+c
+
+c
+d
+d
+
+∇
+ε
+
+d
+d
+t
+
+�
+
+d
+e
+t
+s
+c
+e
+v
+
+6 N. Lafontaine et al. / Rev. int. métodos n
+
+n ciertos casos, conducen a un comportamiento rígido o depen-
+iente de la malla. Por ejemplo, el rendimiento de los elementos
+stándares de bajo orden es pobre en condiciones de elasticidad
+
+ plasticidad quasi-incompresibles, mostrando un bloqueo volumé-
+rico que se manifiesta como un comportamiento exageradamente
+ígido. Existe una vasta literatura proponiendo soluciones para este
+ipo de problemas, con las primeras propuestas basadas en técni-
+as de integración reducida o en el uso de deformaciones asumidas,
+éase, por ejemplo, el método B-bar [18,19].
+
+A partir los años 90 se emplearon enfoques mixtos basados
+n desplazamiento-presión (u, p) para la solución de proble-
+as  incompresibles [6,17,24,26,28,29]. Tales técnicas demostraron
+
+ambién ser aplicables en problemas compresibles (véase, por
+jemplo [27]). La razón para utilizar formulaciones mixtas es, fun-
+amentalmente, obtener un mejor orden de convergencia en las
+ariables de interés y, especialmente, en las tensiones.
+
+En este trabajo se emplea una formulación mixta dentro de un
+squema explícito de integración temporal y estabilizada mediante
+l Método de Multi-Escala Variacional (VMS) [9,20–22,25], a fin de
+bordar satisfactoriamente problemas de mecánica de sólidos com-
+resibles y quasi-incompresibles, tanto en análisis quasi-estáticos
+omo dinámicos. Aunque no es posible resolver el límite incom-
+resible mediante el empleo de un esquema puramente explícito,
+n este trabajo se incluyen las subescalas de los desplazamientos
+
+ fin de estabilizar el campo de las presiones y proporcionar una
+olución quasi-incompresible.
+
+La organización del presente artículo es la siguiente. En la
+ección 2 se presentan el planteamiento mixto estándar, su
+orrespondiente planteamiento en multi-escalas, los métodos de
+stabilización y los aspectos relevantes de la implementación
+umérica de la formulación propuesta. En la sección 3 se com-
+rueba el buen comportamiento de los elementos mixtos explícitos
+ediante diversas verificaciones numéricas y se compara con los
+
+esultados de formulación estándar.
+
+. Formulación
+
+.1. Formulación mixta
+
+En la mecánica de sólidos deformables, las deformaciones ε pue-
+en ser consideradas como variables independientes, adicional al
+ampo de los desplazamientos u. Los grados de libertad para un
+roblema tridimensional se incrementan de 3, u = {ux, uy, uz}, a 9,
+
+ncluyendo los componentes del tensor simétrico de las deforma-
+iones, ε = {εxx, εyy, εzz, εxy, εyz, εxz}.
+
+En tal caso, la formulación fuerte del problema puede escribirse
+omo: hallar el campo de los desplazamientos u, sus respectivas
+erivadas temporales (velocidad u̇ y aceleración ü) y el campo de
+eformaciones ε, dadas unas fuerzas másicas b, tales que:
+
+ · � + b = �ü en � (1)
+
+ − ∇su = 0 en � (2)
+onde � ⊂ Rndim es el volumen ocupado por el sólido en un espacio
+e ndim dimensiones; � denota la densidad del material y � es el
+ensor de tensiones de Cauchy, expresado como:
+
+ = C(ε) : ε (3)
+
+onde C representa el tensor constitutivo secante. Además de las
+cuaciones (1) y (2), que se deben satisfacer para cualquier tiempo
+
+ ∈ I del intervalo de tiempo de interés I = (0,  T), el problema está
+
+ujeto a unas apropiadas condiciones de contorno, conocidas como
+ondición de Dirichlet y condición de Von Neumann especificadas
+n el contorno del dominio ∂� = ∂�u ∪ ∂�� y ∂�u∩ ∂�� = ∅. Las
+ariables del problema ε, u y sus derivadas, u̇ están sujetas a unas
+. cálc. diseño ing. 2017;33(1-2):35–44
+
+condiciones iniciales en t = t0, es decir; ε|t=t0 = ε0 = ∇su0, u|t=t0 =
+u0 y u̇|t=t0 = v0.
+
+Después de multiplicar las ecuaciones (1) y (2) por sus respec-
+tivas funciones de peso e integrando por partes la ecuación (1), la
+formulación variacional del problema es:∫
+
+�
+
+∇sω : � d� +
+∫
+
+�
+
+ω · �ü d�
+
+=
+∫
+
+∂�
+
+ω · t d� +
+∫
+
+�
+
+ω · b d� ∀ω (4)
+
+∫
+�
+
+� · ε d� =
+∫
+
+�
+
+� · ∇su d� ∀� (5)
+
+donde ω ∈ V y � ∈ T son las funciones de prueba para el campo
+de los desplazamientos y el campo de las deformaciones, res-
+pectivamente; V y T son los espacios de los desplazamientos y
+deformaciones admisibles y t = �n son las tracciones en la direc-
+ción normal saliente n en ∂�� .
+
+2.2. Discretización espacial y temporal
+
+Para definir la forma discreta del problema, se considera un
+campo de desplazamientos discretos u = uh, sus derivadas tempo-
+rales discretas (u̇ = u̇h y ü = üh) y un campo de deformaciones
+discretas ε = εh. La forma discreta de (4) y (5) es:∫
+
+�
+
+∇sωh : �h d� +
+∫
+
+�
+
+ωh · �üh d�
+
+=
+∫
+
+∂�
+
+ωh · t d� +
+∫
+
+�
+
+ωh · b d� ∀ωh (6)
+
+∫
+�
+
+�h · εh d� =
+∫
+
+�
+
+�h · ∇suh d� ∀�h (7)
+
+donde ahora ωh ∈ Vh y �h ∈ Th son las funciones de prueba
+definidas sobre el espacio de los elementos finitos Vh y Th,
+respectivamente. La condición de Ladyzhenskaya-Babuska-Brezzi
+(condición inf-sup LBB) impone restricciones en las funciones de
+interpolación para garantizar estabilidad y unicidad de la solución
+[1,15]. De ahí que los espacios de solución para los desplaza-
+mientos y las deformaciones no puedan ser escogidos libremente.
+Lamentablemente, muchos elementos de bajo orden, incluyendo
+el elemento con igual orden lineal de interpolación para los des-
+plazamientos y las deformaciones, de interés en este trabajo, no
+cumplen la condición LBB, por lo que no son estables y presentan
+oscilaciones en el campo de los desplazamientos que contaminan
+la solución. Afortunadamente, las restricciones de la condición LBB
+pueden ser evitadas mediante la utilización de apropiadas técni-
+cas de estabilización numérica que pueden proveer la estabilidad
+necesaria para la convergencia. Los métodos de elementos finitos
+estabilizados consisten en añadir a la forma discreta términos que
+son función de los residuos de las ecuaciones (6) y (7) evaluados
+dentro de los elementos y que disminuyen con el refinamiento de
+la malla.
+
+Además, como las ecuaciones (6) y (7) son discretas en el espacio
+pero continuas en el tiempo, se requiere un algoritmo de discreti-
+zación temporal. En este trabajo se usa el esquema explícito de
+diferencias centradas.
+
+2.3. Método de los elementos finitos estabilizados
+2.3.1. Multi-escalas variacionales de resolución
+El método de estabilización empleado en este trabajo se basa en
+
+el concepto de Sub-escalas o Multi-Escalas Variacionales (VMS) [21].
+
+
+
+umér
+
+L
+t
+c
+d
+p
+s
+t
+s
+c
+m
+y
+
+u
+
+ε
+
+L
+c
+
+u
+
+u
+
+d
+m
+q
+(
+
+s
+e
+a
+d
+e
+c
+
+f
+
+�
+
+e
+s
+h
+c
+l
+
+p
+
+∫
+
+˜
+
+˜
+˜
+
+N. Lafontaine et al. / Rev. int. métodos n
+
+a idea fundamental es que al definir una malla de elementos fini-
+os quedan establecidas dos escalas o niveles de resolución,  una que
+orresponde a la malla y será captado mediante la aproximación
+e los elementos finitos (escala gruesa) y otra más fina, que corres-
+onde a la parte que la malla no logra captar y que denominaremos
+implemente sub-escala. La solución del problema continuo con-
+iene componentes de ambas escalas. De acuerdo con este concepto,
+e deben aproximar de alguna manera los efectos de la sub-escala
+on el objetivo de mejorar las propiedades de estabilidad de la for-
+ulación. En base a este concepto, el campo de los desplazamientos
+
+ deformaciones se aproximan como:
+
+ ≈ uh + ũ (8)
+
+ ≈ εh + ε̃ (9)
+
+as velocidades u̇ y las aceleraciones ü se obtienen por diferencia-
+ión temporal de los desplazamientos, o sea:
+
+˙
+ = u̇h + ˙̃u (10)
+
+¨
+ = üh + ¨̃u (11)
+
+onde εh ∈ Th y (uh, u̇h, üh) ∈ Vh son las deformaciones, desplaza-
+ientos, velocidades y aceleraciones en la escala gruesa mientras
+
+ue ε̃ ∈ T̃ y  (ũ, ˙̃u, ¨̃u) ∈ Ṽ son las deformaciones y desplazamientos
+con sus derivadas temporales) de la sub-escala.
+
+Al considerar las correspondientes funciones de prueba en la
+ub-escala ω̃ ∈ Ṽ y �̃ ∈ T̃,  nótese que la aproximación de la solución
+n el campo de deformaciones y desplazamientos se extiende ahora
+
+ T � Th ⊕ T̃ y V � Vh ⊕ Ṽ respectivamente. Cada método particular
+e elementos finitos estabilizados se define de acuerdo a cómo se
+scogen los espacios Ṽ y T̃.  El método clásico de Galerkin de obtiene
+uando Ṽ = T̃ = {0}.
+
+Por otra parte, el tensor de tensiones en la ecuación (3) toma la
+orma:
+
+(ε) ≈ �h + �̃ (12)
+
+n el cual �h = C(εh) : εh y �̃ = C(εh) : ε̃ son respectivamente las ten-
+iones continuas y las tensiones de la escala fina. Obsérvese que se
+a empleado la aproximación C(ε) ≈ C(εh). Esta aproximación y la
+orrespondiente descomposición aditiva del tensor de tensiones en
+a ecuación (12) están justificados en [3,4].
+
+Introduciendo las ecuaciones (8), (9), (11) y (12) en (4) y (5), el
+roblema se lee ahora como:∫
+
+�
+
+∇sωh : �h d� +
+∫
+
+�
+
+∇sωh : �̃ d� +
+∫
+
+�
+
+ωh · �
+(
+
+üh + ¨̃u
+)
+
+d�
+
+= Fext(ωh) ∀ωh (13)
+
+∫
+�
+
+∇sω̃ : �h d� +
+∫
+
+�
+
+∇sω̃ : �̃ d� +
+∫
+
+�
+
+ω̃ · �
+(
+
+üh + ¨̃u
+)
+
+d�
+
+= Fext(ω̃) ∀ω̃ (14)
+
+∫
+�
+
+�h · εh d� +
+∫
+
+�
+
+�h · ε̃ d�
+
+=
+∫
+
+�
+
+�h · ∇suh d� −
+∫
+
+�
+
+(∇ · �h) · ũ d� ∀�h (15)
+�
+
+�̃ · εh d� +
+∫
+
+�
+
+�̃ · ε̃ d� =
+∫
+
+�
+
+�̃ · ∇suh d� +
+∫
+
+�
+
+�̃ · ∇sũ d� ∀�̃
+(16)
+. cálc. diseño ing. 2017;33(1-2):35–44 37
+
+donde en la ecuación (15) se ha empleado la integración por partes
+y se ha despreciado la integral sobre contorno [3,9]. Las fuerzas
+externas Fext(ωh) se escriben de la forma:
+
+Fext(ωh) =
+∫
+
+∂�
+
+ωh · t d� +
+∫
+
+�
+
+ωh · b d� (17)
+
+Debido a la aproximación empleada en (8) y (9), la ecuación (1)
+se desdobla en las dos ecuaciones (13) y (14), cada una de ellas
+relacionadas con la escala correspondiente. Asimismo, la ecuación
+(2) se desdobla en las ecuaciones (15) y (16).
+
+Dado que las ecuaciones (14) y (16) no se resuelven dentro del
+espacio de los elementos finitos, se requiere una aproximación de
+las mismas. Obsérvese que no son necesarios los valores punto a
+punto, sino sólo el valor de la integral correspondiente al término de
+estabilización en (13) y (15) [3]. El objetivo de estas aproximaciones
+es obtener una estimación variacional de los efectos de las sub-
+escalas ũ y ε̃ en las ecuaciones de balance.
+
+Los residuos correspondientes a las ecuaciones en la sub-escala
+de los elementos finitos son:
+
+rε,h = ∇suh − εh (18)
+ru,h = �üh − ∇ · �h − b (19)
+Esto permite escribir las ecuaciones (14) y (16) como:∫
+
+�
+
+ω̃ ·
+(
+∇ ·
+
+(
+C : ε̃
+
+))
+d� −
+
+∫
+�
+
+�ω̃ · ¨̃u d� =
+∫
+
+�
+
+ω̃ · ru,h d� (20)
+∫
+
+�
+
+�̃ · ε̃ d� −
+∫
+
+�
+
+�̃ · ∇sũ d� =
+∫
+
+�
+
+�̃ · rε,h d� (21)
+
+Los términos de la derecha en las ecuaciones (20) y (21) son las pro-
+yecciones P(•) de los residuos sobre el espacio de las sub-escalas.
+Por tanto, las ecuaciones (20) y (21) relacionan las sub-escalas ε̃ y
+u con los residuos de la escala de elementos finitos, representados
+por rε,h y ru,h, respectivamente.
+
+Existen diversas posibilidades para definir la aproximación a
+las sub-escalas. En principio el espacio de la escala fina podría ser
+cualquier espacio complementario al espacio de elementos fini-
+tos. Tómese en cuenta que en la ecuación (20) aparece la segunda
+derivada temporal de la sub-escala ũ, por lo que ésta necesita dis-
+cretizarse en el tiempo [12]. Es necesario, en primer lugar, seguir
+la evolución en el tiempo de la sub-escala y, en segundo lugar, el
+método de integración temporal de la sub-escalas tiene que ser
+compatible con el esquema explícito empleado en el espacio de los
+elementos finitos, por lo que también se requiere resolver en forma
+explícita la sub-escala de los desplazamientos ũ.  La subescala de las
+deformaciones ε̃ puede ser tratada implícitamente (véase [9]).
+
+Considérese una partición uniforme en el tiempo [0, T] de
+tamaño �t,  tal que el tiempo tn = n�t. Por simplicidad, se supone
+�t  constante. Empleando el método de diferencias centrales en la
+ecuación (20), las aceleraciones en la sub-escala se escriben:
+
+ü
+n
+
+= 1
+�t2
+
+(ũ
+n+1 − 2ũn + ũn−1) (22)
+
+Sustituyendo (22) en (20) y siendo Pε y Pu las proyecciones sobre
+T y Ṽ, respectivamente, el problema (20) y (21) se lee ahora como:
+dados ũ
+
+n
+y ũ
+
+n−1
+, hallar ũ
+
+n+1
+y ε̃
+
+n+1
+tal que [9,12]:
+
+Pu
+(
+
+∇ · C(εh) : ε̃n+1 −
+�
+
+�t2
+ũ
+
+n+1
+)
+
+= Pu
+(
+
+�
+
+�t2
+(2ũ
+
+n − ũn−1) + rn
+u,h
+
+)
+(23)
+Pε
+(
+
+ε̃
+n+1 − ∇sũn+1
+
+)
+= Pε
+
+(
+rn+1
+
+ε,h
+
+)
+(24)
+
+
+
+3 umér
+
+S
+p
+m
+u
+x
+
+ũ
+
+ε̃
+
+d
+
+	
+
+d
+c
+l
+d
+r
+c
+d
+
+s
+L
+c
+l
+p
+a
+a
+n
+p
+t
+E
+i
+A
+d
+[
+
+ũ
+
+ε̃
+
+s
+
+p
+∇
+q
+s
+e
+m
+d
+d
+ó
+
+t
+y
+z
+s
+i
+u
+d
+
+ũ
+
+8 N. Lafontaine et al. / Rev. int. métodos n
+
+e requiere resolver de forma aproximada las ecuaciones (23) y (24)
+ara obtener los valores de ε̃
+
+n+1
+ũ
+
+n+1
+. Aplicando el mismo procedi-
+
+iento que en [11], se pueden aproximar las sub-escalas mediante
+n análisis de Fourier del problema. Así, ε̃
+
+n+1
+y ũ
+
+n+1
+pueden apro-
+
+imarse dentro de cada elemento �e como:
+
+n+1 ≈ 	ut
+�
+
+�t2
+
+(
+2ũ
+
+n − ũn−1
+)
+
++ 	utPu
+(
+−rn
+
+u,h
+
+)
+(25)
+
+n+1 ≈ 	εPε
+(
+
+rn+1
+ε,h
+
+)
+(26)
+
+onde 	ut y 	ε son los parámetros de estabilización dados por:
+
+ut =
+(
+
+�
+
+�t2
++ 1
+
+	us
+
+)−1
+y 	ε = cε
+
+h
+
+L0
+(27)
+
+onde 	us = cuhL0/
+ es el parámetro de estabilización estático,
+u > 0 y cε > 0 son constantes algorítmicas adimensionales, L0 es
+a longitud característica del problema el cual se toma como el
+iámetro del dominio computacional � y 
+ > 0 es el módulo de
+igidez secante al corte. La experiencia numérica en análisis estáti-
+os muestra que los valores de cε y cu se pueden escoger en el rango
+e [0.01, 1.0].
+
+Para definir completamente el método y calcular las sub-escalas,
+e requiere seleccionar adecuadamente las proyecciones Pu y Pε.
+a elección más  simple para las proyecciones es tomar las mismas
+omo la identidad I.  Este procedimiento se conoce como Método de
+as Sub-Escalas Algebraicas (Algebraic Sub-Scales (ASGS)) [8]. Codina
+ropuso para el espacio de las sub-escalas Ṽ y T̃ el espacio ortogonal
+l espacio de los elementos finitos Vh y Th. Esta definición da origen
+
+ una formulación denominada Método de las Sub-escalas Ortogo-
+ales (Orthogonal Sub-Scales (OSS)) [8–10]. De acuerdo con este
+lanteamiento, el espacio de las deformaciones y desplazamien-
+os se aproxima como T � Th ⊕ T⊥h y V � Vh ⊕ V
+
+⊥
+h
+
+respectivamente.
+n este trabajo se ha optado por este método. Por practicidad se
+ntroduce el operador de proyección ortogonal P⊥
+
+h
+(•) = (•) − Ph(•).
+
+demás se supone que el campo de las fuerzas másicas b puede ser
+escrito completamente en el espacio de Vh, se tiene que P⊥h (b) = 0
+2,5,30]. Por consiguiente, se pueden tomar ũ y ε̃ como:
+
+n+1 � 	ut
+�
+
+�t2
+
+(
+2ũ
+
+n − ũn−1
+)
+
++ 	ut
+(
+∇ · �n
+
+h
+− Ph
+
+(
+∇ · �n
+
+h
+
+))
+(28)
+
+n+1 � 	ε
+(
+∇sun+1
+
+h
+− Ph
+
+(
+∇sun+1
+
+h
+
+))
+= 	ε
+
+(
+∇sun+1
+
+h
+− ε̆n+1h
+
+)
+(29)
+
+iendo ε̆n+1h = Ph
+(
+∇sun+1
+
+h
+
+)
+.
+
+El residuo en la ecuación (19) puede escribirse en función de la
+arte volumétrica y desviadora del tensor de tensiones, es decir,
+
+ · �h = ∇ · Sh + ∇ ph, siendo S el tensor desviador. En problemas
+uasi-incompresibles o incompresibles, sólo el gradiente de la pre-
+ión ∇ph necesita incluirse en el residuo para asegurar la estabilidad
+n el campo de las presiones. Esto permite estabilizar la presión
+inimizando la magnitud del término de estabilización. El hecho
+
+e no considerar una parte del residuo introduce un cierto error
+e consistencia, pero en el método de OSS este error es de orden
+ptimo y no altera la velocidad de convergencia del esquema.
+
+Por otra parte, se puede introducir un efecto simple de amor-
+iguamiento numérico a fin de considerar un esquema disipativo
+
+ eliminar las frecuencias espurias en la sub-escala de los despla-
+amientos, que pueden afectar la estabilidad del sistema. En tal
+entido, despreciando el término desviador en la ecuación (28) e
+ntroduciendo un coeficiente de disipación �̃ ∈ [0,  1], se obtiene
+na versión modificada de OSS [2]. En consecuencia, ũ estará ahora
+ado por:
+n+1 � 	ut
+�
+
+�t2
+
+(
+(2 − �̃)ũn − (1 − �̃)ũn−1
+
+)
++ 	ut
+
+(
+∇pn
+
+h
+− Ph
+
+(
+∇pn
+
+h
+
+))
+(30)
+. cálc. diseño ing. 2017;33(1-2):35–44
+
+2.4. Ecuación discreta y estabilizada de la ecuación de
+movimiento. Formulación mixta estabilizada explícita
+
+Para definir la ecuación discreta y estabilizada de la ecuación de
+movimiento (13), ésta tiene que ser discretizada en el tiempo. En
+la referencia [23] se discuten las ventajas de la formulación mixta
+explícita en conjunto con un estudio numérico de estabilidad y
+convergencia. Naturalmente, este método mixto-explícito es condi-
+cionalmente estable, pero su precisión es superior a su contraparte
+irreducible. Al igual que la formulación irreducible, los desplaza-
+mientos u y deformaciones ε en el tiempo tn+1 se computan a partir
+de la ecuación de equilibrio dinámico evaluada en el tiempo tn. En
+consecuencia, la ecuación (13) se expresa en el tiempo tn como:
+
+∫
+�
+
+∇sωh : �nh d� +
+∫
+
+�
+
+∇sωh : �̃n d� +
+∫
+
+�
+
+ωh · �
+(
+
+ünh + ¨̃u
+n
+)
+
+d�
+
+= Fnext(ωh) ∀ωh (31)
+Al emplear el método de estabilización OSS, el término∫
+
+�
+ωh · � ¨̃u
+
+n
+d� = 0 por la condición de ortogonalidad. Sustituyendo
+
+la ecuación (29) en (31), la ecuación discreta y estabilizada de equi-
+librio dinámico en t = tn se escribe finalmente como:
+
+∫
+�
+
+∇sωh : C(εnh) : εnh d� + 	ε
+∫
+
+�
+
+∇sωh : C(εnh) :
+(
+∇sun
+
+h
+− ε̆nh
+
+)
+d�
+
++
+∫
+
+�
+
+ωh · �ünh d� = Fnext(ωh) ∀ωh (32)
+
+Por otra parte, sustituyendo la ecuación (29) en la ecuación (15)
+evaluada en tn+1 se obtiene:
+
+∫
+�
+
+�h · εn+1h d� + 	ε
+∫
+
+�
+
+�h ·
+(
+∇sun+1
+
+h
+− ε̆n+1h
+
+)
+d�
+
+=
+∫
+
+�
+
+�h · ∇sun+1h d� −
+∫
+
+�
+
+(∇ · �h) · ũ
+n+1
+
+d� (33)
+
+Por la propiedad de idempotencia del operador de proyección, es
+decir, Ph(Ph(•)) = Ph((•)h) = (•)h, y teniendo en cuenta que las sub-
+escalas de los desplazamientos en tn+1 están dados por la ecuación
+(28) o (30), las deformaciones continuas εn+1
+
+h
+se expresan final-
+
+mente:
+
+εn+1
+h
+
+= ε̆n+1h − Ph
+(
+
+(∇ · �h) · ũ
+n+1
+
+)
+(34)
+
+Si no se considera la sub-escala de los desplazamientos, el segundo
+término del lado derecho de la ecuación (34) es nulo, obteniéndose
+la misma  expresión que en [23]. Por otro lado, dado que el segundo
+término del lado derecho de la ecuación (34) es pequeño frente a
+ε̆n+1h , se puede tomar ε̆h ≈ εh. En tal caso, la ecuación de movi-
+miento estabilizada de equilibrio dinámico en (33) se reescribe
+como:
+
+(1 − 	ε)
+∫
+
+�
+
+∇sωh : C(εnh) : εnh d�+	ε
+∫
+
+�
+
+∇sωh : C(εnh) :
+(
+∇sun
+
+h
+
+)
+d�
+
++
+∫
+
+�
+
+ωh · �ünh d� = Fnext(ωh) ∀ωh (35)
+
+Reagrupando los términos, se obtiene la expresión:
+εstab,n
+h
+
+= (1 − 	ε)εnh − 	ε∇sunh (36)∫
+�
+
+∇sωh : C(εnh) : ε
+stab,n
+h
+
+d� +
+∫
+
+�
+
+ωh · �ünh d� = Fnext(ωh) (37)
+
+
+
+umér
+
+d
+d
+i
+
+F
+
+s
+c∫
+S
+m
+
+M
+
+d
+p
+u
+e
+m
+c
+
+•
+•
+
+•
+
+•
+•
+
+e
+p
+d
+p
+r
+
+l
+l
+c
+
+v
+l
+E
+d
+r
+d
+d
+M
+
+2
+
+m
+s
+m
+t
+s
+E
+c
+m
+e
+
+� = 0.499. La densidad del material se toma 10 kg/m3. El problema
+se analiza realizando análisis quasi-estático y dinámico bajo la
+hipótesis de deformación plana (con espesor unitario) y haciendo
+un análisis completamente tridimensional (espesor 10 mm). Para
+
+1
+6
+m
+
+m
+
+B
+
+F
+
+A
+
+4
+4
+m
+
+m
+
+N. Lafontaine et al. / Rev. int. métodos n
+
+onde εstab son las deformaciones estabilizadas. El primer término
+el lado izquierdo de la la ecuación (37) es el vector de fuerzas
+
+nternas estabilizadas:
+
+stab,n
+int
+
+(ωh) =
+∫
+
+�
+
+∇sωh : �stab,n d� (38)
+
+iendo �stab = C : εstab las tensiones estabilizadas. Esto permite rees-
+ribir la ecuación (37) como:
+
+�
+
+ωh · �ünh d� = Fnext(ωh) − F
+stab,n
+int
+
+(ωh) (39)
+
+i se considera las fuerzas viscosas, la ecuación (39) toma el formato
+atricial de equilibrio dinámico:
+
+ünh + Du̇
+n
+h = Fnext − F stab,nint (40)
+
+onde M es la matriz de masa y D la matriz de amortiguamiento. El
+roceso de integración temporal de la ecuación de movimiento en
+n esquema mixto explícito es idéntico al procedimiento realizado
+n un esquema irreducible, salvo que se requieren fundamental-
+ente dos pasos adicionales (3 y 4), los cuales se describen a
+
+ontinuación:
+
+1. Cómputo de las fuerzas internas estabilizadas F stab,n
+int
+
+.
+2. Cómputo de los desplazamientos en t = tn+1:
+
+un+1 = [2M + �tD]−1[(4Mun − [2M − �tD]un−1
+
++ 2�t2(Fnext − F stab,nint )]
+
+3. Evaluación de las sub-escalas de los desplazamientos ũ
+n+1
+
+empleando (28) o (30).
+4. Actualización de las deformaciones εn+1
+
+h
+con (34).
+
+5. Ir a siguiente paso.
+
+La formulación propuesta puede ser incorporada con facilidad
+n cualquier código de elementos finitos explícitos agregando sim-
+lemente los pasos 3 y 4, que pueden ejecutarse en única rutina
+e cálculo. Además, en los pasos 3 y 4 pueden aplicarse técnicas de
+aralización computacional ya que las operaciones involucradas se
+ealizan a nivel de elementos y nodos de la malla.
+
+Nótese que los desplazamientos un+1
+h
+
+se obtienen a partir de
+
+os valores del paso tn y más  específicamente de εstab,n
+h
+
+, por lo que
+a ecuación (34) es compatible con un esquema explícito. Una vez
+alculadas los valores de los desplazamientos un+1
+
+h
+, se calculan los
+
+alores de los desplazamientos de la sub-escala ũ
+n+1
+
+y por último
+os valores de las deformaciones nodales εn+1
+
+h
+con la ecuación (34).
+
+ste esquema sólo requiere la resolución de un sistema diagonal
+e ecuaciones, frente a las formulaciones mixtas implícitas, que
+equieren la resolución de mayores sistemas de ecuaciones. A partir
+e ahora, a esta formulación propuesta la denominaremos Método
+e Elementos Finitos Mixtos Explícitos (Mixed Explicit Finite Element
+ethod) o simplemente MEX-FEM, por sus siglas en inglés.
+
+.5. Aspectos de implementación computacional
+
+La integración temporal explícita es efectiva si las matrices de
+asa M y de amortiguamiento D en (40) son diagonales [7]. Con-
+
+idérese un elemento tetraedro de cuatros nodos empleando las
+ismas funciones lineales de interpolación para los desplazamien-
+
+os y deformaciones. En la formulación mixta, las deformaciones no
+on constantes dentro del elemento, sino que varían linealmente.
+
+n este trabajo se usa una cuadratura cerrada Gauss-Lobatto, en la
+ual los puntos de integración se sitúan sobre los nodos de los ele-
+entos finitos, a fin de evaluar correctamente las integrales sobre
+
+l dominio de los elementos finitos �e.
+. cálc. diseño ing. 2017;33(1-2):35–44 39
+
+Nótese que que al emplear el método de Galerkin, las funcio-
+nes de prueba ωh para el espacio de los desplazamientos y �h
+para el espacio de las deformaciones son las funciones de inter-
+polación, convencionalmente escritas en notación matricial como
+N˛ = [N1˛N2˛N3˛N4˛] ∀  ̨ ∈ {u, ε}. Los desplazamientos y las defor-
+maciones nodales dentro del elemento se interpolan como:
+
+uh =
+4∑
+
+i=1
+N iuu
+
+i
+h
+
+y εh =
+4∑
+
+i=1
+N iεε
+
+i
+h
+
+(41)
+
+siendo N iu la submatriz diagonal de 3 × 3 (N iu = diag{Ni, Ni, Ni})
+de las funciones de interpolación del campo de los desplaza-
+mientos en el nodo i (ui
+
+h
+= {ui
+
+x,h
+, ui
+
+y,h
+, ui
+
+z,h
+}) y N iε la submatriz
+
+diagonal de 6 × 6 (N iε = diag{Ni, Ni, Ni, Ni, Ni, Ni}) de las funcio-
+nes de interpolación del campo de las deformaciones en el nodo
+i (εi
+
+h
+= {εi
+
+xx,h
+, εi
+
+yy,h
+, εi
+
+zz,h
+, εi
+
+xy,h
+, εi
+
+yz,h
+, εi
+
+xz,h
+}). Por otra parte, en la
+
+ecuación (38), ∇sωh = BTu es el clásico operador matricial de gra-
+diente simétrico discreto, en el cual Bu = [B1B2B3B4], donde cada
+sub-matriz Bi se escribe como:
+
+Bi =
+
+⎛
+⎜⎜⎜⎜⎜⎜⎜⎜⎝
+
+∂Ni
+∂X
+
+0 0
+∂Ni
+∂Y
+
+0
+∂Ni
+∂Z
+
+0
+∂Ni
+∂Y
+
+0
+∂Ni
+∂X
+
+∂Ni
+∂Z
+
+0
+
+0  0
+∂Ni
+∂Z
+
+0
+∂Ni
+∂Y
+
+∂Ni
+∂X
+
+⎞
+⎟⎟⎟⎟⎟⎟⎟⎟⎠
+
+T
+
+(42)
+
+De igual manera, el operador de divergencia ∇ · �h en (34) toma la
+forma de Bε = [BT1BT2BT3BT4].
+
+3. Verificación. Simulaciones numéricas
+
+La eficacia de la formulación MEX-FEM se muestra a continua-
+ción en una serie de tests numéricos realizados sobre la Membrana
+de Cook, mostrado en la figura 1. Se consideran casos de elasticidad
+compresible y quasi-incompresible, con las constantes elásticas:
+Módulo de Young E = 200 Mpa  y coeficiente de Poisson � = 0.30 y
+48mm
+
+Figura 1. Membrana de Cook. Geometría.
+
+
+
+40 N. Lafontaine et al. / Rev. int. métodos numér. cálc. diseño ing. 2017;33(1-2):35–44
+
+Malla A
+Ne = 200
+Nn = 123
+
+Malla B
+Ne = 363
+Nn = 212
+
+Malla C
+Ne = 799
+Nn = 444
+
+Malla D
+Ne = 3291
+Nn = 1735
+
+a) b) c) d)
+
+Figura 2. Membrana de Cook. Mallas de elementos finitos empleada en el análisis bidimensional. Nn: número de elementos y Nn: número de nodos.
+
+Malla A
+Ne = 751
+Nn = 233
+
+Malla B
+Ne = 5677
+Nn = 1220
+
+Malla C
+Ne = 9721
+Nn = 1962
+
+Malla D
+Ne = 36048
+Nn = 6647
+
+a) b) c) d)
+
+Figura 3. Membrana de Cook. Mallas de elementos finitos empleada en el análisis tridimensional. Nn: número de elementos y Nn: número de nodos.
+
+Desplazamiento vertical en punto A. Irreducible. Desplazamiento vertical en punto A. MEX-FEM.
+
+0 0,002 0,004 0,006
+Tiempo (s)
+
+0,008 0,01 0,012 0,014 0,016 0 0,002
+
+4
+
+3,5
+
+3
+
+2,5
+
+2
+
+1,5
+
+1
+
+0,5
+
+0
+0,004 0,006
+
+Tiempo (s)
+
+P
+re
+
+si
+ó
+n
+ (
+
+M
+P
+
+a
+)
+
+D
+e
+sp
+
+la
+za
+
+m
+ie
+
+n
+to
+
+ v
+e
+rt
+
+ic
+a
+l
+
+(E
+-3
+
+m
+)
+
+D
+e
+sp
+
+la
+za
+
+m
+ie
+
+n
+to
+
+ v
+e
+rt
+
+ic
+a
+l
+
+(E
+-3
+
+m
+)
+
+P
+re
+
+si
+ó
+n
+ (
+
+M
+P
+
+a
+)
+
+0,008 0,01 0,012 0,014 0,016
+
+0 0,002 0,004 0,006
+Tiempo (s)
+
+0,008 0,01 0,012 0,014 0,016 0 0,002 0,004 0,006
+Tiempo (s)
+
+0,008 0,01 0,012 0,014 0,016
+
+d)c)
+
+b)a)
+
+4
+
+3,5
+
+3
+
+2,5
+
+2
+
+1,5
+
+1
+
+0,5
+
+0
+
+4
+
+3,5
+
+3
+
+2,5
+
+2
+
+1,5
+
+1
+
+0,5
+
+0
+
+4
+
+3,5
+
+3
+
+2,5
+
+2
+
+1,5
+
+1
+
+0,5
+
+0
+
+ulació
+
+e
+c
+
+d
+V
+e
+d
+
+Presión en punto B. Irreducible.
+
+Figura 4. Membrana de Cook 2D. Form
+
+l caso bidimensional, el tamaño del elemento finito se ha tomado
+omo h = (4/ · A)
+
+1
+2 siendo A el área del elemento finito correspon-
+
+1
+
+iente. En el caso tridimensional se ha tomado h = (6/ · V) 3 donde
+
+ el volumen del elemento finito. Como método de estabilización se
+mplea el OSS con cu = 1.0, cε = 1.0 y L0 = 50 mm.  La sub-escala de los
+esplazamientos ũ se computa empleando la ecuación (30). En la
+Presión en punto B. MEX-FEM.
+
+n Irreducible vs MEX-FEM con � = 0.3.
+
+integración temporal de la ecuación de movimiento se ha empleado
+un paso de tiempo �t  constante. Los resultados obtenidos con la
+
+formulación propuesta se comparan con la formulación estándar
+en desplazamientos y la formulación mixta explícita estándar
+(Mex-Fem estándar ũ = 0) [23], es decir sin considerar la sub-
+escala de los desplazamientos. Los análisis se han realizado con el
+
+
+
+N. Lafontaine et al. / Rev. int. métodos numér. cálc. diseño ing. 2017;33(1-2):35–44 41
+
+Desplazamiento vertical en punto A. Irreducible.
+
+Presión en punto B. Irreducible. Presión en punto B. MEX-FEM.
+
+Desplazamiento vertical en punto A. MEX-FEM.
+
+0 0,002 0,004 0,006
+Tiempo (s)
+
+0,008 0,01 0,012 0,014 0,016
+
+0 0,002 0,004 0,006
+Tiempo (s)
+
+0,008 0,01 0,012 0,014 0,016 0 0,002 0,004 0,006
+Tiempo (s)
+
+0,008 0,01 0,012 0,014 0,016
+
+0 0,002 0,004 0,006
+Tiempo (s)
+
+0,008 0,01 0,012 0,014 0,016
+
+P
+re
+
+si
+ó
+
+n
+ (
+
+M
+P
+
+a
+)
+
+c)
+4
+
+4,5
+
+3,5
+
+3
+
+2,5
+
+2
+
+1,5
+
+1
+
+0,5
+
+0
+
+P
+re
+
+si
+ó
+
+n
+ (
+
+M
+P
+
+a
+)
+
+d)
+
+b)
+
+4
+
+4,5
+
+3,5
+
+3
+
+2,5
+
+2
+
+1,5
+
+1
+
+0,5
+
+0
+D
+
+e
+sp
+
+la
+za
+
+m
+ie
+
+n
+to
+
+ v
+e
+
+rt
+ic
+
+a
+l
+
+(E
+-3
+
+m
+)
+
+3,5
+
+3
+
+2,5
+
+2
+
+1,5
+
+1
+
+0,5
+
+0
+
+a)
+
+D
+e
+
+sp
+la
+
+za
+m
+
+ie
+n
+
+to
+ v
+
+e
+rt
+
+ic
+a
+
+l
+(E
+
+-3
+m
+
+)
+
+3,5
+
+3
+
+2,5
+
+2
+
+1,5
+
+1
+
+0,5
+
+0
+
+Figura 5. Membrana de Cook 2D. Formulación Irreducible vs MEX-FEM con � = 0.499.
+
+Desplazamiento vertical en punto A, v = 0,30 Desplazamiento vertical en punto A, v = 0,499
+
+Presión en punto B, v  = 0,499Presión en punto B, v  = 0,30
+
+0 200 400 600
+Número de nodos
+800 1.000 1.200 1.400 1.600 1.800 2.000
+
+0 200 400 600
+Número de nodos
+800 1.000 1.200 1.400 1.600 1.800 2.000
+
+0 200 400 600
+Número de nodos
+800 1.000 1.200 1.400 1.600 1.800 2.000
+
+0 200 400 600
+Número de nodos
+800 1.000 1.200 1.400 1.600 1.800 2.000
+
+P
+re
+
+si
+ó
+n
+ (
+
+M
+P
+
+a
+)
+
+c) 1,7
+
+1,65
+
+1,6
+
+1,55
+
+1,5
+
+1,45
+
+1,4
+
+1,95
+
+1,9
+
+1,85
+
+1,8
+
+1,75
+
+1,7
+
+1,65
+
+1,8
+
+1,6
+
+1,4
+
+1,2
+
+1
+
+0,8
+
+0,6
+
+P
+re
+
+si
+ó
+n
+ (
+
+M
+P
+
+a
+)
+
+d)
+
+a) b)
+
+4
+
+4,5
+
+3,5
+
+3
+
+2,5
+
+2
+
+1.5
+
+1
+
+0,5
+
+0
+
+D
+e
+sp
+
+la
+za
+
+m
+ie
+
+n
+to
+
+ v
+e
+rt
+
+ic
+a
+l
+
+(E
+-3
+
+ m
+)
+
+D
+e
+sp
+
+la
+za
+
+m
+ie
+
+n
+to
+
+ v
+e
+rt
+
+ic
+a
+l
+
+(E
+-3
+
+ m
+)
+
+ok 2D
+
+p
+C
+p
+C
+
+Figura 6. Membrana de Co
+rograma de elementos finitos KRATOS [13,14], desarrollado en el
+entro Internacional de Métodos Numéricos (CIMNE). Como pre y
+ost-procesador se ha utilizado GiD [16], también desarrollado en
+IMNE.
+. Curvas de convergencia.
+En la discretización espacial se emplean 4 mallas de elementos
+finitos triangulares y tetraédricos mostradas en las figuras 2 y 3,
+respectivamente. Para eliminar las frecuencias espurias que pue-
+den aparecer en la integración temporal sin degradar la respuesta
+
+
+
+42 N. Lafontaine et al. / Rev. int. métodos numér. cálc. diseño ing. 2017;33(1-2):35–44
+
+em e
+
+a) b) c)
+
+ 2D. C
+
+d
+fi
+d
+s
+a
+s
+
+r
+s
+y
+m
+p
+y
+c
+p
+e
+c
+m
+u
+
+Irreducible. Mex-F
+
+Figura 7. Membrana de Cook
+
+inámica se emplea un amortiguamiento de Rayleigh con un coe-
+ciente disipación en la sub-escala �̃ = 0.1. Asimismo, con el fin
+e obtener la respuesta estacionaria del problema quasi-estático
+e emplea un amortiguamiento de Rayleigh con un coeficiente de
+mortiguamiento de � = 0.1. La carga impuesta F de valor unitario
+e aplica de una manera instantánea y constante en el tiempo.
+
+La evolución del desplazamiento vertical en la esquina supe-
+ior derecha (punto A) para un análisis 2D de deformación plana
+e muestra en las figuras 4 y 5 para valores de Poisson de � = 0.3
+
+ � = 0.499, casos compresible y quasi-incompresible, respectiva-
+ente. Se puede observar que para � = 0.3, ambas formulaciones
+
+resentan resultados similares en el campo de los desplazamientos
+ presiones, aunque MEX-FEM es más  preciso. Sin embargo, nótese
+omo en el caso quasi-incompresible � = 0.499, la formulación pro-
+uesta claramente supera a la irreducible. La figura 5a muestra
+
+l pobre comportamiento del elemento triangular estándar en el
+ampo de los desplazamientos debido al efecto de bloqueo volu-
+étrico. El desplazamiento predicho por este elemento, incluso
+
+tilizando mallas finas, está muy  por debajo del valor correcto.
+
+4,00
+
+3,50
+
+3,00
+
+2,50
+
+2,00
+
+1,50
+
+1,00
+
+0,50
+
+0,00
+
+Desplazamiento vertical en punto A. Irreducible.
+
+0 0,002 0,004 0,006
+
+Tiempo (s)
+
+0,008 0,01 0,012 0,014 0,016
+
+0 0,002 0,004 0,006
+Tiempo (s)
+
+ 0,008 0,01 0,012 0,014 0,016
+
+a)
+
+D
+e
+
+sp
+la
+
+za
+m
+
+ie
+n
+
+to
+ v
+
+e
+rt
+
+ic
+a
+
+l (
+E
+
+-3
+m
+
+)
+
+3,00
+
+2,50
+
+2,00
+
+1,50
+
+1,00
+
+0,50
+
+0,00
+
+c)
+
+P
+re
+
+si
+ó
+
+n
+ (
+
+M
+P
+
+a
+)
+
+d)
+
+P
+re
+
+si
+ó
+
+n
+ (
+
+M
+P
+
+a
+)
+
+b)
+
+D
+e
+
+sp
+la
+
+za
+m
+
+ie
+n
+
+to
+ v
+
+e
+rt
+
+ic
+a
+
+l (
+E
+
+-3
+m
+
+)
+
+Presión en punto B. Irreducible. 
+
+Figura 8. Membrana de Cook 3D. Formulación
+stándar. MEX-FEM.
+
+ampo de presiones. Malla D.
+
+Nótese además que el error de fase en la formulación irreducible es
+notoriamente mayor que el obtenido con la presente formulación
+para una misma  malla de elementos finitos. La evolución del campo
+de las presiones para � = 0.499 (punto B de la figura 1) se aprecia en
+las figuras 5c y 5d, tanto para la formulación irreducible como para
+la presente formulación. Dado que el valor de la presión es cons-
+tante dentro del elemento lineal irreducible, el valor nodal se ha
+obtenido mediante la proyección L2, o sea, ph = Ph(p). Obsérvese
+cómo el efecto del bloqueo volumétrico en la formulación irreduci-
+ble provoca oscilaciones el campo de las presiones que desvirtúan
+completamente la solución. En la figura 5d se puede comprobar
+que la presente formulación produce resultados satisfactorios y
+razonablemente precisos en el campo de las presiones.
+
+Las curvas de convergencia para el caso estacionario para los
+valores de coeficiente de Poisson mencionados se muestran en la
+
+figura 6. Nuevamente para valor � = 0.3, la formulación irreduci-
+ble, MEX-FEM con ũ = 0 y MEX-FEM convergen al valor correcto
+del desplazamiento (1.843 mm)  y presión (1.632 MPa) a media que
+se refina la malla. Además, puede verse que las formulaciones
+
+Desplazamiento vertical en punto A. MEX-FEM.
+
+0 0,002 0,004 0,006
+
+Tiempo (s)
+
+0,008 0,01 0,012 0,014 0,016
+
+0 0,002 0,004 0,006
+
+Tiempo (s)
+0,008 0,01 0,012 0,014 0,016
+
+3,00
+
+2,50
+
+2,00
+
+1,50
+
+1,00
+
+0,50
+
+0,00
+
+4,00
+
+3,50
+
+3,00
+
+2,50
+
+2,00
+
+1,50
+
+1,00
+
+0,50
+
+0,00
+
+Presión en punto B. MEX-FEM.
+
+ Irreducible vs MEX-FEM con � = 0.499.
+
+
+
+N. Lafontaine et al. / Rev. int. métodos numér. cálc. diseño ing. 2017;33(1-2):35–44 43
+
+Desplazamiento verti cal en punt o A. Presión en punto B.
+
+0 1.000 2.000 3.000
+Número de nodos Número de nodos
+
+4.000 5.000 6.000 7.000 0 1.000 2.000 3.000 4.000 5.000 6.000 7.000
+
+a) b)2,20 2,10
+1,90
+
+1,70
+
+1,50
+
+1,30
+
+1,10
+
+0,90
+
+0,70
+
+0,50
+
+0,30
+
+0,10
+
+2,00
+
+1,80
+
+1,60
+
+1,40
+
+1,20
+
+1,00
+
+D
+e
+
+sp
+la
+
+za
+m
+
+ie
+n
+
+to
+ v
+
+e
+rt
+
+ic
+a
+
+l
+(E
+
+-3
+ m
+
+)
+
+P
+re
+
+si
+ó
+
+n
+ (
+
+M
+P
+
+a
+)
+
+Figura 9. Membrana de Cook 3D. Curva de convergencia.
+
+m est
+
+a) b) c)
+
+k 3D. 
+
+m
+m
+�
+v
+(
+c
+d
+p
+s
+p
+
+n
+c
+c
+e
+
+i
+E
+a
+m
+d
+p
+t
+v
+n
+l
+c
+S
+d
+
+f
+A
+z
+
+yecto. Agradecimientos al programa “Excellence Programme for
+Irreducible. Mex-Fe
+
+Figura 10. Membrana de Coo
+
+ixta estándar y la propuesta convergen a la misma  velocidad pero
+ás  rápido que la formulación irreducible. Por otra parte, cuando
+
+ = 0.499, se observa la capacidad de MEX-FEM para predecir el
+alor correcto del desplazamiento vertical (1.554 mm)  y la presión
+1.872 MPa). Obsérvese también que la formulación mixta explí-
+ita estándar, a pesar de dar un resultado satisfactorio del campo
+e los desplazamientos, presenta inestabilidades en el campo de las
+resiones que desvirtúan completamente la solución. En el mismo
+entido, nótese que el valor del desplazamiento y de la presión
+redicho por la formulación irreducible están subestimados.
+
+La figura 7 muestra el campo de las presiones de las formulacio-
+es mencionadas en la Malla D para un valor de � = 0.499. Obsérvese
+omo MEX-FEM es capaz de dar una solución estabilizada del
+ampo de las presiones, no siendo así para el caso irreducible y
+l caso mixto explícito sin sub-escala de desplazamientos.
+
+Los resultados para el análisis dinámico tridimensional quasi-
+ncompresible de la membrana de Cook se muestran en la figura 8.
+l caso compresible, no mostrado, tiene un comportamiento similar
+l caso bidimensional. Nuevamente, se observa el pobre rendi-
+iento del elemento tetraédrico estándar en el campo de los
+
+esplazamientos debido al efecto de bloqueo volumétrico. El des-
+lazamiento predicho por este elemento, incluso utilizando mallas
+upidas, está muy  por debajo del valor correcto. Nótese otra
+ez que el error en el periodo en la formulación irreducible es
+otoriamente mayor que con el obtenido de la presente formu-
+
+ación para una misma  malla de elementos finitos. Las curvas de
+onvergencia para el caso tridimensional se muestran en la figura 9.
+obresale la capacidad de MEX-FEM para predecir el valor correcto
+el desplazamiento vertical (1.998 mm)  y la presión (1.251 MPa).
+Finalmente, la figura 10 muestra el campo de las presiones de las
+ormulaciones mencionadas en la Malla D para un valor de � = 0.499.
+dviértase como MEX-FEM es capaz de dar una solución estabili-
+ada del campo de las presiones en un problema tridimensional.
+ándar. MEX-FEM.
+
+Campo de presiones. Malla D.
+
+4. Conclusión
+
+Ese trabajo propone una formulación mixta explícita de elemen-
+tos finitos en desplazamientos y deformaciones estabilizadas con
+sub-escalas, aplicable a elementos con igual orden de interpola-
+ción, y en particular, con interpolaciones lineales. Esta formulación
+se ha desarrollado en el marco del método de las sub-escalas
+ortogonales, eludiendo de forma efectiva la condición de estabi-
+lidad LBB sobre las formulaciones mixtas. En comparación con
+la formulación irreducible y la formulación mixta sin sub-escala
+de desplazamientos, la formulación propuesta es más precisa y
+robusta, no requiere la resolución de un sistema acoplado de
+ecuaciones y es capaz de abordar problemas quasi-estáticos y
+dinámicos en situaciones quasi-incompresibles. Por otra parte, el
+esquema de resolución es análogo al de la formulación irreducible
+y es muy  fácil de integrar la formulación propuesta en un código
+explícito.
+
+Agradecimientos
+
+Nelson Lafontaine agradece a la Agencia Española De Coope-
+ración Internacional Para El Desarrollo (AECID) por el soporte
+económico dado en el programa de Becas MAEC-AECID y a los
+profesores M.W  Yuan y Chen Pu por su generoso y valiosísimo
+apoyo. Riccardo Rossi agradece a los fondos donados por The
+Seventh Framework Programme (FP7/2007-2013) del ERC bajo el
+acuerdo no 611636 (NUMEXAS) para el desarrollo de este pro-
+Knowledge Generation by MINECO” del proyecto EACY (Enhanced
+accuracy computational and experimental framework for strain
+localization and failure mechanisms, ref. MAT2013-48624-C2-
+1-P).
+
+
+
+4 umér
+
+B
+
+[
+
+[
+
+[
+
+[
+
+[
+
+[
+[
+[
+
+[
+
+[
+
+[
+
+[
+
+[
+
+[
+
+[
+
+[
+
+[
+
+[
+
+[
+
+[
+
+4 N. Lafontaine et al. / Rev. int. métodos n
+
+ibliografía
+
+[1] I. Babuska, Error-bounds for finite element method, Numerische Mathematik
+16  (4) (1971) 322–333.
+
+[2] M. Cervera, M.  Chiumenti, L. Benedetti, R. Codina, Mixed stabilized finite
+element methods in nonlinear solid mechanics. part iii: Compressible and
+incompressible plasticity, Computer Methods in Applied Mechanics and Engi-
+neering 285 (0) (2015) 752–775.
+
+[3] M. Cervera, M.  Chiumenti, R. Codina, Mixed stabilized finite element methods in
+nonlinear solid mechanics: Part i: Formulation, Computer Methods in Applied
+Mechanics and Engineering 199 (37-40) (2010) 2559–2570.
+
+[4] M. Cervera, M.  Chiumenti, R. Codina, Mixed stabilized finite element methods
+in  nonlinear solid mechanics: Part ii: Strain localization, Computer Methods in
+Applied Mechanics and Engineering 199 (37–40) (2010) 2571–2589.
+
+[5] M. Chiumenti, M.  Cervera, R. Codina, A mixed three-field FE formulation for
+stress accurate analysis including the incompressible limit, Computer Methods
+in Applied Mechanics and Engineering 283 (0) (2015) 1095–1116.
+
+[6] M. Chiumenti, Q. Valverde, C. Agelet de Saracibar, M.  Cervera, A stabilized for-
+mulation for incompressible elasticity using linear displacement and pressure
+interpolations, Computer Methods in Applied Mechanics and Engineering 191
+(46) (2002) 5253–5264.
+
+[7] R.W. Clough, J. Penzien, Dynamics of structures, Earthquake Engineering &
+Structural Dynamics (1976).
+
+[8] R. Codina, Stabilization of incompresssibility and convection through orthogo-
+nal sub-scales in finite elements methods, Comput. Meth Appl Mech Eng 190
+(2000) 1579–1599.
+
+[9] R. Codina, Stabilized finite element approximation of transient incompressible
+flows using orthogonal subscales, Computer Methods in Applied Mechanics
+and  Engineering 191 (39–40) (2002) 4295–4321.
+
+10] R. Codina, Analysis of a stabilized finite element approximation of the oseen
+equations using orthogonal subscales, Appl. Numer. Math. 58 (3) (2008)
+264–283.
+
+11] R. Codina, J. Blasco, A finite element method for the stokes problem allo-
+wing equal velocity-pressure interpolations, Comput. Meth Appl Mech Eng 143
+(1997) 373–391.
+
+12] R. Codina, J. Principe, O. Guasch, S. Badia, Time dependent subscales in the
+stabilized finite element approximation of incompressible flow problems,
+Computer Methods in Applied Mechanics and Engineering 196 (21–24) (2007)
+2413–2430.
+
+13] P. Dadvand, R. Rossi, M.  Gil, X. Martorell, J. Cotela, E. Juanpere, S.R. Idelsohn, E.
+
+Oñate, Migration of a generic multi-physics framework to hpc environments,
+Computers & Fluids 80 (0) (2013) 301–309.
+
+14] P. Dadvand, R. Rossi, E. Oñate, An object-oriented environment for developing
+finite element codes for multi-disciplinary applications, Archives of Computa-
+tional Methods in Engineering 17 (3) (2010) 253–297.
+
+[
+
+. cálc. diseño ing. 2017;33(1-2):35–44
+
+15] F. Brezzi, M.  Fortin, D. Marini, Mixed finite element methods, Springer, 1991.
+16] GiD. The personal pre and post processor. http://gid.cimne.upc.es. 2009.
+17] A.J. Gil, C.H. Lee, J. Bonet, M.  Aguirre, Stabilised petrov-galerkin formulation for
+
+linear tetrahedral elements in compressible, nearly incompressible and truly
+incompressible fast dynamics, Computer Methods in Applied Mechanics and
+Engineering 276 (0) (2014) 659–690.
+
+18] T.J.R. Hughes, Equivalence of finite elements for nearly incompressible elasti-
+city, J. Appl. Mech. 44 (1977).
+
+19] T.J.R. Hughes, Generalization of selective integration procedures to anisotropic
+and nonlinear media, International Journal for Numerical Methods in Enginee-
+ring  15 (9) (1980) 1413–1418.
+
+20] T.J.R. Hughes, G. Scovazzi, L.P. Franca, Multiscale and Stabilized Methods, John
+Wiley & Sons, Ltd, 2004.
+
+21] T.J.R. Hughes, Multiscale phenomena: Green’s functions, the dirichlet-to-
+neumann formulation, subgrid scale models, bubbles and the origins of
+stabilized methods, Computer Methods in Applied Mechanics and Engineering
+127 (1–4) (1995) 387–401.
+
+22] T.J.R. Hughes, G.R. Feijóo, L. Mazzei, J.-B. Quincy, The variational multis-
+cale method-a paradigm for computational mechanics, Computer Methods
+in Applied Mechanics and Engineering 166 (1–2) (1998) 3–24, Advances in
+Stabilized Methods in Computational Mechanics.
+
+23] N.M. Lafontaine, R. Rossi, M. Cervera, M.  Chiumenti, Explicit mixed strain-
+displacement finite element for dynamic geometrically non-linear solid
+mechanics, Computational Mechanics (2015) 1–17.
+
+24] D.S. Malkus, T.J.R. Hughes, Mixed finite element methods - reduced and selec-
+tive integration techniques: A unification of concepts, Computer Methods in
+Applied Mechanics and Engineering 15 (1) (1978) 63–81.
+
+25] E. Oñate, A. Valls, J. García, Fic/fem formulation with matrix stabilizing terms
+for incompressible flows at low and high reynolds numbers, Computational
+Mechanics 38 (4–5) (2006) 440–455.
+
+26] E. Oñate, J. Rojek, R.L. Taylor, O.C. Zienkiewicz, Finite calculus formulation for
+incompressible solids using linear triangles and tetrahedra, International Jour-
+nal  for Numerical Methods in Engineering 59 (11) (2004) 1473–1500.
+
+27] G. Scovazzi, Lagrangian shock hydrodynamics on tetrahedral meshes: A stable
+and accurate variational multiscale approach, Journal of Computational Physics
+231 (24) (2012) 8029–8069.
+
+28] J.C. Simo, R.L. Taylor, K.S. Pister, Variational and projection methods for the
+volume constraint in finite deformation elasto-plasticity, Computer Methods
+in  Applied Mechanics and Engineering 51 (1–3) (1985) 177–208.
+
+29] R.L. Taylor, A mixed-enhanced formulation tetrahedral finite elements, Interna-
+
+tional Journal for Numerical Methods in Engineering 47 (1-3) (2000) 205–227.
+
+30] Q. Valverde, M.  Chiumenti, M.  Cervera, C. Agelet de Saracibar, Formulación
+estabilizada de elementos finitos triangulares y tetraédricos para problemas
+de  incompresibilidad en pequeñas deformaciones, Revista Internacional de
+Métodos Numéricos para Cálculo y Diseño en Ingeniería 21 (4) (2005).
+
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0005
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0005
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0005
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0005
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0005
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0005
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0005
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0005
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0005
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0005
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0005
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0005
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0005
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0005
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0005
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0010
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0015
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0020
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0025
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0030
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0035
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0035
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0035
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0035
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0035
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0035
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0035
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0035
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0035
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0035
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0035
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0035
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0035
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0040
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0045
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0050
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0055
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0060
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0065
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0070
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0075
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0075
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0075
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0075
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0075
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0075
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0075
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0075
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0075
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0075
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0075
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0075
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0085
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0090
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0090
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0090
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0090
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0090
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0090
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0090
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0090
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0090
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0090
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0090
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0090
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0090
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0090
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0090
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0090
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0095
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0100
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0100
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0100
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0100
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0100
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0100
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0100
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0100
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0100
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0100
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0100
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0100
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0100
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0100
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0100
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0100
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0105
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0110
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0115
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0120
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0125
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0130
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0135
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0140
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0145
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+http://refhub.elsevier.com/S0213-1315(15)00061-9/sbref0150
+
+	Formulación mixta estabilizada explícita de elementos finitos para sólidos compresibles y quasi-incompresibles
+	1 Introducción
+	2 Formulación
+	2.1 Formulación mixta
+	2.2 Discretización espacial y temporal
+	2.3 Método de los elementos finitos estabilizados
+	2.3.1 Multi-escalas variacionales de resolución
+
+	2.4 Ecuación discreta y estabilizada de la ecuación de movimiento. Formulación mixta estabilizada explícita
+	2.5 Aspectos de implementación computacional
+
+	3 Verificación. Simulaciones numéricas
+	4 Conclusión
+	Agradecimientos
+	References
+
+

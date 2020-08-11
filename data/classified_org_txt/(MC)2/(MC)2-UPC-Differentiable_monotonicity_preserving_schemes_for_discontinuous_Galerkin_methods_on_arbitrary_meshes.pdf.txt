@@ -1,0 +1,3445 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR
+
+DISCONTINUOUS GALERKIN METHODS ON ARBITRARY MESHES
+
+SANTIAGO BADIA†‡, JESÚS BONILLA†‡, AND ALBA HIERRO†‡
+
+Abstract. This work is devoted to the design of interior penalty discontinuous Galerkin (dG)
+
+schemes that preserve maximum principles at the discrete level for the steady transport and convection-
+
+diffusion problems and the respective transient problems with implicit time integration. Monotonic
+schemes that combine explicit time stepping with dG space discretization are very common, but the
+
+design of such schemes for implicit time stepping is rare, and it had only been attained so far for
+
+1D problems. The proposed scheme is based on a piecewise linear dG discretization supplemented
+with an artificial diffusion that linearly depends on a shock detector that identifies the troublesome
+
+areas. In order to define the new shock detector, we have introduced the concept of discrete local
+extrema. The diffusion operator is a graph-Laplacian, instead of the more common finite element
+
+discretization of the Laplacian operator, which is essential to keep monotonicity on general meshes
+
+and in multi-dimension. The resulting nonlinear stabilization is non-smooth and nonlinear solvers
+can fail to converge. As a result, we propose a smoothed (twice differentiable) version of the nonlin-
+
+ear stabilization, which allows us to use Newton with line search nonlinear solvers and dramatically
+
+improve nonlinear convergence. A theoretical numerical analysis of the proposed schemes show that
+they satisfy the desired monotonicity properties. Further, the resulting operator is Lipschitz contin-
+
+uous and there exists at least one solution of the discrete problem, even in the non-smooth version.
+
+We provide a set of numerical results to support our findings.
+
+Keywords: Finite elements, discrete maximum principle, monotonicity, shock capturing, discontinu-
+ous Galerkin, local extrema diminishing
+
+Contents
+
+1. Introduction 2
+2. The Convection-diffusion problem and its discretization 3
+2.1. Notation 3
+2.2. Weak form and interior penalty dG approximation 4
+2.3. Implicit time integration 5
+3. Monotonicity Properties 5
+4. The DMP-preserving artificial diffusion scheme 7
+5. Lipschitz continuity and existence of solutions 12
+6. Smoothing the shock detector 14
+6.1. Parameters fine-tuning 15
+7. Numerical experiments 18
+7.1. Convergence to a smooth solution 18
+7.2. DMP-preservation 20
+7.3. Three body rotation 21
+8. Conclusions 23
+Acknowledgments 23
+References 25
+
+† Centre Internacional de Mètodes Numèrics en Enginyeria (CIMNE) , Parc Mediterrani de la Tecnologia, UPC,
+Esteve Terradas 5, 08860 Castelldefels, Spain ({sbadia,jbonilla,ahierro}@cimne.upc.edu).
+‡ Universitat Politècnica de Catalunya, Jordi Girona 1-3, Edifici C1, 08034 Barcelona, Spain.
+
+1
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 2
+
+1. Introduction
+
+The transport problem is one of many problems that might satisfy a maximum principle (MP) or a
+positivity property. However, its numerical discretization may violate these properties at the discrete
+level. These violations arise in the form of local spurious oscillations near sharp layers of the solution.
+Such oscillations break the MP of the continuous problem. For steady problems with no source term,
+the MP implies that the extrema of the solution are on the boundary of the domain; they are bounded
+by the boundary and the initial solution extrema in the transient case.
+
+Many authors have focused on developing accurate schemes that inherit the MP at the discrete level,
+i.e. discrete maximum principle (DMP) preserving schemes. To this end, several approaches have been
+used. In the case of explicit time integration combined with finite volumes or discontinuous Galerkin
+(dG) methods, the schemes are usually based on either slope or flux limiters, or special reconstruction
+algorithms. These methods are widely present in literature and already well understood (see, e.g.,
+[24]).
+
+For implicit time integration and continuous Galerkin (cG) finite element space discretization, meth-
+ods attaining DMPs are not as well understood as the previous ones. However, several schemes have
+been developed to date. In this case, most of the approaches are based on adding an artificial diffusion
+operator. Then, in order to maintain high-order convergence rates in smooth regions, this operator is
+scaled such that it vanishes in smooth regions and it is active in the vicinity of sharp layers. Depending
+on how this activation is controlled, one may distinguish among residual-based, entropy-based, and
+fluctuation-based schemes. The first DMP-preserving schemes were residual-based (see e.g. [9, 25]).
+Afterwards, fluctuation based schemes were developed [3,10–13]. These schemes are based on comput-
+ing a priori an artificial diffusion that ensures DMP preservation. The artificial diffusion is activated
+based on a so-called shock detector, usually based on the unknown gradient jumps across elements.
+Lately, Guermond and co-workers have proposed a similar approach for hyperbolic problems, but using
+an alternative detector based on the entropy production [16, 17]. The more recent fluctuation-based
+schemes compute the amount of diffusion required to preserve the DMP in a way that resembles Al-
+gebraic Flux Correction (AFC) techniques [2, 5, 22, 23]. The reader might refer to [21] and the
+references therein for more insights about AFC.
+
+In the case at hand, the dG space discretization of steady problems and transient problems, the
+situation is much less understood. An attempt to develop implicit DMP-preserving dG schemes has
+been proposed in [4], but even though a DMP enjoying artificial diffusion method can be constructed
+for the 1D problem, the extension to the multi-dimensional case fails to enjoy such property. The
+objective of this work is to design a multidimensional DMP-preserving dG method on arbitrary meshes
+for both implicit time integration and steady problems. Furthermore, we propose a linearity preserving
+and differentiable method. This latter property is particularly important for improving the convergence
+of the nonlinear solver, as shown in [2].
+
+In order to do so, we propose a stabilization method based on the following four key ingredients:
+
+(1) A shock detector that only activates the artificial diffusion in regions around shock. As pre-
+viously said, a shock detector restricts the application of the stabilization to regions where
+the solution presents shocks or sharp layers, and is the key ingredient to obtain a high-order
+stabilization method;
+
+(2) The amount of diffusion added to ensure the DMP. We motivate it using similar ideas behind
+the AFC low-order scheme construction (see [19,21]);
+
+(3) The discrete diffusion operator in order to keep the DMP on arbitrary meshes. Guermond and
+co-workers [16, 17] have proposed to use graph-theoretic artificial diffusion operators, instead
+of the classical PDE-based ones. This strategy has already been used in [2, 22,23];
+
+(4) For transient problems, a perturbation of the mass matrix is required to obtain a local ex-
+tremum diminishing (LED) scheme.
+
+This work is structured as follows. In Sect. 2, we introduce the problem to solve, the notation, and
+the discretization of the problem in space using the interior penalty dG method. Then, in Sect. 3, we
+state a novel definition of the DMP property for dG methods, by introducing the concept of discrete
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 3
+
+local extrema. In Sect. 4, we propose a scheme that fulfills such property. Lipschitz continuity
+and existence of solutions are proved in Sect 5. A discussion about the importance of smoothing
+the computation of the shock capturing terms and some tests to choose the optimal values of the
+smoothing parameters are developed in Sect. 6. Finally, numerical experiments show the performance
+of the method in Sect. 7, and some conclusions are drawn in Sect. 8.
+
+2. The Convection-diffusion problem and its discretization
+
+We consider a transient convection-diffusion problem with Dirichlet boundary conditions:
+
+
+∂tu+ ∇ · (βu)−∇ · (µ∇u) = g in Ω× [0,T],
+u(x, t) = u(x, t) on ∂Ω× [0,T],
+u(x, 0) = u0(x) x ∈ Ω.
+
+(1)
+
+The domain Ω is an open, bounded, connected subset of Rd with a Lipschitz boundary ∂Ω, where d
+is the space dimension, β = β(x) is the convective velocity, which is assumed to be divergence-free,
+and µ ≥ 0 is a constant diffusion. Even though we have considered Dirichlet boundary conditions in
+the statement of problem (1), i.e., ∂Ω ≡ ∂ΩD, Neumann boundary conditions can also be considered
+straightforwardly. In the case of pure convection (µ = 0), boundary conditions are only imposed on
+the inflow boundary ∂Ω−
+
+.
+= {x ∈ ∂Ω : β · n∂Ω < 0}, where n∂Ω is the outward-pointing unit normal.
+
+Further, we define the outflow boundary as ∂Ω+
+.
+= ∂Ω\∂Ω−. Below, we also consider the steady case,
+
+by eliminating the time derivative term.
+
+2.1. Notation. Let Th = {K} be a partition of Ω formed by elements K of characteristic length
+hK . For quasi-uniform meshes, we can define a global characteristic length of the mesh h. We denote
+by xi the coordinates of vertex i and by Vh the set of vertices of the partition. We also define
+Vh(K)
+
+.
+= {i ∈ Vh : xi ∈ K}.
+
+Given the mesh Th, the non-empty intersection F = ∂K ∩∂K ′ of two neighbor elements K,K ′ ∈ Th
+is called an interior facet of Th if it is a subdomain of dimension d−1. The set of all the interior facets
+is denoted by E0h. On the other hand, the non-empty intersection F = ∂K∩∂Ω
+
+− of an element K ∈ Th
+on the boundary with the boundary of the domain is called an inflow boundary facet (analogously for
+∂Ω+ and outflow boundary facets). The set of inflow boundary facets is denoted by E−h , and the set of
+outflow boundary facets is denoted by E+h . (We assume that the finite element partition is conforming
+with the inflow and outflow boundaries.) The set of all the facets is denoted by Eh
+
+.
+= E0h ∪ E
+
++
+h ∪ E
+
+−
+h .
+
+For any facet F ∈ E0h, we represent with K
++
+F and K
+
+−
+F the only two neighbor elements such that
+
+∂K+F ∩ ∂K
+−
+F = F . In addition, we call n
+
++
+F and n
+
+−
+F the unitary normal to facet F outside K
+
++
+F and K
+
+−
+F ,
+
+respectively. Given a facet F , we can also define the characteristic facet length hF .
+On tetrahedral (or triangular) meshes, the discrete space considered henceforth is the discontinuous
+
+space of piecewise linear functions Vh = {vh : vh|K ∈ P1(K) ∀K ∈ Th}, where P1(K) is the space
+of linear polynomials in K. For hexahedral (or quadrilateral) meshes, Vh = {vh : vh|K ∈ Q1(K)
+∀K ∈ Th}, where Q1(K) is the tensor product space of piecewise linear 1D polynomials. In addition,
+we represent the space of traces of Vh on ∂Ω as Vh|∂Ω.
+
+In order to define dG spaces, we use the nodal set as the Cartesian product of element vertices, i.e.,
+Nh = ΠK∈ThVh(K). Thus, every node a ∈ Nh can also be represented as a pair (i,K), with K ∈ Th
+and i ∈ Vh(K). Therefore, more than one interior node might be placed at the same coordinates.
+Indeed, if n elements have a vertex on xi, there will be n nodes at xi, each one with its own degree of
+freedom. Given the node a ∈ Nh, its coordinates are represented with xa, Ωa
+
+.
+= {K ∈ Th : xa ∈ K}
+
+is its support, and Nh(a) = {b ∈ Nh : xb ∈ Ωa} is the set of nodes connected to a. Notice that a
+itself is included in Nh(a). We define the set of boundary nodes N ∂h
+
+.
+= {a ∈ Nh : xa ∈ ∂Ω}, and
+
+N ∂h (a)
+.
+= Nh(a) ∩N ∂h .
+
+The functions vh ∈ Vh can be expressed as a linear combination of the basis {ϕa}a∈Nh , where
+ϕa corresponds to the shape function of node a. It is defined as follows. Given a ∈ Nh and its
+corresponding vertex-element pair (i,K), we define ϕa as the elementwise (bi)linear function such that
+ϕa(xa)|K = 1 and ϕa(xb)|K = 0 for b 6= a, and ϕa|K′ ≡ 0 for K ′ 6= K. Any function vh ∈ Vh is
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 4
+
+double-valued on E0h and single-valued on ∂Ω. Thus, vh ∈ Vh can be expressed as vh =
+∑
+a∈Nh vaϕa.
+
+Moreover we consider vKh as the restriction of vh into K.
+Given vh ∈ Vh, we can define the common concepts of average {{·}} and jump [[·]] on an interior point
+
+x of a facet F ∈ E0h as follows:
+
+{{vh}}(x) =
+1
+
+2
+
+(
+v
+K
+
++
+F
+
+h (x) + v
+K
+−
+F
+
+h (x)
+)
+, [[vh]](x) = v
+
+K
++
+F
+
+h (x)n
++
+F + v
+
+K
+−
+F
+
+h (x)n
+−
+F ,
+
+where n+F (resp. n
+−
+F ) is the outward normal with respect to K
+
++ (resp. K−) on F ; we use nF on
+boundary facets and in places where the sign is not relevant. On boundary facet points x ∈ F , F ⊂ ∂Ω,
+we define {{vh}}(x) = v
+
+K
++
+F
+
+h (x), [[vh]](x) = v
+K
+
++
+F
+
+h (x)n
++
+F (x).
+
+We will use standard notation for Sobolev spaces (see, e.g., [7]). In particular, the L2(ω) scalar
+product will be denoted by (·, ·)ω for some ω ⊂ Ω, but the domain subscript is omitted for ω ≡ Ω. The
+L2(Ω) norm is denoted by ‖ · ‖. We will denote by 1 the function that is equal to 1 in Ω; 1(x) = 1
+∀x ∈ Ω.
+
+2.2. Weak form and interior penalty dG approximation. The stabilized dG bilinear form for
+the transport problem proposed in [8] combined with the interior penalty (IP) method for the viscosity
+term reads as:
+
+Find uh ∈ Vh such that (∂tuh, vh) +Kh(uh, vh) = Gh(vh) +Bh(uh; vh) ∀vh ∈ Vh, (2)
+
+with
+
+Kh(uh, vh)
+.
+=
+∑
+K∈Th
+
+∫
+K
+
+(µ∇uh ·∇vh − uhβ ·∇vh)
+
++
+∑
+F∈Eh
+
+∫
+F
+
+µ
+(
+−[[uh]] · {{∇vh}} − {{∇uh}} · [[vh]] + ciph−1F [[uh]] · [[vh]]
+
+)
++
+
+∑
+F∈E+
+
+h
+∪E0
+
+h
+
+∫
+F
+
+{{βuh}} · [[vh]] +
+∑
+F∈E0
+
+h
+
+∫
+F
+
+|β · nF |
+2
+
+[[uh]] · [[vh]],
+
+where the right hand side (RHS) includes the terms corresponding to the source
+
+Gh(vh)
+.
+=
+∑
+K∈Th
+
+(g, vh)K ,
+
+and weak boundary conditions Bh(uh; vh),
+
+Bh(wh; vh)
+.
+= −
+
+∑
+F∈E−
+
+h
+
+∫
+F
+
+β · n∂Ωwhvh −
+∑
+
+F∈E−
+h
+∪E+
+
+h
+
+∫
+F
+
+µwh{{∇vh}} · n∂Ω +
+∑
+
+F∈E−
+h
+∪E+
+
+h
+
+∫
+F
+
+cipµh−1F whvh.
+
+The parameter cip is a constant set to 10, as suggested in [4]. The projection uh ∈ Vh|∂Ω is the facetwise
+linear polynomial function obtained, e.g., by the nodal interpolation of the given Dirichlet boundary
+data u on the nodes of the boundary N ∂h , i.e., ūh =
+
+∑
+a∈N∂
+
+h
+ϕau(xa). When the nodal projector is
+
+not well-defined, other projections that preserve the DMP can be also used, e.g., the Scott-Zhang
+projection [26]. Notice that with this definition uh is bounded by the maximum and minimum values
+of the function u. Moreover, the semi-discrete problem (2) can be rewritten in algebraic form as
+
+M∂tuh + Kuh = G + Buh, (3)
+
+where Mab
+.
+= (ϕb, ϕa) and Kab
+
+.
+= Kh(ϕb, ϕa), for a, b ∈ Nh, Ga
+
+.
+= Gh(ϕa), for a ∈ Nh, and Bab
+
+.
+=
+
+Bh(ϕb;ϕa), for a ∈ Nh, b ∈ N ∂h .
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 5
+
+2.3. Implicit time integration. We consider the time discretization of (2) using the method of lines.
+In doing so, we are interested in schemes that ensure the DMP as the discrete solution evolves in time.
+This kind of methods are also known as local extrema diminishing (LED). In particular, we will use
+the θ-method, even though the generalization of the following results to other schemes that preserve
+monotonicity properties is straightforward. We consider a partition of (0, T ] into N t time steps with
+equal time step length ∆t = T
+
+Nt
+in such a way that tn = n∆t, n = 0, · · · , N t. The problem will be
+
+solved by computing an approximation of u in each of those time steps unh ≈ u(·, tn). The discretization
+of (1) by means of the θ-method reads: Find un+1h ∈ Vh such that
+
+1
+
+∆t
+(un+1h − u
+
+n
+h, vh) +Kh(θu
+
+n+1
+h + (1− θ)u
+
+n
+h, vh) = Gh(vh) +Bh(uh; vh) ∀vh ∈ Vh. (4)
+
+We use a projection of the actual initial condition u at t = 0 as the initial discrete solution u0h, such
+that it inherits the DMP. The value of θ is to be chosen in the interval [0, 1]. Some common values are
+θ = 0, which leads to the explicit forward Euler scheme, θ = 0.5 for the Crank-Nicolson scheme, and
+θ = 1, leading to the Backward-Euler (BE) scheme. Each of these methods has different features. In
+particular, in order to obtain an unconditionally LED scheme, it is necessary to use θ = 1. Using BE,
+the discrete problem in compact form reads
+
+Mδtuh + Ku
+n+1
+h = G + Buh,
+
+where δtuh = ∆t
+−1(un+1h − u
+
+n
+h). Other choices of θ lead to LED schemes under a CFL-like condition.
+
+This is specially important in the case of the Crank-Nicolson (CN) method, which is second-order
+accurate and non-dissipative. The requirements to obtain monotonicity-preserving schemes in these
+cases are commented in Sect. 4.
+
+3. Monotonicity Properties
+
+In this section we introduce the desired properties that we want our discrete problem to fulfill. The
+use of local extrema in dG is too restrictive for our purposes. In dG, due to the existence of jumps,
+local extrema that do not harm the MP may appear, e.g. a possitive jump between two elements with
+negative gradients. Thus, we consider the concept of discrete local extrema, which is defined on nodes,
+and means that the nodal value is extremum in the support of the node. A discrete local extremum is
+a local extremum, but not the opposite. We will see later on that this weaker definition is enough for
+our purposes.
+
+Definition 3.1 (Local Discrete Extremum). The function uh ∈ Vh has a local discrete maximum
+(resp. minimum) on a node a ∈ Nh if ua ≥ uh(x) (resp. ua ≤ uh(x)) ∀x ∈ Ωa, and also ua ≥ u(x)
+(resp. ua ≤ u(x)) ∀x ∈ ∂Ωa ∩ ∂Ω.
+
+Therefore, the DMP can be defined as follows.
+
+Definition 3.2 (DMP). For steady problems a solution uh ∈ Vh satisfies the local DMP if for every
+a ∈ Nh, we have:
+
+umina ≤ ua ≤ u
+max
+a , where u
+
+max
+a
+
+.
+= max
+
+{
+max
+
+b∈Nh(a)\{a}
+ub, max
+
+x∈∂Ωa∩∂ΩD
+uh(x)
+
+}
+,
+
+and umina
+.
+= min
+
+{
+min
+
+b∈Nh(a)\{a}
+ub, min
+
+x∈∂Ωa∩∂ΩD
+uh(x)
+
+}
+,
+
+where uh ∈ Vh|∂Ω is the finite element interpolation of the boundary conditions on the Dirichlet bound-
+ary ∂ΩD. In the case of transient problems, u
+
+max
+a and u
+
+min
+a are defined as
+
+umaxa
+.
+= max
+
+{
+max
+
+Nh(a)\{a}
+ub, max
+
+x∈∂Ωa∩∂ΩD×(0,T ]
+u(x),max
+
+x∈Ω
+u0h(x)
+
+}
+umina
+
+.
+= min
+
+{
+min
+
+Nh(a)\{a}
+ub, min
+
+x∈∂Ωa∩∂ΩD×(0,T ]
+u(x),min
+
+x∈Ω
+u0h(x)
+
+}
+,
+
+where u0h ∈ Vh is the finite element projection of the initial condition u0.
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 6
+
+A scheme such that its solutions satisfy the DMP is called DMP-preserving. Instead, for transient
+problems, we define LED schemes.
+
+Definition 3.3 (LED). A method is called LED if for g = 0 and any time in t ∈ (0, T ], the solution
+uh(t) ∈ Vh satisfies
+
+dtua ≤ 0 if ua is a maximum and dtua ≥ 0 if ua is a minimum.
+
+For time-discrete methods, the same definition applies, replacing dt by the time derivative discrete
+approximation δt.
+
+Let us assume now that we have system (3) plus a Lipschitz continuous nonlinear diffusion term
+(nonlinear stabilization):
+
+M̃(uh, uh)∂tuh + K̃(uh, uh)uh = G + B̃(uh, uh)uh. (5)
+
+The superscript, e.g., in K̃, denotes the fact that the operator K̃ is equal to K plus stabilization
+terms. We have written, e.g., K̃(uh, uh), to explicitly denote the fact that the entries of the matrix
+K̃ are potentially nonlinear with respect to uh and uh. Problem (5) is LED under the following
+requirements.
+
+Theorem 3.4 (LED). The semi-discrete problem (5) is LED (as defined in Def. 3.3) if g = 0 and
+for every a ∈ Nh such that ua is a local extremum, it holds:
+
+M̃ab(uh, uh)
+.
+= δabma, with ma > 0, (6a)
+
+K̃ab(uh, uh) ≤ 0, ∀ b ∈ Nh : b 6= a, B̃ab(uh, uh) ≥ 0, ∀ b ∈ N ∂h , (6b)∑
+b∈Nh(a) K̃ab(uh, uh)−
+
+∑
+b∈N∂
+
+h
+(a) B̃ab(uh, uh) = 0, (6c)
+
+where ma
+.
+=
+∫
+
+Ω
+ϕadΩ, δab is the Kronecker delta. Further, for g ≤ 0 (resp. g ≥ 0) in Ω solutions of
+
+(5) satisfy the DMP property in Def. 3.2. Moreover, the discrete problem (5) is positivity-preserving
+for g ≥ 0 and u0 > 0.
+
+Proof. Assume ua is a discrete maximum. From the conditions in (6) and particularizing equation (5)
+to node a, we have that
+
+Ga = madtua +
+∑
+
+b∈Nh(a)
+
+K̃ab(uh, uh)ub −
+∑
+
+b∈N∂
+h
+
+(a)
+
+B̃ab(uh, uh)ub
+
+≥ madtua +
+
+
+ ∑
+b∈Nh(a)
+
+K̃ab(uh, uh)−
+∑
+
+b∈N∂
+h
+
+(a)
+
+B̃ab(uh, uh)
+
+
+ua = madtua.
+
+Therefore, dtua ≤ Ga = 0. Proceeding analogously for a minimum we can prove that the method is
+LED. The proof is equivalent for the discrete problem with BE time integration.
+
+Next, we prove positivity. Let us consider that at some time step m the solution becomes negative,
+and consider the degree of freedom a in which the minimum value is attained. Using the previous
+result for a minimum at the discrete level, we have that δtua ≥ 0 and thus uma ≥ um−1a . It leads to a
+contradiction, since um−1a ≥ 0. Hence, the solution must remain positive. �
+
+Corollary 3.5. If the problem in (5) is discretized in time with BE and it meets the conditions in Th.
+3.4, then it leads to solutions that satisfy the local DMP in Def. 3.2 at every time tn, for n = 1, ...N t.
+
+Proof. By the LED property we know that a discrete maximum (resp. minimum) will be bounded
+above (resp. below) by the solution at the previous time step. Proceeding by induction, the solution
+will be bounded by the initial condition u0h and the boundary conditions imposed at any previous time
+step. �
+
+Following [14, Th. 1], we can prove that the steady counterpart of problem (5) is DMP-preserving.
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 7
+
+Theorem 3.6 (DMP). A steady solution of the semi-discrete problem (5) satisfies the DMP in Def.
+3.2 if g = 0 in Ω and, for every degree of freedom a ∈ Nh such that ua is a local discrete extremum,
+conditions (6b)-(6c) hold.
+
+Proof. Assume ua is a discrete maximum, then the steady counterpart of problem (5) reads∑
+b∈Nh(a)
+
+K̃ab(uh, uh)ub −
+∑
+
+b∈N∂
+h
+
+(a)
+
+B̃ab(uh, uh)ub = 0,
+
+Therefore, ua can be computed as
+
+ua =
+
+∑
+b∈N∂
+
+h
+(a) B̃ab(uh, uh)ub −
+
+∑
+b∈Nh(a)\{a} K̃ab(uh, uh)ub
+
+K̃aa(uh, uh)
+.
+
+From conditions (6b)-(6c), the coefficients that multiply ub and ub are in [0, 1], and the sum of all these
+coefficients add up to one. Therefore, ua is a convex combination of its neighbors (including boundary
+conditions uh). Since ua is a maximum and a convex combination of its neighbors, then ub = ua for
+some b ∈ Nh(a). Further, it can also be proved that ua is a convex combination of all its neighbors
+but ub, and vice versa ub is a convex combination of all its neighbors but ua. Hence, by induction,
+we know that extrema at any degree of freedom are bounded by the boundary conditions. Thus, the
+DMP is satisfied. �
+
+4. The DMP-preserving artificial diffusion scheme
+
+In the previous section, we have stated the requirements to be fulfilled by our discrete scheme to be
+DMP-preserving and LED. In this section, we build a nonlinear stabilization of the dG formulation (2)
+that satisfies all these conditions. The nonlinear stabilization will rely on an artificial graph-viscosity
+term. The graph-viscosity is supplemented with a shock detector, in order to obtain higher than linear
+convergence on smooth regions. Moreover, for transient methods we make use of the shock detector
+in order to perform the mass matrix lumping only where is required, which allows us to minimize the
+phase error of the method.
+
+Let us start by defining the graph-viscosity νab. For a ∈ Nh and b ∈ N ∂h (a) we define
+ν∂ab
+
+.
+= max{−αaBh(ϕb;ϕa), 0}. (7)
+
+Clearly, this viscosity is only non-zero when a ∈ N ∂h . Next, for a ∈ Nh and b ∈ Nh(a), we define
+
+νab
+.
+=
+
+{
+max{αaKh(ϕb, ϕa), 0, αbKh(ϕa, ϕb)} b 6= a,∑
+b∈Nh(a)\a νab +
+
+∑
+b∈N∂
+
+h
+(a) ν
+
+∂
+ab otherwise,
+
+(8)
+
+where αa is a parameter that enjoys the following property.
+
+Definition 4.1. Given a ∈ Nh, we say that αa : Vh −→ R enjoys the shock detector property if it is
+such that αa(uh, uh) ∈ [0, 1] ∀uh ∈ Vh and αa(uh, uh) = 1 if uh has a local discrete extremum on xa.
+
+Next, we design a shock detector that satisfies this property. Given a ∈ Nh and b ∈ Nh(a) with
+xb 6= xa, we define x
+
+sym
+ab as the intersection between ∂Ωa and the line that passes through xb and xa,
+
+and it is not xb. Moreover, we define rab
+.
+= xb−xa, r
+
+sym
+ab
+
+.
+= x
+
+sym
+ab −xa, and u
+
+sym
+ab
+
+.
+= uh(x
+
+sym
+ab ) (see Fig.
+
+1). Further, we denote by r̂ab the unit vector of rab, and by ha a characteristic length of Ωa. Then,
+we define the jump and the mean of the unknown gradients as
+
+[[∇uh]]ab
+.
+=
+
+
+
+
+ub − ua
+ha
+
+if xa = xb,
+
+ub − ua
+|rab|
+
++
+u
+
+sym
+ab − ua
+|rsymab |
+
+otherwise,
+
+{{|∇uh · r̂ab|}}ab
+.
+=
+
+
+
+|ub − ua|
+
+ha
+if xa = xb,
+
+1
+
+2
+
+(
+|ub − ua|
+|rab|
+
++
+|usymab − ua|
+|rsymab |
+
+)
+otherwise.
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 8
+
+Figure 1. Representation of the symmetric node x
+sym
+ab of xb with respect to xa.
+
+Remark 4.2. These definitions may imply x
+sym
+ab = xa on some boundaries. In these cases, the value
+
+at the symmetric point of xb with respect to xa takes an extrapolation of the boundary condition value
+such that the method is linearly preserving, i.e., u
+
+sym
+ab = ua+(ub−ua) sign((ua−ua)(ub−ua)), and the
+
+value |rsymab | is taken equal to |rab|. This extrapolation is not only important for linear preservation,
+but also for obtaining optimal convergence rates in convection-diffusion problems with boundary layers.
+
+Remark 4.3. Notice that when x
+sym
+ab coincides with a node the value uh(x
+
+sym
+ab ) is not unique. In this
+
+case, we compute [[∇uh]]ab and {{|∇uh · r̂ab|}}ab for all values of uh(x
+sym
+ab ) in Ωa.
+
+Making use of the above definitions, the proposed shock detector reads
+
+αa(uh, uh)
+.
+=
+
+
+
+
+
+
+∣∣∣∑b∈Nh(a)[[∇uh]]ab∣∣∣∑
+b∈Nh(a) 2{{|∇uh · r̂ab|}}ab
+
+
+
+q
+
+if
+∑
+b∈Nh(a){{|∇uh · r̂ab|}}ab 6= 0,
+
+0 otherwise.
+
+(9)
+
+where q ∈ R+. Let us prove that the shock detector (9) satisfies the shock detector property in Def.
+4.1. We note that the definition of αa is motivated from [3]. Here, instead of using the maximum
+coefficient obtained, we use the sum all gradient jumps divided by the sum of all gradient means. A
+similar (more involved) modification can be found in [13].
+
+Lemma 4.4. The function αa(uh, uh) defined in (9) satisfies the shock detector property in Def. 4.1.
+Furthermore, if a ∈ Nh is not an extremum and q =∞, αa(uh, uh) = 0.
+
+Proof. Let us assume that uh has a discrete maximum (resp. minimum) on xa, then
+
+ub − ua ≤ 0 ∀b ∈ Nh(a) and u
+sym
+ab − ua ≤ 0 ∀b ∈ Nh(a),
+
+(resp. ub − ua ≥ 0 ∀b ∈ Nh(a) and u
+sym
+ab − ua ≥ 0 ∀b ∈ Nh(a)).
+
+(10)
+
+Therefore,
+
+∣∣∣∣∣∣
+∑
+
+b∈Nh(a)
+
+[[∇uh]]ab
+
+∣∣∣∣∣∣ =
+∣∣∣∣∣∣∣∣
+∑
+
+b∈Nh(a)
+xb=xa
+
+[[∇uh]]ab +
+∑
+
+b∈Nh(a)
+xb 6=xa
+
+[[∇uh]]ab
+
+∣∣∣∣∣∣∣∣
+=
+
+∣∣∣∣∣∣∣∣
+∑
+
+b∈Nh(a)
+xb=xa
+
+ub − ua
+ha
+
++
+∑
+
+b∈Nh(a)
+xb 6=xa
+
+ub − ua
+|rab|
+
++
+u
+
+sym
+ab − ua
+|rsymab |
+
+∣∣∣∣∣∣∣∣
+=
+
+∑
+b∈Nh(a)
+xb=xa
+
+|ub − ua|
+ha
+
++
+∑
+
+b∈Nh(a)
+xb 6=xa
+
+|ub − ua|
+|rab|
+
++
+|usymab − ua|
+|rsymab |
+
+=
+∑
+
+b∈Nh(a)
+
+2{{|∇uh · r̂ab|}}ab.
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 9
+
+Thus, αa(uh, uh) = 1. Further, if ua is not an extremum, then (10) is no longer true. Hence,
+
+∣∣∣∣∣∣
+∑
+
+b∈Nh(a)
+
+[[∇uh]]ab
+
+∣∣∣∣∣∣ =
+∣∣∣∣∣∣∣∣
+∑
+
+b∈Nh(a)
+xb=xa
+
+[[∇uh]]ab +
+∑
+
+b∈Nh(a)
+xb 6=xa
+
+[[∇uh]]ab
+
+∣∣∣∣∣∣∣∣
+=
+
+∣∣∣∣∣∣∣∣
+∑
+
+b∈Nh(a)
+xb=xa
+
+ub − ua
+ha
+
++
+∑
+
+b∈Nh(a)
+xb 6=xa
+
+ub − ua
+|rab|
+
++
+u
+
+sym
+ab − ua
+|rsymab |
+
+∣∣∣∣∣∣∣∣
+<
+
+∑
+b∈Nh(a)
+xb=xa
+
+|ub − ua|
+ha
+
++
+∑
+
+b∈Nh(a)
+xb 6=xa
+
+|ub − ua|
+|rab|
+
++
+|usymab − ua|
+|rsymab |
+
+=
+∑
+
+b∈Nh(a)
+
+2{{|∇uh · r̂ab|}}ab.
+
+Therefore, αa(uh, uh) < 1. Moreover, when q =∞, αa(uh, uh) = 0 if ua is not an extremum. �
+
+In order to prove the DMP-preservation in the numerical analysis below we need to perturb both
+the weak boundary conditions and the bilinear form. The perturbed weak boundary conditions read:
+
+B̃h(wh, wh, uh; vh)
+.
+= Bh(uh; vh) +
+
+∑
+a∈Nh
+
+∑
+b∈N∂
+
+h
+(a)
+
+ν∂ab(wh, wh)vaub. (11)
+
+where vh, wh ∈ Vh, and wh, uh ∈ Vh|∂Ω. Furthermore, given uh, vh, wh ∈ Vh and wh,∈ Vh|∂Ω, we can
+define the perturbed bilinear form K̃h as:
+
+K̃h(wh, wh;uh, vh)
+.
+= Kh(uh, vh) +
+
+∑
+a∈Nh
+
+∑
+b∈Nh(a)
+
+νab(wh, wh)vaub`(a, b), (12)
+
+where `(a, b)
+.
+= 2δab − 1 is the graph-Laplacian operator. It leads to the following stabilized steady
+
+discrete problem: Find uh ∈ Vh with uh ∈ Vh|∂Ω such that
+
+K̃h(uh, uh;uh, vh) = Gh(vh) + B̃h(uh, uh, uh; vh) ∀vh ∈ Vh. (13)
+
+We are ready to prove the desired DMP property of this method. For this purpose, we define
+K̃ab(uh, uh)
+
+.
+= K̃h(uh, uh;ϕb, ϕa) for a, b ∈ Nh, and B̃ab(uh, uh)
+
+.
+= B̃h(uh, uh, ϕb;ϕa) for a ∈ Nh, b ∈
+
+N ∂h .
+
+Theorem 4.5. The discrete problem (13) with the stabilized semilinear forms defined in (11) and (12)
+is DMP-preserving for g = 0.
+
+Proof. As seen in Th. 3.6, the solution is DMP-preserving if conditions (6b)-(6c) are satisfied. Let us
+verify these two conditions. Let xa be an interior node and assume that uh has an extremum on xa.
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 10
+
+Given the set of all nodes b ∈ Nh(a) coupled to node a ∈ Nh, we have:
+
+∑
+b∈Nh(a)
+
+Kab − Bab =
+∑
+
+b∈Nh(a)
+
+{ ∑
+K∈Th
+
+∫
+K
+
+(µ∇ϕb ·∇ϕa − ϕbβ ·∇ϕa)
+
++
+∑
+F∈Eh
+
+∫
+F
+
+µ
+(
+−[[ϕb]] · {{∇ϕa}} − {{∇ϕb}} · [[ϕa]] + ciph−1F [[ϕb]] · [[ϕa]]
+
+)
++
+
+∑
+F∈E+
+
+h
+∪E0
+
+h
+
+∫
+F
+
+β{{ϕb}} · [[ϕa]] +
+∑
+F∈E0
+
+h
+
+∫
+F
+
+|β · nF |
+2
+
+· [[ϕb]] · [[ϕa]]
+
++
+∑
+F∈E−
+
+h
+
+∫
+F
+
+β · nFϕbϕa +
+∑
+
+F∈E−
+h
+∪E+
+
+h
+
+∫
+F
+
+µϕb{{∇ϕa}} · nF
+
+−
+∑
+
+F∈E−
+h
+∪E+
+
+h
+
+∫
+F
+
+cipµh−1F ϕbϕa
+
+}
+.
+
+(We note that Bab has only been defined for nodes b ∈ N ∂h . Here, we abuse of notation, and extend
+by zero the definition to all nodes, with Bab = 0 when b 6∈ Nh.) We use the fact that the shape
+functions are a partition of unity, i.e.,
+
+∑
+b∈Nh(a) ϕb is equal to one on Ωa and zero elsewhere. As a
+
+result,
+∑
+b∈Nh(a)[[ϕb]] = 0 on facets F ⊂ Ωa \ ∂Ωa, and
+
+∑
+b∈Nh(a) ∇ϕb = 0 in any K ∈ Th. On the
+
+other hand, ϕa vanishes on any F ⊂ ∂Ωa \ ∂Ω by construction. Using these properties, we get:∑
+b∈Nh(a)
+
+∑
+F∈E0
+
+h
+
+∫
+F
+
+|β · nF |
+2
+
+[[ϕb]] · [[ϕa]] = 0,
+
+∑
+b∈Nh(a)
+
+
+∑
+F∈Eh
+
+∫
+F
+
+µciph−1F [[ϕb]] · [[ϕa]]−
+∑
+
+F∈E−
+h
+∪E+
+
+h
+
+∫
+F
+
+cipµh−1F ϕbϕa
+
+
+ = 0,
+
+∑
+b∈Nh(a)
+
+
+∑
+F∈Eh
+
+∫
+F
+
+−µ[[ϕb]] · {{∇ϕa}}+
+∑
+
+F∈E−
+h
+∪E+
+
+h
+
+∫
+F
+
+µϕb{{∇ϕa}} · nF
+
+
+ = 0,
+
+∑
+b∈Nh(a)
+
+∑
+F∈Eh
+
+∫
+F
+
+µ{{∇ϕb}} · [[ϕa]] = 0,
+∑
+
+b∈Nh(a)
+
+∫
+Ω
+
+µ∇ϕb ·∇ϕa = 0,
+
+and the following terms can be integrated by parts as
+
+∑
+b∈Nh(a)
+
+
+− ∑
+
+K∈Th
+
+∫
+K
+
+ϕbβ ·∇ϕa +
+∑
+
+F∈E+
+h
+∪E0
+
+h
+
+∫
+F
+
+β{{ϕb}} · [[ϕa]] +
+∑
+F∈E−
+
+h
+
+∫
+F
+
+β · nFϕbϕa
+
+
+
+
+=
+∑
+
+b∈Nh(a)
+
+{
+−
+∑
+K∈Th
+
+(∫
+K
+
+ϕbβ ·∇ϕa +
+∫
+∂K
+
+β · nϕbϕa
+)}
+
+=
+∑
+
+b∈Nh(a)
+
+∑
+K∈Th
+
+∫
+K
+
+ϕaβ ·∇ϕb = 0.
+
+Finally, since
+∑
+b∈Nh(a) νab(uh)vavb`(a, b) +
+
+∑
+b∈N∂
+
+h
+(a) ν
+
+∂
+ab(uh)vavb = 0 by construction (see (7) and
+
+(8)), then
+∑
+b∈Nh(a) K̃ab(uh, uh)− B̃ab(uh, uh) = 0. Moreover, it is clear that K̃ab(uh, uh) ≤ 0 for any
+
+b 6= a and B̃ab(uh, uh) ≥ 0 in all cases, based on the definition of these operators in (11)-(12) and their
+respective graph-viscosities in (7)-(8). It finishes the proof. �
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 11
+
+Thus, by Th. 4.5, we can ensure that the extrema of the solution of (3), will be on the boundary
+of the domain when g = 0. Let us now define the mass matrix perturbation used in order to obtain a
+LED scheme. As its name reveals, this property ensures that the value of the discrete maximum and
+the minimum of a transient problem can be bounded by those in the initial solution u0 = u(·, t0) and
+boundary conditions. It has been proved in [12, Lemma 3.2] that, if the steady problem, e.g., (13),
+enjoys the DMP property, its transient version enjoys the LED property if we replace the mass matrix
+(∂tuh, vh) by its lumped version (∂tuh, vh)h corresponding to the Gauss-Lobatto sub-integration. The
+form (·, ·)h is such that (∂tuh, ϕa)h = ∂tua(1, ϕa) for any a ∈ Nh. In fact, as Kuzmin and co-workers
+have proved in [22,23], it is enough to lump only the terms associated to the degrees of freedom where
+uh has an extremum. Following the same strategy as in [2], we can perform selective lumping using
+the shock detector. We define:
+
+MLh (uh, uh; ∂tuh, vh)
+.
+=
+∑
+a∈Nh
+
+va(1− αQa (uh, uh))(∂tuh, ϕa) + α
+Q
+a (uh, uh)∂tuava(1, ϕa). (14)
+
+The exponent Q > 0 is added in order to minimize the lumping perturbation, which leads to phase
+error in the discrete solution. In addition, we define M̃ab(uh, uh)
+
+.
+= MLh (uh, uh;ϕb, ϕa), for a, b ∈ Nh.
+
+If one considers the semi-discrete problem in space only, we have: Find uh ∈ Vh such that
+MLh (uh, uh; ∂tuh, vh) + K̃h(uh, uh;uh, vh) = Gh(vh) + B̃h(uh, uh, uh; vh) ∀vh ∈ Vh. (15)
+
+Lemma 4.6. The scheme (15) with the semilinear forms defined in (14), (11), and (12) is LED for
+g = 0.
+
+Proof. The conditions required on K̃(uh, uh) and B̃(uh, uh) in Th. 3.4 to obtain a LED scheme have
+already been proved in Th. 4.5. Further, if we assume that ua is an extremum, then αa(uh, uh) = 1
+
+and M̃ab(uh) becomes (1, ϕa) = δabma with ma =
+∫
+
+Ω
+ϕa. Hence, the definition of the mass matrix
+
+in (14) satisfies (6a). As a result, we fulfill all conditions stated in Th. 3.4 and thus the scheme is
+LED. �
+
+Furthermore, the stabilized problem (15) is linearity preserving, i.e. linear solutions are solution of
+the original IP dG method (2).
+
+Lemma 4.7. The stabilization terms in (11), (12), and (14), vanish for functions u ∈ P1(Ω), i.e.,
+
+B̃h(u, u∂Ω, ūh; vh) = Bh(ūh; vh), K̃h(u, u∂Ω;uh, vh) = Kh(uh, vh),
+
+MLh (u, u∂Ω;uh, vh) = (uh, vh), for any uh ∈ Vh.
+
+Proof. If u is linear and continuous, then by definition [[∇u]]ab = 0 ∀a and b ∈ Nh(a). Hence, for any
+a we have that αa ≡ 0. Thus, both ν∂ab and νab are equal to zero. Thus, all the stabilization terms
+vanish and we recover the original formulation. �
+
+The results in this section for the BE time discretization can be extended to any θ-method. We
+refer the reader to the work by Kuzmin and co-workers [19, 21] for the proofs of such properties. In
+particular, θ-methods are positivity-preserving under the CFL-like condition (see [19, Th. 1])
+
+∆t ≤ min
+a∈Nh
+
+(1, ϕa)
+
+(1− θ)K̃h(un+1h , u
+n+1
+h ;ϕa, ϕa)
+
+.
+
+Furthermore, under certain conditions of the matrix and the RHS, it has been proved in [21, Th. 4]
+that the scheme is not only positivity-preserving but satisfies the DMP. This means that the discrete
+maximum and the minimum of the solution are bounded by the values of the initial solution and the
+boundary conditions for any θ-method.
+
+The authors in [19, Th. 1] take advantage of the mass lumping properties for all of this proofs, but
+the lumping only needs to be activated for the degrees of freedom where the discrete solution has an
+extrema. Thus, the scheme defined in (4) together with the definition of MLh (·, ·; ·, ·) given by (14)
+leads to a DMP-preserving method under the above CFL-like condition.
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 12
+
+5. Lipschitz continuity and existence of solutions
+
+Let us define the Cartesian product space Ṽh
+.
+= Vh × Vh|∂Ω. Thus, any function ṽ ∈ Ṽh can be
+
+expressed as ṽ = (v, v̄), where the first component includes the values of the dG function v ∈ Vh and
+the second component the projection of the Dirichlet values v̄ ∈ Vh|∂Ω. Analogously, we can define
+the set of nodes for Ṽh as Mh
+
+.
+= Nh × N ∂h ≡ {(a1, 0), (0, a2) : a1 ∈ Nh, a2 ∈ N
+
+∂
+h }. We consider an
+
+extended graph-Laplacian operator over Ṽh × Ṽh as follows:
+
+D̃(ũ, ṽ) = D̃((u, ū), (v, v̄))
+.
+=
+∑
+a∈Mh
+
+∑
+b∈Mh
+
+ν̃ab`(a, b)ũbṽa
+
+.
+=
+∑
+a∈Nh
+
+∑
+b∈Nh
+
+νab`(a, b)ubva −
+∑
+a∈N∂
+
+h
+
+∑
+b∈N∂
+
+h
+
+ν∂abūbva −
+∑
+a∈N∂
+
+h
+
+∑
+b∈N∂
+
+h
+
+ν∂baubv̄a.
+
+Note that the boundary degrees of freedom are replicated. Based on this definition, we implicitly
+have:
+
+ν̃ab = νab, if a, b ∈ (Nh, 0),
+ν̃ab = ν
+
+∂
+ab, if a ∈ (N
+
+∂
+h , 0), b ∈ (0,N
+
+∂
+h ),
+
+ν̃ab = ν
+∂
+ba, if a ∈ (0,N
+
+∂
+h ), b ∈ (N
+
+∂
+h , 0),
+
+ν̃ab = 0, if a, b ∈ (0,N ∂h ).
+
+It is easy to check that this operator is symmetric and positive-semidefinite. In order to show the
+second property, we use the expression for νab and ν
+
+∂
+ab in (7) and (8), respectively, in order to get
+
+νab, ν
+∂
+ab ≥ 0, and
+
+ν̃aa = νaa =
+∑
+
+b∈Nh(a)\a
+
+νab +
+∑
+
+b∈N∂
+h
+
+(a)
+
+ν∂ab =
+∑
+
+b∈Mh(a)\a
+
+ν̃ab.
+
+Using the last property and the definition of `(a, b), we get:
+
+2D̃(ũ, ṽ) =
+∑
+a∈Mh
+
+∑
+b∈Mh
+
+ν̃ab`(a, b)ṽa(ũb − ũa) +
+∑
+a∈Mh
+
+∑
+b∈Mh
+
+ν̃ab`(a, b)ũb(ṽa − ṽb)
+
+=
+∑
+a∈Mh
+
+∑
+b∈Mh
+
+ν̃ab`(a, b)(ũb − ũa)(ṽa − ṽb).
+(16)
+
+Thus, we have |ũ|2
+D̃
+
+.
+= D̃(ũ, ũ) ≥ 0. Further, we define the restriction operatorsD(u, v) = D̃((u, 0), (v, 0))
+
+and D∂(ū, v̄) = D̃((0, ū), (0, v̄)), and their corresponding semi-norms |u|D
+.
+= D(u, u) and |ū|D∂
+
+.
+=
+
+D∂(ū, ū).
+Given the source g ∈ V ′h and ū ∈ Vh|∂Ω, we define the operator T : Vh → V
+
+′
+h for the steady problem
+
+as:
+
+〈T(z), v〉 .= Kh(z, v)−Bh(ū, v)−Gh(v) + D̃((z, ū), (v, 0))
+= Kh(z, v)−Bh(ū, v)−Gh(v) +
+
+∑
+a∈Nh
+
+∑
+b∈Nh(a)
+
+νab`(a, b)vazb
+
+−
+∑
+a∈Nh
+
+∑
+b∈N∂
+
+h
+(a)
+
+ν∂abvaūb.
+
+(17)
+
+Clearly, to find uh ∈ Vh such that T(uh) = 0 is equivalent to the stabilized problem (13). For transient
+problems, given also the previous time step solution unh ∈ Vh, we define the operator T
+
+n+1 : Vh → V ′h
+at every time step as
+
+〈Tn+1(z), v〉 .= MLh (z; z, v)−M
+L
+h (z;u
+
+n
+h, v) + 〈T(z), v〉.
+
+System (15) can be stated in compact form as: find uh ∈ Vh such that Tn+1(uh) = 0. In the next
+theorem, we prove that both operators are Lipschitz continuous. We provide a sketch of the proof,
+since it follows the same lines as in [2, Th. 6.1].
+
+Theorem 5.1. The nonlinear operators T and Tn+1 are Lipschitz continuous in Vh for q ∈ N+.
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 13
+
+Proof. In order to prove the Lipschitz continuity, we proceed as in [2]. After some manipulation, we
+get:
+
+|〈T(u), w〉 − 〈T(v), w〉| ≤|Kh(u− v, v)|+
+
+∣∣∣∣∣∣
+∑
+a∈Nh
+
+∑
+b∈Nh(a)
+
+νab(v)`(a, b)wa(ub − vb)
+
+∣∣∣∣∣∣
++
+
+∣∣∣∣∣∣
+∑
+a∈Nh
+
+∑
+b∈Nh(a)
+
+(νab(u)− νab(v))`(a, b)waub
+
+∣∣∣∣∣∣
++
+
+∣∣∣∣∣∣
+∑
+a∈Nh
+
+∑
+b∈N∂
+
+h
+(a)
+
+(ν∂ab(u)− ν
+∂
+ab(v))waūb
+
+∣∣∣∣∣∣ .
+The first term is linear and continuous (see, e.g., [1]). We have to prove Lipschitz continuity for the rest
+of terms. We use the inverse inequalities ‖∇ϕa‖K ≤ Ch−1‖ϕa‖K and ‖∇ϕa‖F ≤ Ch−1‖ϕa‖F (see [6])
+and the fact that shape functions are a partition of unity (‖ϕa‖K ≤ Chd/2 and ‖ϕa‖F ≤ Ch(d−1)/2),
+to get:
+
+K̄h(uh, ūh;ϕb, ϕa)− B̄h(uh, ūh;ϕb, ϕa) ≤ Cq(hd−1‖β‖L∞(Ω) + µhd−2). (18)
+
+The rest of the proof follows the same lines as in [2, Th. 6.1] and is not included for the sake of
+conciseness. The graph-Laplacian edges for pairs (a, b) such that xa 6= xb are as in [2], using (18).
+The case xa = xb is simpler.
+
+Lipschitz continuity for the transient problem is a consequence of the Lipschitz continuity of T and
+of the mass matrix with the selective mass lumping. The last property can be proved using again the
+analysis in [2, Th. 6.1]. �
+
+Next, we show that the proposed schemes have at least one solution. Uniqueness results could also
+be obtained for the diffusion-dominated regime following the ideas in [5]. In the following, we will use
+C as a general constant that can take different values at different appearances.
+
+Theorem 5.2. There is at least one solution uh ∈ Vh of the steady problem T(uh) = 0, and one
+solution of every time step of the transient problem, i.e., Tn+1(uh) = 0.
+
+Proof. In order to prove existence of solutions, we rely on the approach in [5], based on fixed point
+arguments. First, we combine the stability analysis in [8] (for first-order hyperbolic problems) with
+the stability analysis for the interior penalty discretization of the Laplacian operator (see, e.g., [1] for
+details), getting:
+
+Kh(z, z) ≥ C‖z‖2h, with ‖z‖
+2
+h
+.
+=
+∑
+K∈Th
+
+µ|z|2H1(K) +
+∑
+F∈Eh
+
+(
+µciph−1F ‖[[z]]‖
+
+2
+L2(F ) + ‖c
+
+1
+2
+
+β,F [[z]]‖
+2
+L2(F )
+
+)
+,
+
+(19)
+
+with cip big enough, and cβ,F (x)
+.
+= |β(x) · nF (x)|. On the other hand, using standard dG arguments
+
+(see [1] and [15, Prop. 3.55]), we have:
+
+Bh(ū, z) ≤ Cc−1‖c
+1
+2
+e ū‖2L2(∂Ω−) + Cc
+
+−1h−1µcip‖ū‖2L2(∂Ω) + c‖z‖
+2
+h, (20)
+
+for c arbitrarily small.
+We note that the nonlinear stabilization terms can be written in terms of the extended graph-
+
+Laplacian operator as:∑
+a∈Nh
+
+∑
+b∈Nh(a)
+
+νab`(a, b)vazb −
+∑
+a∈Nh
+
+∑
+b∈N∂
+
+h
+(a)
+
+ν∂abvaūb = D̃((z, ū), (v, 0)).
+
+Taking v = z and using (16) and the Cauchy-Schwarz inequality, we get:
+
+D̃((z, ū), (z, 0)) ≤
+3
+
+2
+|z|2D +
+
+1
+
+2
+|ū|2D∂ .
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 14
+
+Combining (17), (19), and (20) (with c small enough), we finally obtain:
+
+C〈T(z), z〉 ≥ ‖z‖2h + |z|
+2
+D+|ū|
+
+2
+D∂ − ‖c
+
+1
+2
+e ū‖2L2(∂Ω−) − h
+
+−1µcip‖ū‖2L2(∂Ω).
+
+We can readily pick a z ∈ Vh such that 〈T(z), z〉 > 0. Using the Brower’s fixed point theorem,
+there exists uh ∈ Vh such that T(uh) = 0, and thus, solves the steady version of (15) (see [5] for
+details). Existence is straightforward for the transient problem, combining the previous results with
+the coercivity of the mass matrix operator. �
+
+Remark 5.3. As a result of the previous theorem and Lemma 4.7, the method is linearly preserving
+and Lipschitz continuous. Using the ideas in [5, Theorem 4], one could prove optimal convergence in
+diffusion-dominated regimes.
+
+6. Smoothing the shock detector
+
+In Sect. 4, we have defined ν∂ab(uh, uh), νab(uh, uh), and αa(uh, uh) in (7), (8), and (9), respectively,
+using non-smooth functions. The problem of using this raw definitions is that, since they are not
+smooth, it is difficult for the nonlinear solvers to converge. Thus, following the ideas in [2], we add
+some parameters (τh,γh,σh) and regularize the definition of non-smooth functions such as the absolute
+value and the maximum. In this section we will proceed to unfold all the smooth definitions to facilitate
+the reproducibility of the method. The resulting formulation is not only Lipschitz continuous but twice
+differentiable by construction. Furthermore, the smoothing involves slightly more diffusion, and it is
+easy to check that we keep the DMP and LED properties above. Linearity-preservation is only satisfied
+weakly (see [2, Remark 7.3]). We do not prove these results for the sake of conciseness, since the proofs
+are similar to the ones in [2, Lemma 7.1].
+
+We will start by introducing a couple of smoothed versions of the absolute value:
+
+|x|1,τh =
+√
+x2 + τh, |x|2,τh =
+
+x2
+√
+x2 + τh
+
+.
+
+The value of τh is assumed to be small and is going to be specified in Sect. 7. For values of x � τh,
+we have |x|1,τh ≈ |x| ≈ |x|2,τh but always |x|2,τh ≤ |x| ≤ |x|1,τh . Now, we can redefine {{|∇uh · r̂ab|}}ab
+as:
+
+{{|∇uh · r̂ab|2,τh}}ab
+.
+=
+
+
+
+|ub − ua|2,τh
+
+ha
+if xa = xb,
+
+1
+
+2
+
+(
+|ub − ua|2,τh
+|rab|
+
++
+|usymab − ua|2,τh
+|rsymab |
+
+)
+otherwise.
+
+The quotient associated to αa would read:
+
+ζa =
+
+∣∣∣∑b∈Nh(a)[[∇uh]]ab∣∣∣1,τh + γh∑
+b∈Nh(a) 2{{|∇uh · r̂ab|2,τh}}ab + γh
+
+.
+
+Here γh is another extra stability parameter added to ensure differentiability of ζa for values of uh
+such that the denominator is nullified. By the definition and the properties of |·|1,τh and |·|2,τh , it is
+easy to prove that in the case that uh has a local discrete extremum on a, ζa > 1. So, since we want
+αa to enjoy the shock detector property stated in Def. 4.1, we need to construct a twice differentiable
+function Z such that Z(x) = 1 when x ≥ 1. To this end, we define
+
+Z(x) =
+
+{
+2x4 − 5x3 + 3x2 + x x < 1,
+1 x ≥ 1.
+
+Now we are able to define the smooth value of αa as α̃a
+.
+= (Z(ζa))
+
+q
+. Moreover, we have also modified
+
+the computation of the maximum in the following way:
+
+maxσh(x, y) =
+1
+
+2
+
+√
+(x− y)2 + σh +
+
+1
+
+2
+(x+ y).
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 15
+
+Furthermore, at boundaries u
+sym
+ab is computed using the sign function which needs to be regularized
+
+too. In particular we use signτh(x)
+.
+= x/ |x|1,τh . Then the smooth definition of νab in (8) for a ∈ Nh
+
+and b ∈ Nh(a) \ {a} will read
+ν̃ab = maxσh (0,maxσh (α̃aKh (ϕb, ϕa) , α̃bKh (ϕa, ϕb))) ,
+
+and for b ∈ N ∂h (a)
+ν∂ab
+
+.
+= maxσh(−α̃aBh(ϕb;ϕa), 0).
+
+The objective of these modifications is twofold. On the one hand, they smooth the function improving
+the convergence of the nonlinear iterations. On the other hand, they make the method differentiable
+with respect to uh, and the Jacobian matrix is defined everywhere; some nonlinear iteration methods,
+such as Newton’s method, which need to compute the Jacobian matrix of the problem, can be used.
+Further, the method is twice differentiable which is required to get quadratic nonlinear convergence
+rates with Newton’s method.
+
+In order to keep a dimensionally correct method and, at the same time, do not affect the convergence
+of the non-stabilized method, the parameters should scale as follows:
+
+σh = σ|β|2L2(d−3)h4, τh = τh2L−4, γh = γL−1,
+where d is the space dimension of the problem, L a characteristic length of the problem, τ and γ have
+the same dimension as the unknown, and σ is dimensionless.
+
+6.1. Parameters fine-tuning. In order to find the appropriate values for all the parameters intro-
+duced before, we will check how these values affect the performance of the method. To this end, we
+will consider the steady (∂tu = 0) transport (µ = 0) problem with no force (g = 0) and rotational
+convection β = (y,−x):
+
+∇ · (βu) = 0 in [0, 1]× [0, 1]. (21)
+In the transport case, the Dirichlet boundary conditions are only imposed on the inflow boundaries,
+which, for this convection field, are the sides of the square [0, 1] × [0, 1] corresponding to x = 0 and
+y = 1. We will impose 0 all along the side y = 1 and the following function on the side x = 0:
+
+u(0, y) =
+
+
+
+
+1 y ∈ [0.15, 0.45],
+cos2
+
+(
+10
+3
+π(y − 0.4)
+
+)
+y ∈ [0.55, 0.85],
+
+0 elsewhere.
+
+We know that the exact solution of this problem consists of a translation of this function in the direction
+of the convection in such a way that on the outflow boundary corresponding to y = 0 the solution is
+u(x, 0) = u(0, x). We solve this problem in a 100× 100 Q1 mesh and check the effect of the constants
+σ, τ and γ on the resulting outflow profile with respect to the value in the inflow boundary x = 0,
+plotted in Fig. 2(a).
+
+First of all, we can observe the dissipative effect of the parameters on the final solution. We set
+values of q = {1, 2, 4, 10}, σ = {10−1, 10−2, 10−3, 10−4}, and τ = σ2, and fix the value of γ to 10−2. We
+use Picard linearization and the nonlinear iterative scheme with the relaxation parameters proposed
+in [18], using the same parameter values therein. In addition, we also solve all tests using a hybrid
+Newton-Picard method; first we use Picard to get a better starting point for Newton, particularly
+when the nonlinear error is lower than 10−2 we change to Newton method with line search. Note
+that for the hybrid scheme the total number of iterations used for comparison also include the first
+iterations performed with Picard method. For both nonlinear solvers the tolerance is set to be 10−4
+
+and we allow a maximum of 500 iterations. Whenever the solver exceeds 500 iterations we define the
+scheme to be not converged (NC). For both schemes the linearized system of equations is solved with
+a direct solver. The results are shown in Fig. 3. It can be observed that, in order to obtain sharp
+solutions, it is important to use both high values of q and low values of σ and τ . Nevertheless fixing
+q = 10, and tuning only σ and τ , we can either obtain a method that is easy to converge, but quite
+dissipative, or a method that is harder to converge, but much more accurate.
+
+For the moment, we have fixed the relation between σ and τ . In the next test we fix q = 10,
+γ = 10−2, and different values for τ and σ. In particular we will use τ = {10−1, 10−210−4, 10−8}
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 16
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+ 
+
+(a) Solution on inflow boundary x = 0. (b) Solution on the whole domain
+
+Figure 2. Solution of the problem (21) used for parameter-tuning after 100 iterations
+with q = 10, and σ = τ = γ = 0. A 100× 100Q1 mesh has been used.
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+ q=1  σ=1.e-1, -- (19)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+ q=1  σ=1.e-2, -- (14)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+ q=1  σ=1.e-3, -- (13)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+ q=1  σ=1.e-4, -- (13)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+ q=2  σ=1.e-1, -- (19)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+ q=2  σ=1.e-2, -- (14)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+ q=2  σ=1.e-3, -- (32)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+ q=2  σ=1.e-4, -- (49)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+ q=4  σ=1.e-1, 30 (13)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+ q=4  σ=1.e-2, -- (19)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+ q=4  σ=1.e-3, -- (20)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+ q=4  σ=1.e-4, -- (22)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+ q=10  σ=1.e-1, 24 (9)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+ q=10  σ=1.e-2, 63 (10)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+ q=10  σ=1.e-3, -- (18)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+ q=10  σ=1.e-4, -- (23)
+
+Figure 3. Profile of the solution of (21) on the outflow side (y = 0) for different
+values of q, σ, τ = σ2, and γ = 10−2. Each figure title indicates the value of q, σ, the
+number of nonlinear iterations for Picard and the hybrid scheme (in brackets), (- -)
+means “not converged”. A 100× 100 mesh has been used.
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 17
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  τ=1.e-1  σ=1.e-1, 25 (11)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  τ=1.e-1  σ=1.e-2, 206 (25)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  τ=1.e-1  σ=1.e-3, -- (19)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  τ=1.e-1  σ=1.e-4, -- (19)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  τ=1.e-2  σ=1.e-1, 24 (9)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  τ=1.e-2  σ=1.e-2, 117 (15)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  τ=1.e-2  σ=1.e-3, -- (22)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  τ=1.e-2  σ=1.e-4, -- (20)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  τ=1.e-4  σ=1.e-1, 31 (11)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  τ=1.e-4  σ=1.e-2, 63 (10)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  τ=1.e-4  σ=1.e-3, -- (16)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  τ=1.e-4  σ=1.e-4, -- (23)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  τ=1.e-8  σ=1.e-1, -- (9)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  τ=1.e-8  σ=1.e-2, -- (13)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  τ=1.e-8  σ=1.e-3, -- (17)
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  τ=1.e-8  σ=1.e-4, -- (23)
+
+Figure 4. Profile of the solution of (21) on the outflow side (y = 0) for different
+values of σ, τ , q = 10, and γ = 10−2. Each figure title indicates the value of τ , σ, the
+number of nonlinear iterations for Picard and the hybrid scheme (in brackets), (- -)
+means “not converged”. A 100× 100 mesh has been used.
+
+and σ = {10−1, 10−2, 10−3, 10−4}. We will use the same nonlinear solvers as before. The obtained
+results are shown in Fig. 4. Values of σ around 10−2 and τ above 10−4 are needed to ensure Picard
+convergence. In the case of the hybrid scheme, we do not observe much difference in terms of the
+number of iterations required to converge for different values of τ . Nevertheless, as σ is reduced the
+method requires a slightly larger number of iterations.
+
+Finally, we want to fine-tune γ. To do so, we will fix the values of σ = 10−2 and τ = 10−4 and
+reduce the value of γ from 10−4 to 0. We can check in Fig. 5 how, even with γ = 0, the solution is
+able to converge, but the number of iteration is larger than between γ = 10−4 and γ = 10−12 whereas
+the solution is practically the same. In our numerical experiments we will work with the smooth and
+non-smooth version and with both nonlinear solvers. Thus, when comparing results we are interested
+in solutions that converge in a reasonable amount of time steps (we take γ = 10−2).
+
+In the transient examples, we will only use Picard linearization, allowing us take γ = 0 to see
+whether we can obtain a sharper solution. Additionally, we will let Q, the exponent of αa for the
+perturbation of the mass matrix in (14), be Q = +∞; meaning that the matrix is only perturbed when
+αa = 1. Nevertheless, we recall that we can do so because the nonlinear iterative method that we use
+does not need the stabilization to be differentiable; if that is not the case, γ must be greater than 0
+and Q < +∞. Summarizing, in view of the results obtained, we will use q = 10, Q = ∞, σ = 10−2,
+τ ≤ 10−6 and either γ = 10−2 or γ = 0 in the oncoming transient numerical experiments.
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 18
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  γ=1.e-4.  61 (10) It.
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  γ=1.e-8.  61 (10) It.
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  γ=1.e-12.  61 (10) It.
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 0  0.2  0.4  0.6  0.8  1
+
+  γ=0. 136 It.
+
+Figure 5. Profile of the solution of (21) on the outflow side (y = 0) for different
+values of γ, q = 10, σ = 10−2, and τ = 10−4. Each figure title indicates the value of γ,
+and the number of nonlinear iterations for Picard scheme and the hybrid scheme (in
+brakets). For γ = 0 the number of iterations is not given for the hybrid scheme since
+the stabilization is not smooth and the Jacobian might be undefined at some points.
+A 100× 100 mesh has been used.
+
+7. Numerical experiments
+
+In this section, we are interested in showing how the method previously introduced deals with a set
+of numerical experiments. We recall that, since we are using isotropic uniform meshes, the value of the
+characteristic length hK of each element K can be computed as the length of the edges of the squares.
+
+7.1. Convergence to a smooth solution. In this first experiment we want to determine the con-
+vergence of the method towards a smooth solution that has maxima and minima inside the domain
+(αa reaches the value 1 in some regions in the domain). We compare the performance of the original
+interior penalty dG method against our dG method with artificial diffusion, both with and without
+smoothing (allowing a maximum of 100 iterations). The steady problems we solve to this end are the
+following:{
+
+−µ∆u+ ∇ · (βu) = −4π2 sin
+(
+2π
+(
+x− y
+
+tan θ
+
+)) (
+1 + 1
+
+tan2 θ
+
+)
+in Ω = [0, 1]× [0, 1],
+
+u(x, y) = sin
+(
+2π
+(
+x− y
+
+tan θ
+
+))
+on ∂Ω,
+
+and {
+∇ · (βu) = 0 in Ω = [0, 1]× [0, 1],
+u(x, y) = sin
+
+(
+2π
+(
+x− y
+
+tan θ
+
+))
+on ∂Ω,
+
+with β = (cos(θ), sin(θ)) and θ = π/3. In both cases the exact solution is u(x, y) = sin(2π(x− y
+tan θ
+
+)).
+We have second-order convergence of the non-stabilized method with (bi)linear finite elements and we
+would like to preserve it for the stabilized one when applied to smooth solutions. This is indeed what
+happens. When we consider the problem with diffusion µ = 1 in which the contributions to the matrix
+are dominated by the diffusion term for the finest meshes, the error is almost the same for both the
+smoothed and the non-smoothed versions. It is important to note that the nonlinear solver is not
+able to converge for the finest meshes when using the non-smooth stabilization. This introduces an
+additional error responsible of the convergence degeneration observed at Fig. 6. In addition, it is worth
+noting that the requirement of the boundary condition extrapolation to achieve optimal convergence.
+Tests without the extrapolation in Remark 4.2, i.e., u
+
+sym
+ab = ua, show degenerated convergence rates.
+
+This correction is more important as the gradients on the boundary become larger and the jumps
+smaller. As opposed, when working with pure transport (see Fig. 7), the effect of this extrapolation
+becomes negligible. In any case, the order of convergence is maintained. For the pure convection test,
+the smoothing of the parameters add an extra error to the computed solution, as expected, since it
+implies more artificial diffusion.
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 19
+
+ 1e-05
+
+ 0.0001
+
+ 0.001
+
+ 0.01
+
+ 0.1
+
+ 10  100  1000
+
+L
+2
+ e
+
+rr
+o
+r
+
+Mesh size 1/h
+
+Non-stabilized dG
+
+σ=10-2, τ=10-6, γ=10-2
+
+σ=τ=γ=0
+σ=10-2, τ=10-6, γ=10-2 (No extrapolation)
+
+σ=τ=γ=0 (No extrapolation)
+
+Figure 6. L2 error convergence test for a convection-diffusion problem (µ = 1) with
+a smooth solution. Different choices of stabilization parameters have been tested.
+
+ 1e-05
+
+ 0.0001
+
+ 0.001
+
+ 0.01
+
+ 0.1
+
+ 1
+
+ 10  100  1000
+
+L
+2
+ e
+
+rr
+o
+r
+
+Mesh size 1/h
+
+Non-stabilized dG
+
+σ=10-2, τ=10-6, γ=10-2
+
+σ=τ=γ=0
+σ=10-2, τ=10-6, γ=10-2 (No extrapolation)
+
+σ=τ=γ=0 (No extrapolation)
+
+Figure 7. L2 error convergence test for a pure convection problem (µ = 0) with a
+smooth solution. Different choices of stabilization parameters have been tested.
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 20
+
+ 1e-16
+
+ 1e-14
+
+ 1e-12
+
+ 1e-10
+
+ 1e-08
+
+ 1e-06
+
+ 0.0001
+
+ 0.01
+
+ 1
+
+ 1  10  100  1000
+
+O
+sc
+
+ill
+a
+
+tio
+n
+
+Iteration
+
+σ=τ=γ=0
+σ=10-2, τ=10-4, γ=10-2 (Picard)
+σ=10-2, τ=10-4, γ=10-2 (Hybrid)
+
+Figure 8. Maximum oscillation as defined in (23) for each nonlinear iteration per-
+formed for solving (22). The results for both a smooth and a non-smooth stabilization,
+as well as for different nonlinear schemes are depicted. A 100× 100Q1 mesh has been
+used for the tests.
+
+7.2. DMP-preservation. In order to test the performance of the method in terms of DMP-preservation,
+we solve the steady problem
+
+
+−10−4∆u+ ∇ · (βu) = 0 in Ω = [0, 1]× [0, 1],
+
+u(x, 0) = 0 x ∈ [0, 1],
+u(x, 1) = 1 x ∈ [0, 1],
+u(0, y) = 1
+
+2
++ 1
+
+π
+arctan(104(y − 0.7)) y ∈ (0, 1),
+
+u(1, y) = 0 y ∈ (0, 1),
+
+(22)
+
+with β = (cos(π/3),− sin(π/3)). As the problem is convection-dominated, the expected result is a
+propagation in the direction defined by β of the profile imposed in the inflow boundary x = 0. It is
+well known that when the method is not stabilized, it leads to a solution that has strong oscillations
+around the internal and boundary layers. We expect our method to control such spurious oscillations,
+as already proved in the numerical analysis.
+
+We use a 100 × 100Q1 Cartesian mesh, set the tolerance of the nonlinear iterations to 10−4, and
+allow a maximum of 500 iterations. We plot the maximum oscillation, defined as
+
+OSC = max{0,−min
+x∈Ω
+
+uh(x),max
+x∈Ω
+
+(uh(x)− 1), }, (23)
+
+at each iteration. Both the smooth and the non-smooth methods are tested and both nonlinear solvers
+above are used for the smooth version. The results in Fig. 8 show that only the hybrid method is able
+to converge. Let us remark that Picard’s method has not reeached convergence (having a maximum of
+500 iterations) in any case, even though the non-converged solution with smooth stabilization satisfies
+the DMP up to machine precision. On the contrary, the hybrid method satisfies the DMP up to the
+tolerance, but it only needs 15 iterations to converge. The results obtained are plotted in Fig. 9 and
+are as sharp as the non-smooth ones.
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 21
+
+(a) σh = 10
+−2; τh = 10
+
+−4; γh = 10
+−2. 13 Iterations. (b) σ = τ = γ = 0. NC.
+
+Figure 9. Solution of problem (22) using both the smooth and the non-smooth ver-
+sion of the stabilization. A 100× 100 mesh have been used.
+
+(a) Unstructured mesh used (b) σh = 10
+−2; τh = 10
+
+−4; γh = 10
+−2. 17 Iterations.
+
+Figure 10. Solution of problem (22) using the smooth version of the stabilization.
+An unstructured mesh of h ≈ 10−2 have been used.
+
+We know from the numerical analysis that the method preserves the DMP on unstructured meshes.
+In the following test we are checking this result and analyzing if it affects to the accuracy of the method.
+To this end, we solve again the previous problem using an unstructured mesh with an element size
+h ≈ 10−2 (see Fig. 10 (a)). The solution is depicted in Fig. 10(b). It can be seen that the accuracy
+is not affected by reasonable mesh perturbations. Moreover, we compare the effect of the smoothing
+in the case of unstructured meshes. It can be observed in Fig. 11 that the stabilization method is
+minimally affected by the mesh topology. Nevertheless, it is worth noting that the number of iterations
+slightly increases for the hybrid method, from 15 to 17. In any case, we achieve the same conclusions
+as when using the structured mesh. The hybrid method is able to converge and it satisfies de DMP up
+to the tolerance. The relaxed Picard it is not able to converge, even though it leads to non-converged
+solutions that satisfy the DMP for the smooth case at the lasts iterations.
+
+7.3. Three body rotation. Finally, we want to test the DMP-preservation and LED property of the
+method for transient problems. To this end, we use the classical three body rotation test. We solve the
+2D transport equation (1) in Ω = [0, 1]× [0, 1] with µ = 0, β = (−2π(y− 0.5), 2π(x− 0.5)). The initial
+solution is given in [20] and its interpolation in a mesh of 200 × 200 bilinear elements is displayed in
+Fig. 12.
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 22
+
+ 1e-14
+
+ 1e-12
+
+ 1e-10
+
+ 1e-08
+
+ 1e-06
+
+ 0.0001
+
+ 0.01
+
+ 1
+
+ 1  10  100  1000
+
+O
+sc
+
+ill
+a
+
+tio
+n
+
+Iteration
+
+σ=τ=γ=0
+σ=10-2, τ=10-4, γ=10-2 (Picard)
+σ=10-2, τ=10-4, γ=10-2 (Hybrid)
+
+Figure 11. Maximum oscillation as defined in (23) for each nonlinear iteration per-
+formed for solving (22). The results for both a smooth and a non-smooth stabiliza-
+tion, as well as for different nonlinear schemes are depicted. An unstructured mesh of
+h ≈ 10−2 has been used for the tests.
+
+(a) 2D (b) 3D (c) Legend
+
+Figure 12. Initial solution of three body rotation test problem discretized in a 200×
+200Q1 mesh.
+
+The solution to the transport problem is simply a translation in the direction of the convection.
+In this case, the initial solution rotates counterclockwise and the final solution is computed at T = 1
+after one complete round. The idea is to compare the initial and the final values to see how dissipative
+the method is and, at the same time, check the values of the maximum oscillation in each time step
+to see if there is any violation of the DMP. In order to do so, we have used the color map plotted in
+Fig. 12(c), which takes colors from black to green in the interval [0, 1] but it uses shades of red in
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 23
+
+[−0.1, 0) ∪ (1, 1.1] and shades of yellow in [−0.2, 0.1) ∪ (1.1, 1.2]. This way, it is easy to identify the
+violations of the global DMP of the problem.
+
+The solution is computed with the dG method without any stabilization, the smoothed stabilized
+method (in which we consider both γ = 0 and γ = 10−2), and the stabilized method without smoothing
+(σ = τ = γ = 0). The smoothed case with γ = 0 has been considered to reduce the mass lumping
+activation without spoiling the convergence of the nonlinear iterations. As we will see in the numerical
+results, although the method is less dissipative, the final results do not differ much (see Fig. 13(d)
+and Fig. 13(f)). We recall that, for the integration in time, a weighted mass lumping is used and the
+parameter Q is set to Q = 10 in the smoothed case and Q = +∞ in the non-smoothed, to minimize
+the phase error induced by the lumping of the matrix. We have run the test in a mesh of 200 × 200
+bilinear elements and used N t = 2000 time steps, with nonlinear tolerance of 5 · 10−4 and a maximum
+of 50 iterations. The results are plotted in Fig. 13. We have also plotted the maximum oscillation in
+time in Fig. 14. Actually, instead of printing the maximum oscillation at each time step we depict the
+mean value of the maximum in each bunch of 10 time steps, for improving the result visualization and
+analysis.
+
+We can observe in Fig. 14 how, if the method is not stabilized, the oscillations appear from the
+first iterations and do not decrease in time, being of order 10−1. On the other hand, one can observe
+that the stabilized version of the method gives oscillatory results on the first iterations if the method
+is not smoothed. This is due to the fact that the nonlinear solver is not able to converge in the first
+time steps and what is plotted is the result after 50 nonlinear iterations. Instead, when smoothing
+the stabilization, the nonlinear solver converges and the violation of the DMP is of the order of the
+tolerance for γ = 0. When using γ = 10−2, the method is even more dissipative (as expected since
+the greater the value of γ the more the shock detector is activated) and the DMP is only violated up
+to machine precision. We want to point out that the appearance of jumps on the smooth part of the
+figures, such as the cone, is due to the lumping of the mass matrix. When avoiding the mass lumping,
+those jumps disappear, but the DMP is then violated.
+
+8. Conclusions
+
+In this work we have designed a method that fulfills the DMP property for the steady multidimen-
+sional transport problem when a dG space discretization is used. In the transient case, together with
+implicit time stepping, the method enjoys the LED property. The original scheme is stabilized with
+an artificial diffusion graph-Laplacian operator. The edge diffusion is only activated on troublesome
+regions based on a shock detector that relies on the jumps of the gradient of the solution around the
+nodes of the mesh, in order to minimize the smearing of the solution and improve the solution in
+smooth regions. We provide a set of conditions to be satisfied by the stabilized formulation to enjoy
+the DMP (and LED) properties, and designed an artificial edge viscosity to fulfill these conditions.
+The results hold for arbitrary meshes and space dimensions. The resulting method is proved to be
+DMP-preserving, LED, linearity-preserving, and Lipschitz continuous. We have also proved the ex-
+istence of solutions. However, the method is stil highly nonlinear and it is hard to attain nonlinear
+solver convergence. Thus, we propose a smooth version of the scheme that is twice differentiable and
+still enjoys DMP and LED properties. We provide a set of numerical experiments to check the features
+proved in the theoretical analysis, and to show the improvement in terms of computational cost due to
+the combination of the smooth version of the scheme with a Newton nonlinear solver with line search.
+
+Some interesting future work might be to extend these features to approximations of much more
+involved equations such as Euler or compressible Navier-Stokes problems.
+
+Acknowledgments
+
+SB gratefully acknowledges the support received from the Catalan Government through the ICREA
+Acadèmia Research Program. JB gratefully acknowledges the support received from ”la Caixa” Foun-
+dation through its PhD scholarship program. AH gratefully acknowledges the support received from
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 24
+
+(a) 2D. No stabilization (b) 3D. No stabilization
+
+(c) 2D. σ = 10−2; τ = 10−4; γ = 10−2; Q = 10. (d) 3D. σ = 10−2; τ = 10−4; γ = 10−2; Q = 10.
+
+(e) 2D. σ = 10−2; τ = 10−4; γ = 0; Q = 10. (f) 3D. σ = 10−2; τ = 10−4; γ = 0; Q = 10.
+
+(g) 2D. σ = τ = γ = 0. NC. (h) 3D. σ = τ = γ = 0. NC.
+
+Figure 13. Solution of three body rotation test for different combinations of the
+stabilization parameters. A 200 × 200Q1 mesh and Crank-Nicolson time integration
+with N t = 2000 have been used.
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 25
+
+1e-16
+
+1e-14
+
+1e-12
+
+1e-10
+
+1e-08
+
+1e-06
+
+0.0001
+
+0.01
+
+1
+
+0 200 400 600 800 1000 1200 1400 1600 1800 2000
+
+O
+sc
+
+ill
+at
+
+io
+n
+
+Time step
+
+Non-stabilized dG
+σ=10-2. τ= 10-4. γ=10-2. Q=10
+
+σ=10-2. τ= 10-4. γ=0. Q=10
+σ=τ=γ=0. Q=∞
+
+Figure 14. Oscillation values at each time step for the three body rotation test
+using different choices for the stabilization parameters. A 200× 200 mesh and Crank-
+Nicolson time integration with N t = 2000 have been used.
+
+the Catalan Government through a FI fellowship. We acknowledge the financial support to CIMNE
+via the CERCA Programme / Generalitat de Catalunya.
+
+References
+
+[1] D. N. Arnold, F. Brezzi, B. Cockburn, and L. D. Marini, Unified analysis of discontinuous galerkin methods for
+elliptic problems 39 (2002), no. 5, 1749–1779.
+
+[2] S. Badia and J. Bonilla, Monotonicity-preserving finite element schemes based on differentiable nonlinear stabiliza-
+
+tion, Computer Methods in Applied Mechanics and Engineering 313 (2017), 133–158.
+[3] S. Badia and A. Hierro, On Monotonicity-Preserving Stabilized Finite Element Approximations of Transport Prob-
+
+lems, SIAM Journal on Scientific Computing 36 (2014), no. 6, A2673–A2697.
+[4] , On discrete maximum principles for discontinuous Galerkin methods, Computer Methods in Applied Me-
+
+chanics and Engineering 286 (2015), 107–122.
+[5] G. R. Barrenechea, E. Burman, and F. Karakatsani, Edge-based nonlinear diffusion for finite element approxima-
+
+tions of convectiondiffusion equations and its relation to algebraic flux-correction schemes, Numerische Mathematik
+(2016), 1–25.
+
+[6] S. C. Brenner and R. Scott, The mathematical theory of finite element methods, 3rd ed., Springer, 2008.
+[7] H. Brezis, Functional analysis, sobolev spaces and partial differential equations, 1st Edition., Springer, 2010.
+
+[8] F. Brezzi, L. D. Marini, and E. Süli, Discontinuous Galerkin methods for first-order hyperbolic problems, Mathe-
+matical Models and Methods in Applied Sciences 14 (2004), no. 12, 1893–1903.
+
+[9] E. Burman and A. Ern, Nonlinear diffusion and discrete maximum principle for stabilized Galerkin approximations
+of the convection–diffusion-reaction equation, Computer Methods in Applied Mechanics and Engineering 191 (2002),
+
+no. 35, 3833–3855.
+[10] , Stabilized Galerkin approximation of convection-diffusion-reaction equations: discrete maximum principle
+
+and convergence, Mathematics of Computation 74 (2005), no. 252, 1637–1652.
+[11] E. Burman and P. Hansbo, Edge stabilization for Galerkin approximations of convection–diffusion–reaction prob-
+
+lems, Computer Methods in Applied Mechanics and Engineering 193 (2004), no. 15–16, 1437–1453.
+
+[12] E. Burman, On nonlinear artificial viscosity, discrete maximum principle and hyperbolic conservation laws, BIT
+Numerical Mathematics 47 (2007), no. 4, 715–733.
+
+[13] , A monotonicity preserving, nonlinear, finite element upwind method for the transport equation, Applied
+
+Mathematics Letters 49 (2015), 141–146.
+
+
+
+DIFFERENTIABLE MONOTONICITY-PRESERVING SCHEMES FOR DG METHODS 26
+
+[14] R. Codina, A discontinuity-capturing crosswind-dissipation for the finite element solution of the convection-diffusion
+
+equation, Computer Methods in Applied Mechanics and Engineering 110 (1993), no. 3–4, 325–342.
+[15] A. Ern and J.-L. Guermond, Theory and practice of finite elements, Springer, 2004.
+
+[16] J. Guermond, M. Nazarov, B. Popov, and Y. Yang, A Second-Order Maximum Principle Preserving Lagrange Finite
+
+Element Technique for Nonlinear Scalar Conservation Equations, SIAM Journal on Numerical Analysis 52 (2014),
+no. 4, 2163–2182.
+
+[17] J.-L. Guermond and M. Nazarov, A maximum-principle preserving C0 finite element method for scalar conservation
+equations, Computer Methods in Applied Mechanics and Engineering 272 (2014), 198–213.
+
+[18] V. John and P. Knobloch, On spurious oscillations at layers diminishing (SOLD) methods for convectiondiffusion
+
+equations: Part II Analysis for and finite elements, Computer Methods in Applied Mechanics and Engineering
+197 (2008), no. 2124, 1997–2014.
+
+[19] D. Kuzmin and S. Turek, Flux Correction Tools for Finite Elements, Journal of Computational Physics 175 (2002),
+
+no. 2, 525–558.
+[20] D. Kuzmin, A guide to numerical methods for transport equations, unpublished, 2010.
+
+[21] D. Kuzmin and M. Möller, Algebraic Flux Correction I. Scalar Conservation Laws, Flux-Corrected Transport, 2005.
+
+DOI: 10.1007/3-540-27206-2 6.
+[22] D. Kuzmin and J. N. Shadid, A new approach to enforcing discrete maximum principles in continuous Galerkin
+
+methods for convection-dominated transport equations, submitted (2015).
+
+[23] , Gradient-based nodal limiters for artificial diffusion operators in finite element schemes for transport
+equations, submitted (2016).
+
+[24] R. J. LeVeque, Finite Volume Methods for Hyperbolic Problems, 1st ed., 2002.
+[25] A. Mizukami and T. J. R. Hughes, A Petrov-Galerkin finite element method for convection-dominated flows: An
+
+accurate upwinding technique for satisfying the maximum principle, Computer Methods in Applied Mechanics and
+
+Engineering 50 (1985), no. 2, 181–193.
+[26] L. R. Scott and S. Zhang, Finite Element Interpolation of Nonsmooth Functions Satisfying Boundary Conditions,
+
+Mathematics of Computation 54 (1990), no. 190, 483–493.
+
+
+	1. Introduction
+	2. The Convection-diffusion problem and its discretization
+	2.1. Notation
+	2.2. Weak form and interior penalty dG approximation
+	2.3. Implicit time integration
+
+	3. Monotonicity Properties
+	4. The DMP-preserving artificial diffusion scheme
+	5. Lipschitz continuity and existence of solutions
+	6. Smoothing the shock detector
+	6.1. Parameters fine-tuning
+
+	7. Numerical experiments
+	7.1. Convergence to a smooth solution
+	7.2. DMP-preservation
+	7.3. Three body rotation
+
+	8. Conclusions
+	Acknowledgments
+	References
+

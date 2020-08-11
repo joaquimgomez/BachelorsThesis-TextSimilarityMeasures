@@ -1,0 +1,748 @@
+segreg runge-kutta time integr convection-stabil mix finit element scheme wall-unresolv les incompress flow oriol colomesa , santiago badiaa , b acentr internacion de metod numer l  enginyeria ( cimn ) , parc mediterrani de la tecnologia , upc , estev terrada 5 , 08860 castelldefel , spain ( { ocolom , sbadia } @ cimne.upc.edu ) .
+buniversitat politecnica de catalunya , jordi girona 1-3 , edifici c1 , 08034 barcelona , spain .
+abstract work , develop high-perform numer framework larg eddi simul ( les ) incompress flow .
+spatial discret nonlinear system carri use mix finit element ( fe ) scheme supplement symmetr project stabil convect term penalti term diverg constraint .
+addit term introduc discret level prove act implicit les model .
+order perform meaning wall-unresolv simul , consid weak imposit boundari condit use nitsch  s-type scheme , tangenti compon penalti term design act wall law .
+next , segreg runge-kutta ( srk ) scheme ( recent propos author laminar flow problem ) appli les simul turbul flow .
+introduct penalti term trace acceler , method exhibit excel stabil properti implicit explicit treatment convect term .
+srk scheme excel large-scal simul , sinc reduc comput cost linear system solv split veloc pressur comput time integr level , lead two uncoupl system .
+pressur system darcy-typ problem easili precondit use tradit block-precondit scheme requir poisson solver .
+end , coerciv system solv , effect precondit multilevel domain decomposit scheme , optim scalabl .
+framework appli taylor-green turbul channel flow benchmark order prove accuraci convection- stabil mix fes les model srk time integr .
+scalabl precondit techniqu ( space ) also proven one step srk scheme taylor-green flow use uniform mesh .
+moreov , turbul flow around naca profil solv show applic propos algorithm realist problem .
+keyword : larg eddi simul , turbul , variat multiscal , wall model , runge-kutta 1 .
+introduct numer simul turbul flow wide use scientif purpos high de- mand industri solv larg amount engin problem .
+algorithm employ comput fluid dynam ( cfd ) field constant evolv , adapt new trend , tailor continu chang comput requir .
+increas comput power acquir new improv supercomput also involv addit advanc softwar abl execut machin .
+simul incompress turbul flow involv resolut multipl scale , space time , becom realli challeng numer problem .
+direct numer simul ( dns ) turbul flow use captur physic phenomena scale , even smallest one .
+approach inconveni consum larg amount comput resourc , impract mani real industri problem , even exploit supercomput .
+techniqu increas use save lot comput cost larg eddi simul ( les ) , basic consist separ flow coars scale fine one , simul coarser model finer [ 1 ] .
+order model fine scale les method , one consid physic base approach defin addit model term continu level , pure numer approach preprint submit comput method appli mechan engin februari 24 , 2017 introduc modif govern equat .
+last numer approach common denot implicit les ( ile ) ( see , e.g. , [ 2 ] ) .
+variat multiscal ( vms ) method introduc hugh [ 3 , 4 ] framework develop stabl accur numer approxim partial differenti equat , prevent numer instabl aris standard galerkin finit element ( fe ) method use .
+use vms method ile method first suggest [ 5 , 6 , 7 ] , sinc , sever vms method develop use ile .
+two scale vms approach base orthogon definit subscal space propos [ 8 ] , name orthogon subscal ( oss ) method .
+oss-typ method requir includ full residu stabil term end stabl accur algorithm , point [ 9 ] , term-by-term oss stabil propos .
+involv one term pressur stabil ( sinc equal order interpol use ) anoth term convect stabil .
+final , [ 10 ] , inf-sup stabl mix fes consid symmetr project stabil convect term .
+note orthogon projector consid framework , like , e.g. , local-typ project [ 11 , 12 ] .
+complet assess vms-type solver les turbul flow found [ 13 , 10 ] .
+briefli , method consid analys show compar level accuraci , convection-stabil mix method cheaper term cpu cost .
+common approach cfd field consid strong imposit dirichlet boundari condit , i.e. , impos solut node dirichlet boundari .
+approach may lead inaccur solut situat , special les method consid simul wall-bound turbul flow .
+les method motiv use under-resolv mesh , insuffici captur boundari layer appear wall-bound flow .
+effect captur proper solut boundari layer affect mean flow , result imprecis simul .
+thus , intens refin requir boundari layer order fully-resolv mesh , destroy desir cost reduct natur scheme .
+order overcom issu , wall law must consid , e.g. , use weak imposit dirichlet boundari condit contempl .
+nitsche-typ weak imposit consid [ 14 ] later improv wall law base approach turbul flow [ 15 ] .
+altern , robin-typ boundari condit consid [ 16 ] weaken no-penetr no-slip boundari condit .
+exampl use weak dirichlet boundari condit found [ 17 ] .
+[ 14 , 15 ] wall-norm compon veloc dirichlet boundari impos strong .
+approach one want avoid due ill-pos definit curv boundari , sinc normal vector defin node ; note box-typ domain consid [ 14 , 15 ] .
+paper consid nitsch  type weak imposit wall-norm compon use wall law techniqu standard nitsch imposit tangent compon , see [ 18 , 19 ] .
+notic , turbul phenomena character mani spatial scale , also multiscal descript time .
+, time discret becom import issu simul kind flow .
+mani author favor implicit time integr scheme avoid time step restrict given courant-friedrichs-lewi ( cfl ) number .
+howev , high reynold number , hyperbol cfl number ( given convect term ) kept order uniti ( see , e.g. , [ 20 ] ) .
+, common practic consid semi-implicit time integr scheme convect term treat explicit , avoid need satisfi stringent parabol cfl condit .
+see , e.g. , [ 21 ] , fractional-step method runge-kutta time integr use .
+anoth exampl type time integr scheme found [ 22 ] , semi-implicit bdf time integr scheme consid togeth vms-les spatial discret approach .
+time integr turbul flow practic applic almost alway involv fractional- step method segreg veloc pressur comput , due clear reduct compu- tation time .
+way , one avoid monolith indefinit system split origin problem smaller coerciv problem .
+howev , fractional-step method limit order accuraci second order ; due fact pressur must extrapol momentum equat , higher order scheme unstabl ( see [ 23 ] ) .
+hand , high order monolith solver comput demand .
+even use effici block-precondit techniqu ( see , e.g. , [ 24 ] ) , one must solv veloc pressur problem everi solver iter , wherea iter usual due pres- sure problem [ 10 ] .
+order solv situat , segreg runge-kutta ( srk ) time integr 2 scheme incompress navier-stok equat recent propos [ 25 ] , test laminar flow .
+scheme base two main goal .
+first , segreg veloc pressur comput time integr level , without need perform addit fraction step techniqu spoil high order accuraci .
+second , preserv order accuraci veloc pressur .
+work , assess scheme turbul flow .
+otherwis state , favour implicit-explicit ( imex ) version srk scheme consist treat implicit diffus term explicit convect term .
+velocity-pressur segreg introduc srk scheme lead elasticity-typ darcy- type problem .
+first problem coerciv , wherea second straightforward precondit use simpl block-precondit strategi involv mass poisson solver [ 10 ] .
+result , use srk scheme drastic simplifi linear system solv , compar indefinit system aris monolith formul .
+tri solv increas larger problem supercomput , one effici exploit increas level parallel , i.e. , build scalabl solver .
+due coerciv natur build block srk time integr , work consid use balanc domain decomposit constraint ( bddc ) precondition , first introduc [ 26 ] , follow implement describ [ 27 , 28 ] .
+perform srk time integr combin block-precondit bddc domain decomposit precondit analyz work .
+main contribut paper :  use convection-stabil mix fes combin weak enforc normal tangent veloc trace use nitsch  type method , follow line [ 14 , 15 , 18 , 19 ] , order maintain under-resolv mesh whole domain , reduc comput cost ( sect .
+2 )  applic assess newli introduc srk scheme turbul flow ile model extens weak dirichlet boundari condit , order split problem segreg veloc pressur solver without reduc order accuraci time ( sect .
+3 )  develop high scalabl parallel framework ile simul turbul flow , combin srk time integr , block precondit , high scalabl implement bddc solver ( sect .
+4 )  assess result method ile simul turbul incompress flow ( sect .
+5 ) four develop line develop high accur high-perform comput framework les simul incompress turbul flow .
+articl organ follow .
+sect .
+2 navier-stok problem state weak imposit dirichlet boundari condit describ .
+also introduc mix fe formul convect stabil oss sect .
+2.3 .
+srk method , peculiar weak boundari condit consid , defin sect .
+3 .
+sect .
+4 block-precondit techniqu parallel solver defin .
+three differ test consid numer result section ( sect .
+5 ) , taylor-green vortex flow , turbul channel flow test , flow around airfoil defin naca 0012 geometri .
+final , conclus point sect .
+6 .
+2 .
+convection-stabil mix fe scheme 2.1 .
+navier-stok equat let  bound domain rd , = 2 , 3 number space dimens ,  =  boundari ( 0 , ] time interv .
+strong form transient navier-stok problem consist find veloc field u pressur field p tu u + u  u +p = f  ( 0 , ] , ( 1 )   u = 0  ( 0 , ] , ( 2 ) 3 f forc vector  kinemat viscos .
+hereaft bold charact denot vector tensor .
+equat ( 1 ) ( 2 ) need suppli appropri boundari initi condit .
+boundari  divid dirichlet ( d ) neumann ( n ) part d  n =  d  n =  .
+, boundari initi condit written u = ug d  ( 0 , ] , ( 3 ) ( pi +  ( u +ut ) )  n = qn n  ( 0 , ] , ( 4 ) u ( x , 0 ) = u0 ( x )  { 0 } , ( 5 ) n unit outward vector normal  .
+order deriv weak form problem ( 1 ) - ( 5 ) , defin notat use hereinaft .
+denot lp (  ) , 1  p <  , space function p-th power absolut integr  .
+particular , case p = 2 , hilbert space scalar product ( u , v )   ( u , v ) : =   u ( x ) v ( x ) d ( 6 ) induc norm ul2 (  )  u = ( u , u ) 1/2 .
+abus notat , symbol ( 6 ) use integr product two function , even l2 (  ) , scalar vector field .
+space function whose distribut deriv order l2 (  ) denot hm (  ) .
+focus case = 1 , also hilbert space .
+h10 (  ) set function h1 (  ) zero trace  .
+furthermor , denot h1 (  ) topolog dual h10 (  )  ,  dualiti pair h1 (  ) h10 (  ) .
+given banach space x , lp ( 0 , ; x ) bochner space time depend function x-norm lp ( 0 , ) .
+equat ( 1 ) - ( 5 ) one deriv weak form problem , consist find [ u , p ]  l2 ( 0 , ; v0 )  l1 ( 0 , ; q0 ) ( tu , v ) +b ( u , ( u , p ) , ( v , q ) ) = f , v+ qn , vn v  v0 , q  q0 , ( 7 ) satisfi initi condit ( 5 ) weak sens .
+v0 : = h10 (  ) q0 : = l2 (  ) /r .
+form b ( u , ( u , p ) , ( v , q ) ) defin b ( u , ( u , p ) , ( v , q ) ) : =  ( u , v ) + b ( u , u , v )  ( p ,   v ) + ( q ,   u ) ( 8 ) triliniar form convect term b ( u , v , w ) defin skew-symmetr version b ( u , v , w ) = 1 2 ( u  v , w )  1 2 ( v , u  w ) + 1 2 ( v , ( u  n ) w ) n .
+( 9 ) 2.2 .
+weak dirichlet boundari condit situat strong imposit dirichlet boundari condit ( 3 ) may negat effect simul perform .
+case , instanc , les method wall-bound flow problem .
+well known les method sever difficulti tri solv wall-bound problem ( see , e.g. , [ 29 , 30 ] ) .
+issu solv kind problem use les method boundari layer appear next wall captur proper use under-resolv mesh .
+, need use thin element next wall order least one point viscous sublay ( y+  1 ) ( see [ 31 ] ) .
+usual , requir satisfi use stretch mesh , thin element boundari coarser one middl channel .
+despit , mani engin problem import captur proper large-scal flow properti fine scale , focus effect boundari layer mean flow instead tri solv proper boundari layer .
+direct , approach make use fact veloc profil boundari layer shown relat wall-norm distanc [ 31 ] .
+know relat , one impos weak boundari condit 4 dirichlet boundari enforc traction generat wall one given analyt express .
+approach follow bazilev co-work [ 15 ] , show weakly-impos boundari condit provid result strongly-impos one use stretch mesh , former improv signific accuraci use uniform mesh .
+weak dirichlet boundari condit use , function space test function lose properti zero trace d , v  v q  q .
+therefor , consid term aris use integr part get weak form navier-stok equat ( 7 ) .
+includ follow term bilinear form .
+b ( u , ( u , p ) , ( v , q ) ) =b ( u , ( u , p ) , ( v , q ) ) ( 10 )  ( ( pi + 2su )  n , v ) d + 1 2 ( ( u  n ) u , v ) d .
+assum u  n = 0 , term charg enforc given traction wall written ( wt , v ) d = ( w ( u ug ) u ug , v ) d = ( b ( u ug ) , v ) d , ( 11 ) denot normal vector act direct traction w wall shear stress magnitud .
+term ( 11 ) noth els penalti term paramet b : = w u ug .
+( 12 ) addit term , also consid boundari term aris call nitsch  method use ( see [ 32 , 33 ] ) .
+, result bilinear form ( equival ( 8 ) ) read bweak ( u , ( u , p ) , ( v , q ) ) =b ( u , ( u , p ) , ( v , q ) ) ( 13 ) + ( b ( u ug ) , v )   ( ( q  + 2 sv )  n , ( u ug ) )  .
+note sign pressur test function second term ( 13 ) chang keep skew-symmetri velocity-pressur block .
+definit traction paramet w come minim residu spald equat y+ = f ( u+ ) = u+ + eb ( eu +  1 u+  ( u+ ) 2 2  ( u+ ) 3 6 ) , ( 14 )  = 0.4 , b = 5.5 , y+ : = yu  wall distanc u+ : = uh u mean flow veloc non- dimension wall unit .
+case , distanc wall approxim proport wall-norm mesh size , = hb p2cb , w = u 2  .
+, hb denot wall-norm mesh size comput quadratur point , p order interpol fe , cb posit algorithm constant .
+deeper descript method well algorithm comput paramet b found [ 15 ] .
+howev , work , author impos strong normal compon veloc ( u  n = 0 d ) , thing want avoid current work .
+notic introduct present paper , normal vector defin node belong curv boundari .
+[ 18 ] normal compon veloc wall also enforc weak , ad addit term account weak no-penetr condit .
+follow approach use [ 19 ] , split penalti term distinguish normal tangenti counterpart .
+let us consid function v  v. split normal tangenti compon follow v = ( v  n ) n + ( v  ( v  n ) n ) = ( n n ) v + ( i n n ) v. ( 15 ) introduc decomposit ( 15 ) penalti term ( b ( u ug ) , v ) d , consid two dif- ferent penalti paramet compon , b , n b , , obtain equival penalti term ( b , n ( u ug ) , ( n n ) v ) d + ( b , ( u ug ) , ( i n n ) v ) d .
+( 16 ) 5 case , normal tangenti vector appear ( 11 ) read = ( inn ) ( uug )  ( inn ) ( uug )  .
+use wall law base definit nitsch paramet tangenti compon , wherea defin wall-norm compon nitsch paramet proport origin express [ 14 ] , lead follow definit b , n : =  cbp 2 hb , ( 17 ) b , : = w  ( i n n ) ( u ug )  .
+( 18 ) ( 17 ) ,  constant tune adjust model .
+assess paramet select done sect .
+5.2 .
+case , larg enough valu  need stabil purpos symmetr version nitsch  ( interior penalti ) method use ( see [ 34 ] ) .
+replac penalti term ( 13 ) one ( 16 ) , get new express bilinear form bweak ( u , ( u , p ) , ( v , q ) ) = b ( u , ( u , p ) , ( v , q ) ) ( 19 ) + ( b , n ( u ug ) , ( n n ) v ) d + ( b , ( u ug ) , ( i n n ) v ) d  ( ( u ug ) , ( qi + 2sv )  n ) d .
+order improv stabil segreg time integr scheme propos sect .
+3 , add addit boundari term weak enforc trace time deriv tu d .
+point justifi remark 3.3 .
+case , bilinear form read bweak , t ( u , ( u , p ) , ( v , q ) ) = bweak ( u , ( u , p ) , ( v , q ) ) ( 20 ) + ( b , t , n ( tu tug ) , ( n n ) v ) d + ( b , t , ( tu tug ) , ( i n n ) v ) d , b , t , n : = tb , n b , t , : = tb , .
+let us note term ( 20 ) dimension consist definit penalti paramet .
+2.3 .
+mix fe method convect stabil order defin semi-discret problem , consid fe partit th domain  , construct conform fe space veloc field , vh  v , pressur field , qh  q .
+galerkin fe problem equival ( 7 ) consist find [ uh , ph ]  l2 ( 0 , ; vg , h )  l1 ( 0 , ; q0 , h ) ( tuh , vh ) +b ( uh , ( uh , ph ) , ( vh , qh ) ) = f , vh+ q , vhn vh  v0 , h , qh  q0 , h ( 21 ) initi condit ( 5 ) satisfi weak sens .
+v0 , h q0 , h denot set function belong vh qh , respect , zero trace d .
+moreov , veloc field function space defin vg , h : = { vh  vh : vh|d = ug } .
+hand , weak boundari condit consid , problem result find [ uh , ph ]  l2 ( 0 , ; vh )  l1 ( 0 , ; qh ) ( tuh , vh ) +bweak , t ( uh , ( uh , ph ) , ( vh , qh ) ) = f , vh+ q , vhn vh  vh , qh  qh .
+( 22 ) note case uh , vh  vh ph , qh  qh .
+henceforth , assum case dirichlet boundari condit consid , i.e. , d 6=  , impos weak , make use bilinear form defin ( 20 ) .
+follow approach given codina [ 9 ] , build vms method orthogon definit subscal essenti term guarante stabil ad galerkin fe formul .
+consid orthogon project convect term pressur gradient term separ .
+approach read : find [ uh , ph ]  l2 ( 0 , ; vh )  l1 ( 0 , ; qh ) ( tuh , vh ) +bweak , t ( uh , ( uh , ph ) , ( vh , qh ) ) + ( m  h ( uh  uh ) , uh  vh ) h ( 23 ) + ( m  h ( ph ) , qh ) h + ( c  uh ,   vh ) h = f , vh vh  vh , qh  qh .
+6 ( 23 ) , stabil paramet m c usual defin m = ( c1 h2 + c2|a| h ) 1 , ( 24 ) c = h2 c1m , ( 25 ) h mesh size c1 c2 algorithm constant .
+altern ( 25 ) one consid follow definit c c = cc (  + c1 c2 h|uh| ) , ( 26 ) result introduc ( 24 ) ( 25 ) consid new constant cc .
+approach analyz [ 10 ] , implicit treatment project consid .
+togeth static linear version algebra subgrid scale ( asg ) method , perform mention method test les incompress turbul flow , compar convection- stabil mix fes .
+inf-sup stabl velocity-pressur fe pair use , pressur gradient project ap- pear ( 23 ) neglect , sinc term requir stabil purpos .
+consider , final semi-discret problem current work base consist find [ uh , ph ]  l2 ( 0 , ; vh )  l1 ( 0 , ; qh ) ( tuh , vh ) +bweak , t ( uh , ( uh , ph ) , ( vh , qh ) ) + ( muh  uh , uh  vh ) h ( 27 )  ( mh , uh  vh ) h + ( c  uh ,   vh ) h = f , vh vh  vh , qh  qh , h : = h ( uh  uh ) project convect term fe space , satisfi ( mh , vh ) = ( muh  uh , vh ) vh  vh .
+( 28 ) ( 27 ) , last term left-hand side , ( c  uh ,   vh ) h , usual call grad-div stabil term , general requir ensur stabil problem .
+nevertheless , stabl mix fe discret use , influenc grad-div stabil accuraci method essenti .
+shown term influenc mass conserv [ 35 ] , also influenc comput cost linear solver [ 36 , 37 ] .
+[ 10 ] , effect term assess taylor-green vortex problem turbul channel flow test use convection- stabil mix fe method .
+let us final note convection-stabil method use instead oss , use l2 projector .
+instead , local project oper h (  ) consid [ 11 , 12 ] .
+arbitrari symmetr project stabil convect term , method read : ( tuh , vh ) +bweak , t ( uh , ( uh , ph ) , ( vh , qh ) ) + ( m  h ( uh  uh ) ,   h ( uh  vh ) ) h + ( c  uh ,   vh ) h = f , vh vh  vh , qh  qh , 3 .
+segreg runge-kutta time integr 3.1 .
+matrix form let us consid convection-stabil mix fe scheme appli galerkin fe problem ( 21 ) ( strong imposit boundari condit ) .
+( obtain replac bilinear form ( 20 ) ( 8 ) definit stabil problem ( 27 ) . )
+uh , ph h defin nodal valu { ua } a=1 , ... , nu , { p b } b=1 , ... , np {  c } c=1 , ... , n , uh ( x ) = nu a=1 a ( x ) u , ph ( x ) = np b=1 b ( x ) p b , h ( x ) = n c=1  ( x )  c , 7 { a , } a=1 , ... , nu ; i=1 , ... , , { b } b=1 , ... , np { c , } c=1 , ... , n ; i=1 , ... , langrangian base as- sociat vh qh .
+nu , np n total amount node veloc , pressur project field .
+matrix form stabil problem strong dirichlet condit written follow :   mu0 0  +   k + c + a g bd 0 0 bt 0 m        =   fu0 0   , ( 29 ) mab : = ( a , b ) , k ab : = 2 ( a , sb ) , cab : = ( a , u b ) , aab : = m ( u a , u b ) + c (  a , b ) , gab : =  ( a , b ) , dab : = ( a , b ) , bab : = m ( u a , b ) , mab : = m ( a , b ) , b node identif .
+note = gt , boundari condit consid .
+3.2 .
+time integr segreg runge-kutta scheme focus time integr problem ( 29 ) consid applic srk scheme .
+srk method propos [ 25 ] success test laminar flow .
+main goal kind time integr segreg veloc pressur comput , give system much easier solv , take advantag imex runge-kutta scheme .
+use rung-kutta scheme also allow use high order integr time extra implement effort .
+furthermor , kind time integr , adapt time step techniqu easili use ( see [ 38 ] ) .
+let us consid matrix problem ( 29 ) , written compact form term veloc project field follow mu = f ( u ) + g ( u ,  ) , ( 30a ) bt u + m = 0 .
+( 30b ) f g certain oper contain term integr implicit explicit , respect .
+particular defin srk method linear viscous term integr implicit nonlinear term , convect project term , pressur term integr explicit .
+case , oper f g read f ( u ) : =ku , ( 31 ) g ( u ,  ) : =fu  ( c + a ) u b ( 32 ) + g ( dm1g ) 1 ( dm1 ( ( k + c + a ) u + b fu ) ) .
+note choic lead linear problem per time step sinc term integr implicit viscous term .
+anoth fact highlight project veloc field treat implicit , make use symmetr project stabil scheme straightforward .
+choic could use defin oper f g , e.g. , convect project term could integr implicit .
+later case , result system would nonlinear would coupl veloc project field .
+general , choos definit ( 31 ) - ( 32 ) interest solv turbul flow , time step restrict due hyperbol cfl condit often smaller restrict time step size requir captur small time scale flow .
+remark 3.1 .
+term ( c  uh ,   vh ) h integr explicit introduc parabol cfl condit , restrict hyperbol one .
+thus , matrix a treat explicit treat term implicit , c evalu previous time step .
+spoil accuraci , sinc stabil term ident zero continu level .
+proceed time integr scheme equat ( 30a ) .
+let us consid imex rk method stage , veloc project stage , ui i , 1   comput 8 1 t mui = 1 t mun + i j=1 aijf ( uj ) + i1 j=1 aijg ( uj , j ) , ( 33a )  bt ui + mi = 0 .
+( 33b ) aij aij coeffici implicit explicit butcher tableau , respect .
+manipul , rewrit ( 33 ) 1 t mui = 1 t mun + i j=1 aijf ( uj ) + i1 j=1 aijg ( uj , pj , j ) , ( 34a )  bt ui + mi = 0 , ( 34b )  dm1g ( pi ) = dm1 ( ( k + c + a ) ui + bi  fu ( ti ) ) .
+( 34c ) let g ( u , p ,  ) : = fu ( c+a ) ubgp , i.e. , oper equival one defin ( 32 ) pressur variabl introduc .
+final updat stage read follow 1 t mun+1 = 1 t mun + s i=1 bif ( ui ) + big ( ui , pi , i ) , ( 35a )  bt un+1 + mn+1 = 0 , ( 35b )  dm1g ( pn+1 ) = dm1 ( ( k + c + a ) un+1 + bn+1  fu ( tn+1 ) ) .
+( 35c ) note equat ( 34c ) ( 35c ) equival solv darci type problem , follow express [ g 0 ] [ u pk ] = [ fu ( tk )  ( k + c + a ) uk  bk 0 ] , ( 36 ) k n+1 , depend equat solv , u auxiliar veloc field , satisfi discret incompress constraint .
+, practic , equat ( 34c ) ( 35c ) implement darci problem ( 36 ) , effici solv block precondit techniqu ( see sect .
+4 ) .
+remark 3.2 .
+note srk scheme use pressur stabil term , i.e. , typic vms scheme involv full residu stabil oss scheme equal-ord velocity-pressur pair .
+reason srk scheme design index-2 algebra differenti equat ( incompress navier-stok equat ) numer scheme destroy mathemat structur problem .
+thus , stabl mix fes requir use srk scheme .
+3.3 .
+weak dirichlet boundari condit srk scheme use weak boundari condit favour deal curv boundari .
+case , srk time integr scheme take account boundari term describ ( 10 ) , ( 19 ) ( 20 ) .
+algebra form ( 27 ) - ( 28 ) , weak dirichlet boundari condit use , read follow :   ( + m ) u 0 0  +   k + k + c + c + a + m g + g bd + d 0 0 bt 0 m        =   fu + fu ,  + fu , fp ,  0   , ( 37 ) addit term mab : = ( b , t , n ( n  n ) a , b ) d + ( b , t , (  n  n ) a , b ) d , ab  : = ( b , n ( nn ) a , b ) d+ ( b , ( inn ) a , b ) d , kab : = 2 ( a ,  sb n ) 2 ( sa n , b ) d , cab : = 1 2 ( a , ( un ) b )  , gab : = ( a , bin )  , ab  : =  ( ain , b ) d , f u ,  : = b ( a , ug ) 2 (  san , ug ) d , fau ,  : = ( b , t , n ( n n ) a , ug ( tk ) ) d + ( b , t , ( i n n ) a , ug ( tk ) ) d , f p ,  : =  ( ai  n , ug ) d , 9 b node identif .
+velocity-pressur block keep skew-symmetri sinc d = gt .
+note incompress constrain equat case read du = fp ,  , ( 38 ) d : = ( d+d ) .
+( note matrix time-independ , i.e. , td = 0 . )
+deriv ( 38 ) time oper first row ( 37 ) , dm1mu + dm1 [ ( k + c + a + m ) u + gp + b ] = dm1fu , ( 39 ) m : = ( + m ) , k : = ( k + k ) , c : = ( c + c ) , g : = ( g + g ) fu : = ( fu + fu ,  + fu ,  ) .
+use fact dm1mu = fp ,  , get ( 39 ) pressur system dm1gp = dm1 [ fu  ( k + c + a + m ) u b ]  fp ,  , ( 40 ) fap ,  =  ( ai  n , ug )  , = 1 , ... , np .
+thus , use weak dirichlet boundari condit srk time integr scheme , darci type problem equival ( 36 ) solv [ m g d 0 ] [ u pk ] = [ fu ( tk )  ( k + c + a + m ) uk  bk fp ,  ( tk ) ] , ( 41 ) k correspond stage updat n+ 1 .
+remark 3.3 .
+note auxiliar unknown u ( 41 ) approxim u .
+enforc dirichlet data strong , condit straightforward appli u , sinc involv free valu .
+howev , trace u d enforc sens consid weak imposit use ( 19 ) , potenti lead stabil issu segreg scheme .
+order solv problem , includ addit weak enforc term ( acceler ) ( 20 ) transfer pressur system m .
+remark 3.4 .
+srk scheme perturb discret mass conserv equat time-depend dirichlet boundari condit enforc strong .
+hand , discret diverg con- straint exact fulfil srk scheme weak imposit dirichlet data case .
+anoth reason favour combin srk scheme weak dirichlet boundari condit .
+see [ 25 ] detail .
+3.4 .
+adapt time-step techniqu one advantag use multi-stag time integr scheme , like srk method , adapt time step techniqu use straightforward .
+fact , srk scheme , usag adapt time step techniqu requir extra evalu final veloc updat , involv mass matrix solver , see [ 39 , 40 ] .
+approach defin adapt time step follow pi11 control method describ [ 38 ] suggest [ 40 ] , comput time step size tn+1 = (  rn+1 ) 1/k ( rn rn+1 ) 1/k tn tn+1 tn ,  = 0.8  tol , tol given toler take 1  105 0.8 safeti factor .
+local error rn+1 = u  u error per step ( ep ) control rn+1 =  ( u  u ) /tn error per unit step ( epus ) control .
+former case k = p+ 1 ( ep ) second one ( epus ) k = p , p order time integr scheme use comput estim veloc u .
+work favour ep definit .
+moreov , treat explicit version srk scheme , limit time step size guarante cfl condit satisfi .
+either parabol cfl condit , cfl = t ( h/p2 ) 2 , hyperbol cfl condit , cflu = ut ( h/p2 ) , exceed bound 1.0 , time step reject reduc accord safeti factor  , tn+1 , new = tn+1 , old .
+10 4 .
+scalabl solver incompress navier-stok equat section briefli discuss construct effici scalabl solver linear system aris space-tim discret navier-stok equat sect. 2-3 .
+first look block precondit techniqu use differ system involv srk scheme .
+next , consid bddc precondition extract concurr exploit parallel context .
+note imex version srk scheme consid , result system ( 30 ) solv sequenti , i.e. , first solv veloc block explicit project comput project follow stage .
+focus darcy-typ equat ( 41 ) , consid lu factor form ap : = [ m g d 0 ] = [ 0 dm1 ] [ m g 0 sp ] , ( 42 ) sp : = dm1g schur complement respect p. case consid block- precondition base inexact lu factor ap , determin upper triangular matrix , p ( ap ) : = [ m g 0 sp ] 1 = [ m1 m1gs1p 0 s1p ] .
+( 43 ) solut system ( 36 ) precondit gmres method involv comput invers matric m sp .
+approach follow approxim m1 defin m1 , one applic diagon dd precondition .
+invers schur complement s1p ) approxim one applic bddc precondition lp .
+fact choic optim ( i.e. , two oper spectral equival ) straightforward , use fact sp lp equival ( see , e.g. , [ 41 ] ) fact bddc precondition optim scalabl ( see , e.g. , [ 42 ] ) .
+matrix system aris equat ( 35a ) ( 35b ) solv use precondit gmres diagon dd precondition approxim m1 m1 , respect .
+bddc method , first introduc dohrmann [ 26 ] , domain decomposit method , thus reli decomposit fe mesh set subdomain .
+one main properti bddc possibl extend algorithm multilevel approach , base fe-typ structur coars matrix pattern ( see , e.g. , [ 43 ] ) .
+regard properti , fully-distribut , communicator- awar , recurs , interlevel-overlap message-pass implement multilevel balanc domain decomposit constraint ( mlbddc ) precondition develop [ 28 ] .
+work , excel weak scalabl result obtain resolut 3d laplacian elast problem structur unstructur grid , show excel weak scalabl half million core ten billion unknown .
+fortun , use imex srk scheme block-precondit techniqu comment , solver need simul turbul flow .
+result , bddc method implement mlbddc propos [ 28 ] readili use .
+situat mesh partit may lead singular coars problem , especi laplacian-typ problem .
+problem overcom use perturb bddc addit proper scale mass matrix precondition , see [ 44 ] .
+approach use sect .
+5.3 , non-structur mesh partit use .
+remark 4.1 .
+develop weak scalabl optim precondition monolith incom- pressibl navier-stok scheme complic task .
+far know , develop provabl scalabl method restrict far mix fes discontinu pressur ( see [ 45 ] ) .
+result , appli , e.g. , taylor-hood fes use sect .
+5 .
+remark 4.2 .
+note problem solv parallel framework spatial domain , time integr treat sequenti .
+thus , consid space parallel , exploit time parallel .
+talk scalabl method , refer scalabl solver given time step within sequenti time integr scheme .
+construct parallel solver , space time nonlinear turbul flow open issu scope paper .
+howev , initi 11 research direct bddc solver found [ 46 ] .
+issu import practic limit .
+e.g. , naca simul , requir heavi time step till reach statist relev output , requir huge comput resourc .
+remark 4.3 .
+note scalabl result shown sect .
+5.1.3 carri uniform mesh .
+realist applic , mesh usual unstructur precondit problem becom challeng , main due irregular decomposit domain .
+case , precondition use work shown scalabl unstructur mesh [ 47 ] .
+5 .
+numer test section consid numer simul three popular incompress turbul flow benchmark .
+suitabl convection-stabil inf-sup stabl fes weak boundari condit srk time integr scheme les model larg scale problem assess test .
+first , analyz advantag use srk method tgv problem , weak scalabl analysi perform .
+suitabl weak boundari condit wall-bound flow analyz turbul channel flow test .
+final , result shown turbul flow around airfoil .
+shown [ 10 ] convection-stabil mix method great potenti les model , especi comput cost taken account .
+work aim check perform method combin srk time integr scheme weak imposit boundari condit wall law .
+case , motiv reduc comput cost simul 1 ) split origin indefinit problem smaller coerciv system 2 ) use under-resolv mesh boundari layer .
+5.1 .
+taylor-green vortex flow taylor-green vortex ( tgv ) wide use benchmark turbul numer simul .
+consist free-evolv flow start analyt solut , domain ( 0 , 2 ) 3 , period boundari condit ( see , e.g. , [ 48 ] ) .
+initi condit given follow express u ( x , , z , 0 ) =   uxuy uz   =   u0 cos ( x ) sin ( ) sin ( z ) u0 sin ( x ) cos ( ) sin ( z ) 0   , ( 44 ) p ( x , , z , 0 ) = p0 + 1 16 ( cos ( 2x ) + cos ( 2y ) ) ( cos ( 2z ) + 2 ) , u0 = 2  3 sin (  + 2 3 ) .
+choos  = 0 , give mean initi veloc u0 = 1 .
+solv tgv problem reynold number = 1600 .
+problem solv = 0.0 = 10.0 result compar dns brachet et al [ 48 ] .
+discret domain use differ choic number element order approxim , either q2/q1 q3/q2 taylor-hood velocity-pressur pair .
+consid algorithm paramet ( c1 = 12.0 , c2 = 4.0 , cc = 4.0 ) [ 10 ] tgv test use mix fes .
+5.1.1 .
+monolith vs segreg runge-kutta first , want compar result obtain monolith approach , use second order crank-nicolson time integr scheme , one comput use imex version srk method .
+later case use ( 3-3 ) scheme ( see [ 25 ] ) .
+result shown fig .
+1 comput use two differ discret , one 163 q2/q1 fes one 323 q2/q1 fes .
+energi evolut energi dissip rate depict fig .
+1 ( ) 1 ( b ) , respect .
+two method exhibit similar behavior .
+differ becom smaller spatial mesh refin .
+12 0.05 0.06 0.07 0.08 0.09 0.1 0.11 0.12 0.13 0 2 4 6 8 10 e n e rg time energi evolut srk oss_iss 3-3 16 q2/q1 srk oss_iss 3-3 32 q2/q1 monolith oss iss 16 q2/q1 monolith oss iss 32 q2/q1 dns ( ) energi evolut 0 0.002 0.004 0.006 0.008 0.01 0.012 0.014 0.016 0 2 4 6 8 10 ip ti n r te time energi dissip rate ( total ) srk oss_iss 3-3 16 q2/q1 srk oss_iss 3-3 32 q2/q1 monolith oss iss 16 q2/q1 monolith oss iss 32 q2/q1 dns ( b ) total energi dissip rate figur 1 : energi total energi dissip rate evolut 333 veloc dof 5.1.2. hp-refin adapt time-step techniqu clear see refin mesh result comput fig .
+1 convection-stabil mix fes converg dns .
+moreov , shown [ 10 ] 323 q3/q2 element mesh fine enough get accur result scheme .
+one main problem use explicit imex time integr scheme restrict cfl number .
+case imex version srk scheme , diffus term treat implicit restrict satisfi parabol cfl , convect term treat explicit .
+, restrict time step size order satisfi hyperbol cfl condit , i.e. , cflu  t|u|/ ( h/p2 ) < 1 everywher .
+restrict becom import mesh refin , i. e. h reduc , p increas .
+import reason use runge-kutta scheme possibl easili implement adap- tive time step techniqu , see sect .
+3.4 .
+import point use kind techniqu one dynam ( automat ) adapt time step order satisfi physic numer requir .
+physic requir time step size given chang solut , numer requir given cfl condit .
+order check perform srk method use adapt time step , solv tgv problem differ mesh size interpol .
+particular , use 163 323 fe mesh q2/q1 q3/q2 discret , depict fig 2 .
+look kinet energi evolut ( fig .
+0.05 0.06 0.07 0.08 0.09 0.1 0.11 0.12 0.13 0 2 4 6 8 10 e n e rg time energi evolut 16-q2/q1 ( 32^3 vel .
+dof ) 32-q2/q1 ( 64^3 vel .
+dof ) 16-q3/q2 ( 48^3 vel .
+dof ) 32-q3/q2 ( 96^3 vel .
+dof ) dns ( ) energi evolut 0 0.002 0.004 0.006 0.008 0.01 0.012 0.014 0.016 0 2 4 6 8 10 si p ti n ra te time total energi dissip rate 16-q2/q1 ( 32^3 vel .
+dof ) 32-q2/q1 ( 64^3 vel .
+dof ) 16-q3/q2 ( 48^3 vel .
+dof ) 32-q3/q2 ( 96^3 vel .
+dof ) dns ( b ) total energi dissip rate figur 2 : energi total energi dissip rate evolut refin mesh 2 ( ) ) total energi dissip rate ( fig .
+2 ( b ) ) , clear see mesh refin solut tend dns result .
+import highlight improv 13 result higher order spatial approxim use .
+see use q3/q2 mix fes get better result use q2/q1 , even less dof .
+behaviour observ compar 163 q3/q2 element mesh , 483 veloc dof , 323 q2/q1 element discret , 643 veloc dof .
+seen former mesh result better agreement dns solut .
+state , mesh refin direct implic time step size explicit imex scheme use .
+determin influenc refin use adapt time step techniqu , show time step evolut four case consid subsect , see fig .
+3 .
+initi time step t0 = 5  102 case .
+seen coarser mesh ( 163 q2/q1 element ) allow higher time step , constant increas differ time step solut high .
+occur around = 4.0 , moment time step size adapt , remain 0.1 0.12 .
+163 q3/q2 323 q2/q1 show similar behavior , first stage time step increas cfl restrict violat , point time step reduc , show sawtooth pattern begin simul .
+pattern repeat solut two time step differ enough requir smaller time step give accur solut .
+concern finest mesh , 323 q3/q2 , cfl restrict prevail physic phenomena restrict .
+consequ , time step sawtooth pattern observ whole simul .
+0 0.02 0.04 0.06 0.08 0.1 0.12 0.14 1 2 3 4 5 6 7 8 9 10 im e te p iz e time time step evolut 16-q2/q1 ( 32^3 vel .
+dof ) 32-q2/q1 ( 64^3 vel .
+dof ) 16-q3/q2 ( 48^3 vel .
+dof ) 32-q3/q2 ( 96^3 vel .
+dof ) figur 3 : time step size evolut refin mesh 5.1.3 .
+scalabl analysi simul perform fempar ( finit element multiphys mas- sive parallel ) numer softwar .
+fempar open sourc , parallel hybrid openmp/mpi , object- orient ( oo ) framework , among featur , provid basic tool effici parallel distributed-memori implement substructur domain decomposit solver [ 49 , 27 , 28 ] .
+parallel framework , import issu scalabl algorithm larg scale problem solv .
+mean , refin mesh , need scalabl solver increas elaps cpu time number processor increas .
+check suitabl imex srk algorithm larg scale problem perform weak scalabl test solv tgv problem .
+let us denot h characterist length subdomain partit l one whole domain .
+consid structur mesh partit cube [ 0 , l ] 3 .
+weak scalabl test keep local problem constant , i.e. , h/h fix .
+order preserv local reynold number ( i.e. , relat import term ) , keep h h constant increas l ; note impli increas number fes subdomain ( processor ) .
+henc , refer problem comput domain size l0 = 2 , scalabitilti analysi done domain size l = l0 ,  = { 1 , 2 , 3 , 4 , 5 } .
+subdomain size h = l0/4 .
+let us note propos local reynold number constant weak scalabl analysi much challeng typic weak 14 scalabl analys reduc h h keep l constant .
+first analysi , processor use , challeng physic problem solv ( reynold number increas linear l ) , wherea second one viscous term increas domin , tend fulli resolv dns simul .
+comput first time step taylor-green problem time step size t = 5  102 use imex version ( 1-2 ) scheme q2/q1 mix fes .
+report number solver iter cpu time consum system resolut .
+differ local mesh size consid see effect local mesh size scalabl solver .
+particular , consid three case : h/h = { 4 , 8 , 12 } .
+total amount processor use solv problem ( l/h ) 3 = ( 4 ) 3 .
+smallest mesh use solv problem analysi 163 q2/q1 fes mesh , biggest one 2403 q2/q1 fes mesh , lead 680 million dof .
+solut comput hlrn-iii cray system hannov ( germani ) .
+particular , use cray xc40 mpp2 system equip two intel xeon haswel 12-cpu core per node .
+follow result comput two-level bddc solver , consid corner , edg face subdomain partit part coars system ( see [ 49 , 27 , 28 ] detail ) .
+recal first step srk ( 1-2 ) scheme consist six system resolut specifi algorithm 1 .
+note first system solver need first step , sinc p1 = pn .
+algorithm 1 : srk system resolut one time step use ( 1-2 ) scheme 1 .
+solv initi pressur ( equat ( 34c ) ) .
+2 .
+solv second-stag momentum system ( equat ( 34a ) - ( 34b ) ) .
+3 .
+solv second-stag pressur ( equat ( 34c ) ) .
+4 .
+solv veloc updat ( equat ( 35a ) ) .
+5 .
+solv project updat ( equat ( 35b ) ) .
+6 .
+solv pressur updat ( equat ( 35c ) ) .
+fig .
+4 depict solver iter elaps cpu time constant local reynold number weak scalabl analysi three differ local mesh size .
+solver iter plot ( fig .
+4 ( ) , fig .
+4 ( c ) , fig .
+4 ( e ) ) cpu time plot ( fig .
+4 ( b ) , fig .
+4 ( ) , fig .
+4 ( f ) ) shown six linear system ; pressur system cpu time ad togeth second set plot .
+build time includ time consum integr matric vector time consum comput precondition .
+look solver iter , see number iter linear system solv kept constant number processor increas , independ local mesh size .
+notic local mesh size increas , number iter decreas littl system .
+, observ solver iter column fig .
+4 , expect , veloc updat project updat give number solver iter .
+caus fact system solv mass matrix , differ veloc updat mass matrix scale 1 t .
+also observ well-known fact , term solver iter , hardest system pressur solver ( equat ( 34c ) ( 35c ) ) .
+refer consum cpu time , first conclus take look fig .
+4 ( b ) , fig .
+4 ( ) , fig .
+4 ( f ) , expens resolut momentum system ( equat ( 34a ) - ( 34b ) ) .
+although number solver iter smaller pressur comput , term time consum , momentum equat resolut expens , even count togeth three pressur solver .
+differ comput time requir momentum equat versus pressur one , due number dof solv .
+take account veloc project field comput second order polynomi , q2 , pressur first order , q1 .
+, two vectori field versus scalar field , second order interpol versus first order one .
+leav asid mass matrix block , size system equat solv veloc block momentum comput  24 time larger one aris pressur block darci comput , take account pressur system solv use ( 41 ) .
+15 12 14 16 18 20 22 24 26 28 64 512 1728 4096 8000 # te ra ti n # processor solver iter momentum veloc updat project updat pressur initi pressur stage pressur updat ( ) iter , h/h = 4 0 1 2 3 4 5 6 7 8 9 10 64 512 1728 4096 8000 c p u im e ( ) # processor elaps cpu time build solv momentum solv pressur solv momentum updat solv project updat ( b ) cpu time , h/h = 4 10 12 14 16 18 20 22 24 26 28 64 512 1728 4096 8000 # te ra ti n # processor solver iter momentum veloc updat project updat pressur initi pressur stage pressur updat ( c ) iter , h/h = 8 0 2 4 6 8 10 12 14 64 512 1728 4096 8000 c p u im e ( ) # processor elaps cpu time build solv momentum solv pressur solv momentum updat solv project updat ( ) cpu time , h/h = 8 8 10 12 14 16 18 20 22 24 26 64 512 1728 4096 8000 # te ra ti n # processor solver iter momentum veloc updat project updat pressur initi pressur stage pressur updat ( e ) iter , h/h = 12 0 5 10 15 20 25 64 512 1728 4096 8000 c p u im e ( ) # processor elaps cpu time build solv momentum solv pressur solv momentum updat solv project updat ( f ) cpu time , h/h = 12 figur 4 : weak scalabl test .
+number iter elaps cpu time solv one time step tgv problem differ local mesh size .
+keep discuss cpu time shown fig .
+4 , see comput momentum pressur system scale term time .
+perform easi explan , given ratio fine coars bssc system size .
+coars system size depend number processor ( subdomain ) use bddc method .
+even though order magnitud smaller fulli parallel compon , consid serial solver coars compon .
+, coars problem size increas number processor .
+thus , point , non-scal coars solver becom domin .
+corner , edg face subdomain consid , total amount degre freedom coars system equival local mesh q2 element ( without interior node ) mani element subdomain .
+consequ , h/h = 4 local mesh , expect weak scalabl 64 ( 43 ) processor , h/h = 8 512 ( 83 ) processor , h/h = 12 1728 ( 123 ) 16 processor .
+fact see fig .
+4 , , take account local mesh interior dof insid element , result show expect scalabl perform .
+order even better result , one reduc size coars system consid corner edg subdomain .
+fig .
+5 depict result obtain case , h/h = 12 local mesh size .
+seen subdomain face ignor , number solver iter increas , see fig .
+5 ( ) .
+despit , trade-off solver iter smaller system equat , ignor subdomain face coars system worth .
+see fig .
+5 ( b ) , momentum system scalabl 8.000 processor sinc local problem expens coars one .
+scale time pressur solver local problem much smaller coars use q1 element pressur field .
+case , 5 10 15 20 25 30 64 512 1728 4096 8000 # te ra ti n # processor solver iter momentum veloc updat project updat pressur initi pressur stage pressur updat ( ) iter 0 5 10 15 20 25 64 512 1728 4096 8000 c p u im e ( ) # processor elaps cpu time build solv momentum solv pressur solv momentum updat solv project updat ( b ) cpu time figur 5 : weak scalabl test .
+number iter elaps cpu time solv one time step tgv problem h/h = 12 corner edg coars level .
+coars problem recurs approxim bddc precondition , lead multilevel bddc method .
+shown multilevel bddc implement within fempar abl scale 2 million subdomain half million mpi task use three level laplacian problem four level elast problem [ 28 ] .
+consid multilevel extens , sinc consid extrem scale .
+5.2 .
+turbul channel flow re = 395 previous section test suitabl propos vms method use imex srk time integr scheme les simul homogen turbul .
+, aim show perform method wall-bound turbul flow .
+order check behaviour propos approach , solv turbul channel flow ( tcf ) test reynold number base wall veloc re = 395 .
+one main purpos test assess accuraci solut use weak boundari condit formul given bilinear form describ ( 19 ) .
+tcf problem solv box domain [ 0 , 2 ]  [ 0 , 2 ]  [ 0 , 2/3 ] , x-direct flow direct , also call stream-wis direct , y-direct wall-norm direct , z-direct span-wis direct .
+homogen dirichlet boundari condit veloc dof weak impos wall-norm direct boundari ( =  =  ) , period boundari condit defin stream-wis span-wis direct .
+fig .
+6 depict schemat geometri comput domain test .
+select problem paramet accord dns comput perform moser et al [ 50 , 51 ] ( mkm-dns ) , compar result cite work .
+bulk mean veloc half channel height taken equal one , u = 1  = 1 .
+estim reynold number base bulk mean veloc known , = u2/  13 , 750 ( see [ 31 ] ) .
+therefor , one obtain valu viscos ,  = 1.4545  104 determin friction veloc magnitud reynold number base friction veloc u = re/ = 5.745  102 .
+thus , wall shear stress read w = u2 = 3.3010  103 .
+forc 17 figur 6 : channel comput domain .
+equival pressur gradient impos drive movement flow stream-wis direct , fx = w/ .
+initi solut propos [ 52 ] use reach statist steadi state faster , consist unidirect veloc profil fluctuat : ux = c ( 1 y8 ) +  lx 2 sin ( y ) cos ( 4x lx ) sin ( 2z lz ) , ( 45 ) uy =  ( 1 + cos ( y ) ) sin ( y ) sin ( 4x lx ) sin ( 2z lz ) , uz =  lz 2 sin ( 4x lx ) sin ( y ) cos ( 2z lz ) .
+constant c chosen way field without fluctuat would bulk mean veloc u = 1.0 .
+fluctuat constant  10 % bulk mean veloc .
+solv problem use differ mesh , compos 163 q2/q1 q3/q2 fes .
+consid stretch mesh wall-unresolv uniform mesh along wall-norm direct .
+construct stretch mesh follow hyperbol function defin [ 13 ] stretch paramet  = 2.75 .
+accord [ 10 ] , algorithm constant appear ( 24 ) ( 26 ) chosen c1 = 12.0 , c2 = 8.0 cc = 32.0 .
+constant appear weak boundari condit formul set cb = 32.0 .
+moreov , analyz effect constant cc uniform mesh consid , play import role use mix fe method .
+5.2.1 .
+effect cc uniform mesh effect constant cc appear equat ( 26 ) studi [ 10 ] case strong imposit boundari condit togeth use stretch mesh captur boundari layer .
+section aim check perform method chang cc algorithm paramet uniform mesh weak dirichlet boundari condit .
+case , order avoid influenc weak imposit wall normal compon , enforc strong wall-norm veloc , e.g .
+u  n = 0 d .
+fig .
+7 show energi evolut solut differ valu cc = 0.0 = 100.0 , comput 163 q2/q1 mesh .
+shown uniform mesh , high valu cc make solut energi conserv , energi dissip proper .
+valu cc = 1.0 first case reach statist stabl state ,  280.0 , lowest global energi .
+note case cc = 0.0 result overdissip method , show import ad grad-div term , notic [ 10 ] .
+, follow section use cc = 1.0 .
+5.2.2 .
+influenc wall-norm compon signific differ approach follow herein respect one propos [ 15 ] treatment normal compon .
+[ 15 ] no-penetr condit consid , mean normal compon veloc impos strong , u  n = 0 d .
+propos 18 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0 20 40 60 80 100 e n e rg time energi evolut 0.0 1.0 2.0 4.0 8.0 16.0 32.0 figur 7 : energi evolut tcf test differ valu cc .
+keep weak boundari imposit also wall-norm direct , due reason comment .
+state sect .
+2.2 , defin two differ penalti paramet .
+one tangenti compon , base wall law , anoth one wall-norm compon , proport origin penalti paramet propos [ 14 ] , b , n : =  cbp 2 hb .
+obvious ,   solut wall becom closer one obtain impos strong normal compon , penalti term may disturb solut .
+order determin best valu  , solv tcf test = 0.0 = 100.0 , differ valu  = { 1.0 , 10 , 100 , 1000 } 163 q2/q1 fes uniform mesh .
+problem solv use imex srk scheme adapt time step techniqu .
+fig .
+8 show energi evolut differ valu  .
+clear see choic  larg implic result unless low valu  use .
+( well-known stabil nitsch boundari condit prove larg enough valu  ( see [ 34 ] ) .
+low valu  , case  = 1.0 , solut start dissip much energi earli stage simul .
+increas  , result tend one obtain consid strong imposit normal compon , denot strong .
+take  = 10.0 follow simul .
+0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0 20 40 60 80 100 e n e rg time energi evolut 1e0 1e1 1e2 1e3 strong figur 8 : energi evolut tcf test differ valu  .
+5.2.3 .
+comparison strong week imposit dirichlet boundari condit analyz effect  paramet dirichlet boundari condit impos weak wall-norm compon , let us check perform approach follow work compar strong dirichlet boundari condit definit .
+compar result 19 present [ 10 ] , tcf test solv use strong dirichlet boundari condit stretch mesh .
+tabl 1 state distanc wall nearest veloc dof stretch uniform mesh , two differ discret .
+tabl 1 : distanc wall nearest veloc dof wall unit .
+mesh type discret y+ stretch 163 q2/q1 1.6 163 q3/q2 1.0 uniform 163 q2/q1 24.7 163 q3/q2 16.5 element size given tabl 1 direct implic choic time integr scheme use .
+want use imex version srk scheme ensur hyperbol cfl condit satisfi .
+consequ , stretch mesh stronger restrict uniform mesh , given discret .
+thus , fact one need full resolut boundari layer affect spatial mesh also dns-like time step size .
+particular test , use uniform mesh 163 q2/q1 element , critic time step size around tcrit = 0.025 , stretch mesh discret around tcrit = 0.007 .
+follow [ 53 ] , good time step choic particular tcf implicit time integr scheme use t = 0.03 .
+take account imex version srk scheme three time faster per time step implicit one , consid imex srk uniform mesh implicit srk scheme ( t = 0  03 ) stretch mesh .
+tcf test solv = 0.0 reach statist stabl state , store statist last 30.0 second , accumul 1000 sampl .
+result 163 q2/q1 element mesh shown fig .
+9 , mean stream-wis veloc plot ( fig .
+9 ( ) ) togeth veloc fluctuat stream-wis , wall-norm span-wis direct ( fig .
+9 ( b ) , 9 ( c ) 9 ( ) , respect ) .
+stretch mesh use , see weak boundari condit imposit recov result strong case .
+similar result observ veloc fluctuat .
+expect , use heavili under-resolv mesh boundari layer ( see tabl 1 ) , mean stream-wis veloc profil given uniform mesh weak boundari condit littl bit far dns result also result obtain strong boundari condit stretch mesh ( see fig .
+9 ( ) ) .
+analog , look fig .
+9 ( b ) , stream-wis veloc fluctuat depict , see nearest wall point far dns curv weak uniform case .
+howev , far enough boundari layer , result close dns much coarser space-tim mesh .
+behaviour observ wall-norm span-wis veloc fluctuat , figur 9 ( c ) 9 ( ) .
+improv solut observ higher order discret use space .
+behaviour shown fig .
+10 uniform mesh weak boundari condit imposit compar stretch mesh strong boundari condit , 163 q2/q1 163 q3/q2 element mesh .
+look mean stream-wis veloc profil shown fig .
+10 ( ) , see solut converg dns result refin mesh .
+perform observ veloc fluctuat .
+instanc , look stream-wis veloc fluctuat shown fig .
+10 ( b ) seen nearest wall node far dns q3/q2 discret , remain point close dns curv .
+refer wall-norm span-wis veloc fluctuat depict figur 10 ( c ) 10 ( ) , respect , see better result obtain , special point near wall .
+import highlight 1 ) similar result obtain strong weak imposit dirichlet boundari condit stretch mesh , 2 ) weak imposit allow under-resolv mesh good agreement dns far wall .
+5.3 .
+flow around airfoil low reynold number aim section appli numer scheme work simul turbul incompress flow around airfoil , particular naca 0012 airfoil [ 54 ] .
+naca 20 0 5 10 15 20 25 1 10 100 u + y+ mean stream-wis veloc stretch - weak uniform - weak stretch - strong mkm-dns ( ) mean stream-wis veloc 0 1 2 3 4 5 6 0 50 100 150 200 250 300 350 u ' y+ stream-wis veloc fluctuat stretch - weak uniform - weak stretch - strong mkm-dns ( b ) rms stream-wis veloc fluctuat 0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1 0 50 100 150 200 250 300 350 v ' y^+ wall-norm veloc fluctuat stretch - weak uniform - weak stretch - strong mkm-dns ( c ) rms wall-norm veloc fluctuat 0 0.2 0.4 0.6 0.8 1 1.2 1.4 0 50 100 150 200 250 300 350 w ' y^+ span-wis veloc fluctuat stretch - weak uniform - weak stretch - strong mkm-dns ( ) rms span-wis veloc fluctuat figur 9 : mean stream-wis veloc rms veloc fluctuat use differ mesh type .
+airfoil wide use benchmark real life problem , sinc mani airplan wind turbin wing base profil .
+numer simul experi wind tunnel done sever configur type airfoil .
+naca 0012 one use configur ( see , e.g. , [ 55 , 56 , 57 ] , other like naca 4412 also wide studi ( see , e.g. , [ 58 , 59 ] ) .
+anoth type airfoil also use benchmark literatur aerospatiale-a airfoil , use exampl lesfoil project [ 60 ] .
+type problem mesh design play import role .
+particular , proper space use boundari layer .
+strong definit dirichlet boundari condit consid , say simul wall-resolv les ( wrles ) .
+accord [ 61 ] , coher structur appear turbul boundari layer captur wrles method near-wal node mesh locat wall distanc y+ < 2 stream-wis cell size within rang 50 < x+ < 150 .
+otherwis , wall law model use consid weak imposit dirichlet boundari condit , say simul wall-model les ( wmles ) .
+concern check feasibl propos method wmles method simul turbul flow around aircraft .
+simul mani flow characterist stress , deal simpli turbul flow , also difficulti , like presenc thin laminar boundari layer , transit laminar turbul regim , wall-bound flow flow separ curv surfac .
+fact les method shown use flow turbul structur domin large-scal structur , like tgv test present sect .
+5.1 homogen turbul problem ( see [ 13 ] ) .
+despit , simul near-wal flow use les method demonstr challeng task , man complex physic phenomena , like reduct larg scale structur near wall , flow anisotropi , mesh sensit high aspect ratio .
+mani work done discuss suitabl les method simul flow around airfoil .
+case european project lesfoil [ 60 ] , nine differ academ 21 0 5 10 15 20 25 1 10 100 u + y+ mean stream-wis veloc q2/q1- uniform weak q3/q2- uniform weak q2/q1 - stretch strong q3/q2 - stretch strong mkm-dns ( ) mean stream-wis veloc 0 1 2 3 4 5 6 0 50 100 150 200 250 300 350 u ' y+ stream-wis veloc fluctuat q2/q1- uniform weak q3/q2- uniform weak q2/q1 - stretch strong q3/q2 - stretch strong mkm-dns ( b ) rms stream-wis veloc fluctuat 0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1 0 50 100 150 200 250 300 350 v ' y^+ wall-norm veloc fluctuat q2/q1- uniform weak q3/q2- uniform weak q2/q1 - stretch strong q3/q2 - stretch strong mkm-dns ( c ) rms wall-norm veloc fluctuat 0 0.2 0.4 0.6 0.8 1 1.2 1.4 0 50 100 150 200 250 300 350 w ' y^+ span-wis veloc fluctuat q2/q1- uniform weak q3/q2- uniform weak q2/q1 - stretch strong q3/q2 - stretch strong mkm-dns ( ) rms span-wis veloc fluctuat figur 10 : mean stream-wis veloc rms veloc fluctuat refin mesh .
+industri group work aim identifi potenti les predict method separ high-reynolds-numb airfoil flow .
+case , simul geometri aerospatiale-a airfoil oper chord reynold number equal 2.1  106 angl attack equal 13.3o mach number 0.15 .
+author work naca type airfoil .
+case [ 62 , 63 , 64 ] , use les method simul flow around naca4412 airfoil studi use unstructur , structur semi-structur grid , respect .
+paper , current test intent serv proof concept propos method realist applic .
+although work found literatur deal challeng configur , i.e .
+high reynold number high angl attack ( see [ 62 , 63 , 64 , 65 ] ) , restrict modest scenario .
+consid low reynold number moder angl attack .
+main reason consid case possibl compar result obtain weak treatment dirichlet boundari condit obtain strong imposit dirichlet boundari , without need spend mani comput resourc .
+furthermor , keep proof concep aim mind , interest long term comput , requir obtain averag valu .
+thus , compar instantan quantiti obtain turbul fulli develop .
+5.3.1 .
+test set consid use convection-stabil mix fe formul describ sect .
+2.3 .
+also use weak imposit dirichlet boundari condit tangenti normal veloc compon , detail sect .
+2.2 .
+srk scheme use integr equat time , describ sect .
+3 .
+test studi flow around naca 0012 airfoil span-wis length 0.16c , c chord length .
+11 ( ) depict geometri studi airfoil .
+comput domain defin inlet outlet boundari around 10 chord length away airfoil surfac .
+inlet boundari free-stream veloc u = 10 settl , 22 x z gid ( ) naca 0012 airfoil geometri .
+x z gid ( b ) naca 0012 coars mesh .
+figur 11 : naca 0012 airfoil geometri coars mesh .
+outlet boundari left free .
+consid angl attack  = 6 deg reynold number base chord length rec = 2.3  104 , use [ 66 , 67 ] .
+simul test done structur c-type mesh around airfoil profil .
+consid two differ 2-dimension mesh quadrilater , differ refin near wall , extrud along span-wis direct .
+goal use two differ mesh assess perform weak imposit dirichlet boundari condit airfoil surfac refin mesh .
+defin mesh way fine enough element around airfoil surfac , turbul boundari layer , wake region , coars element use far field region .
+11 ( b ) depict view coarsest mesh .
+focus finest mesh , lead edg , near wall-nod locat  2.0  104c , lead wall distanc y+ < 1 .
+distanc kept almost constant laminar region increas constant reach maximum  2.0  103 trail edg , wall distanc less restrict .
+maximum stream-wis element length x  0.028c locat suction side airfoil , give normal distanc x+  40 .
+see mesh size satisfi condit need captur boundari layer phenomena .
+regard coarsest mesh , near wall-nod locat  1.2 103c lead wall distanc order y+  2 .
+distanc constant increas reach valu  6.4  103c trail edg , much grater finest mesh .
+mesh , maximum stream-wis element length x  0.032c equival normal distanc x+  50 .
+comput 3d test coarsest mesh , constant span-wis element length equal z  0.02c .
+spatial discret done use q2/q1 mix fes .
+use algorithm pa- ramet , c1 = 12.0 , c2 = 8.0 cc = 32.0 , accord [ 10 ] .
+problem solv use imex version srk method introduc previous test ( 3-3 ) scheme adapt time step techniqu , expos sect .
+3.4 .
+adapt time step size automat evolv , tend t = 5.0  104c/u , give maximum hyperbol cfl around 0.3 .
+5.3.2 .
+simul result discuss order check suitabl propos method start 2-dimension simul compar result obtain finest coarsest mesh .
+comput , begin initi solut comput solv stoke problem .
+solv problem = 0.0 = 1.0 equival 10 time unit ( 1 time unit = c/u ) .
+effect  2d mesh weak boundari condit .
+analyz effect constant cc solut , proceed check effect  constant appear definit weak imposit wall-norm compon dirichlet boundari .
+case select four differ valu ,  = 10 , 100 solv problem coars mesh = 0.0 = 1.0 .
+case  = 1000 discard sinc comput cost much greater two .
+analysi , seen 12 , littl differ observ laminar transit turbul flow differ valu  .
+furthermor , compar solut obtain strong imposit boundari condit use fine mesh , see result similar laminar transit .
+thing chang flow start evolv turbul behaviour , around = 0.5 , see differ differ paramet select begin increas .
+solut strong boundari condit coars mesh explod turbul 23 start develop ; expect , sinc energi dissip produc airfoil law .
+case consid weak boundari imposit stabl , drag coeffici similar one obtain strong boundari condit finer mesh , see 12 ( ) .
+howev , look 12 ( b ) , see  = 10 lift coeffici start increas refer solut ,  = 100 coeffici remain order fine mesh ( strong boundari condit ) .
+given result , follow comput use  = 100 .
+0 0.001 0.002 0.003 0.004 0.005 0.006 0.007 0.008 0.009 0 0.2 0.4 0.6 0.8 1 c _d time drag coeffici evolut beta = 10.0 beta = 100.0 strong - coars strong - fine ( ) drag coeffici .
+-0.002 0 0.002 0.004 0.006 0.008 0.01 0.012 0.014 0.016 0.018 0 0.2 0.4 0.6 0.8 1 c _l time lift coeffici evolut beta = 10.0 beta = 100.0 strong - coars strong - fine ( b ) lift coeffici .
+figur 12 : drag lift coeffici 2d comput differ  valu .
+instantan flow field 3d case .
+analyz effect use weak dirichlet boundari condit two-dimension mesh , check perform 3d case .
+use initi solut extrud solut 2d case = 1.0 .
+, let flow evolv reach 3d descript , occur one time unit .
+section analyz instantan flow field , tri identifi turbul structur generat along wing .
+13 see veloc isosurfac u = 25.0 color pressur valu .
+figur clear see flow transit laminar regim lead edg turbul flow , start 3d flow develop near maximum wing thick point .
+studi structur aris turbul flow , use q-criterion defin q = 1 2 ( ||2  | ( u ) |2 ) ,  vortic  strain rate tensor .
+isosurfac q = 5  105 depict 14 , see generat 2d coher vortic break near maximum thick point , turn hairpin vortic .
+similar result obtain [ 66 ] , much finer mesh use solv problem .
+15 present top view q = 5 105 isosurfac .
+, 24 11.599 23.198 34.797 1.173e-02 4.641e+01 |velocity| figur 13 : veloc isosurfac u = 25.0 .
+11.369 22.738 34.107 1.136e-02 4.549e+01 |velocity| figur 14 : q-criterion isosurfac q = 5  105 color veloc magnitud .
+see posit first 2d coher vortex , locat x/c = 0.37 .
+result similar obtain [ 66 ] , first 2d vortex locat x/c = 0.41 much finer mesh .
+0.370 figur 15 : top view q-criterion isosurfac q = 5  105 .
+25 6 .
+conclus work , consid convection-stabil mix fes combin weak imposit boundari condit includ wall law model .
+convection-stabil fe method prove accur les scheme [ 10 ] .
+motiv explor combin weak boundari condit keep under-resolv les mesh boundari layer , order maintain low comput cost compar fulli resolv dns simul .
+hand , srk time integr scheme use time integr .
+srk method recent propos [ 25 ] .
+work , analyz first time behavior turbul flow simul .
+scheme comput appeal segreg veloc pressur comput time integr level , keep arbitrari high equal-ord accuraci unknown .
+final , block-precondit bddc precondition use end high scalabl solver .
+output combin high scalabl accur high-perform framework les simul incompress flow .
+note combin build block rational behind .
+srk scheme appli index-2 system , wherea typic pressure-stabil fe solver destroy properti .
+thus , mix fe method requir , wherea convect stabil requir produc stabl scheme high reynold number model effect subgrid scale .
+hand , use imex srk ( explicit convect ) scheme block-precondition solver pressur solver need reduc linear system solv coerciv problem .
+possibl find scalabl precondition problem , e.g. , multilevel domain decomposit solver , wherea scalabl solver indefinit monolith problem found particular situat [ 45 ] .
+applic srk method simul turbul incompress flow test tgv benchmark , show practic result achiev consid srk time integr versus monolith scheme .
+converg propos les scheme dns solut also demonstr refin h p consid , give accur result p-refin ( expect smooth enough solut ) .
+one advantag use srk scheme easi implement time adapt techniqu allow automat time step adapt numer physic requir .
+issu also address tgv test , seen method abl adapt numer restrict given cfl condit physic requir given chang solut .
+combin srk scheme , block-precondit , bddc precondition lead excel weak scalabl result , test tgv benchmark 8000 core use uniform mesh .
+furthermor , three-level mlbddc algorithm could use achiev weak scalabl higher number processor , follow idea [ 28 ] .
+also check perform propos scheme wall-bound tcf test .
+case , includ use weak dirichlet boundari condit wall law base tangenti traction weak imposit wall-norm compon .
+approach lead accept result , even wall-unresolv uniform mesh consid .
+, stretch mesh , use strong weak dirichlet boundari condit lead similar result .
+seen weak imposit dirichlet boundari condit suitabl srk method consid .
+first , continu equat pollut strong imposit tempor deriv veloc diverg boundari .
+occur time-depend boundari condit impos dirichlet boundari .
+furthermor , weak imposit veloc wall-norm compon consid work , avoid complex impos strong compon curv boundari .
+acknowledg work partial fund european research council fp7 programm idea start grant .
+258443 - comfus : comput method fusion technol- ogi .
+o. colom grate acknowledg support receiv catalan govern fi fellowship .
+26 refer [ 1 ] p. sagaut , larg eddi simul incompress flow , vol .
+3 , springer berlin , 2000 .
+[ 2 ] j. p. bori , f. f. grinstein , e. s. oran , r. l. kolb , new insight larg eddi simul , fluid dynam research 10 ( 4-6 ) ( 1992 ) 199 .
+[ 3 ] t. j. hugh , multiscal phenomena : green  function , dirichlet-to-neumann formul , subgrid scale model , bubbl origin stabil method , comput method appli mechan engin 127 ( 1-4 ) ( 1995 ) 387401 .
+[ 4 ] t. j. hugh , g. r. feijoo , l. mazzei , j.-b .
+quinci , variat multiscal method - paradigm comput mechan , comput method appli mechan engin 166 ( 12 ) ( 1998 ) 324 .
+[ 5 ] t. j. r. hugh , l. mazzei , .
+a. oberai , .
+a. wray , multiscal formul larg eddi simul : decay homogen isotrop turbul , physic fluid 13 ( 2 ) ( 2001 ) 505512 .
+[ 6 ] t. j. r. hugh , .
+a. oberai , l. mazzei , larg eddi simul turbul channel flow variat multiscal method , physic fluid 13 ( 6 ) ( 2001 ) 17841799 .
+[ 7 ] r. codina , stabil finit element approxim transient incompress flow use orthogo- nal subscal , comput method appli mechan engin 191 ( 3940 ) ( 2002 ) 4295 4321 .
+[ 8 ] r. codina , stabil incompress convect orthogon sub-scal finit element method , comput method appli mechan engin 190 ( 1314 ) ( 2000 ) 15791599 .
+[ 9 ] r. codina , analysi stabil finit element approxim oseen equat use orthogon subscal , appli numer mathemat 58 ( 3 ) ( 2008 ) 264283 .
+[ 10 ] o. colom , s. badia , j. princip , mix finit element method convect stabil larg eddi simul incompress turbul flow , comput method appli mechan engin 304 ( 2016 ) 294  318 .
+[ 11 ] s. badia , stabil finit element method base scottzhang projector .
+circumvent- ing infsup condit stoke problem , comput method appli mechan engin 247248 ( 0 ) ( 2012 ) 6572 .
+[ 12 ] m. braack , e. burman , local project stabil oseen problem interpret variat multiscal method , siam journal numer analysi 43 ( 6 ) ( 2006 ) 25442566 .
+[ 13 ] o. colom , s. badia , r. codina , j. princip , assess variat multiscal model larg eddi simul turbul incompress flow , comput method appli mechan engin 285 ( 2015 ) 3263 .
+[ 14 ] y. bazilev , t. j. r. hugh , weak imposit dirichlet boundari condit fluid mechan , comput & fluid 36 ( 1 ) ( 2007 ) 1226 .
+[ 15 ] y. bazilev , c. michler , v. m. calo , t. j. r. hugh , weak dirichlet boundari condit wall- bound turbul flow , comput method appli mechan engin 196 ( 4952 ) ( 2007 ) 48534862 .
+[ 16 ] v. john , slip friction penetr resist boundari condit navierstok equationsnumer test aspect implement , journal com- putat appli mathemat 147 ( 2 ) ( 2002 ) 287300 .
+[ 17 ] l. davidson , lesfoil : european project larg eddi simul around high-lift airfoil high reynold number , : chalmer public librari ( cpl ) , 2000 .
+27 http : //www.ulb.tu-darmstadt.de/tocs/133724328.pdf http : //iopscience.iop.org/1873-7005/10/4-6/a01 http : //www.sciencedirect.com/science/article/pii/0045782595008449 http : //www.sciencedirect.com/science/article/pii/0045782595008449 http : //www.sciencedirect.com/science/article/pii/s0045782598000796 http : //www.sciencedirect.com/science/article/pii/s0045782598000796 http : //pof.aip.org/resource/1/phfle6/v13/i2/p505_s1 http : //pof.aip.org/resource/1/phfle6/v13/i2/p505_s1 http : //scitation.aip.org/content/aip/journal/pof2/13/6/10.1063/1.1367868 http : //scitation.aip.org/content/aip/journal/pof2/13/6/10.1063/1.1367868 http : //www.sciencedirect.com/science/article/pii/s0045782502003377 http : //www.sciencedirect.com/science/article/pii/s0045782502003377 http : //www.sciencedirect.com/science/article/pii/s0045782500002541 http : //www.sciencedirect.com/science/article/pii/s0045782500002541 http : //www.sciencedirect.com/science/article/pii/s0168927406002194 http : //www.sciencedirect.com/science/article/pii/s0168927406002194 http : //www.sciencedirect.com/science/article/pii/s0045782516300561 http : //www.sciencedirect.com/science/article/pii/s0045782516300561 http : //www.sciencedirect.com/science/article/pii/s0045782512002435 http : //www.sciencedirect.com/science/article/pii/s0045782512002435 http : //epubs.siam.org/doi/abs/10.1137/050631227 http : //epubs.siam.org/doi/abs/10.1137/050631227 http : //www.sciencedirect.com/science/article/pii/s0045782514004113 http : //www.sciencedirect.com/science/article/pii/s0045782514004113 http : //www.sciencedirect.com/science/article/pii/s0045793005001258 http : //www.sciencedirect.com/science/article/pii/s0045782507002885 http : //www.sciencedirect.com/science/article/pii/s0045782507002885 http : //www.sciencedirect.com/science/article/pii/s0377042702004375 http : //www.sciencedirect.com/science/article/pii/s0377042702004375 http : //publications.lib.chalmers.se/publication/21481-lesfoil-a-european-project-on-large-eddy-simulations-around-a-high-lift-airfoil-at-high-reynolds-num http : //publications.lib.chalmers.se/publication/21481-lesfoil-a-european-project-on-large-eddy-simulations-around-a-high-lift-airfoil-at-high-reynolds-num [ 18 ] y. bazilev , c. michler , v. calo , t. hugh , isogeometr variat multiscal model wall- bound turbul flow weak enforc boundari condit unstretch mesh , com- puter method appli mechan engin 199 ( 13 ) ( 2010 ) 780790 .
+[ 19 ] m.-c. hsu , i. akkerman , y. bazilev , wind turbin aerodynam use alevm : valid role weak enforc boundari condit , comput mechan 50 ( 4 ) ( 2012 ) 499511 .
+[ 20 ] h. choi , p. moin , effect comput time step numer solut turbul flow , journal comput physic 113 ( 1 ) ( 1994 ) 14 .
+[ 21 ] h. le , p. moin , improv fraction step method incompress navier-stok equat , journal comput physic 92 ( 2 ) ( 1991 ) 369379 .
+[ 22 ] d. forti , l. dede , semi-implicit bdf time discret navierstok equat vms-les model high perform comput framework , comput & fluid 117 ( 2015 ) 168182 .
+[ 23 ] s. badia , r. codina , algebra pressur segreg method incompress navier-stok equat , archiv comput method engin 15 ( 3 ) ( 2008 ) 343369 .
+[ 24 ] s. badia , a. f. martn , r. plana , block recurs lu precondition thermal coupl incompress inductionless mhd problem , journal comput physic 274 ( 2014 ) 562591 .
+[ 25 ] o. colom , s. badia , segreg rungekutta method incompress navierstok equat , intern journal numer method engin 105 ( 5 ) ( 2016 ) 372400 .
+[ 26 ] c. r. dohrmann , precondition substructur base constrain energi minim , siam journal scientif comput 25 ( 1 ) ( 2003 ) 246258 .
+[ 27 ] s. badia , a. f. martn , j. princip , high scalabl parallel implement balanc domain decomposit constraint , siam journal scientif comput 36 ( 2 ) ( 2014 ) 190218 .
+[ 28 ] s. badia , a. f. martn , j. princip , multilevel balanc domain decomposit extrem scale , siam journal scientif comput 38 ( 1 ) ( 2016 ) 2252 .
+[ 29 ] p. r. spalart , strategi turbul model simul , intern journal heat fluid flow 21 ( 3 ) ( 2000 ) 252263 .
+[ 30 ] p. spalart , w. jou , m. strelet , s. allmara , comment feasibl les wing , hybrid rans/l approach , advanc dns/les 1 ( 1997 ) 48 .
+[ 31 ] s. b. pope , turbul flow , cambridg univers press , 2000 .
+[ 32 ] j. nitsch , uber ein variationsprinzip zur losung von dirichlet-problemen bei verwendung von teilraumen , die keinen randbedingungen unterworfen sind , abhandlungen aus dem mathematis- chen seminar der universitat hamburg 36 ( 1 ) ( 1971 ) 915 .
+[ 33 ] r. stenberg , techniqu approxim boundari condit finit element method , journal comput appli mathemat 63 ( 13 ) ( 1995 ) 139148 .
+[ 34 ] d. arnold , interior penalti finit element method discontinu element , siam journal numer analysi 19 ( 4 ) ( 1982 ) 742760 .
+[ 35 ] a. link , collis cross-shap domain - steadi 2d navier-stok exampl demonstrat- ing import mass conserv cfd , comput method appli mechan engin 198 ( 41-44 ) ( 2009 ) 32783286 .
+[ 36 ] m. olshanskii , a. reusken , grad-div stablil stoke equat , mathemat compu- tation 73 ( 248 ) ( 2004 ) 16991718 .
+28 http : //www.sciencedirect.com/science/article/pii/s0021999184711120 http : //www.sciencedirect.com/science/article/pii/0021999191902157 http : //www.sciencedirect.com/science/article/pii/0021999191902157 http : //www.sciencedirect.com/science/article/pii/s0045793015001668 http : //www.sciencedirect.com/science/article/pii/s0045793015001668 http : //link.springer.com/article/10.1007/s11831-008-9020-3 http : //link.springer.com/article/10.1007/s11831-008-9020-3 http : //linkinghub.elsevier.com/retrieve/pii/s0021999114004355 http : //linkinghub.elsevier.com/retrieve/pii/s0021999114004355 http : //dx.doi.org/10.1002/nme.4987 http : //dx.doi.org/10.1002/nme.4987 http : //link.aip.org/link/sjoce3/v25/i1/p246/s1 & agg=doi http : //epubs.siam.org/doi/abs/10.1137/130931989 http : //epubs.siam.org/doi/abs/10.1137/130931989 http : //dx.doi.org/10.1137/15m1013511 http : //www.sciencedirect.com/science/article/pii/s0142727x00000072 http : //www.springerlink.com/content/e6p74q1818245qu3/abstract/ http : //www.springerlink.com/content/e6p74q1818245qu3/abstract/ http : //www.sciencedirect.com/science/article/pii/0377042795000577 http : //www.sciencedirect.com/science/article/pii/0377042795000577 http : //epubs.siam.org.sci-hub.org/doi/abs/10.1137/0719052 http : //www.sciencedirect.com/science/article/pii/s0045782509002138 http : //www.sciencedirect.com/science/article/pii/s0045782509002138 http : //www.ams.org/mcom/2004-73-248/s0025-5718-03-01629-6/ [ 37 ] t. heister , g. rapin , effici augment lagrangian-typ precondit oseen problem use grad-div stabil , intern journal numer method fluid 71 ( 1 ) ( 2013 ) 118134 .
+[ 38 ] g. soderlind , automat control adapt time-step , numer algorithm 31 ( 1-4 ) ( 2002 ) 281310 .
+[ 39 ] k. gustafsson , control theoret techniqu stepsiz select explicit runge-kutta method , acm tran .
+math .
+softw .
+17 ( 4 ) ( 1991 ) 533554 .
+[ 40 ] k. gustafsson , control-theoret techniqu stepsiz select implicit runge-kutta meth- od , acm tran .
+math .
+softw .
+20 ( 4 ) ( 1994 ) 496517 .
+[ 41 ] h. c. elman , d. j. silvest , a. j. wathen , finit element fast iter solver : appli- cation incompress fluid dynam , oxford univers press , 2005 .
+[ 42 ] s. c. brenner , r. scott , mathemat theori finit element method , softcov reprint hardcov 3rd ed .
+2008 edit , springer , 2010 .
+[ 43 ] j. mandel , b. sousedk , c. dohrmann , multispac multilevel bddc , comput 83 ( 2 ) ( 2008 ) 5585 .
+[ 44 ] s. badia , h. nguyen , balanc domain decomposit perturb , submit .
+[ 45 ] j. li , o. widlund , bddc algorithm incompress stoke equat , siam journal numer analysi 44 ( 6 ) ( 2006 ) 24322455 .
+[ 46 ] s. badia , m. olm , space-tim balanc domain decomposit , submit .
+[ 47 ] s. badia , a. f. martn , j. princip , scalabl inexact balanc domain decomposit constraint overlap coarse/fin correct , parallel comput 50 ( 2015 ) 124 .
+[ 48 ] m. brachet , direct simul three-dimension turbul taylor-green vortex , fluid dynam research 8 ( 14 ) ( 1991 ) 18 .
+[ 49 ] s. badia , a. f. martn , j. princip , implement scalabl analysi balanc domain decomposit method , archiv comput method engin 20 ( 3 ) ( 2013 ) 239262 .
+[ 50 ] r. d. moser , j. kim , n. n. mansour , direct numer simul turbul channel flow re=590 , physic fluid 11 ( 4 ) ( 1999 ) 943945 .
+[ 51 ] j. kim , p. moin , r. moser , turbul statist fulli develop channel flow low reynold number , journal fluid mechan 177 ( 1987 ) 133166 .
+[ 52 ] p. moin , j. kim , numer solut time-depend viscous incompress fluid flow involv solid boundari , journal comput physic 35 ( 3 ) ( 1980 ) 381392 .
+[ 53 ] v. gravemei , m. w. gee , m. kronbichl , w. .
+wall , algebra variat multiscale- multigrid method larg eddi simul turbul flow , comput method appli me- chanic engin 199 ( 1316 ) ( 2010 ) 853864 .
+[ 54 ] e. n. jacob , k. e. ward , r. m. pinkerton , characterist 78 relat airfoil section test variable-dens wind tunnel , naca-report-460 .
+[ 55 ] r. e. sheldahl , p. c. klima , aerodynam characterist seven symmetr airfoil section 180-degre angl attack use aerodynam analysi vertic axi wind turbin , tech .
+rep. sand-80-2114 , sandia nation labs. , albuquerqu , nm ( usa ) ( 1981 ) .
+[ 56 ] w. mccroskey , critic assess wind tunnel result naca 0012 airfoil , tech .
+rep. , dtic document ( 1987 ) .
+29 http : //onlinelibrary.wiley.com/doi/10.1002/fld.3654/abstract http : //onlinelibrary.wiley.com/doi/10.1002/fld.3654/abstract http : //link.springer.com/article/10.1023/a % 3a1021160023092 http : //doi.acm.org/10.1145/210232.210242 http : //doi.acm.org/10.1145/198429.198437 http : //doi.acm.org/10.1145/198429.198437 http : //www.springerlink.com/content/112v4w1821r584u0/abstract/ https : //web.cimne.upc.edu/users/hnguyen/files/bddc-perturbed.pdf http : //epubs.siam.org/action/showabstract ? page=2432 & volume=44 & issue=6 & journalcode=sjnaam http : //www.sciencedirect.com/science/article/pii/016959839190026f http : //link.springer.com/article/10.1007/s11831-013-9086-4 http : //link.springer.com/article/10.1007/s11831-013-9086-4 http : //link.aip.org/link/ ? phf/11/943/1 http : //link.aip.org/link/ ? phf/11/943/1 http : //journals.cambridge.org/article_s0022112087000892 http : //journals.cambridge.org/article_s0022112087000892 http : //www.sciencedirect.com/science/article/pii/0021999180900765 http : //www.sciencedirect.com/science/article/pii/0021999180900765 http : //www.sciencedirect.com/science/article/pii/s0045782509002059 http : //www.sciencedirect.com/science/article/pii/s0045782509002059 http : //naca.central.cranfield.ac.uk/report.php ? nid=1087 http : //naca.central.cranfield.ac.uk/report.php ? nid=1087 http : //www.osti.gov/scitech/biblio/6548367 http : //www.osti.gov/scitech/biblio/6548367 http : //www.osti.gov/scitech/biblio/6548367 [ 57 ] j .
+a. rivera , b. e. dansberri , r. m. bennett , m. h. durham , w. a. silva , naca0012 benchmark model experiment flutter result unsteadi pressur distribut , nation aeronaut space administr , langley research center , 1992 .
+[ 58 ] a. j. wadcock , investig low-spe turbul separ flow around airfoil , tech .
+rep. ( 1987 ) .
+[ 59 ] r. c. hast , b. r. william , studi flow field near naca 4412 aerofoil near maximum lift. , tech .
+rep. ( 1984 ) .
+[ 60 ] l. davidson , d. cokljat , j. frohlich , m. a. leschzin , c. mellen , w. rodi , lesfoil : larg eddi simul flow around high lift airfoil : result project lesfoil support european union 1998  2001 , springer scienc & busi media , 2012 .
+[ 61 ] u. piomelli , j. r. chasnov , large-eddi simul : theori applic , : m. hallback , d. s. henningson , a. v. johansson , p. h. alfredsson ( ed .
+) , turbul transit model , .
+2 ercoftac seri , springer netherland , 1996 , pp .
+269336 .
+[ 62 ] k. e. jansen , stabil finit element method comput turbul , comput method appli mechan engin 174 ( 34 ) ( 1999 ) 299317 .
+[ 63 ] h.-j .
+kaltenbach , h. choi , large-eddi simul flow around airfoil structur mesh , tech .
+rep. ( 1995 ) .
+[ 64 ] s. schmidt , m. frank , f. thiel , assess sgs model les appli naca 4412 airfoil , : 39th aerospac scienc meet exhibit , american institut aeronaut astronaut .
+[ 65 ] c. p. mellen , j. frohlich , w. rodi , lesson lesfoil project large-eddi simul flow around airfoil , aiaa journal 41 ( 4 ) ( 2003 ) 573581 .
+[ 66 ] r. kojima , t. nonomura , a. oyama , k. fujii , large-eddi simul low-reynolds-numb flow thick thin naca airfoil , journal aircraft 50 ( 1 ) ( 2013 ) 187196 .
+[ 67 ] d.-h. kim , j.-h. yang , boundari layer near-wak measur naca 0012 airfoil low reynold number ( aiaa ) ( 2009 ) .
+30 http : //ntrs.nasa.gov/search.jsp ? r=19880003089 http : //link.springer.com/chapter/10.1007/978-94-015-8666-5_7 http : //www.sciencedirect.com/science/article/pii/s0045782598003016 http : //ntrs.nasa.gov/search.jsp ? r=19960022298 http : //arc.aiaa.org/doi/abs/10.2514/6.2001-434 http : //arc.aiaa.org/doi/abs/10.2514/6.2001-434 http : //cat.inist.fr/ ? amodele=affichen & cpsidt=14711672 http : //cat.inist.fr/ ? amodele=affichen & cpsidt=14711672 http : //dx.doi.org/10.2514/1.c031849 http : //dx.doi.org/10.2514/1.c031849 http : //arc.aiaa.org/doi/abs/10.2514/6.2009-1472 http : //arc.aiaa.org/doi/abs/10.2514/6.2009-1472 introduct convection-stabil mix fe scheme navier-stok equat weak dirichlet boundari condit mix fe method convect stabil segreg runge-kutta time integr matrix form time integr segreg runge-kutta scheme weak dirichlet boundari condit srk scheme adapt time-step techniqu scalabl solver incompress navier-stok equat numer test taylor-green vortex flow monolith vs segreg runge-kutta hp-refin adapt time-step techniqu scalabl analysi turbul channel flow re=395 effect cc uniform mesh influenc wall-norm compon comparison strong week imposit dirichlet boundari condit flow around airfoil low reynold number test set simul result discuss conclus

@@ -1,0 +1,2995 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1 
+
+ 
+
+Finite element modeling of quasi-brittle cracks in 2D and 3D with 
+
+enhanced strain accuracy 
+ 
+
+ 
+
+M. Cervera, G. B. Barbat and M. Chiumenti 
+
+International Center for Numerical Methods in Engineering (CIMNE) 
+
+Technical University of Catalonia – BarcelonaTECH 
+
+Edificio C1, Campus Norte, Jordi Girona 1-3 
+
+08034 Barcelona, Spain 
+
+miguel.cervera@upc.edu, gbarbat@cimne.upc.edu, michele@cimne.upc.edu 
+
+ 
+
+ 
+
+ 
+
+ 
+
+Abstract 
+
+ 
+
+This paper discusses the finite element modeling of cracking in quasi-brittle materials. The 
+
+problem is addressed via a mixed strain/displacement finite element formulation and an isotropic 
+
+damage constitutive model. The proposed mixed formulation is fully general and is applied in 2D 
+
+and 3D. Also, it is independent of the specific finite element discretization considered; it can be 
+
+equally used with triangles/tetrahedra, quadrilaterals/hexahedra and prisms.  
+
+The feasibility and accuracy of the method is assessed through extensive comparison with 
+
+experimental evidence. The correlation with the experimental tests shows the capacity of the 
+
+mixed formulation to reproduce the experimental crack path and the force-displacement curves 
+
+with remarkable accuracy. Both 2D and 3D examples produce results consistent with the 
+
+documented data.  
+
+Aspects related to the discrete solution, such as convergence regarding mesh resolution and mesh 
+
+bias, as well as other related to the physical model, like structural size effect and the influence of 
+
+Poisson’s ratio, are also investigated. 
+
+The enhanced accuracy of the computed strain field leads to accurate results in terms of crack 
+
+paths, failure mechanisms and force displacement curves. Spurious mesh dependency suffered by 
+
+both continuous and discontinuous irreducible formulations is avoided by the mixed FE, without 
+
+the need of auxiliary tracking techniques or other computational schemes that alter the continuum 
+
+mechanical problem.  
+
+ 
+
+Keywords: Damage, Cracking, Mixed Finite Elements, Strain Localization, Structural Failure 
+
+  
+
+mailto:miguel.cervera@upc.edu
+mailto:gbarbat@cimne.upc.edu
+
+
+2 
+
+ 
+
+1 Introduction 
+
+ 
+
+Modeling of cracking in quasi-brittle materials has been the object of intensive study in 
+
+computational solid mechanics over the last five decades. In most of the studies carried 
+
+out with standard irreducible elements, the attempts to predict the crack path fail because 
+
+the obtained solution suffers from spurious bias mesh dependency. Several strategies have 
+
+been developed for dealing with this obstacle.  
+
+Cracking problems have traditionally been tackled in two ways: through continuous and 
+
+discontinuous approaches. In the continuous one, the failure process is modelled by the 
+
+degradation of the material, at constitutive level. For this so-called smeared crack 
+
+approach, classical methods were developed by [1-5]. More recently, nonlocal 
+
+constitutive models [6], gradient enhanced [7, 8] and phase field techniques [8-12] have 
+
+also been considered within the continuous approach. 
+
+In the discontinuous approach, an explicit crack representation is accounted for in the 
+
+computed geometry and handled as a geometrical discontinuity [13, 14]. The kinematics 
+
+of the finite element is enriched to capture the behavior near the propagating crack. 
+
+Models developed with this approach include, but are not limited to, cohesive interface 
+
+elements with or without remeshing [15-22], elements with embedded strong 
+
+discontinuities [23-28], extended finite elements methods [29-34], and meshless and 
+
+particle methods [35-39]. 
+
+All these formulations have been proposed with the objective of solving the problems 
+
+concerning lack of convergence when the mesh is refined and spurious mesh-dependency 
+
+of the computed solution with standard irreducible elements. Despite all the proposed 
+
+formulations, and their diverse level of success, these aspects still remained an issue. 
+
+The traditional smeared crack/deformation concept has the advantage of simplicity and is 
+
+best suited for large-scale analyses. Most efficient from the computational point of view, 
+
+it is the one favored by commercial FE codes and practitioners. Mesh-size dependency 
+
+can be solved introducing the fracture energy concept and regularizing with respect the 
+
+resolution of the FE mesh as proposed by [2]. 
+
+The continuous approaches that use nonlocal, gradient enhanced or phase field schemes, 
+
+alter the strong form of the governing equations embedding a length scale related to the 
+
+width of the localization zone.  A clear physical interpretation and direct link between the 
+
+length parameter in the model and the characteristic length of the material is arguable 
+
+[40]. An alternative geometrical interpretation has been proposed by [12]. 
+
+Discontinuous approaches are often regarded as an improvement over the continuous 
+
+ones, as it is considered that true separation can only be captured with discontinuous 
+
+techniques. Discontinuous approaches almost invariably require the use of local or global 
+
+crack tracking auxiliary techniques [41-44]. Those auxiliary techniques do not handle 
+
+successfully cases that involve complex crack patterns such as multiple branching or 
+
+intersecting cracks. Besides, they are usually applied only in one type of finite element 
+
+and lack practical generality, as they require different implementations for each type of 
+
+finite element.  
+
+
+
+3 
+
+ 
+
+In meshless and particle methods [35-39], these drawbacks are avoided through the 
+
+definition of domains of influence rather than finite elements and the use of appropriate 
+
+test and trial functions. Local and global remeshing techniques [15-18] also have been 
+
+used in conjunction with both the continuous and discontinuous approaches. 
+
+A comprehensive coverage of all fracture strategies is far beyond the scope of this study 
+
+that focuses on the application of a mixed FE formulation to the modeling of cracking in 
+
+quasi-brittle materials. For more details, the reviews in references [45-47] are suggested. 
+
+Recently, mixed finite elements have been reexamined by [48-51] to deal with strain 
+
+localization problems. Mixed finite element formulations have proved to be a remedy for 
+
+spurious bias mesh dependency, allowing for the computation of strains and stresses with 
+
+enhanced accuracy both in linear and nonlinear scenarios.  
+
+When using the standard finite element formulation, local convergence of the solution in 
+
+terms of strains cannot be guaranteed in the quasi-singular stress or strain states that occur 
+
+in the vicinity of the tip of propagating cracks. Even in linear elasticity, local convergence 
+
+is not guaranteed in quasi-singular points. This lack of local convergence in the strain and 
+
+stress leads to the spurious mesh bias dependence observed in problems of quasi-brittle 
+
+crack propagation solved with the standard formulation, yielding incorrect solutions in 
+
+many cases.  
+
+Mixed FE formulations for nonlinear solid mechanics problems guarantee an 
+
+improvement over standard finite element formulations in terms of stress and strain 
+
+accuracy. In mixed formulations, the strain is approximated independently from the 
+
+displacement field, instead of being obtained from local discrete differentiation at element 
+
+level. In this way, more accurate stress and strain fields are computed, resulting in a more 
+
+precise computation of the solids nonlinear behavior, particularly for low order FE.  
+
+The more accurate stress and strain fields computed with the mixed formulation results 
+
+in a significant betterment over the standard formulation, particularly in the prediction of 
+
+the crack formation and propagation, where mesh-dependence issues are averted. This 
+
+guarantees convergent results when computing crack trajectories, failure mechanisms and 
+
+ultimate loads, producing practically mesh-independent solutions using both plasticity 
+
+and damage constitutive laws. 
+
+The leverage of the mixed approach derives from the following strong points: 
+
+- It is fully variationally consistent [49, 50] 
+
+- It can be formulated for small or finite displacements or/and kinematics [52, 53] 
+
+- It applies equally to 2D and 3D problems [51] 
+
+- It is not restricted to a particular FE interpolation, it can be used with 
+triangles/tetrahedra, quadrilaterals/hexahedra or prisms of any order [49-51] 
+
+- It is not dependent on the choice of the constitutive equation, it can be applied both 
+for plasticity and/or damage models of any kind [51, 54] 
+
+- It can consider isotropic or directional inelastic behavior [55] 
+
+- It can address quasi-incompressible situations, including the incompressible           
+limit [51, 56] 
+
+- It can accommodate rate-dependent viscid effects, linear or non-linear 
+
+
+
+4 
+
+ 
+
+- It can be extended to include inertial forces in dynamics, or multi-physics phenomena 
+in coupled problems [53]  
+
+Also, and regarding cracking problems: 
+
+- It follows the classical local constitutive mechanics framework [50] 
+
+- It can model Mode I (extension), Mode II (shear) and Mode III (tearing) and mixed-
+mode fracture [51, 55] 
+
+- It can model structural size effect in quasi-brittle failure [54] 
+
+- It can accommodate orthotropic damage models with unilateral, crack-closing   
+effects 
+
+- It does not require auxiliary crack tracking techniques [49-51] 
+
+With reference to the above mentioned alternatives for the computational modeling of 
+
+quasi-brittle cracks, the mixed finite element formulation here presented fits into the 
+
+continuous approach, as the crack is represented at constitutive level using a local stress 
+
+vs. strain relationship. Therefore, the separation between the two opposite sides of the 
+
+crack is modelled through continuous (linear) displacement and strain fields. No specific 
+
+degrees of freedom are necessary to model the existing or evolving cracks. Instead, the 
+
+kinematic enhancement provided by the independent interpolation of displacement and 
+
+strains proves to be crucial in the numerical solution of strain localization problems.  
+
+Discontinuous resolution of the displacement jump across the crack and in conjunction 
+
+with a traction vs. separation constitutive law, either via extended degrees of freedom or 
+
+embedment, can be included in the mixed FE formulation as they are in the standard 
+
+displacement-based one, but such developments are not addressed in the present paper.  
+
+Without them, the formulation does not require apropos trial or test functions, or the use 
+
+of specific quadrature rules in the modeling of the cracks. Local remeshing is also 
+
+compatible with the mixed FE formulation, but is not considered in this paper. 
+
+In previous works by the authors, the mixed formulation has been derived and assessed 
+
+through theoretical benchmark tests and capability demonstration cases, in order to 
+
+highlight its advantages with regard to the standard form. However, aptness of the 
+
+proposed model to replicate the behavior of engineering materials observed in 
+
+experimental tests, specifically related to the crack behavior and propagation, remained 
+
+open; mixed formulations for computing strain localization has not been adequately 
+
+validated through correlation with experimental tests. 
+
+Therefore, the objectives of this paper are: (1) to present the mixed strain/displacement 
+
+formulation in matrix notation, ready-to-use for implementation in finite element codes, 
+
+(2) to demonstrate the application of this format in 2D and 3D applications, (3) to validate 
+
+the proposed formulation with experimental results. To meet the last two objectives, an 
+
+extensive comparison with experimental data observed from the literature is performed. 
+
+The outline of the paper is as follows. In Section 2, the mixed strain/displacement 
+
+formulation for the solution of nonlinear solid mechanics problems is presented in matrix 
+
+form, to be used in conjunction with an isotropic damage model summarized in Section 
+
+3. Section 4 presents numerical simulations performed in 2D and 3D using the proposed 
+
+model. The computation results are compared to available data from experimental tests 
+
+for validation purposes. Finally, conclusions and extensions for future work are presented. 
+
+
+
+5 
+
+ 
+
+ 
+
+2 Mixed strain/displacement formulation 
+
+ 
+
+In the following, the mixed strain-displacement formulation is laid out. Matrix and vector 
+
+notation based on Voigt’s convention for symmetric tensors is adopted, as customarily 
+
+used in FE literature and in codes. 
+
+The formulation of the mixed solid mechanics problem in terms of the stress and 
+
+displacement fields is classical and it has been used many times in the context of linear 
+
+elasticity. Mixed FEM have been so derived from the Hellinger-Reissner Variational 
+
+Principle [57, 58]. However, this is not the most convenient format for the material 
+
+nonlinear problem. Most of the algorithms used for nonlinear constitutive models in solid 
+
+mechanics have been derived for the irreducible formulation. This means that these 
+
+procedures are usually strain driven, and they have a format in which the stress is 
+
+computed in terms of the strain. Consequently, a mixed FE formulation in terms of the 
+
+strains and displacement fields as the one used here can incorporate these procedures 
+
+directly. 
+
+ 
+
+2.1 Variational form  
+
+ 
+
+In the following, the variational form of the nonlinear solid mechanics problem is cast in 
+
+terms of the displacement 𝒖 and strain 𝜺 fields. Writing the problem in matrix form, 𝒖 
+
+and 𝜺 are expressed in Voigt’s convention as vectors. For 2D analysis, plane stress and 
+
+plane strain problems, 𝒖 = (𝑢, 𝑣)𝑇 has 2 components and 𝜺 = ( 𝑥, 𝑦 , 𝛾𝑥𝑦)
+𝑇
+ is a 3 
+
+component vector. In 3D analysis, 𝒖 = (𝑢, 𝑣, 𝑤)𝑇 has 3 components and 𝜺 =
+
+( 𝑥, 𝑦, 𝑧 , 𝛾𝑥𝑦, 𝛾𝑦𝑧 , 𝛾𝑥𝑧)
+𝑇
+ has 6 components [59].  
+
+The strain and displacement fields are locally related through the compatibility equation 
+
+𝜺 = 𝓢𝒖 (1) 
+
+where 𝓢 is the differential symmetric gradient operator, defined as 
+
+𝓢𝑇 = [
+
+𝜕𝑥 0 0
+0 𝜕𝑦 0
+
+0 0 𝜕𝑧
+
+𝜕𝑦 0 𝜕𝑧
+𝜕𝑥 𝜕𝑧 0
+0 𝜕𝑦 𝜕𝑥
+
+]    𝑖𝑛 3𝐷 ;   𝓢𝑇 = [
+𝜕𝑥
+0
+
+0
+𝜕𝑦
+
+𝜕𝑦
+𝜕𝑥
+]    𝑖𝑛 2𝐷 (2) 
+
+where 𝝏 = (𝜕𝑥, 𝜕𝑦, 𝜕𝑧)
+𝑇
+ is the gradient operator in 3D and 𝝏 = (𝜕𝑥, 𝜕𝑦)
+
+𝑇
+ in 2D. 
+
+Correspondingly, the stress 𝝈 is a vector with 3 components in 2D analysis, 
+
+𝝈 = (𝜎𝑥, 𝜎𝑦, 𝜏𝑥𝑦)
+𝑇
+, and 6 in 3D analysis, 𝝈 = (𝜎𝑥, 𝜎𝑦, 𝜎𝑧, 𝜏𝑥𝑦, 𝜏𝑦𝑧 , 𝜏𝑥𝑧)
+
+𝑇
+, whereas the 
+
+body forces vector 𝐟 has 2 in 2D, 𝐟 = (𝐟𝑥, 𝐟𝑦)
+𝑇
+, and 3 components in 3D, 𝐟 = (𝐟𝑥, 𝐟𝑦, 𝐟𝑧)
+
+𝑇
+. 
+
+Cauchy’s equilibrium equation of a body written in matrix form is  
+
+
+
+6 
+
+ 
+
+𝓢𝑇𝝈 + 𝐟 = 𝟎 (3) 
+
+where 𝓢𝑇 is the differential divergence operator, adjoint to the 𝓢 in (1). 
+
+The stress vector 𝛔 and the strain vector 𝜺 are linked by the constitutive equation: 
+
+𝛔 = 𝐃𝑠𝜺 (4) 
+
+where 𝐃𝑠 is the secant constitutive matrix. For the isotropic damage model laid out in 
+Section 3, the constitutive equation is 
+
+𝛔 = (1 − 𝑑)𝐃0𝜺 (5) 
+
+Pre-multiplying equation (1) by the secant constitutive matrix 𝐃𝑠 and introducing 
+equation (4) into equation (3) results in 
+
+−𝐃𝑠𝜺 + 𝐃𝑠𝓢𝒖 = 𝟎 (6) 
+
+𝓢𝑇(𝐃𝑠𝜺) + 𝐟 = 𝟎 (7) 
+
+The system of equations (6)-(7) is the strong form of the mixed 𝜺/𝒖 formulation, 
+
+completed with the boundary conditions imposed on the boundary Γ of the body, 
+
+partitioned in Γ𝑢 and Γ𝑡, corresponding to the Dirichlet’s and Newman’s conditions, 
+
+respectively, such that Γ = Γ𝑢 ∪ Γ𝑡 and {∅} = Γ𝑢 ∩ Γ𝑡.  
+
+For the sake of conciseness, the prescribed displacements are assumed to vanish on the 
+
+boundary Γ𝑢  
+
+𝒖 = 𝟎    𝑖𝑛 Γ𝑢 (8) 
+
+The nontrivial case, 𝒖 = �̅�   𝑖𝑛 Γ𝑢, can be accommodated following standard arguments. 
+
+Additionally, the prescribed tractions on the boundary Γ𝑡 are expressed as 
+
+𝒕 = �̅�𝑇𝝈 = �̅�    𝑖𝑛 Γ𝑡 (9) 
+
+Where the projection matrix �̅� is defined in [59] as  
+
+�̅�𝑇 = [
+
+𝑛𝑥 0 0
+0 𝑛𝑦 0
+
+0 0 𝑛𝑧
+
+𝑛𝑦 0 𝑛𝑧
+𝑛𝑥 𝑛𝑧 0
+0 𝑛𝑦 𝑛𝑧
+
+]    𝑖𝑛 3𝐷; �̅�𝑇 = [
+𝑛𝑥 0
+0 𝑛𝑦
+
+𝑛𝑦
+𝑛𝑥
+]    𝑖𝑛 2𝐷 (10) 
+
+where 𝒏 = (𝑛𝑥, 𝑛𝑦, 𝑛𝑧)
+𝑇
+ is the outward normal vector at the boundary Γ𝑡.  
+
+
+
+7 
+
+ 
+
+The variational form of the problem is obtained as follows. 
+
+Firstly, equation (6) is premultiplied by an arbitrary virtual strain vector 𝛿𝜺 and integrated 
+over the spatial domain to obtain the weak form of the constitutive and compatibility 
+
+relationships: 
+
+−∫ 𝛿𝜺𝑇𝐃𝑠𝜺 𝑑Ω
+Ω
+
++∫ 𝛿𝜺𝑇𝐃𝑠𝒮𝒖 𝑑Ω
+Ω
+
+= 0   ∀𝛿𝜺 (11) 
+
+Secondly, equation (7) is premultiplied by an arbitrary virtual displacement vector 𝛿𝒖 
+and integrated over the spatial domain 
+
+∫ 𝛿𝒖𝑇[𝓢𝑇(𝐃𝑠𝜺)] 𝑑Ω
+Ω
+
++∫ 𝛿𝒖𝑇𝐟 dΩ
+Ω
+
+= 0   ∀𝛿𝒖 (12) 
+
+The virtual displacement 𝛿𝒖 complains with the boundary conditions, so that 𝛿𝒖 =
+
+𝟎    𝑖𝑛 Γ𝑢. Then, the Divergence Theorem is applied to the first term of equation (12): 
+
+∫ 𝛿𝒖𝑇[𝓢𝑇(𝐃𝑠𝜺)] 𝑑Ω
+Ω
+
+= −∫ (𝓢𝛿𝒖)𝑇(𝐃𝑠𝜺)𝑑Ω
+Ω
+
++∫ 𝛿𝒖𝑇(�̅�𝑇𝐃𝑠𝜺) 𝑑Γ
+Γ
+
+= −∫ (𝓢𝛿𝒖)𝑇(𝐃𝑠𝜺)𝑑Ω
+Ω
+
++∫ 𝛿𝒖𝑇(�̅�𝑇𝐃𝑠𝜺) 𝑑Γ
+Γ𝑢⏟            
+
+=0
+
++∫ 𝛿𝒖𝑇 (�̅�𝑇𝐃𝑠𝜺)⏟    
+=�̅�
+
+ 𝑑Γ
+Γ𝑡
+
+ 
+(13) 
+
+In equation (13), the integral on the boundary is split in the boundaries Γ𝑢 and Γ𝑡. The part 
+
+corresponding to Γ𝑢 is zero because the virtual displacement vanishes on that boundary. 
+
+In Γ𝑡, equations (4) and (9) are used.  
+
+Therefore, 
+
+∫ (𝓢𝛿𝒖)𝑇(𝐃𝑠𝜺)𝑑Ω
+Ω
+
+= ∫ 𝛿𝒖𝑇𝐟 dΩ
+Ω
+
++∫ 𝛿𝒖𝑇 �̅� 𝑑Γ
+Γ𝑡
+
+   ∀𝛿𝒖 (14) 
+
+which is the expression of the Virtual Work Principle, as the right hand side term 
+
+𝑊(𝛿𝒖) = ∫ 𝛿𝒖𝑇𝐟 dΩ
+Ω
+
++ ∫ 𝛿𝒖𝑇�̅� 𝑑Γ
+Γ𝑡
+
+ represents the virtual work done by the tractions �̅� 
+
+and body forces 𝐟.  
+
+The resulting variational form of the mixed formulation is: 
+
+−∫ 𝛿𝜺𝑇𝑫𝑠𝜺 𝑑𝛺
+𝛺
+
++∫ 𝛿𝜺𝑇𝑫𝑠𝒮𝒖 𝑑𝛺
+𝛺
+
+= 0   ∀𝛿𝜺 (15) 
+
+∫ (𝓢𝛿𝒖)𝑇(𝐃𝑠𝜺)𝑑Ω
+Ω
+
+= ∫ 𝛿𝒖𝑇𝐟 dΩ
+Ω
+
++∫ 𝛿𝒖𝑇 �̅� 𝑑Γ
+Γ𝑡
+
+   ∀𝛿𝒖 (16) 
+
+The mixed problem to be solved is to find the unknowns 𝒖 and 𝜺 that verify the system 
+
+of equations composed by (15) and (16) and that verify the boundary condition 𝒖 = 𝟎 on 
+
+Γ𝑢 given the arbitrary virtual displacement 𝛿𝒖, which vanishes on Γ𝑢 and arbitrary virtual 
+
+strain 𝛿𝜺. Note that this variational problem is symmetric if 𝑫𝑠 is symmetric. 
+
+
+
+8 
+
+ 
+
+ 
+
+2.2 FE approximation 
+
+ 
+
+At this point, the FE discrete form of the problem is obtained by discretizing the domain 
+
+in FE, so that Ω =∪ Ω𝑒, and substituting the displacement 𝒖 and the strain 𝜺 with the FE 
+
+discrete approximations �̂� and �̂� defined element-wise as 
+
+𝒖 ≅ �̂� = 𝑵𝑢𝑼 (17) 
+
+𝜺 ≅ �̂� = 𝑵 𝑬 (18) 
+
+where 𝑼 and 𝐄 are vectors containing the values of the displacements and the strains at 
+
+the nodes of the finite element mesh. 𝑵𝑢 and 𝑵  are the matrices containing the 
+interpolation functions adopted in the FE approximation. 
+
+In the Galerkin method, the same approximation is considered for the discrete virtual 
+
+displacements and virtual strains so that  
+
+𝛿𝒖 ≅ 𝛿�̂� = 𝑵𝑢𝛿𝑼 (19) 
+
+𝛿𝜺 ≅ 𝛿�̂� = 𝑵 𝛿𝑬 (20) 
+
+The submatrices of 𝑵𝑢 and 𝑵  are diagonal matrices and the corresponding components 
+
+are 𝑁𝑢
+(𝑖)
+
+ and 𝑁
+(𝑖)
+
+ interpolation functions, (𝑖) being the node counter. 
+
+Introducing these approximations, equations (15) and (16) now become: 
+
+−∫ 𝜹𝑬𝑇𝑵𝑇𝐃𝑠𝑵 𝑬 𝑑Ω
+Ω
+
++∫ 𝜹𝑬𝑇𝑵𝑇𝐃𝑠 𝓢𝑵𝑢⏟
+=𝑩𝑢
+
+𝑼 𝑑Ω
+Ω
+
+= 0   ∀𝛿𝑬 (21) 
+
+∫ (𝓢𝑵𝑢𝛿𝑼)
+𝑇
+
+⏟      
+=𝛿𝑼𝑇(𝓢𝑵𝑢)
+
+𝑇=𝛿𝑼𝑇𝑩𝑢
+𝑇
+
+(𝑫𝑠𝑵 𝑬) 𝑑𝛺
+𝛺
+
+= �̂�(𝛿𝑼)   ∀𝛿𝑼 (22) 
+
+where 𝑩𝑢 is the discrete strain-displacement matrix defined as 
+
+𝑩𝑢 = 𝓢𝑵𝑢 (23) 
+
+The submatrices of 𝑩𝑢 have the structure corresponding to the 𝓢 operator in equation (2), 
+
+and their components are the Cartesian derivatives of the 𝑁𝑢
+(𝑖)
+
+ and 𝑁
+(𝑖)
+
+ interpolation 
+
+functions (
+𝜕𝑁(𝑖)
+
+𝜕𝑥
+;
+𝜕𝑁(𝑖)
+
+𝜕𝑦
+;
+𝜕𝑁(𝑖)
+
+𝜕𝑧
+), (𝑖) being the node counter. 
+
+In (22), �̂�(𝛿𝑼) is the work done by the tractions �̅� and body forces 𝐟 defined as 
+
+
+
+9 
+
+ 
+
+�̂�(𝛿𝑼) = ∫ 𝛿𝑼𝑇𝑵𝑢
+𝑇𝐟 𝑑𝛺
+
+𝛺
+
++∫ 𝛿𝑼𝑇𝑵𝑢
+𝑇 �̅� 𝑑𝛤
+
+𝛤𝑡
+
+ (24) 
+
+In (21) and (22) and henceforth, integrals over the domain are understood as the sum of 
+
+the integrals over the elements in the FE mesh 
+
+∫ (·) 𝑑Ω
+Ω
+
+=∑∫ (·) 𝑑Ω𝑒
+Ω𝑒𝑒
+
+ 
+
+Also, with some abuse of notation, 𝑼 and 𝑬 (and 𝛿𝑼 are 𝜹𝑬) are to be interpreted as the 
+nodal values over the whole FE mesh. This implies the corresponding assembling 
+
+operations for elemental matrices and vectors into global entities. 
+
+Note again that, if matrix 𝑫𝑠 is symmetric, the discrete system (21)-(22) is symmetric but 
+indefinite.  
+
+The virtual displacement 𝛿𝑼 and virtual strain 𝛿𝑬 nodal vectors that appear in equations 
+(21)-(22) are arbitrary. Therefore, the system of equations for the mixed Galerkin method 
+
+becomes 
+
+  − (∫ 𝑵𝑇𝐃𝑠𝑵 𝑑Ω
+Ω
+
+)𝑬 + (∫ 𝑵𝑇𝐃𝑠𝑩𝑢 𝑑Ω
+Ω
+
+)𝑼 = 0 (25) 
+
+     (∫ 𝑩𝑢
+𝑇𝑫𝑠𝑵  𝑑𝛺
+
+𝛺
+
+)𝑬                                              = ∫ 𝑵𝑢
+𝑇𝒇 𝑑𝛺
+
+𝛺
+
++∫ 𝑵𝑢
+𝑇 �̅� 𝑑𝛤
+
+𝛤𝑡
+
+ (26) 
+
+And the algebraic system of equations (25)-(26) can be written in matrix form as 
+
+[
+−𝑴 𝑮
+𝑮𝑇 𝟎
+
+] [
+𝑬
+𝑼
+] = [
+
+𝟎
+𝑭
+] (27) 
+
+where [𝑬 𝑼]𝑇 is the array of nodal values of strains and displacements and 
+
+𝑴 = ∫ 𝑵𝑇𝐃𝑠𝑵 𝑑Ω
+Ω
+
+ (28) 
+
+𝑮 = ∫ 𝑵𝑇𝐃𝑠𝑩𝑢 𝑑Ω
+Ω
+
+ (29) 
+
+𝑭 = ∫ 𝑵𝑢
+𝑇𝒇 𝑑𝛺
+
+𝛺
+
++∫ 𝑵𝑢
+𝑇 �̅� 𝑑𝛤
+
+𝛤𝑡
+
+ (30) 
+
+𝑴 is a mass like projection matrix, 𝑮 is the discrete gradient matrix and 𝑭 is the vector of 
+external nodal forces. 
+
+In the system (27), the nodal values 𝑬 can be formally eliminated to write the solution in 
+
+terms of the nodal displacements 𝑼 only, as follows. From the first equation in (27), the 
+
+nodal values for the strains 𝑬 can be obtained as  
+
+
+
+10 
+
+ 
+
+𝑬 = 𝑴−𝟏𝑮𝑼 (31) 
+
+which can be substituted into the second equation to yield 
+
+𝑼 = (𝑮𝑇𝑴−𝟏𝑮)−𝟏𝑭 (32) 
+
+where (𝑮𝑇𝑴−𝟏𝑮)−𝟏 is the Schur complement of –𝑴 in the system (27). 
+
+ 
+
+2.3 VMS stabilization 
+
+ 
+
+To ensure solvability (i.e. uniqueness) and stability of the solution in the algebraic system 
+
+of equations (27), the interpolation functions in (17)-(18) must satisfy the Inf-Sup 
+
+condition [60-62]. This condition is not verified if equal interpolations are used for strains 
+
+and displacements. In that case, the solution is unstable, and uncontrollably spurious 
+
+oscillations may appear in the computed displacement field. To be able to circumvent the 
+
+strictness of the Inf-Sup condition and to use linear approximations in both interpolation 
+
+functions, a stabilization procedure is necessary to provide the necessary stability to the 
+
+mixed discrete formulation. The stabilization procedure consists in the modification of 
+
+the discrete variational form using the Orthogonal Subscales Method, introduced in [63] 
+
+within the framework of the Variational Multiscale Stabilization methods [64, 65], and 
+
+adopted herein. 
+
+The basic idea of the stabilization procedure is to substitute the approximation of the 
+
+discrete strain in equation (18) by the following stabilized discrete field 
+
+𝜺 ≅ �̂� = 𝑵 𝑬 + 𝜏 (𝑩𝑢𝑼 −𝑵 𝑬) = (1 − 𝜏 )𝑵 𝑬 + 𝜏 𝑩𝑢𝑼 (33) 
+
+where 𝜏  is a stabilization parameter with value 0 ≤ 𝜏 ≤ 1. Note that for 𝜏 = 1, the 
+strain interpolation of the standard irreducible formulation is recovered: 
+
+𝜺 ≅ �̂� = 𝑩𝑢𝑼 (34) 
+
+Making the corresponding substitution in equations (15) and (16), the final stabilized set 
+
+of mixed FE equations is: 
+
+−(1 − 𝜏 )∫ 𝜹𝑬𝑇𝑵𝑇𝐃𝑠𝑵 𝑬 𝑑Ω
+Ω
+
++ (1 − 𝜏 )∫ 𝜹𝑬𝑇𝑵𝑇𝐃𝑠𝑩𝑢𝑼 𝑑Ω
+Ω
+
+= 0   ∀𝛿𝑬 (35) 
+
+(1 − 𝜏 )∫ 𝛿𝑼𝑇𝑩𝑢
+𝑇(𝑫𝑠𝑵 𝑬) 𝑑𝛺
+
+𝛺
+
++ 𝜏 ∫ 𝛿𝑼𝑇𝑩𝑢
+𝑇𝑫𝑠𝑩𝑢𝑼 𝑑𝛺
+
+𝛺
+
+      = �̂�(𝛿𝑼) 
+
+;   ∀𝛿𝑼      
+
+(36) 
+
+
+
+11 
+
+ 
+
+The stabilization used is variationally consistent: converging values of the unknowns 𝜺 
+
+and 𝒖 which satisfy the Galerkin system (21)-(22) also satisfy the stabilized form (35)-
+(36). This is because residual-based stabilization procedures do not introduce any 
+
+additional approximation nor any consistency error. For a converged solution, when the 
+
+size of the element ℎ tends to zero, ℎ → 0, 𝜺 → 𝑵 𝑬 = 𝑩𝑢𝑼 and the stabilization term 
+
+vanishes. For non-converged situation, the added terms 𝜏 (𝑩𝑢𝑼 −𝑵 𝑬) are small, as 
+they depend on the difference between two approximations of different order to the same 
+
+quantity. 
+
+Therefore, for a given FE mesh, using different values of the stabilization procedure 
+
+yields slightly different results. However, the consistency of the residual-based 
+
+stabilization guarantees convergence to the unique solution. Using different stabilization 
+
+parameters on the same mesh is akin to use different FE interpolations of the same order 
+
+of convergence with the same nodal arrangement.  
+
+Moreover, note that optimal convergence rate in linear problems is obtained reducing the 
+
+stabilization on mesh refinement [49], such that 
+
+𝜏 = 𝑐
+ℎ
+
+𝐿0
+ (37) 
+
+where 𝑐  is an arbitrary positive numbers, ℎ is the finite element size and 𝐿0 is the 
+characteristic size of the problem. In nonlinear problems involving damage, the 
+
+stabilization parameter is affected by the reduction of stiffness in the damaged elements, 
+
+so that 
+
+𝜏 = (1 − 𝑑)𝑐
+ℎ
+
+𝐿0
+ (38) 
+
+When quasi-incompressible situations need to be modelled, additional consistent 
+
+stabilization terms, equally based on residual considerations at discrete level, need to be 
+
+added [51].  
+
+The stabilized system of equations is  
+
+[
+−𝑴𝝉 𝑮𝝉
+𝑮𝝉
+𝑇 𝑲𝝉
+
+] [
+𝑬
+𝑼
+] = [
+
+𝟎
+𝑭
+] (39) 
+
+with 𝑴𝝉 = (1 − 𝜏 )𝑴, 𝑮𝝉 = (1 − 𝜏 )𝑮 and 𝑲𝝉 = 𝜏 𝑲 with  
+
+𝑲 = ∫ 𝑩𝑢
+𝑇𝑫𝑠𝑩𝑢 𝑑𝛺
+
+𝛺
+
+ (40) 
+
+In the stabilized system (37), the nodal values 𝑼 can be formally computed as  
+
+𝑼 = (𝑮𝝉
+𝑇𝑴𝝉
+
+−𝟏𝑮𝝉 +𝑲𝝉)
+−𝟏𝑭 (41) 
+
+
+
+12 
+
+ 
+
+where, now, the stabilization ensures definitiveness, uniqueness and stability of the 
+
+solution if 𝑲 is positive definite. Note again that for 𝜏 = 1, the stable solution of the 
+
+standard form 𝑼 = 𝑲−𝟏𝑭 is recovered. 
+
+The discrete approximation in equation (33) is not to be interpreted point-wise, as in the 
+
+VMS method only the variational effect of the stabilization is sought for. This means that 
+
+the internal variables and secant matrix of the constitutive equations can be computed 
+
+according to either of the alternative, discrete strain approximation (20) or (33). 
+
+ 
+
+2.4 Implementation and computational aspects 
+
+ 
+
+Nonlinear constitutive behavior such as the one considered in this work (see Section 3) 
+
+requires an iterative procedure for solving the resulting nonlinear system of equations. In 
+
+the present work, an iterative Picard’s secant algorithm has been used. The problem is 
+
+solved incrementally in a (pseudo) time step-by-step manner, solving the nonlinear 
+
+system of equations at each step. Convergence at each time step is achieved when the 
+
+ratio between the norm of residual forces and the norm of total external forces is lower 
+
+than a certain imposed tolerance. Some of the analysis were performed under CMOD 
+
+(crack mouth opening displacement) control in order to capture the complete post-peak 
+
+behavior. 
+
+ 
+
+3 Isotropic damage model 
+
+ 
+
+For the evaluation of the stresses from the strains and the evaluation of the secant 
+
+constitutive matrix 𝑫𝑠, in equations (4) and (5), an isotropic damage model is used. The 
+model adopted here, suitable for concrete, defines the effective equivalent stress through 
+
+the Rankine and the Drucker-Prager criterions. 
+
+From equations (4) and (5)  
+
+𝑫𝑠 = (1 − 𝑑)𝑫0 (42) 
+
+where 𝑑 is the internal damage index and 𝑫0 is the elastic constitutive matrix. The damage 
+
+index 𝑑 is an internal variable that measures the loss of stiffness of the material and it 
+
+ranges 0 ≤ 𝑑 ≤ 1. 
+
+For the computation of the evolution of the internal damage index, the effective stress �̅� 
+
+is defined as �̅� = 𝑫0𝜺. The corresponding equivalent effective stress 𝜎𝑒𝑞 is defined 
+
+through the damage criterion, 𝜎𝑒𝑞 = 𝐹(�̅�). Tensile damage is modelled according to 
+
+Rankine’s criterion, so that 
+
+𝜎𝑒𝑞 = 𝐹(�̅�) = 〈𝜎1〉 (43) 
+
+
+
+13 
+
+ 
+
+where 𝜎1 is the major principal effective stress and 〈·〉 are the Macaulay brackets, such 
+
+that 〈𝑥〉 = 𝑥    𝑖𝑓  𝑥 ≥ 0,     0    𝑖𝑓  𝑥 < 0. For mixed loading, a Drucker-Prager criterion 
+is used, so that 
+
+𝜎𝑒𝑞 = 𝐹(�̅�) =
+3
+
+3 + tan𝜙
+(√3𝐽2 + tan𝜙
+
+𝐼1
+3
+) (44) 
+
+When 𝐼1 and 𝐽2 are the first and second effective stress invariants and 𝜙 is the internal 
+friction angle of the material; this can be related to the uniaxial tensile and compressive 
+
+strengths, 𝑓𝑡 and 𝑓𝑐, as 
+
+tan𝜙 = 3
+𝑓𝑐 − 𝑓𝑡
+𝑓𝑐 + 𝑓𝑡
+
+ (45) 
+
+The damage criterion, 𝔽, is defined as  
+
+𝔽 = 𝜎𝑒𝑞 − 𝑟(�̅�) ≤ 0 (46) 
+
+where 𝑟 is the current stress-like damage threshold. Its initial value is the tensile strength 
+
+of the material, 𝑟0 = 𝑓𝑡. The current value of the damage threshold is explicitly updated 
+as 
+
+𝑟 = max  (𝑟0,max 𝜎𝑒𝑞(�̂�))     �̂� ∈ [0, 𝑡] (47) 
+
+This follows from the Kuhn-Tucker optimality and consistency conditions. It guarantees 
+
+the irreversibility of damage and the positiveness of the dissipation. 
+
+The evolution of the internal damage variable is defined by  
+
+𝑑 = 𝑑(𝑟) = 1 −
+𝑟0
+𝑟
+exp (−2𝐻𝑆 (
+
+〈𝑟 − 𝑟0〉
+
+𝑟0
+)) (48) 
+
+where 𝐻𝑆 is the positive softening parameter, which controls the rate of material 
+degradation. 
+
+In FE simulations of quasi-brittle failure, the softening parameter is linked to the material 
+
+fracture energy 𝐺𝑓, which is a property of the material, in the following way: 
+
+𝐻𝑆 =
+�̅�𝑆𝑏
+
+1 − �̅�𝑆𝑏
+ (49) 
+
+where 𝑏 is the bandwidth of the smeared crack and �̅�𝑆 is  
+
+�̅�𝑆 =
+(𝑓𝑡)
+
+2
+
+2𝐸𝐺𝑓
+ (50) 
+
+𝑓𝑡 being the tensile strength and 𝐸 the Young’s modulus. In this work  
+
+
+
+14 
+
+ 
+
+𝑏 = (1 − 𝜏 )2ℎ + 𝜏 ℎ = (2 − 𝜏 )ℎ (51) 
+
+where ℎ is the finite element size. This is coherent with the approximation adopted for 
+the discrete strain field in equation (33). 
+
+ 
+
+4 Numerical simulations 
+
+ 
+
+In this section, six numerical simulations are performed using the mixed 
+
+strain/displacement FE formulation laid out in the aforesaid. The numerical solutions are 
+
+compared with the results of experimental tests reported in the literature. The simulations 
+
+are: 
+
+1. An L-shaped panel subjected to a vertical load  
+
+2. A wedge-splitting test 
+
+3. Two mixed mode bending beam tests  
+
+4. Three notched beams with holes  
+
+5. Four-point bending test on a doubly-notched beam 
+
+6. Non-planar crack on a three-point bending test on skew notched beam 
+
+The examples have been solved using both 2D and 3D finite elements, using triangles or 
+
+quadrilaterals for 2D and tetrahedra, hexahedra or prisms for the 3D simulations. All the 
+
+problems are studied by means of a smeared crack approach. No tracking technique is 
+
+used in any of the cases. 
+
+For this, calculations are performed with an enhanced version of the finite element 
+
+program COMET [66]. Pre- and post-processing are done with GiD [67], developed at 
+
+CIMNE (International Center for Numerical Methods in Engineering).  
+
+ 
+
+ 
+
+4.1 L-shaped panel 
+
+ 
+
+The numerical analysis of a concrete L-shaped panel subjected to vertical load is 
+
+considered; corresponding experiments are reported in [68]. Other numerical solutions 
+
+are reported in [41] and [42]. Reference [41] used embedded crack methods and crack 
+
+tracking auxiliary techniques while reference [42] used extended finite elements for 
+
+making their computations.  
+
+The geometry and loading is shown in Figure 1 and the material parameters are given in 
+
+Table 1. The thickness of the panel is 0.1 m. 
+
+The load F is applied via increments of vertical displacement at the top left corner of the 
+
+panel. 
+
+
+
+15 
+
+ 
+
+Table 1. Material parameters of the L-shaped panel 
+
+Young’s Modulus 25.85·109 Pa 
+
+Poisson’s Ratio 0.18 
+
+Tensile Strength 2.7·106 Pa 
+
+Fracture Energy 160 J/m2 
+
+ 
+
+This example is solved with the mixed FEM using 2D quadrilateral and 3D hexahedral 
+
+elements. The computational domain is discretized with fully structured meshes with 
+
+elements of 8.33 mm, resulting in a mesh of 11,041 nodes for the 2D analysis and 44,164 
+
+nodes for the 3D analysis, shown in Figure 2. The 3D mesh is obtained by the out-of-
+
+plane extrusion of the 2D mesh. For the 2D analysis, plane stress conditions are assumed. 
+
+Figure 3 shows the computed tensile damage contour fills for an imposed vertical 
+
+displacement of 1 mm obtained in the 2D and 3D analyses. Both results are identical, as 
+
+the same mesh configuration is used in the XY plane of the panel in the 2D and 3D cases.  
+
+In the present FE formulation, the separation between the two opposite sides of the crack 
+
+is modelled through continuous (linear) displacement and strain fields and the crack is 
+
+accordingly smeared. The crack surface in the 3D analysis can be depicted as in Figure 
+
+4, plotted as an iso-level surface of the norm of displacements. It corresponds exactly 
+
+with the crack path obtained in the 2D analysis.   
+
+These results are within the experimental range obtained by [68], as can be observed in 
+
+Figure 5. In the FE-simulation, the crack propagates as expected from the experimental 
+
+tests; no spurious mesh bias is observed, although no auxiliary local or global crack 
+
+tracking techniques is used, nor any initial notch or flaw is imposed in the geometry of 
+
+the panel to assure the correct crack path at the early stages of the crack formation, 
+
+contrary to [41] and [42].  
+
+Figure 6 shows the computed load-imposed vertical displacement curve obtained in the 
+
+2D and 3D simulations, compared to the results from the tests in [68]. As shown, the 
+
+numerical curves are almost overlapping, demonstrating the closeness of plane stress 
+
+assumption in 2D. The results are inside the experimental range observed in the tests. It 
+
+can be seen that the peak is accurately reproduced, as well as the general behavior of the 
+
+curve. 
+
+ 
+
+Figure 1. Geometry of the L-shaped panel (m) and vertical axis considered for line graphs 
+
+
+
+16 
+
+ 
+
+ 
+
+Figure 2. 2D and 3D meshes used for the analysis of the L-shaped panel 
+
+ 
+
+ 
+
+Figure 3. Tensile damage contour fills for the L-shaped panel, (a) 2D and (b) 3D solution 
+
+ 
+
+ 
+
+Figure 4. Crack Surface of the L-shaped panel 
+
+
+
+17 
+
+ 
+
+ 
+
+Figure 5. Crack path in the L-shaped panel compared to the experimental range reported in [68] 
+
+ 
+
+ 
+
+Figure 6. Force-displacement results for 2D and 3D analyses of the L-shaped panel 
+
+ 
+
+Independence of results with FE size 
+
+ 
+
+Thanks to the regularization procedure introduced in equation (49), the computed 
+
+structural response is independent from the resolution of the FE mesh. This is shown in 
+
+Figure 7, where the Force-Displacement curve obtained from grids of different sizes (h = 
+
+4, 8, 12 mm) are compared. The results obtained in the 3D analysis (h = 8 mm) are also 
+
+shown. All the results are practically overlapping, demonstrating mesh-size 
+
+independence. 
+
+
+
+18 
+
+ 
+
+ 
+
+Figure 7. Force-displacement results for several mesh sizes 
+
+ 
+
+Convergence of displacement and strain fields 
+
+ 
+
+In order to illustrate the convergence of the displacement and strain fields provided by 
+
+the smeared crack approach with mixed FE formulations, a vertical cut, shown in Figure 
+
+1, is considered. Along this line, the profiles of vertical displacements and major principal 
+
+strains are shown in Figure 8 for several load steps and in Figure 9 for different mesh 
+
+sizes.  
+
+Figure 8, left column, shows how the displacement jump across the crack (CMOD) 
+
+evolves as the load increases; it can be observed that, in all the meshes, the displacement 
+
+jump is smeared across one element, an optimal representation of a strong discontinuity 
+
+for the given mesh resolution. Figure 9, left, shows that the results practically overlap, 
+
+demonstrating mesh size independence. 
+
+Figure 8, right column, shows the corresponding evolution of the strains as the load 
+
+increases and the crack is formed. Note that: (a) the strain field is continuous, (b) the 
+
+effective width of the strain localization band is 2h, (c) the value of the peak strain is 
+
+inversely proportional to the mesh resolution, (d) the numerical solution approximates the 
+
+Dirac’s delta derivative of a discontinuous displacement field, as can be seen in Figure 9, 
+
+right. 
+
+
+
+19 
+
+ 
+
+ 
+
+ 
+
+ 
+
+Figure 8. Vertical displacement and major principal strains along a vertical line for different load 
+
+steps 
+
+ 
+
+ 
+
+Figure 9. Vertical displacement and major principal strains along a vertical line for diferent sized 
+
+meshes 
+
+ 
+
+ 
+
+ 
+
+
+
+20 
+
+ 
+
+4.2 Wedge-Splitting test 
+
+ 
+
+In this second example, a wedge-splitting test of a concrete specimen is considered. The 
+
+test was experimentally carried out by [69]. Reference [28] found similar results using 
+
+embedded crack methods, as did reference [34] using XFEM. Reference [43] used 
+
+embedded crack methods and crack tracking to compute a specimen with the same shape 
+
+but in a reduced size.  
+
+The geometry is depicted in Figure 10 and the material properties are given in Table 2. 
+
+The detail of the load application is shown in Figure 10. The thickness of the specimen is 
+
+0.4 m. 
+
+This problem is solved using 2D triangular and 3D prism elements. The 2D computational 
+
+domain is discretized with an unstructured mesh with elements of 40 mm of size, resulting 
+
+in 7,488 nodes for 2D. The numerical analysis is carried out under the hypothesis of plane 
+
+stress. The 3D mesh is obtained by the out-of-plane extrusion of the 2D mesh resulting in 
+
+a semi-structured mesh of 29,952 nodes. 
+
+Table 2. Material parameters of the wedge-splitting test 
+
+Young’s Modulus 28.3·109 Pa 
+
+Poisson’s Ratio 0.2 
+
+Tensile Strength 2.27·106 Pa 
+
+Fracture Energy 420 J/m2 
+
+ 
+
+This problem is solved using an arc-length algorithm controlling the crack mouth opening 
+
+displacement (CMOD) at the points of load application. 
+
+Figure 11 shows the tensile damage distribution in the specimen for an imposed horizontal 
+
+displacement of 5 mm obtained in the 2D and 3D analyses. Both results are identical 
+
+because the same mesh configuration is used in the XY plane for the 2D and the 3D cases. 
+
+These results agree with the experimental tests carried out by [69]. The crack path is 
+
+vertical, as expected because of the symmetry of the geometry and the loading conditions. 
+
+The crack surface obtained in the 3D analysis is shown in Figure 12, displayed as the 
+
+level set surface of X-displacements. No auxiliary crack tracking technique has been used. 
+
+No spurious mesh bias is observed.  
+
+Figure 13 shows the load vs. crack mouth opening displacement curve in the 2D and 3D 
+
+cases, which are also compared to the results from the tests in [69]. Again, 2D and 3D 
+
+results are almost overlapping. As can be seen, the results are very close to the 
+
+experimental tests. They are also very close to the computational results of references 
+
+[34], [28] and [43]. 
+
+ 
+
+
+
+21 
+
+ 
+
+  
+
+Figure 10. Geometry of the wedge-splitting test and detail of load application 
+
+ 
+
+Figure 11. Tensile damage contour fills of the wedge-splitting test, (a) 2D and (b) 3D solution 
+
+ 
+
+Figure 12. Crack surface of the modelled wedge-splitting test 
+
+
+
+22 
+
+ 
+
+ 
+
+Figure 13. Force-CMOD results for 2D and 3D analysis. 
+
+ 
+
+4.3 Three-point and four-point bending tests 
+
+ 
+
+In this section, beams subjected to three-point and four-point bending tests are considered. 
+
+The experimental tests were carried out by [70]. Other numerical results are reported in 
+
+[71] and [34], where crack tracking auxiliary techniques are used. In Figure 14 the 
+
+geometry of the tested beams is shown. Two cases are considered. In the first one, the 
+
+stiffness at the upper left support is assumed equal to zero (K=0), as in a three-point 
+
+bending test, while in the second one it is considered infinite (K=∞), as in a four-point 
+
+bending test. The thickness of the specimen is 0.05 m. The properties of the material are 
+
+given in Table 3. For the 2D analysis, plane stress conditions are assumed.  
+
+Table 3. Material properties of the beams 
+
+Young’s Modulus 38.0·109 Pa 
+
+Poisson’s Ratio 0.2 
+
+Tensile Strength 3.0·106 Pa 
+
+Fracture Energy 69 J/m2 
+
+ 
+
+The problem is solved using an arc-length algorithm controlling the crack mouth opening 
+
+displacement (CMOD) at the notch. 
+
+For this example, 2D triangular and 3D tetrahedral elements are used. In the 2D analysis, 
+
+the computational domain is discretized with a fully unstructured mesh with 2.5 mm 
+
+elements, resulting in 18,738 nodes. For the 3D analysis, a fully unstructured tetrahedral 
+
+mesh of 50,389 nodes and 2.5 mm element-size has been considered. Both meshes are 
+
+shown in Figure 15. 
+
+Figures 16 and 17 show plots of the computed tensile damage index in the cases 
+
+considered. It can be observed that the crack path changes significantly depending on the 
+
+boundary conditions applied to the beam. The 2D and 3D results for each case are almost 
+
+
+
+23 
+
+ 
+
+overlapping. In Figure 18 the crack surfaces in the 3D analyses are shown, plotted as an 
+
+iso-level surface of the X-displacements. There can be seen the fully unstructured mesh 
+
+used for the computation of the beams, which is fine enough to model the crack surface 
+
+with precision. As can be seen in Figure 19, the numerical results agree with the 
+
+experimental tests. References [71] reported very similar crack paths using a global 
+
+tracking algorithm. Also, [34] found very similar results using XFEM and the same global 
+
+tracking algorithm.  
+
+ 
+
+Figure 14. Geometry of the three-point and four-point beam (m) 
+
+              
+
+Figure 15. Meshes used for the (a) 2D and (b) 3D analyses of the three-point and the four-point 
+
+bending tests 
+
+ 
+
+  
+
+Figure 16. Tensile damage contour fills of the three-point bending test, (a) 2D solution, (b) 3D 
+
+solution 
+
+ 
+
+
+
+24 
+
+ 
+
+  
+
+Figure 17. Tensile damage contour fill of the four-point bending test, (a) 2D solution, (b) 3D 
+
+solution 
+
+ 
+
+ 
+
+ 
+
+Figure 18. Modelled crack surfaces for the (a) three-point and (b) four-point bending cases 
+
+ 
+
+ 
+
+
+
+25 
+
+ 
+
+ 
+
+Figure 19. Computed crack paths compared to experimental results for (a) three-point and (b) 
+
+four-point bending cases 
+
+ 
+
+Figure 20 shows the load-CMOD curves for both the 3 and 4 point bending tests. The 
+
+results are similar to the ones obtained in references [71] and [34]. The three-point 
+
+bending test shows very good agreement with the experimental results obtained by [70] 
+
+both in the 2D and 3D analyses, even if at the last stages of the simulation the strength is 
+
+slightly underestimated. The peak force is slightly lower in the 3D analysis. The four-
+
+point test has its peak slightly outside the experimental range of results. This occurs also 
+
+in the numerical references [71] and [34].  
+
+ 
+
+
+
+26 
+
+ 
+
+  
+
+ 
+
+Figure 20. Load-CMOD curves for (a) the three-point and (b) four-point bending tests 
+
+ 
+
+Structural size effect 
+
+ 
+
+Structural size effect addresses the question of how the load capacity of geometrically 
+
+similar structures varies when scaling up or down their relative sizes. Experimental 
+
+evidence shows that, for a given structural problem, ductile behavior corresponds to the 
+
+small scale limit (appropriate for small laboratory specimens), while brittle fracture 
+
+occurs in the large scale limit (apt for structures of very large dimensions). Thus, it is of 
+
+practical interest to develop analytical and numerical tools suitable to bridge the gap 
+
+between perfectly ductile and perfectly brittle behavior, i.e. suitable for the range of quasi-
+
+brittle failure [54].  
+
+In quasi-brittle fracture, size effect does not only affect the load capacity (peak load), it 
+
+also reflects on the post-peak behavior (ductility) of the structure. The capability of a 
+
+
+
+27 
+
+ 
+
+quasi-brittle structure to absorb energy decreases, in relative terms, as the structure size 
+
+increases [54]. 
+
+In reference [70], structural size effect was investigated when testing the beams. For this, 
+
+smaller specimens with half the original size, i.e. a height of D=75 mm, and double size, 
+
+i.e. D=300 mm of height, where also experimentally tested. These cases have also been 
+
+simulated computationally for the three-point beam and are reported in the following. 
+
+In Figure 21, the Force-CMOD curves of the three considered cases, small (D=75 mm), 
+
+medium (D=150 mm) and large (D=300 mm), are shown. The computed results show 
+
+very good agreement with the experimental ones of reference [70], even if the dissipated 
+
+energy is slightly underestimated. In Figure 22, the computed crack paths also show very 
+
+good agreement with the experimental results for the small and large specimens. 
+
+  
+
+Figure 21. Force-CMOD curves for different beam sizes 
+
+
+
+28 
+
+ 
+
+ 
+
+ 
+
+Figure 22. Crack path in (a) the small specimen and (b) the large specimen 
+
+ 
+
+Plane Strain vs Plane Stress 
+
+ 
+
+The plane stress hypothesis adopted in the 2D computation may be verified by comparing 
+
+the results obtained against those obtained under plane strain assumptions. Figure 23 
+
+shows the force-CMOD results for both considerations. The 3D analysis is also included. 
+
+All three cases are almost overlapping and equally close to the experiments. This indicates 
+
+that the standard engineering practice of neglecting Poisson’s effect in beam theory can 
+
+be extended into the non-linear range. 
+
+
+
+29 
+
+ 
+
+ 
+
+Figure 23. Comparison of 2D plane strain, 2D plane stress and 3D hypothesis 
+
+ 
+
+4.4 Notched beams with holes 
+
+ 
+
+A more involved example is considered in this section to explore the performance of the 
+
+proposed finite element formulation. Here, a notched beam with holes, experimentally 
+
+tested and numerically computed by [72], is considered. Other numerical solutions are 
+
+reported in [41], [72] and [73]. Reference [41] modelled this example using crack tracking 
+
+and embedded methods and [73] used fracture mechanics. Instead [72] used a 
+
+probabilistic approach, where geometric and material uncertainties are considered when 
+
+computing the crack path and load-displacement curves. 
+
+The tested beam is made of plexiglass; the properties used for the simulation are given in 
+
+Table 4.  
+
+For comparison purposes, three different geometries regarding the position of the notch 
+
+and the holes, shown in Figure 24, are studied. In the original experiment inches were 
+
+used as units of length.  
+
+In the first case, the beam is notched but has no holes; the notch is 6’’ from the center and 
+
+1’’ long. In the second case, the beam has three holes of diameter 0.5’’ at 4’’ from the 
+
+center and a notch identical to the previous case. In the third case, the hole layout is the 
+
+same as in the second case and the notch is 4.5’’ from the center and is 1.5’’ long. The 
+
+thickness of the beam is 0.5’’. For the 2D analysis, plane stress conditions are assumed. 
+
+ 
+
+
+
+30 
+
+ 
+
+ 
+
+ 
+
+ 
+
+Figure 24. Geometry for the three notched beams (m)  
+
+ 
+
+Table 4. Material properties of the three holed notched beams 
+
+Young’s Modulus 3.102·109 Pa 
+
+Poisson’s Ratio 0.35 
+
+Tensile Strength 7.0·106 Pa 
+
+Fracture Energy 500 J/m2 
+
+ 
+
+
+
+31 
+
+ 
+
+  
+
+  
+
+  
+Figure 25. Experimental and computed crack paths for the three notched beams. Experimental 
+
+results taken from [72] 
+
+In all cases, 2D triangular elements are used. The domain is discretized with unstructured 
+
+meshes of 1 mm elements in the central part, where the crack forms, and of 2.54 mm in 
+
+the rest of the beams, resulting in 44,956, 52,884 and 52,600 nodes, respectively. 
+
+The simulation is done using an arc-length algorithm controlling the crack mouth opening 
+
+displacement (CMOD).  
+
+
+
+32 
+
+ 
+
+Figure 25 shows the computed crack paths next to the experimental results reported in 
+
+[72]. It can be observed that the crack paths are different depending on the notch position 
+
+and the presence of the holes. The crack path for the case without holes is almost identical 
+
+to the experimental result. In the other two cases, the numerical results also show good 
+
+agreement with tests. The present results are comparable to those obtained in [41], [72] 
+
+and [73].  
+
+Figure 26 shows the load-CMOD curve for the case without holes, the only one reported 
+
+in [72]. The computed results show good agreement with the ones obtained 
+
+experimentally. In Figure 27 the force vs displacement curve at the point of load 
+
+application is presented. The numerical results are stiffer than the experimental ones. This 
+
+was also observed in the numerical results reported by [72]. Note that the local response 
+
+at the point of load application is very dependent on the actual details of the experimental 
+
+set-up. Nevertheless, the overall resemblance of the results is remarkable, in terms of peak 
+
+values, snap-back response and dissipated energy. 
+
+ 
+
+Figure 26. Force-CMOD curve for the notched beam without holes 
+
+ 
+
+Figure 27. Force-displacement curve for the notched beam without holes 
+
+ 
+
+
+
+33 
+
+ 
+
+ 
+
+Figure 28. Crack propagation and evolution of major principal stresses in the notched beam 
+
+without holes 
+
+ 
+
+Figure 28 shows the crack propagation and evolution of major principal stresses in the 
+
+notched beam without holes. In the elastic range, stresses concentrate in the vicinity of 
+
+the tip of the notch. This causes the crack to start and propagate through the height of the 
+
+beam and towards the point of application of the load as also shown in Figure 25(a). The 
+
+strain/displacement FE formulation is able to represent this progressive failure of the 
+
+beam with noteworthy accuracy. 
+
+ 
+
+4.5 Four-point bending test on a doubly-notched beam 
+
+ 
+
+The numerical analysis of a four-point bending test on a doubly notched beam is 
+
+considered next. The corresponding experiments are reported in [74]. Other numerical 
+
+solutions are reported in [37, 75, 76]. In [37] an adaptive particle meshless method was 
+
+used, while in [75] the boundary element method was employed. Reference [76] considers 
+
+a localization limiter introduced to regularize the problem. All these simulations are in 
+
+2D. 
+
+The beam geometry and loading is shown in Figure 29 and the material parameters are 
+
+given in Table 5. The thickness of the beam is 0.1 m. The structural problem presents 
+
+polar-symmetry about the geometrical center. Thus, two symmetric cracks are expected 
+
+to appear, starting from the top of the notches and propagating towards the opposite top 
+
+and bottom faces of the beam. The cracks open and propagate under mixed Modes I and 
+
+II (opening and shearing) loading. The ratio between the uniaxial compressive and tensile 
+
+strengths is 15 [74].  
+
+
+
+34 
+
+ 
+
+In this section, the problem is analyzed in 2D, assuming plane stress conditions, and in 
+
+3D. The objective is to assess the performance of the proposed formulation when more 
+
+than one crack appears.  
+
+ 
+
+Figure 29. Geometry of the four-point bending test on a doubly-notched beam 
+
+ 
+
+Table 5. Material parameters of the four-point bending test on a doubly-notched beam 
+
+Young’s Modulus 27·109 Pa 
+
+Poisson’s Ratio 0.18 
+
+Tensile Strength 2.0·106 Pa 
+
+Fracture Energy 100 J/m2 
+
+Compressive Strength 3.0·107 Pa 
+ 
+
+ 
+
+ 
+
+Figure 30. Tensile damage contour fills of the four-point bending test on a doubly notched beam for 
+
+(a) the 2D and (b) the 3D computations 
+
+
+
+35 
+
+ 
+
+The simulation is performed using an arc-length algorithm controlling the crack mouth 
+
+opening displacement (CMOD) at the upper notch. 
+
+This example is solved using 2D quadrilateral elements and 3D hexahedra. In 2D the 
+
+computational domain is discretized with a fully structured mesh of 1 mm size, resulting 
+
+in a 54,021 node mesh. In 3D, the computational domain is partitioned using hexahedra 
+
+elements of 1.5 mm size, ensuing a structured mesh of 53,998 nodes.  
+
+Figure 30 shows the tensile damage contour fills obtained in the 2D and 3D simulations. 
+
+Due to the polar symmetry of the beam geometry and loading, two polar-symmetric 
+
+cracks appear and propagate. These results are concordant with the ones observed in the 
+
+experiments by [74]; the cracks propagate as expected. The computed 2D and 3D paths 
+
+of both cracks are almost overlapping and are inside the experimental ranges obtained in 
+
+the tests, as can be observed in Figure 31.  
+
+ 
+
+Figure 31. Crack path of the four-point bending test on a doubly notched beam 
+
+Also because of the polar symmetry of the problem, the central part of the beam rotates, 
+
+with respect to the central point, as can be seen in Figure 32, where contour fills of the 
+
+displacements are shown. The displacement “jump” across the cracks can also be 
+
+observed neatly. 
+
+ 
+
+Figure 32. Displacements of the four-point bending test on a doubly notched beam 
+
+The crack surfaces in the 3D analysis are depicted in Figure 33, plotted as iso-level 
+
+surfaces of the norm of displacements. In this way, the performed simulation allows to 
+
+observe a 3D representation of the piece formed during the experiment. This case 
+
+
+
+36 
+
+ 
+
+illustrates the performance of the proposed method to deal with several cracks 
+
+propagating at the same time in 2D and 3D. As no auxiliary tracking technique is required, 
+
+the present formulation can handle this situation, which does not represent an extra 
+
+hindrance to the formulation.  
+
+ 
+
+Figure 33. Central piece of (a) the modelled crack surfaces for the four-point bending test on a 
+
+doubly notched beam and (b) a similar experiment [74] 
+
+ 
+
+ 
+
+Figure 34. Force-displacement curve of the 2D and 3D simulations of the four-point bending test on 
+
+a doubly notched beam  
+
+
+
+37 
+
+ 
+
+In Figure 34, the Force-displacement curve at the point of load application is shown for 
+
+the 2D and 3D computations. The computed results show very good agreement with the 
+
+experimental ones of reference [74], and also with the numerical results in [37, 76]. 
+
+Figure 35 shows the crack propagation and evolution of major principal stresses in the 
+
+doubly-notched beam. Again it can be seen how in the elastic range stresses concentrate 
+
+at the vicinity of the crack, causing its propagation through the height of the beam and 
+
+towards the points of application of the loads, as seen in Figures 30, 31 and 34a. Note that 
+
+the stress field is polar symmetric in the linear and in the nonlinear behavior.  
+
+ 
+
+Figure 35. Crack propagation and evolution of major principal stresses in the four-point bending 
+
+test on a doubly notched beam 
+
+ 
+
+ 
+
+4.6 Three-point bending test on a skew notched beam 
+
+ 
+
+In this section, a skew notched beam subjected to three-point bending is considered. The 
+
+experimental tests were carried out by [77] using Plexiglass, to better reveal the evolution 
+
+of the crack. Other numerical results are reported in [78], where a dual boundary element 
+
+method (DBEM) was implemented and in [79], where the extended finite element method 
+
+(XFEM) was used.  
+
+In Figure 36 the geometry of the tested beam is shown. The notch has a deviation of 45º 
+
+with respect to the lateral faces of the beam. The thickness of the specimen is 0.01 m. The 
+
+properties of the material are given in Table 6. The structural problem is skew-symmetric 
+
+with respect to the vertical longitudinal and transversal mid-planes of the beam. 
+
+Therefore, a non-planar crack is foreseen to materialize at the tip of the skew notch under 
+
+mixed Mode I and Mode III loading and to propagate upwards while twisting around the 
+
+vertical central axis until it is oriented normal to the longitudinal axis.  
+
+
+
+38 
+
+ 
+
+ 
+
+ 
+
+Figure 36. Geometry of the three-point bending test on a skew notched beam (m) 
+
+ 
+
+Table 6. Material properties of the three-point bending test on a skew notched beam 
+
+Young’s Modulus 28·109 Pa 
+
+Poisson’s Ratio 0.38 
+
+Tensile Strength 40.0·106 Pa 
+
+Fracture Energy 500 J/m2 
+
+ 
+
+ 
+
+Figure 37. Meshes used for the (a) structured and (b) unstructured analyses of the three-point 
+
+bending test on skew notched beam 
+
+Due to the deviation of the notch, this example can only be solved in 3D. The load is 
+
+applied imposing increments of displacement at the center of the top of the beam. 3D 
+
+tetrahedral elements are used in a fully structured mesh of 21,516 nodes and 1.5 mm 
+
+
+
+39 
+
+ 
+
+element size in the central area of interest. The elements of the structured mesh are laid 
+
+out in a crisscross pattern. Another mesh, fully unstructured, of 14,709 nodes and 1 mm 
+
+element size is also considered. Both meshes are shown in Figure 37. 
+
+ 
+
+Figure 38. Crack surfaces of the three-point bending test on skew notched beam for (a) structured 
+
+and (b) unstructured 3D tetrahedra mesh 
+
+In Figure 38 the crack surfaces are shown, plotted as an iso-level surface of the horizontal 
+
+displacements along the axis of the beam. Both the structured and unstructured meshes 
+
+used for the computation of the beam are fine enough to model the crack surface with 
+
+precision. As can be seen in Figure 39, the numerical results agree well with the 
+
+experimental results.  
+
+ 
+
+Figure 39. Crack paths of the three-point bending test on skew notched beam 
+
+ 
+
+
+
+40 
+
+ 
+
+  
+
+Figure 40. (a) Experimental [77] and computed crack surfaces with (b) structured and (c) 
+
+unstructured meshes 
+
+ 
+
+ 
+
+Figure 41. Evolution of the crack surface in (a) the experiment [77] and in (b) the present 
+
+simulation 
+
+In Figure 40, the crack surface computed in the simulations is compared to the one 
+
+observed in the tests. The results are optimal within the spatial resolution of the 
+
+considered meshes. Figure 38 to Figure 40 show that results with the structured and 
+
+unstructured meshes are in good agreement with experiments as well as with the skew-
+
+symmetry conditions of the problem. Evolution of the crack surface is shown in Figure 
+
+41.  
+
+Detail of the evolution of the twist angle of the crack front with the height over the initial 
+
+notch is shown in Figure 42. A distinct anti-symmetric crack trace along the straight crack 
+
+front can be noticed. This is because of the combination of Mode I and the antisymmetric 
+
+
+
+41 
+
+ 
+
+Mode III loading conditions along the initial notch. The initial crack plane is inclined 45º 
+
+and ends at 90º and only Mode I along the final crack fronts.  
+
+ 
+
+ 
+
+Figure 42. Computed evolution of the twist angle of the crack front with the height over the notch 
+
+         
+
+Figure 43. Crack propagation and evolution of major principal stresses in the three-point bending 
+
+test on skew notched beam 
+
+Figure 43 shows the crack propagation and evolution of major principal stresses in the 
+
+skew notched beam. Once more, in the elastic range, stresses concentrate in the vicinity 
+
+of the tip of the notch. This causes the crack to start and propagate through the height of 
+
+the beam and towards the point of application of the load.  
+
+
+
+42 
+
+ 
+
+ 
+
+5 Conclusions 
+
+ 
+
+In this work, the FE modeling of quasi-brittle cracks in 2D and 3D with enhanced strain 
+
+accuracy is performed. To this end, a mixed strain/displacement formulation is presented, 
+
+in a matrix and vector notation, based on Voigt’s convention, in a ready-to-use format for 
+
+its implementation in finite element codes. Then, experimental validation is performed 
+
+by means of several simulations which are compared to experimental tests reported in the 
+
+literature.  
+
+The proposed formulation is used in conjunction with an isotropic damage model suitable 
+
+for the prediction of cracking in 2D and 3D applications. Finite element simulations using 
+
+triangles, quadrilaterals, tetrahedra, hexahedra and prisms in structured, semi-structured 
+
+and unstructured meshes are performed. 
+
+An extensive comparison with experimental data observed from the literature is carried 
+
+out, to assess the capacity of the proposed formulation to model the behavior observed in 
+
+the experimental tests. Several numerical simulations have been exhibited to illustrate the 
+
+capacity of the formulation to solve strain localization problems in accordance to 
+
+experimental results. 
+
+Problems involving propagation of single and multiple, straight and curved cracks in 2D 
+
+and 3D, as well as non-planar cracks in 3D are addressed. Aspects related to the discrete 
+
+solution, such as convergence regarding mesh resolution and mesh bias, as well as other 
+
+related to the physical model, like structural size effect and the influence of Poisson’s 
+
+ratio, are also investigated. 
+
+The enhanced accuracy of the computed strain field leads to accurate results in terms of 
+
+crack paths, failure mechanisms and force displacement curves. Spurious mesh 
+
+dependency suffered by both continuous and discontinuous irreducible formulations is 
+
+avoided by the mixed FE, without the need of auxiliary tracking techniques or other 
+
+computational schemes that alter the continuum mechanical problem.  
+
+ 
+
+ 
+
+6 References 
+ 
+
+[1]  Y. Rashid, "Ultimate strength analysis of prestressed concrete pressure vessels," 
+
+Nuclear Engineering and Design, vol. 7, no. 4, pp. 334-344, 1968.  
+
+[2]  Z. Bazant and B. Oh, "Crack band theory for fracture of concrete," Matériaux et 
+
+Constructions, vol. 16, no. 3, pp. 155-177, 1983.  
+
+[3]  J. Rots, P. Nauta and G. Kusters, "Variable reduction factor for the shear stiffness 
+
+of cracked concrete," Rep. BI-84-33, Ins. TNO for building Mat. And Struct., Delft, 
+
+1984.  
+
+
+
+43 
+
+ 
+
+[4]  R. de Borst and P. Nauta, "Non-orthogonal cracks in a smeared finite element 
+
+model," Engng. Computation, vol. 2, pp. 35-46, 1985.  
+
+[5]  R. de Borst, "Smeared cracking, plasticity, creep and thermal loading - a unified 
+
+approach," Comp. Meth. Appl. Mech. Eng., vol. 62, no. 99, pp. 89-110, 1987.  
+
+[6]  Z. Bazant and G. Pijaudier-Cabot, "Nonlocal continum damage, localization 
+
+instabilities and convergence," Journal of Engineering Mechanics , no. 55, pp. 287-
+
+293, 1988.  
+
+[7]  R. Peerlings, R. de Borst, W. Brekelmans and J. de Wree, "Gradient enhanced 
+
+damage for quasi brittle materials," International Journal for Numerical Methods 
+
+in Engineering, vol. 39, pp. 3391-3403, 1996.  
+
+[8]  R. de Borst and C. Verhoosel, "Gradient damage vs phase-field approaches for 
+
+fracture: Similarities and differences.," Comput. Methods Appl. Mech. Engrg., p. 
+
+doi: 10.1016/j.cma.2016.05.015, 2016.  
+
+[9]  C. Miehe, F. Welschinger and M. Hofacker, "Thermodynamically consistent phase-
+
+field models of fracture: Variational principles and multi-field FE 
+
+implementations," International Journal for Numerical Methods in Engineering, 
+
+vol. 83, pp. 1273-1311, 2010.  
+
+[10]  C. Miehe, L.-M. Schänzel and H. Ulmer, "Phase field modeling of fracture in multi-
+
+physics problems. Part I. Balance of cracks surface and failure criteria for brittle 
+
+crack propagation in thermo-elastic solids," Computer Methods in Applied 
+
+Mechanics and Engineering, vol. 294, pp. 449-485, 2015.  
+
+[11]  J. Vignollet, S. May, R. de Borst and C. Verhoosel, "Phase-field model for brittle 
+
+and cohesive fracture," Meccanica, vol. 49, pp. 2587-2601, 2014.  
+
+[12]  J. Wu, "A geometrically regularized gradient-damage model with energetic 
+
+equivalence," submitted to Computer Methods in Applied Mechanics and 
+
+Engineering, 2017.  
+
+[13]  G. Barenblatt, "The mathematical theory of equilibrium cracks in brittle faillure," 
+
+Advanced Applied Mathematics, vol. 7, pp. 55-129, 1962.  
+
+[14]  D. Ngo and A. Scordelis, "Finite element analysis of reinforced concrete beams," 
+
+ACI Journal, vol. 64, no. 14, pp. 152-163, 1967.  
+
+[15]  P. Areias, M. Msekh and T. Rabczuk, "Damage and fracture algorithm using the 
+
+screened Poisson equation and local remeshing," Engineering Fracture Mechanics, 
+
+vol. 158, pp. 116-143, 2016.  
+
+[16]  P. Areias and T. Rabczuk, "Finite strain fracture of plates and shells with 
+
+configurational forces and edge rotations," International Journal for Numerical 
+
+Methods in Engineering, vol. 94, pp. 1099-1122, 2013.  
+
+
+
+44 
+
+ 
+
+[17]  P. Areias, T. Rabczuk and D. Dias-da-Costa, "Element-wise fracture algorithm 
+
+based on rotation of edges," Engineering fracture mechanics, vol. 110, pp. 113-137, 
+
+2013.  
+
+[18]  P. Areias, J. Reinoso, P. Camanho and T. Rabczuk, "A constitutive-based element-
+
+by-element crack propagation algorithm with local mesh refinement," 
+
+Computational Mechanics, vol. 56, pp. 291-315, 2015.  
+
+[19]  J. Schellekens, "A non-linear finite element approach for the analysis of mode-I free 
+
+edge delamination in composites," International Journal of Solids and Structures, 
+
+vol. 30, no. 9, pp. 1239-1253, 1993.  
+
+[20]  O. Allix and P. Ladevèze, "Interlaminar interface modelling for the prediction of 
+
+delamination," Composite Structures, vol. 22, no. 4, pp. 235-242, 1992.  
+
+[21]  G. Bolzon and A. Corigliano, "A discrete formulation for elastic solids with 
+
+damaging interfaces," Comp. Methods Appl. Mech. Engng., vol. 140, pp. 329-359, 
+
+1997.  
+
+[22]  A. Pandolfi, P. Krysl and M. Ortiz, "Finite element simulation of ring expansion 
+
+and fragmentation: The capturing of length and time scales through cohesive 
+
+models of fracture," International Journal of Fracture, vol. 95, no. 1-4, pp. 279-
+
+297, 1999.  
+
+[23]  E. Dvorkin, A. Cuitino and G. Gioia, "Finite elements with displacement 
+
+interpolated embedded localization lines insensitive to mesh size and distorsions," 
+
+International Journal for Numerical Methods in Engineering, vol. 30, pp. 541-564, 
+
+1990.  
+
+[24]  J. Oliver, M. Cervera and O. Manzoli, "Strong discontinuities and continuum 
+
+plasticity models: the strong discontinuity approach," International Journal of 
+
+Plasticity, vol. 15, no. 3, pp. 319-351, 1999.  
+
+[25]  T. Gasser and G. Holzapfel, "Geometrically non-linear and consistently linearized 
+
+embedded strong discontinuity models for 3D problems with an application to the 
+
+dissection analysis of soft biological tissues," Computer Methods in Applied 
+
+Mechanics and Engineering, vol. 192, pp. 5059-5098, 2003.  
+
+[26]  M. Motamedi, D. Weed and C. Foster, "Numerical simulation of mixed mode (I and 
+
+II) fracture behaviour pf pre-cracked rock using the strong discontinuity approach," 
+
+International Journal of Solids and Structures, Vols. 85-86, pp. 44-56, 2016.  
+
+[27]  Y. Zhang, R. Lackner, M. Zeiml and H. Mang, "Strong discontinuity embedded 
+
+approach with standard SOS formulation: Element formulation, energy-based crack 
+
+tracking strategy, and validations," Computer Methods in Applied Mechanics and 
+
+Engineering, vol. 287, pp. 335-366, 2015.  
+
+
+
+45 
+
+ 
+
+[28]  X. Su, Z. Yang and G. Liu, "Finite element modelling of complex 3D static and 
+
+dynamic crack propagation by embedding cohesive elements in Abaqus," Acta 
+
+Mecanica Solida Sinica, vol. 23, no. 3, pp. 271-282, June 2010.  
+
+[29]  N. Moes, J. Dolbow and T. Belytschko, "A finite element method for crack growth 
+
+without remeshing," International Journal for Numerical Methods in Engineering, 
+
+vol. 46, no. 1, pp. 131-150, 1999.  
+
+[30]  T. Gasser and G. Holzapfel, "Modeling 3D crack propagation in unreinforced 
+
+concrete using PUFEM," Computer Methods in Applied Mechanics and 
+
+Engineering, vol. 194, pp. 2859-2896, 2005.  
+
+[31]  M. Holl, T. Rogge, S. Loehnert, P. Wriggers and R. Rolfes, "3D multiscale crack 
+
+propagation using the XFEM applied to a gas turbine blade," Computational 
+
+Mechanics, vol. 53, pp. 173-188, 2014.  
+
+[32]  G. Meschke and P. Dumstorff, "Energy-based modeling of cohesive and cohesion-
+
+less cracks via X-FEM," Computer Methods in Applied Mechanics and 
+
+Engineering, vol. 196, pp. 2338-2357, 2007.  
+
+[33]  J.-Y. Wu and F.-b. Li, "An improved stable X-FEM (Is-FEM) with a novel 
+
+enrichment function for the computational modeling of cohesive cracks," Computer 
+
+Methods in Applied Mechanics and Engineering, vol. 295, pp. 77-107, 2015.  
+
+[34]  P. Areias and T. Belytschko, "Analysis of three-dimensional crack initiation and 
+
+propagation using the extended finite element method," Int. J. Numer. Meth. 
+
+Engng., vol. 63, pp. 760-788, 2005.  
+
+[35]  T. Rabczuk and T. Belytschko, "A three-dimensional large deformation meshfree 
+
+method for arbitrary evolving cracks," Computer Methods in Applied Mechanics 
+
+and Engineering, vol. 196, pp. 2777-2799, 2007.  
+
+[36]  T. Rabczuk and T. Belytschko, "Adaptivity for structured meshfree particle 
+
+methods in 2D and 3D," International Journal for Numerical Methods in 
+
+Engineering, vol. 63, pp. 1559-1582, 2005.  
+
+[37]  T. Rabczuk and T. Belytschko, "Cracking particles: a simplified meshfree method 
+
+for arbitrary evolving cracks," International Journal for Numerical Methods in 
+
+Engineering, vol. 61, pp. 2316-2343, 2004.  
+
+[38]  X. Zhuang, C. Augarde and S. Bordas, "Accurate fracture modelling using meshless 
+
+methods, the visibility criterion and level sets: Formulation and 2D modelling," 
+
+International Journal for Numerical Methods in Engineering, vol. 86, pp. 249-268, 
+
+2011.  
+
+[39]  X. Zhuang, C. Augarde and K. Mathisen, "Fracure modeling using meshless 
+
+methods and level sets in 3D: framework and modeling," International Journal for 
+
+Numerical Methods in Engineering, vol. 92, pp. 969-998, 2012.  
+
+
+
+46 
+
+ 
+
+[40]  G. Nguyen, C. Nguyen, P. Nguyen, H. Bui and L. Shen, "A size-dependent 
+
+constitutive modelling framework for localized faillure analysis," Comput. Mech., 
+
+vol. 58, pp. 257-280, DOI 10.1007/s00466-016-1293-z, 2016.  
+
+[41]  C. Annavarapu, R. Settgast, E. Vitali and J. Morris, "A local crack-tracking strategy 
+
+to model three-dimensional crack propagation with embedded methods," Comput. 
+
+Methods Appl. Mech. Engrg., vol. 311, pp. 815-837, 2016.  
+
+[42]  P. Dumstorffz and G. Meschke, "Crack propagation criteria in the framework of X-
+
+FEM-based structural analysis," Int. J. Numer. Anal. Meth. Geomech., vol. 31, pp. 
+
+239-259, 2007.  
+
+[43]  J. Kim and F. Armero, "Three-dimensional finite elements with embedded strong 
+
+discontinuities for the analysis of solids at faillure in the finite deformation range," 
+
+Comput. Methods Appl. Mech. Engrg., no. 
+
+http://dx.doi.org/10.1016/j.cma.2016.12.038, 2017.  
+
+[44]  F. Riccardi, E. Kishta and B. Richard, "A step-by-step global crack-tracking 
+
+approach in E-FEM simulations of quasi-brittle materials," Engineering Fracture 
+
+Mechanics, vol. 170, pp. 44-58, 2017.  
+
+[45]  D. Dias-da- Costa, J. Alfaiate, L. Sluys and Júlio E., "A comparative study on the 
+
+modelling of discontinuous fracture by means of enriched nodal and element 
+
+techniques and interface elements," Int. J. Fract., vol. 161, no. 1, pp. 97-119, 2010.  
+
+[46]  M. Jirasek, "Comparative study on finite elements with embedded discontinuities," 
+
+Comput. Methods Appl. Mech. Eng., vol. 188, pp. 307-330, 2000.  
+
+[47]  T. Rabczuk, "Computational methods for fracture in brittle and quasi-brittle solids: 
+
+state-of-the-art review and future perspectives," ISRN Appl. Math. 2013, p. DOI: 
+
+10.1155/2013/849231, 2013.  
+
+[48]  M. Cervera, M. Chiumenti and R. Codina, "Mesh objective modelling of cracks 
+
+using continuous linear strain and displacement interpolations," International 
+
+Journal for Numerical Methods in Engineering, vol. 87, no. 10, pp. 962-987, 2011.  
+
+[49]  M. Cervera, M. Chiumenti and R. Codina, "Mixed stabilized finite element methods 
+
+in nonlinear solid mechanics. Part I: Formulation," Computer Methods in Applied 
+
+Mechanics and Engineering, vol. 199, no. 37-40, pp. 2559-2570, 2010.  
+
+[50]  M. Cervera, M. Chiumenti and R. Codina, "Mixed stabilized finite element methods 
+
+in nonlinear solid mechanics. Part II: Strain localization," Computer Methods in 
+
+Applied Mechanics and Engineering, vol. 199, no. 37-40, pp. 2571-2589, 2010.  
+
+[51]  M. Cervera, M. Chiumenti, L. Benedetti and R. Codina, "Mixed stabilized finite 
+
+element methods in nonlinear solid mechanics. Part III: Compressible and 
+
+incompressible plasticity," Computer Methods in Applied Mechanics and 
+
+Engineering, vol. 285, no. 0, pp. 752-775, 2015.  
+
+
+
+47 
+
+ 
+
+[52]  A. Gil, C. Lee, J. Bonet and M. Aguirre, "A stabilized Petrov-Galerkin formulation 
+
+for linear tetrahedral elements in compressible, nearly incompressible and truly 
+
+incompressible fast dynamics," Comput. Methods Appl. Mech. Engrg., vol. 276, pp. 
+
+659-690, 2014.  
+
+[53]  N. Lafontaine, R. Rossi, M. Cervera and M. Chiumenti, "Explicit mixed strain-
+
+displacement finite element for dynamic geometrically non-linear solid mechanics," 
+
+Computational Mechanics, vol. 55, pp. 543-559, 2015.  
+
+[54]  M. Cervera and M. Chiumenti, "Size effect and localization in J2 plasticity," 
+
+International Journal of Solinds and Structures, vol. 46, pp. 3301-3312, 2009.  
+
+[55]  L. Benedetti, M. Cervera and M. Chiumenti, "3D modelling of twisting cracks under 
+
+bending and torsion skew notched beams," Engineering Fracture Mechanics, vol. 
+
+176, pp. 235–256, 2017.  
+
+[56]  M. Chiumenti, M. Cervera and R. Codina, "A mixed three-field FE formulation for 
+
+stress accurate analysis including the incompressible limit," Comput. Methods Appl. 
+
+Mech. Engrg., vol. 283, pp. 1095-1116, 2014.  
+
+[57]  E. Hellinger, "Die allegemeinen Ansätze der Mechanik der Kontinua, Art. 30," 
+
+Encyclopädie der Matematischen Wissenschaften, F. Klein and C. Muller (eds.), 
+
+Leipzig, Teubner, pp. 654-655, 1914.  
+
+[58]  E. Reissner, "On variational principles of elasticity," Proc. Symp. Appl. Math., vol. 
+
+8, pp. 1-6, 1958.  
+
+[59]  O. Zienkiewicz, R. Taylor and Z. Zhu, "The finite element method, Vol. 1," 7th 
+
+edition, Amsterdam, Elsevier Butterworth-Heinemann, 1989.  
+
+[60]  I. Babuska, "Error-bounds for finite element method," Numerisch Mathematik, vol. 
+
+16, pp. 322-333, 1971.  
+
+[61]  D. Boffi, F. Brezzi and M. Fortin, "Mixed Finite Element Methods and 
+
+Applications," Springer, 2013.  
+
+[62]  F. Brezzi, "On the existence, uniqueness and approximation of saddle-point 
+
+problems arising from lagrangian multipliers," ESAIM: Mathematical Modelling 
+
+and Numerical Analysis - Modélisation Mathématique et Analyse Numérique, vol. 
+
+8, no. R2, pp. 129-151, 1974.  
+
+[63]  R. Codina, "Stabilization of incompressibility and convection through orthogonal 
+
+sub-scales in finite element methods," Computer Methods in Applied Mechanics 
+
+and Engineering , vol. 190, pp. 1579-1599, 2000.  
+
+[64]  T. Hughes, G. Feijoo, L. Mazzei and J. Quincy, "The variational multiscale method 
+
+- a paradigm for computational mechanics," Computer Methods in Applied 
+
+Mechanics and Engineering, vol. 166, pp. 3-24, 1998.  
+
+
+
+48 
+
+ 
+
+[65]  T. Hughes, L. Franca and M. Balestra, "A new finite element formulation for 
+
+computational fluid dynamics: V. Circumventing the Babuska-Brezzi condition: A 
+
+stable Petrov-Galerkin formulation of the stokes problem accomodating equal-order 
+
+interpolations," Computer Methods in Applied Mechanics and Engineering, vol. 59, 
+
+no. 1, pp. 85-99, 1986.  
+
+[66]  M. Cervera, C. Agelet de Saracibar and M. Chiumenti, "COMET: Coupled 
+
+Mechanical and Thermal Analysis. Data Input Manuel, Version 5.0, Technical 
+
+report IT-308. Available from http://www.cimne.upc.edu," 2002.  
+
+[67]  "GiD: the personal pre and post-processor.," CIMNE, Technical University of 
+
+Catalonia, p. <http://gid.cimne.upc.ed>, 2002.  
+
+[68]  B. Winkler, "Traglastuntersuchungen von unbewehrten und bewerhrten 
+
+Betonskrukturen auf der Grundlage eines objektiven Werkstoffgesetzes für Beton," 
+
+Ph.D. Thesis, Universität Innsbruck, 2001.  
+
+[69]  B. Trunk, "Einfluss der Bauteilgrösse auf die Bruchenergie von Beton," Aedificatio 
+
+publishers, Freiburg, 2000.  
+
+[70]  J. Gálvez, M. Elices, G. Guinea and J. Planas, "Mixed mode fracture of concrete 
+
+under proportional and nonproportional loading," Int J. Fract., vol. 94, pp. 267-84, 
+
+1998.  
+
+[71]  M. Cervera, L. Pela, R. Clemente and P. Roca, "A crack-tracking technique for 
+
+localized damage in quasi-brittle materials," Engineering Fracture Mechanics, vol. 
+
+77, pp. 2431-2450, 2010.  
+
+[72]  A. Ingraffea and M. Grigoriu, "Probabilistic Fracture Mechanics: A Validation 
+
+Predictive Capability," Tech. rep., DTIC Document, 1990.  
+
+[73]  C. Miehe and E. Gürses, "A robust algorithm for the configurational-force-driven 
+
+brittle crack propagation with R-adaptative mesh alignment," Int. J. Numer. Meth. 
+
+Engng., vol. 72, pp. 127-155, 2007.  
+
+[74]  P. Bocca, A. Carpinteri and S. Valente, "Mixed mode fracture of concrete," Int. J. 
+
+Solids Structures, vol. 27, no. 9, pp. 1139-1153, 1991.  
+
+[75]  A. Saleh and M. Aliabadi, "Crack growth analysis in concrete using boundary 
+
+element method," Engineering Fracture Mechanics, vol. 51, no. 4, pp. 533-545, 
+
+1995.  
+
+[76]  P. Areias, T. Rabczuk and J. César de Sá, "A novel two-stage discrete crack method 
+
+based on the screened Poisson equation and local mesh refinement," Comput. 
+
+Mech., vol. 58, pp. 1003-1018, 2016.  
+
+[77]  F. Buchholz, A. Chergui and H. Richard, "Fracture analyses and experimental 
+
+results of crack growth under general mixed mode loading conditions," Engineering 
+
+Fracture Mechanics, vol. 71, pp. 455-468, 2004.  
+
+
+
+49 
+
+ 
+
+[78]  R. Citarella and F. Buchholz, "Comparison of crack growth simulation by DBEM 
+
+and FEM for SEN-specimens undergoing torsion or bending loading," Engineering 
+
+Fracture Mechanics, vol. 75, pp. 489-509, 2008.  
+
+[79]  G. Ferte, P. Massin and N. Moës, "3D crack propagation with cohesive elements in 
+
+the extended finite element method," Comput. Methods Appl. Mech. Engrg., vol. 
+
+300, pp. 347-374, 2016.  
+
+ 
+
+ 
+
+

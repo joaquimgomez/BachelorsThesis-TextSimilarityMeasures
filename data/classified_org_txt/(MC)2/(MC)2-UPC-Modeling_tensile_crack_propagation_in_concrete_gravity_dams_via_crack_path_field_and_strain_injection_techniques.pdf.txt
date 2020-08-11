@@ -1,0 +1,3095 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1 
+
+Modeling tensile crack propagation in concrete gravity dams via  
+
+crack-path-field and strain injection techniques 
+
+I. F. Dias
+1,a
+
+, J. Oliver
+2,3,b
+
+, J. V. Lemos
+1,c
+
+ and O. Lloberas-Valls
+3,d
+
+ 
+
+1
+Laboratório Nacional de Engenharia Civil (LNEC) 
+
+Avenida Brasil 101,1700 Lisboa, Portugal 
+
+2
+E.T.S. d’Enginyers de Camins, Canals i Ports, Technical University of Catalonia 
+
+3
+CIMNE - Centre Internacional de Metodes Numerics en Enginyeria 
+
+Campus Nord UPC, Edifici C-1, c/Jordi Girona 1-3, 08034 Barcelona, Spain 
+
+a
+idias@lnec.pt, 
+
+b
+xavier.oliver@upc.edu, 
+
+c
+vlemos@lnec.pt, 
+
+d
+olloberas@cimne.upc.edu 
+
+ 
+
+Keywords: concrete gravity dams, fracture, computational material failure, strong discontinuities, 
+
+crack-path field, strain injection, mixed formulation 
+
+ 
+
+Abstract: This work investigates tensile crack propagation in concrete gravity dams by using some 
+
+recently developed numerical techniques (crack-path field and strain injection techniques) [1-3]. The 
+
+work carefully addresses aspects related to mesh independence, robustness and computational cost, 
+
+which are the main issues in fracture modeling. The novel technique consists of a procedure to insert, 
+
+in the selected domain areas, specific strain fields for enhancing the performance of the underlying 
+
+finite elements in modeling fracture. Representative numerical simulations of concrete dams show the 
+
+accuracy and robustness of the methodology. The code used for the simulations is open-source and 
+
+available at http://www.cimne.com/compdesmat/. 
+
+1 Introduction 
+
+Nowadays, structural safety of large dams remains a great concern due to the high potential risk 
+
+associated to this kind of structures. A dam failure, followed by a sudden flood wave, can result in 
+
+large life losses and in strong environmental and economic impacts, as it was reported for several 
+
+catastrophic failure cases [5, 6]. Historically, the main causes of significant dam failures are related to 
+
+foundation defects (erosion, sliding on its rock foundation, etc.) [7-9]. Structural failures, when not 
+
+directly caused by foundation movements, are less frequent but its importance should not be 
+
+minimized in the design neither in the safety control of the dam. Due to the importance of these 
+
+structures, it is a worldwide standard practice to monitor continually dams as a part of the safety 
+
+control process [10], which supports afterwards the safety assessment and decision. On the other 
+
+hand, quantifying realistically concrete dams’ safety factors is a complex engineering question that 
+
+depends on multiple phenomena affecting the performance and resistance of the dam and its 
+
+foundation.  
+
+In this work attention is focused on crack propagation through the dam body. Cracks progressing deep 
+
+inside gravity dams can seriously affect its structural safety. Computational failure analysis can be an 
+
+effective tool for realistically predict the eventual crack profiles and the ultimate structural resistance, 
+
+allowing improved estimation of the structural safety factor.  
+
+http://www.cimne.com/compdesmat/
+
+
+2 
+
+The importance of computational methods in assessing dams safety and damage was soon recognized 
+
+by some authors in the 1980s, which have used linear elastic fracture mechanics [11-15] to perform 
+
+the first computational simulations of fracture in concrete dams. These authors argued that, due to the 
+
+large size of dams, the fracture process zone is small in front of the overall structure and therefore 
+
+linear elastic fracture mechanics can be applicable with limited errors, since failure occurs in a brittle 
+
+(or quasi-brittle) manner. On the other hand, other authors argue that, due to the specific 
+
+characteristics of dam concrete (that can have characteristic length up to 10 times greater that 
+
+common concrete), the non-linear effects should not be neglected, even for large dams [16, 17].  
+
+Apart from this theoretical and important question, in the 1990s, nonlinear fracture analysis starts 
+
+becoming further used in fracture modeling of concrete dams. Depending on the manner that the de-
+
+cohesion process at the crack interface is modeled, two major descriptions were used: 
+
+1. In the cohesive (or discrete) approach [18, 19] the non-linear mechanical behavior is 
+
+described by introducing a traction separation law (relating the traction vector and the vector 
+
+of displacement jump) along the surface where the decohesive process occurs (typically 
+
+coincident with the element sides). 
+
+2. In the continuum approach [20-23] the non-linear mechanical behavior at the interface is 
+
+described by a standard stress-strain constitutive equipped with softening, to account for the 
+
+stress release associated to failure. Here the main assumption consists in admitting that the 
+
+displacement jump can be captured in a smeared manner throughout the localization band.  
+
+In both approaches fracture energy plays a fundamental role in order to make results physically 
+
+meaningful (ensuring correct energy dissipation and overcoming the mesh size dependence). The 
+
+main flaw of the initial methods based on these approaches was the spurious dependence on the mesh 
+
+alignment, which is critical because different meshes can deliver different results, in terms either of 
+
+the crack trajectory or of the dissipated energy. The main consequences of mesh dependence 
+
+phenomena are well documented in the literature, and consist, essentially, in two types of undesirable 
+
+behavior: 
+
+ Mesh bias dependence: Refers to the spurious tendency of the crack to follow certain 
+
+preferred directions related to the mesh alignment, i.e. the crack tends to propagate 
+
+parallelly to the element sides avoiding zigzagging. The main inconvenience of this 
+
+dependence is that it can lead to unrealistic\unphysical failure mechanisms, with 
+
+consequences also in the ultimate structural load carrying capacity, which may be over or 
+
+under-estimated. 
+
+ Stress locking effects: Refers to the lack of ability of finite elements to capture strain 
+
+localization, in a one-element-width localization band, without spurious stress transfer to 
+
+the neighboring elements. The principal inconvenient of stress locking is the extra 
+
+dissipation that occurs in elements outside the localization band which results in an over-
+
+stiffer behavior that leads to an overestimation of the ultimate structural load carrying 
+
+capacity, which is not on the safety side. 
+
+Despite these limitations, which make re-meshing techniques mandatory to obtain mesh independent 
+
+results, interesting applications to concrete dams have been reported in the literature by using both 
+
+cohesive [4, 24, 25] and continuum models. The fact that the continuum approach can be implemented 
+
+in a standard non-linear finite element code by just introducing strain softening in the constitutive 
+
+
+
+3 
+
+model, made the approach widely used and various constitutive models were explored for modeling 
+
+crack propagation in concrete dams. For example in [17, 26] applications by using smeared crack 
+
+models are reported and in [27-30] the authors have applied damage/plasticity based models. 
+
+In the 1990s, aiming to overcome the flaws of the classical methods, new developments and 
+
+enhancements have been proposed in the context of the continuum models. Depending on how the 
+
+crack/slip-line (displacement jump) is captured by the numerical methods, the continuum approaches 
+
+can be classified in three groups: 
+
+ The strain-localization-based methods, in which, due to strain softening, strains tend 
+
+naturally to localize in narrow bands that under ideal conditions encompass just one finite 
+
+element. This approach corresponds to the aforementioned, firstly proposed, continuum 
+
+models. These are the most conceptually simple and intuitive models for simulating crack 
+
+propagation
+1
+ but are known to suffer from mesh bias dependence and stress locking flaws. 
+
+ In the supra-element-band methods, a regularized displacement jump is captured by a 
+
+band of finite elements encompassing several elements across it. The bandwidth is then 
+
+considered a characteristic length. This class of models include material-regularization-
+
+based approaches (non-local, gradient or Cosserat models [31, 32] and the, more recent, 
+
+phase field models for fracture [33]). In general, good results are obtained, although the 
+
+fact that the size of the finite element is smaller than the, very tiny, characteristic length 
+
+implies that a huge number of elements are required, this leading to large computational 
+
+costs. 
+
+ In the intra-elemental methods, the discontinuity interface settles inside the finite 
+
+element, thus, no restrictions in the size of the finite elements exist and very coarse 
+
+meshes can be used. In these methods, the finite elements are enriched with additional 
+
+discontinuous displacement modes and are termed E-FEM or X-FEM if the support of the 
+
+additional modes is elemental or nodal based, respectively. The performances of both 
+
+methods are similar [34], but some computational benefits from the E-FEM side can be 
+
+obtained due to the elemental support of the enriching modes that can be condensed out , 
+
+this leading to a lower computational cost. 
+
+However, in both methods, robustness depends on the precise determination of the position of 
+
+the discontinuity and this, is classically done by means of crack-tracking algorithms that are 
+
+cumbersome to implement, have a code-invasive character and may seriously affect the 
+
+robustness of the method [35]. These drawbacks seem to be responsible for its little use in 
+
+modeling real-life problems and in commercial codes incorporation.  
+
+Outside the finite element framework, alternative methodologies, of diverse natures, have been also 
+
+proposed for material failure modeling: 
+
+ In the discrete element methods [36, 37] the idea of continuum media is left aside being 
+
+formulated in terms of rigid discrete elements that interact with each other according to 
+
+contact laws. For modeling fracture in structures without “a-priori” preferable failure 
+
+                                                      
+
+1
+ These classical models do not require any enhancement more than a proper regularization of the softening 
+
+modulus for ensuring a correct dissipation of energy. 
+
+
+
+4 
+
+surfaces, the discrete elements are generally chosen to be circular or spherical particles and 
+
+the corresponding inter-particle contacts can either be assumed as brittle or following a given 
+
+softening curve [38, 39]. These methods model directly the meso-structure of the materials 
+
+being therefore computationally more demanding than the continuum models (that are at the 
+
+macro-scale level). 
+
+ The lattice models have been initially developed to deal with random heterogeneous materials 
+
+[40]. The structure is discretized as a lattice composed of Bernoulli beams that transfer 
+
+normal forces, shear forces and bending moments. Usually linear elastic analyses are 
+
+performed and beam elements that exceed tensile strength are removed [41, 42], and 
+
+consequently, their inertial effects are neglected. 
+
+ Multi-scale approaches with different theoretical background have been proposed (see [43] 
+
+for a general insight). Usually, in these approaches two distinct length scales are considered: 
+
+one corresponding to the structural size (macro scale) and other corresponding to the zone, 
+
+near the crack tip, where the fracture is being processed, which intends to capture the complex 
+
+phenomena of fracture deriving from the material micro-structure (e.g. the atomistic 
+
+simulations of [44]). 
+
+In the last two decades, some of the previous mentioned E-FEM and X-FEM methods, material-
+
+regularization-based approaches, phase field models, discrete/lattice and multi-scale approaches have 
+
+attracted large interest of the computational mechanics community, and a huge number of papers have 
+
+been published in the different fields of research. However, so far, applications were mostly restricted 
+
+to academic benchmarks and few cases of real-life structures have been reported [45]. For this reason, 
+
+these methods are no regarded, yet, as a true reliable alternative for modeling crack propagation in 
+
+concrete dams, such that can help in the design or in the safety control of these large structures. Some 
+
+flaws of these methods that make general authors to be reluctant in using them are the following: 
+
+ Higher computational cost relatively to the more classical methods, with consequences in the 
+
+computational times and, thus, in productivity. 
+
+ Increasing theoretical complexity, which makes the new methodologies less appealing for 
+
+more “practical” developers and general engineers. 
+
+ Difficulties of implementation in standard non-linear finite element codes. In some cases, the 
+
+intrusive character of the formulations, make the methodologies quite cumbersome to 
+
+implement. This can be a dissuasive factor for new implementers and developers. 
+
+ Unavailability of commercial or open-source software. Most of these new numerical 
+
+techniques have not been yet incorporated to commercial codes. The insufficient interest of 
+
+commercial companies can be related with the three flaws enumerated previously. Regarding 
+
+to the lack of open-source software, usually, in the computational failure mechanics field, the 
+
+developing authors do not distribute their computational codes in open source formats or, if 
+
+so, the code is not properly publicized (for example in the corresponding paper).  
+
+1.1 Objectives and main assumptions of the work 
+
+In this work, the departure point are the recently developed crack-path-field and strain-injection 
+
+techniques [1-3, 46], that have proved to be a valuable tool for capturing propagating material failure 
+
+in a set of 2D “quasi-static” academic benchmarks. The main novelty of this method is the 
+
+
+
+5 
+
+introduction of the strain injection concept, i.e. the imposition of goal-oriented strain-fields, in 
+
+selected areas of the domain and at specific stages, to improve the performance of the resulting model 
+
+in capturing propagating material failure.  
+
+In fact, a proper combination of these techniques (crack-path field and strain injection) and a 
+
+stabilized mixed formulation leads to a general mesh independent methodology ready for failure 
+
+modeling of real-life large concrete structures, like concrete dams. The methodology provides the 
+
+classical advantages (mesh independence and low computational cost) of the intra-elemental methods 
+
+while being minimally intrusive for the simulation code in which it is implemented. These interesting 
+
+properties allow us to think that the new techniques show a strong potential to be competitive in front 
+
+of other promising approaches aiming at capturing propagating cracks (the phase-field models [47], 
+
+the full mixed approach
+2
+ of [48] and the recent improvements to the strong discontinuity approach 
+
+either in the E-FEM or X-FEM versions [49-51], etc.).  
+
+So far, the methodology was implemented only for 2D cases, with applications limited to isothermal 
+
+quasi-static problems. The kinematical description of the motion is also simplified to infinitesimal 
+
+strains. The authors are aware that seismic analyses, in which inertial effects cannot be neglected, are 
+
+one of the main actual concerns in terms of dam structural safety and, therefore, it will be considered 
+
+in subsequent work. Notice that by neglecting the inertial effects, more realistic comparisons with 
+
+experimental results can be performed since physical phenomena difficult to quantify and measure, 
+
+like the damping mechanisms, play no role. In quasi-static cases, the necessary physical parameters to 
+
+introduce in the model are limited to the elastic constants (Young’s modulus and Poisson's ratio), the 
+
+ultimate tensile strength and the material fracture energy, which can be measured in laboratory. 
+
+Moreover, the interior fluid pressure in the open cracks was also neglected. Although the authors are 
+
+well aware of the importance of this issue (hydraulic fracture), this is not in the scope of this work, 
+
+which is essentially devoted to evaluate the benefits of the proposed computational methods for 
+
+modeling crack propagation in dams. 
+
+The main objective of the present paper is to assess the capabilities of the new numerical tools, so far 
+
+with applications limited to some academic benchmarks, in modeling tensile crack propagation in 
+
+concrete dams. The theoretical summary of the methodology presented in sections 2, 3 and 4, has the 
+
+exclusive goal of providing the reader with the general ideas about the method and it does not pretend 
+
+to be exhaustive. In [1] a deeper presentation of the formulation and its implementation details can be 
+
+consulted by the interested readers. 
+
+The numerical simulations, in section 5, show the potential of the methodology to model fracture 
+
+propagation in concrete dams. Aspects related to mesh independence (mesh bias and stress locking), 
+
+robustness, and computational cost, which are the main issues in material failure modeling, are 
+
+carefully addressed.  
+
+                                                      
+
+2
+ This mixed approach uses continuous interpolations both for the displacements and the strains. The 
+
+computational cost is higher due to the increased number of degrees of freedom per node: from 2 
+
+(displacements) to 5 (2 displacements plus 3 strains) in 2D cases. 
+
+
+
+6 
+
+2 Finite element setting. Variational approaches to the mechanical problem 
+
+2.1 Displacement based finite element formulation 
+
+Standard finite element formulations of the non-linear mechanical problem (summarized in Box 1) are 
+
+usually displacement-based, in the sense that the displacement field, u , is the independent unknown 
+
+to be interpolated by using some suitable interpolation functions. The strains, , are computed from 
+
+the compatibility equation, (3), and the stresses, , via the constitutive relation, (4). The one field 
+
+variational equation corresponding to the equilibrium equation of the mechanical problem in Box 1 
+
+reads (in rate form): 
+
+*: ( , ) ,s s extd W b t 0u
+B
+
+B . (1) 
+
+Equation (1) is equivalent to the classic virtual work principle where *( , )extW b t  stands for the work 
+
+produced by the external forces and 
+ 
+ for the test function.  
+
+Given the external actions, *( , )txu , *( , )tt x and ( , )tb x , find ( , )txu , ( , )tx and ( , )tx :
+
+ 
+
+ 
+
+ 
+
+b 0  Equilibrium equation (2) 
+
+su  Compatibility equation (3) 
+
+( )  Constitutive equation (4) 
+
+*
+
+*
+
+( , ) ,
+
+( , ) ,  
+
+ut
+
+t
+
+x x
+
+t x x
+
+u u B
+B
+
+ Boundary conditions (5) 
+
+Box 1 Mechanical problem in body B , where uB  and B  are the portions of the boundary, B , where 
+Dirichlet and Newman conditions are defined,  is its outward normal and *( , )txu , *( , )tt x and ( , )tb x are the 
+
+prescribed displacements, tractions and body loads, respectively. 
+
+In the context of material failure modeling, it is well known that displacement based finite element 
+
+formulations are not adequate for modeling highly concentrated strain localization processes as the 
+
+ones that occur in the onset of crack initiation and propagation. 
+
+2.2  Mixed 1/ 0u  formulation 
+
+An alternative approach is the one based on two fields: displacements and strains, /u , in which both, 
+
+the equilibrium (2) and the compatibility equation (3) are weakly enforced: 
+
+*: ( ( , ) 0 , , ( )
+
+: , ( )
+
+s ext
+
+s
+
+d W a
+
+d b
+
+b t
+
+0u
+
+
+B
+
+B
+
+B
+
+B
+ (6) 
+
+In contrast with the one-field approach in equation (1), the two field format in equation (6) opens a 
+
+number of additional possibilities for modeling material failure. The problem can be inserted in the 
+
+context of the assumed strain methods [52], this providing additional freedom in the choice of the 
+
+strains that can lead to formulations with enhanced kinematics and flexibility, which might be 
+
+valuable for material failure modeling. 
+
+B
+
+t
+
+B  B  B
+
+
+
+u= )( ) (
+
+
+
+7 
+
+By choosing standard bi-linear interpolation functions for the displacement field and element-wise 
+
+constant strains in four-noded quadrilateral finite elements, the finite element approximation of 
+
+equation (6) reads: 
+
+( ) *
+( )
+
+( ) ( )( )
+( )
+
+( ) : ( ) ( , ) , , )
+
+( ( )) , )
+
+elemn
+s h e ext h h
+
+e
+e
+
+e ee s h h e
+e
+
+d W a
+
+d b
+
+x b t
+
+x
+
+1
+
+0u
+B
+
+B
+B
+
+B B B
+ (7) 
+
+Taking the test function, ( )e , and the discretized strains, ( )e , in equation (7), as element-wise 
+
+constant in the element, 
+( )eB , equation (7-b) can be trivially solved, at the element level, as: 
+
+( )
+( )( )
+
+( )
+
+( )
+
+, ,...,
+( )
+
+s h
+e
+
+ee s h
+eleme
+
+d
+
+e n
+meas
+
+x
+
+1
+
+u
+
+uB
+B
+
+B
+. (8) 
+
+Where notation 
+( )
+
+( )
+e
+
+stands for the spatial average of ( )  on the element ( )e  and meas ( )  for the area 
+
+of ( ) . Inserting equation (8) into equation (7-a) yields, 
+
+( )
+
+( )
+( ) : ( ) ( ) ,
+
+elemn e
+s h s h ext h h
+
+e
+e
+
+d W *x b,t
+1
+
+u
+B
+
+B . (9) 
+
+REMARK 2-1 It can be shown the equivalence of the mixed /1 0u  formulation for 
+
+quadrilateral elements in equation (9) with the reduced integration of displacement based 
+
+formulation [1-3, 53], which is known to be unstable when applied to the whole domain 
+
+B . In practice the instability is noticeable by the spurious propagation of zero energy 
+(hourglass) displacement modes that become dominant and pollute the solution in terms 
+
+of the displacement field.  
+
+2.3 Stabilized mixed 1/ 0u  formulation 
+
+In the past, to overcome the instability originated by reduced integration methods, diverse 
+
+stabilization procedures and hourglass control techniques, with different theoretical foundations, have 
+
+been proposed. [54, 55]. Here we use the stabilization term proposed in [1-3]
+3
+: 
+
+( )
+
+( )
+( ) ( )( ) ( ) : [ ( ) ( ( ))]
+
+e
+
+e
+stab e s h e s hW t dx xu
+
+B
+B . (10) 
+
+Where ( ) ( ) [ , ]e t 0 1  is a stabilization parameter, which, can be specific for every element and evolve 
+
+along time. Adding the stabilization term (10) to equation (9) and rearranging terms we get: 
+
+                                                      
+
+3
+ The proposed stabilization term in equation (10) falls into the family of consistently stabilized methods (see 
+
+[56, 57]). The consistency of the stabilization stems from equation (7-b), which implies that with mesh 
+
+refinement ( )e s hu , this meaning that the stabilization term in (10) vanish with mesh refinement 
+regardless of the value of the stabilization parameter. 
+
+
+
+8 
+
+( )
+
+( )
+
+( )
+( )
+
+( )
+( )
+
+full integration
+(irreducible) form
+
+reduced integration 
+(mixed) form
+
+( ) : ( ( ))
+
+( ( )) : ( )
+
+elem
+
+e
+
+n
+e s h s h
+
+e
+
+e
+e
+
+e s h s h
+e
+
+t d
+
+t d
+
+x
+1
+
+1
+
+u
+
+u
+
+
+B
+
+B
+
+B
+
+B *( , ) , .
+elemn
+
+ext h h
+
+e
+
+W b t
+1
+
+ (11) 
+
+The stabilized mixed formulation in equation (11) can be regarded as a weighted combination of the 
+
+irreducible displacement based formulation (fully integrated term) and the mixed displacement-strain 
+
+formulation (reduced integrated term), weighted by ( )e and ( )( )e1  respectively. 
+
+After some straightforward manipulations, equations (11) can be rearranged, in a more suitable form 
+
+for implementation purposes, as: 
+
+( ) *
+( )
+
+( )
+( ) ( ) ( )
+
+: ( ( , ) , ,
+
+( ) ( ( )) ( ) ( ( ) ).
+
+elemn
+es h ext h h
+
+e
+e
+
+e
+e e es h s h
+
+t
+
+d Wx) b t
+
+x x x
+
+1
+
+1u u
+
+B
+B
+
+ (12) 
+
+where 
+( )e
+
+ are termed the stabilized stresses.  
+
+REMARK 2-2 Analyzing expression (12), it is noticeable that, for 
+( )e 1  the method is 
+
+equivalent to the standard irreducible formulation, whereas for 
+( )e 0 , the stabilization 
+
+term vanishes and the unstable mixed formulation is recovered. In previous works of the 
+
+authors [1, 3], was found that 
+( )
+
+.
+e 0 1  provides a good balance, since the hourglass 
+
+instabilities of the pure mixed formulation are avoided while keeping the improved 
+
+properties of the formulation for strain localization modeling. 
+
+REMARK 2-3 The improved properties of the stabilized mixed formulation were shown 
+
+in [1, 3] and are related to the improved flexibility of the finite elements kinematics, 
+
+which largely enhance the propagation capabilities of the elements (strongly alleviating 
+
+mesh bias defects). On the other hand, the kinematics still exhibits a limited capability 
+
+for describing the mechanical behavior of a crack inside a finite element without spurious 
+
+stress transfer to the neighboring elements (stress locking phenomena). For this reason 
+
+some strain injection modes will be applied. 
+
+3 Strain-injection techniques  
+
+Strain injection refers to a general numerical technique that consists of inserting, in selected parts of 
+
+the domain and during different stages of the simulation, specific strain fields, that have the goal of 
+
+enhancing the performance of the finite elements. The key point of this technique is to split the 
+
+domain into two disjoint subdomains: the injection domain, injB , where some enhanced strain modes 
+
+are injected, and the remaining part of the body where the underlying finite element formulation is 
+
+used (see Figure 1).  
+
+
+
+9 
+
+ 
+Figure 1 Discretized domain. 
+
+3.1 Strain-injection techniques and mixed formulations for failure analysis 
+
+For modeling tensile crack propagation in concrete gravity dams we propose to use the mixed 
+
+stabilized finite element formulation
+4
+ (presented in section 2.3), as the underlying formulation, due to 
+
+its improved performance for modeling strain localization processes. Therefore, considering a finite 
+
+element discretization and the domain split of Figure 1, the variational equation of the mechanical 
+
+problem (equivalent to the virtual work principle) can be written as: 
+
+( )
+( )
+
+( ) ( ) *
+
+\
+( )
+
+: : ( ) ( , ) ,
+
+Stabilized mixed term
+Strain injection term
+
+e
+inj e
+
+inj
+
+e es h s h ext h
+inj
+
+t
+
+d d W b t
+B B B
+
+B B
+B B  . 
+
+(13) 
+
+Where the work produced by the internal forces is computed by the sum of two terms. The first one, 
+
+the mixed term, corresponds to that part of the domain where the mixed stabilized formulation of 
+
+equation (12) is used. The second term, the strain injection term, corresponds to that part of the 
+
+domain where a specific strain field, 
+( )e
+inj , is injected in the constitutive equation  of those 
+
+elements, 
+( )eB , belonging to the injection domain, ( )inj tB . Here, new equations defining the enhanced 
+
+strain modes, 
+( )e
+inj , should be added to the system (see section 3.2.1 and 3.2.2). 
+
+3.2 Strain-injection modes  
+
+In the context of material failure modeling, the injected strain modes have the goal of enhancing the 
+
+performance of the finite elements in capturing strain localization such that the mechanical behavior 
+
+of a crack can be captured inside the finite elements without spurious stress locking effects. In [1] two 
+
+strain fields were proposed to be injected in quadrilateral elements: the constant strain mode and the 
+
+discontinuous displacement mode. 
+
+3.2.1 Constant Strain Mode (CSM) injection 
+
+The constant strain mode injection consists of assuming constant strains within the finite element. 
+
+This can be formalized by using the displacement-constant strain mixed formulation ( / inj1 0u ) of 
+
+section 2.2, but now exclusively restricted to the injection domain, that is, the compatibility equation 
+
+is weakly imposed only for those elements belonging to the injection domain:  
+
+                                                      
+
+4
+ Here we propose a modification in the methodology relatively to the previous works of the authors [1, 3] (in 
+
+which the irreducible displacement formulation was used as underlying formulation). In section 3.4 we explain 
+
+the motivation for this option. 
+
+\
+
+injB
+
+B injB
+
+
+
+10 
+
+( )( ) ( )
+( )
+
+: ( ( )) , , ( )
+ee s h e e
+
+injinje
+d tx 0u
+
+B
+B B B . (14) 
+
+In equation (14) the injected strain can be solved by repeating the process in equations (7)-(9): 
+
+( )
+( ) ( ) ( ), ( )
+
+e
+e e s h e
+
+injinj CSM
+tu B B . (15) 
+
+REMARK 3-1 The injection kinematics proposed in equation (15) is equivalent to the 
+
+kinematics of the unstable mixed formulation in equation (8). The key difference is that 
+
+(15) is just used in those elements belonging to the injection domain. We would like to 
+
+remark that, using this injection concept, no stabilization is needed for the injected elements, 
+
+since the use of the mixed stabilized formulation, of equation (12), in the larger part of 
+
+the domain, prevents hourglass displacement modes to propagate at the structural level 
+
+(rather than at the element level by stabilization). 
+
+REMARK 3-2 The CSM injection proposed in (15) still cannot resolve the discontinuity 
+
+inside the finite element without stress locking (for general situations), but it provides a 
+
+slight increase of flexibility in those finite elements that are good “candidates” to develop 
+
+discontinuities, thus establishing a transitory stage to the Discontinuous-Displacement 
+
+Mode (DDM) injection that will be presented at section 3.2.2. 
+
+3.2.2 Discontinuous-Displacement Mode (DDM) injection 
+
+The discontinuous-displacement mode injection consists of enriching the element kinematics with the 
+
+strong discontinuity kinematics (summarized at Box 2) such that the mechanical behavior of the crack 
+
+can be perfectly captured inside the finite element without spurious stress transfer to the neighboring 
+
+elements (stress locking phenomena). 
+
+Strong discontinuity kinematics: 
+
+ˆ
+
+ˆ ( )
+
+S SS
+
+regular
+
+nu u uS , 
+(16) 
+
+ 
+- Discontinuity surface, 
+
+n  - Unit vector orthogonal to (pointing to B ), 
+û  - Smooth part of the displacement field, 
+u - Strong discontinuity jump ( ( ) ( )x xu u uB B ) , 
+
+S - Dirac distribution shifted to , 
+
+( )x - Continuous indicator function fulfilling:
+
+ 
+
+\
+( )
+
+\
+
+x
+x
+
+x
+
+0
+
+1
+
+B B
+
+B B
+.
+
+ 
+
+Box 2 Summary of the strong discontinuity kinematics (see [58]).
+
+ 
+
+n
+
+
+
++
+
+-
+
+b
+
+
+
+B
+B
+
+B
+n
+
+
+
+-
+
+
+\
+
++\
+
+B B
+B B )
+
+)(
+
+(
+
+u
+
+
+
+u
+
+u
+
+
+
+
+
+n
+S
+
+
+
+
+
+
+11 
+
+Inspired in the strong discontinuity kinematics in equation (16), the following element-wise constant 
+
+discontinuous-displacement mode is proposed as the summation of a regular constant strain 
+( )e
+
+ and a 
+
+singular part 
+( ),( ) ( )( )
+ek e e SnuS
+
+5
+: 
+
+( )( ) ( ) ( ) ,( ) ( ) ( )( ) , ( )
+ee e e k e e S e
+
+injinj DDM tnu B BS . (17) 
+
+Equation (17) brings two new independent unknowns, 
+( )e
+
+ and 
+( )eu , to the mechanical problem. 
+
+Following the same process than in section 3.2.1, the two-field ( /u ) mixed formulation of section 3 
+
+can be extended to a three-field ( ˆ / /u u ) formulation which requires therefore, two additional 
+
+equations. One comes from imposing weakly the equality between the regular part of the strong 
+
+discontinuity kinematics, ( )ˆ e , in equation (16) and the regular constant strain, 
+( )e
+
+, in (17): 
+
+( )
+
+( )
+
+( )( )( ) ( ) ( )ˆ: [ ( ( ) ] , ,
+
+ˆ
+
+e
+
+e
+
+eee S h h S e e
+injd 0u u
+
+B
+B B B . 
+
+(18) 
+
+The constant strain 
+( )e
+
+ can be condensed out at the element level as it was done for the CSM 
+
+injection (repeating the process in equations (7)-(9)): 
+
+( ) ( )
+( )( ) ( )ˆ ( ) , ( )
+
+e e
+ee S h h S e
+
+inj tu u B B . (19) 
+
+And by substituting in equation (17), the injected strain field reads
+6
+: 
+
+( ) ( )
+( ) ( )( ) ( ) ,( ) ( ) ( )ˆ ( ) ( ) , ( )
+
+e e
+e ee e k eS h h S e S e
+
+injinj DDM tnu u u B BS . (20) 
+
+3.3 Injection domains 
+
+After defining the strain modes to be injected, the subsequent questions to be posed are where and 
+
+when these strain modes should be injected in order to effectively improve the performance of the 
+
+finite elements for capturing strain localization. The answer to these questions is given by selecting 
+
+proper injection domains. In the context of material failure modeling it is intuitively reasonable that 
+
+the proposed strain modes should be injected in that part of the body where the fracture is being 
+
+processed. By this reason the definition of the injection domains ( )inj tB  is grounded on consistent 
+
+mechanical criteria, such as the discontinuous bifurcation analysis that qualifies a stress/strain state as 
+
+compatible with the onset of a discontinuous displacement field. Two conditions are required to be 
+
+fulfilled at the finite element barycenter 
+( )e
+C
+
+x  to be considered part of the injection domain, ( )inj tB :  
+
+                                                      
+
+5
+ 
+
+,( )k e
+S  stands for the k- regularized Dirac distribution inside the element (e) (see [1]). 
+
+6
+ After condensing the field 
+
+( )e
+ at the element level, the finite element formulation simplifies in a two field 
+
+formulation ( ˆ /u u ). To solve the displacement jump, u  , traction continuity is imposed at the 
+discontinuity surface (
+
+,( ) ( ) ( )[ ]
+e e en 0S S ), as it is usually done in the Continuum Strong Discontinuity 
+
+Approach (CSDA) (see [58]). 
+
+
+
+12 
+
+( ) ( )( )( ) : ; ( ) ; ( , )
+e ee
+
+inj B C C
+e
+
+t t t tx x
+
+1 2
+
+0B B . 
+(21) 
+
+Conditions in equation (21) can be described as: 
+
+1- The discontinuous bifurcation condition has been fulfilled in a previous time ( ( )( )eB Ct t x ) 
+
+where t stands for the actual time and Bt  is the bifurcation time. 
+
+2- The element is in in-loading regime at the current time ( ( )( , )eC tx 0 )
+7
+ since unloading 
+
+elements cannot localize. 
+
+The injection domain, injB , is that part of the domain where several strain mode injections can be 
+
+performed (it has common conditions for all possible injections). In preceding sections two strain 
+
+modes were proposed: the CSM and the DDM. Therefore two sub-sets of injB  ( locB  and disB ) where 
+
+these strain modes are respectively injected must be defined, such that: ( ) ( ) ( )inj loc dist t tB B B  and 
+
+( ) ( )loc dist tB B  
+
+3.3.1 The discontinuity injection domain 
+
+The discontinuity injection domain ( ) ( )dis injt tB B , in which the discontinuous displacement mode 
+
+(DDM) is injected, is the set of elements that have bifurcated and, in addition, are effectively 
+
+developing a strain localization process
+8
+. The defining conditions, for a finite element to be part of the 
+
+discontinuity domain, are three: 
+
+( ) ( )( ) ( )( ) : ( ) ; ( , ) ( ) ;
+e ee e
+
+dis inj dis tC C
+e
+
+t t q t qx x
+
+1 32
+
+B B B B . 
+(22) 
+
+1- The element belongs to the injection domain, thus fulfilling conditions in (21). 
+ 
+
+2- The element has achieved a “sufficient degree of softening”
+9
+. This condition is implemented by 
+
+defining a threshold in terms of the stress-like internal variable, 
+( )
+
+( )
+e
+
+dis C
+q x . If the actual value of 
+
+the stress-like internal variable, 
+( )
+
+( , )
+e
+
+C
+q tx , evaluated at the barycenter of the finite element, is 
+
+lower than the chosen threshold, the condition is considered fulfilled (see Figure 2).  
+
+                                                      
+
+7
+ 
+
+( )
+( , )
+
+e
+C
+
+tx  stands for the strain-like internal variable, which is always positive for loading processes. Therefore 
+
+loading is associated to increase of this variable  0 . 
+8
+ Notice that not all the bifurcated elements develop cracks; some of the elements that initially bifurcated unload 
+
+elastically in subsequent time steps. 
+
+9
+ This condition has the aim to guaranty that the element not only has bifurcated but is effectively developing a 
+
+consistent strain localization process.  
+
+ 
+
+
+
+13 
+
+ 
+
+Figure 2 Thresholds in the evolution of the stress/strain-like internal variables ( /q ), where q0 is the 
+
+parameter characterizing the elastic strength and bifq  is the value taken by the variable at the bifurcation 
+
+time. 
+
+Moreover, the threshold disq , can be consistently defined in terms of the value taken by the q-
+
+variable at the bifurcation time 
+( )
+
+( )
+e
+
+bif Cq x : 
+
+( ) ( )
+( ) ( ).
+
+e e
+dis bifC Cq qx x  (23) 
+
+where  is a parameter defined by the user from the recommended interval: [ . , . ]0 9 1 0  (see 
+
+REMARK 4-3). 
+ 
+
+3- The element is crossed by the discontinuity path t . In order to inject the DDM effectively, the 
+
+discontinuity path should be identified little in advance. In the context of the strain injection 
+
+techniques this is obtained by the Crack-Path Field technique described in Section 4. 
+
+3.3.2 The localization domain 
+
+This domain, where the constant strain mode is injected, includes all the in-loading bifurcated 
+
+elements (belonging therefore to the injection domain, equation (21)) which do not verify, yet, the 
+
+conditions for belonging to the discontinuity domain (equation (22)), i.e.: 
+
+( ) ( ) \ ( )loc inj dist t tB B B . (24) 
+
+Typically, this set of elements evolves very quickly during the loading process. In fact, part of the 
+
+elements that initially bifurcate, tend to unload elastically in subsequent stages leaving, therefore, the 
+
+injection domain, while others, crossed by the discontinuity, remain developing strain localization 
+
+until verifying conditions in (22). At that moment those elements become part of the discontinuity 
+
+injection domain, disB  (see Figure 3 and Figure 4 where two typical strain injection-loading processes 
+
+are depicted). 
+
+3.4 Summary and motivation 
+
+In previous works of the authors, the strain-injection techniques were used in combination with a 
+
+standard displacement-based finite element formulation whereas in the present work, we propose a 
+
+modification consisting of using, as underlying formulation, the mixed stabilized mixed formulation. 
+
+The reasons for this option are mainly related to the brittleness of the fracture process in large 
+
+structures, as is the case of concrete dams, since, due to smaller size of the fracture process zone in 
+
+front of the overall structure size, the fracture type approaches a brittle fracture process [11-15].  
+
+0
+
+q
+bif
+
+
+
+q
+
+q
+
+q
+dis
+
+
+
+14 
+
+In the previous works the strain injection techniques were applied to a set of quasi-brittle fracture 
+
+academic benchmarks and, for that case, yielding or damage occur in a diffuse manner in the 
+
+neighborhood of the crack tip. In the context of the strain injection techniques, this was translated into 
+
+a set of elements evolving in the front of the crack tip, being injected by a constant strain mode, which 
+
+was then regarded as an “enhancement bulb”, (see Figure 3) improving the flexibility and propagation 
+
+capabilities of the finite elements. 
+
+ 
+
+Figure 3 Evolution of the injection domains for three typical stages of loading in quasi-brittle fracture. 
+
+Instead, when modeling fracture propagation in concrete dams, due to the brittle behavior, the fracture 
+
+process zone is much smaller
+10
+
+, and the enhancement bulb reduces, almost, to the elements crossed by 
+
+the discontinuity (see Figure 3 and Figure 4 for an illustration).  
+
+ 
+
+Figure 4 Evolution of the injection domains for three typical stages of loading in brittle fracture. 
+
+The principal inconvenient of this issue is that the enhancement bulb is too small (very few elements 
+
+are injected with the more flexible constant kinematics) to avoid mesh alignment dependence. The 
+
+choice for using the mixed stabilized formulation allow us to overcome this issue without drawbacks 
+
+and with the advantage of constructing a more general methodology that can be used for modeling 
+
+crack propagation for both large and small size structures. 
+
+With the definition of the strain modes and the respective injection domains in hand, equation (13) 
+
+can be specified as follows: 
+
+                                                      
+
+10
+ Hence a very fine mesh would be required in the fracture process zone. 
+
+loc
+
+inj\ inj\ inj
+\loc
+
+dis dis
+inj
+
+inj
+
+B B
+
+B B
+B
+
+B B B B
+
+BB
+
+B
+Enhancement bulb
+
+loc
+
+inj\ inj\ inj
+\
+
+dis dis
+inj
+
+inj
+
+B B
+
+B B
+B
+
+B B B B
+
+BB
+
+Enhancement bulb
+
+locB
+
+
+
+15 
+
+( )
+( ) ( )
+
+( ) ( )
+( )
+
+\ ( )
+
+: ( : ( )
+
+CSM injection in Mixed stabilized formulation in \  
+
+e
+e e
+
+inj loc
+
+e es h s h
+CSMe
+
+t
+
+locinj
+
+s
+
+d dx)
+B B
+
+B B B B B
+B B
+
+BB B
+
+
+
+
+( )
+
+( )
+
+( ) *
+
+( )
+
+: ( ) ( , ) , .
+
+DDM injection in 
+
+e
+e
+
+dis
+
+eh ext h
+DDM
+
+t
+
+dis
+
+d W b t
+B
+
+B B
+B
+
+B
+
+ (25) 
+
+where the strain modes, 
+( )e
+CSM
+
+and 
+( )e
+DDM , are defined by expression (15) and (20), respectively, and 
+
+the stabilized stresses, 
+( )e
+
+, by expression (12). 
+
+REMARK 3-3 The mixed stabilized formulation in the first term of equation (25) brings 
+
+extra flexibility to the proposed methodology, enhancing the propagation capabilities of 
+
+the finite elements. Then, the injections proposed in section 3.2 allow resolving the 
+
+discontinuity inside the finite element without spurious stress transfer. The final result is 
+
+a mesh independent methodology ready for modeling the failure of real-life large 
+
+concrete structures like concrete dams.  
+
+REMARK 3-4 The formulation proposed here is very general in the sense that it can be 
+
+used for modeling strain localization for both large and small size structures. Moreover it 
+
+can deal also with the locking effects arising from constitutive models that do not exhibit 
+
+plastic change of volume, as is the case of J2 plasticity model (see [1]). 
+
+REMARK 3-5 The strain injection procedures proposed in this work, crucially rely on 
+
+the incremental character of the injected strains, this allowing the smooth evolution, 
+
+along time, of the corresponding strains and stresses, consistently with the evolutionary 
+
+character of the injection domains. That is the reason for the mechanical problem of Box 
+
+1 to be stated in rate form.  
+
+4 Crack path field technique 
+
+Finite element formulations, either displacement-based or mixed ones, considering non-linear 
+
+constitutive models equipped with strain softening (local, nonlocal, etc.), are widely used for studying 
+
+fracture, which is represented by strain concentration in narrow bands. The crack path-field technique, 
+
+proposed in [1-3], has the goal of determining the position of a strong discontinuity, , represented 
+
+by a diffuse strain localization field obtained from one of these methods.  
+
+4.1 One-dimension-problem: Motivation 
+
+The motivation for the numerical technique is very intuitive and can be illustrated, for the one-
+
+dimensional continuum case, as shown in Figure 5. The basic idea is to understand the diffuse 
+
+localized field  as a regularization of a strong discontinuity whose position, , can be assumed at 
+
+the maximum value of the continuum function . In practice, the maximum of the continuum function 
+
+, can be determined by the zero value of its derivative. 
+
+
+
+16 
+
+ 
+
+Figure 5 Hypothetical distribution of a localizing strain-like internal variable and its derivative in a 
+
+continuum one dimensional problem. 
+
+Considering now the discrete case (as obtained from a linear finite element interpolation) shown in 
+
+Figure 6, where the variable  is available at the sampling points, the strategy to determine the 
+
+position of 
+ 
+is the following: 
+
+1- Compute 
+h
+
+ as a smooth continuous approximation of the localized variable h   
+
+2- Compute the directional derivative 
+h
+
+x
+ 
+
+3- Compute 
+h
+
+ as a smooth continuous approximation of the derivative 
+h
+
+x
+ 
+
+4- Determine the crack-path position, , as the zero level set of 
+h
+
+  
+
+  
+
+Figure 6 Discretized one dimensional problem: a) Hypothetical distribution of a localizing strain-like 
+
+internal variable; b) Hypothetical distribution of the derivative of a localizing strain-like internal variable. 
+
+REMARK 4-1 In the previous procedure, function 
+h
+
+ is obtained by a double 
+
+smoothing procedure of the localized variable h  (Figure 7). Then the crack-path 
+
+position  is determined as the zero level set of 
+h
+
+.  
+
+ 
+
+Figure 7 Double smoothing process 
+
+x
+
+
+
+
+ x
+
+
+
+B
+
+
+x x
+
+
+
+
+
+
+ x
+
+
+h
+
+h
+
+h
+
+h
+
+  
+
+
+h
+
+h
+
+
+x x
+
+
+
+
+
+
+ x
+
+
+h
+
+h
+
+h
+
+h
+
+  
+
+
+h
+
+h
+
+
+
+
+
+17 
+
+Notice that in some points outside the localization zone the function 
+h
+
+ takes also null 
+
+values (see Figure 6 b)) not corresponding to maxima of h , but instead, corresponding 
+
+to the trivial case: 
+
+h
+h h h
+
+x
+0 0 0 0  (26) 
+
+In practice, these not interesting zones of h 0  (not corresponding to ) do not 
+
+introduce any additional trouble since they are located in elements outside the non-linear 
+
+zone where no strains localize and so are easily identified by the numerical procedure as 
+
+non-interesting zeros. 
+
+4.2 Crack path problem 
+
+The ideas presented in the previous can be formalized in the crack-path-field problem summarized in 
+
+Box 3. 
+
+1- Compute 
+h
+
+ as a smooth continuous approximation of the localizing variable h : 
+
+( ( , ) ,
+h
+
+h h h h
+t t dx 0
+
+B
+B .  
+
+2- Compute the derivative in the direction orthogonal to the discontinuity, n : 
+
+h
+t h
+
+t
+n
+
+n .  
+
+3- Compute 
+h
+
+ as a smooth continuous approximation of the directional derivative: 
+
+( ) ,
+h
+
+h h h h
+t t dn 0
+
+B
+B .  
+
+4- Determine the crack-path position, t , as the zero level set of 
+h
+t  in an elemental basis: 
+
+: ; ( ) zero level set of ( )h h h ht t tx x x0B .  
+
+ 
+
+Box 3 Summary of the Crack-path-field problem [1-3].
+
+ 
+
+REMARK 4-2 In [1] a more formal and rigorous presentation of the technique, and its 
+
+implementation details, can be consulted by the interested readers. More information can 
+
+also be found in [2, 3]. 
+
+REMARK 4-3 In order to perform the discontinuous mode injection two typical 
+
+questions arise: a) Which elements have to be injected? b) For the injected elements, how does the 
+
+discontinuity cross the finite element? In the context of the strong discontinuity approach, this 
+
+information is generally obtained by resorting to global tracking algorithms [59]. Here, 
+
+the strain-injection technique is used in combination with the described crack-path field 
+
+4
+
+
+2
++
+
+1
+2
+
+
+1
+-
+
+
+4
+-
+
+
+3
+-
+
+3
+
+(e)
+
+(=0)
+4
+
+
+2
++
+
+1
+2
+
+
+1
+-
+
+
+4
+-
+
+
+3
++
+
+(e)
+(=0)
+
+(e)
+-
+
++(e)
++(e)-(e)
+
+
+
+B B
+B
+
+B
+
+
+
+18 
+
+technique. A crucial issue of the method is that the crack-path-field has to be sufficiently 
+
+well captured at the time of the DDM injection. In order to achieve this goal a delay in 
+
+the DDM injection has to be imposed. This delay is controlled by the parameter  in 
+
+equation (23). From the author’s experience,  provides a good balance between 
+
+the (little) error produced by delaying the injection and the need of having reliable 
+
+information from the crack-path field technique prior to that injection.  
+
+5 Representative numerical simulations 
+
+In this section two representative numerical simulations of gravity concrete dams were studied. The 
+
+first example consists of a concrete dam scale model (of a 96-m-high gravity dam) where 
+
+experimental measurements obtained in a laboratory are available for comparison [4]. The second 
+
+example consists of a full-scale concrete gravity dam (Koyna dam), which has been used as a case 
+
+study by numerous researchers [14, 17, 26, 27, 45, 51].  
+
+For the material behavior modeling, a plasticity-based Rankine constitutive model equipped with 
+
+strain softening (properly regularized such that dissipation matches the material fracture energy) is 
+
+used. It is not the first time that a Rankine model, implemented within the framework of plasticity 
+
+theory, is used for material failure modeling of concrete structures. In [60] a Rankine plasticity model 
+
+was used for modeling mode-I crack propagation in some academic benchmarks. 
+
+In this work, for the integration of the constitutive equation, an implicit-explicit (IMPL-EX) scheme 
+
+[61, 62] is used, which translates in a high increase of robustness of the numerical procedure when 
+
+compared to fully implicit integration schemes, in which lack of robustness issues are well known in 
+
+the context of computational failure modeling [63]. 
+
+5.1 A gravity dam model 
+
+In [4] Carpinteri et al. experimental tests of scale-down models of a gravity dam have been reported. 
+
+The models have a horizontal notch on the upstream side and the experimental test was driven by 
+
+controlling the crack mouth opening at that notch. Figure 8 illustrates the experiment setup, including 
+
+the model dimensions, the position of the notch and the equivalent hydraulic loads. The finite element 
+
+mesh and the mechanical properties used in the numerical model are also shown in the figure. 
+
+
+
+19 
+
+ 
+
+Figure 8 Dam model, finite element mesh and mechanical properties used in the numerical model, being 
+
+u  the ultimate tensile strength, E  the Young’s modulus, v  the Poisson’s ratio and fG  the fracture energy. 
+
+In the numerical simulations, the loading process was performed by applying, in a first stage, the self-
+
+weight loads and, in a second stage, the hydraulic loads. The second stage is carried out through a step 
+
+by step Newton-Raphson scheme in which the crack mouth displacement at the notch is controlled by 
+
+using arc-length techniques. All the computations were performed under plane strain conditions. 
+
+In Figure 9 quantitative responses for three different options are depicted in terms of the force–
+
+CMOD (Crack-Mouth-Opening Displacement) curves. The “strain injection” curve was obtained by 
+
+using the strain injection techniques described in this work, while the “experimental” and “cohesive 
+
+model curves” were obtained by Carpinteri et al, being the former experimentally measured and the 
+
+later numerically computed by using a cohesive crack model supported in an automatic remeshing 
+
+processes, at each crack growth step, so that the crack lies in the finite element mesh sides. 
+
+Figure 9 shows an excellent agreement between both numerical solutions. The obvious advantage of 
+
+the strain injection technique is that no remeshing process is needed. Relatively to the comparison 
+
+with the experimental solution the peak load is well captured although the post peak response curve is 
+
+much stiffer in the experimental test. Reasons for this may relay on some issues of the experimental 
+
+set-up that are missed in the numerical model. 
+
+y E  Gf
+[MPa][GPa] [N/m]
+
+3.6 35.7 0,1 184
+
+
+
+0.99
+
+43.75%
+
+31.25%
+
+18.75%
+
+6.25%
+
+200 cm
+
+7.2 24.8 168 cm
+
+28.56
+60
+
+87.98
+
+146.64
+
+199.92
+
+168 cm
+
+u E  Gf
+[MPa][GPa] [N/m]
+
+3.6 35.7 0,1 184
+
+
+
+0.99
+
+
+
+20 
+
+ 
+Figure 9 Force displacement curves: hydraulic load versus Crack Mouth Opening Displacement (CMOD). 
+
+In terms of crack propagation patterns, Figure 10 shows a good agreement between the experimental 
+
+and the numerical results obtained with the strain injection techniques. Finally, Figure 11 shows the 
+
+deformed configuration and the crack path at the final stage of the loading process. 
+
+ 
+Figure 10 Crack trajectories. The numerical solution crack pattern is plotted in terms of the equivalent 
+
+plastic strain. The experimental trajectories have been added to the figure through the black lines corresponding 
+
+to both sides of the experimental 3d model. 
+
+a) b) 
+
+  
+
+Figure 11 a) Deformed configuration; b) Crack path ( )h h 0 11.  
+
+Results obtained by the strain injection techniques at the final step of the computations. 
+
+                                                      
+
+11
+ The grey regions in Figure 11 b), at some distance of the crack path, correspond to regions where 
+
+h
+ 
+
+approach zero outside the zones where the strain are localizing, do not having any physical meaning neither any 
+
+influence in the computations (see REMARK 4-1). 
+
+Experimental 
+
+Numerical 
+
+ 
+
+
+
+21 
+
+5.1.1 Mesh dependency analysis 
+
+When modeling material failure, mesh dependence is a critical issue since different meshes can 
+
+deliver different results, in terms either of the crack trajectory or in terms of the dissipated 
+
+energy. Mesh dependence phenomena is well documented in the literature and displays essentially 
+
+two types of undesirable behavior that are summarized in Section 1: Mesh bias dependence and 
+
+stress locking effects. 
+
+In order to assess if the results obtained by using the injection techniques are mesh independent, 
+
+comparative analysis were carried out by using two different fine meshes: one structured and another 
+
+unstructured (Figure 12). Additionally, the obtained results are also compared with the ones coming 
+
+from standard displacement-based (irreducible) formulations, which are known to suffer from mesh 
+
+dependence. Finally the results obtained with the strain injection techniques by using an unstructured 
+
+coarse mesh are also presented. 
+
+a) b) c) 
+
+   
+
+Figure 12 Finite element meshes; a) structured fine mesh; b) unstructured fine mesh; c) unstructured coarse 
+
+mesh 
+
+Figure 13 compares results obtained with the two finite element formulations (strain injection 
+
+techniques and irreducible formulation) for both fine meshes in Figure 12. Since the Rankine 
+
+constitutive model is the same for both formulations, the differences in Figure 13 can be exclusively 
+
+attributed to the performance of the finite element formulation. 
+
+In fact, the results obtained with the irreducible formulation show a considerably stiffer behavior in 
+
+terms of the post-peak response that can be related to spurious extra energy dissipation due to stress 
+
+locking defects. This issue has also consequences in the peak load which is miss-predicted for the 
+
+irreducible formulation when using the unstructured mesh. Although, for this specific example, the 
+
+differences in terms of the peak load are not too large (less than 10 %), we would like to remark that 
+
+the results obtained with the irreducible formulation are not on the safety side.  
+
+Relatively to the results obtained by using the strain injection techniques and the coarse unstructured 
+
+mesh, it can be observed that the peak load is slightly miss-predicted but the post-peak behavior is 
+
+very well captured, this indicating that similar amount of energy is being dissipated for both (fine and 
+
+course) meshes, this clearly proving the mesh-size objectivity of the obtained results. 
+
+
+
+22 
+
+ 
+Figure 13 Finite element meshes; a) structured mesh; b) unstructured mesh 
+
+It is also remarkable that results obtained by strain injection technique, for both fine meshes, are 
+
+almost the same, which is a strong indicator of mesh independence. This can be noticed either by the 
+
+overlapping curves in Figure 13 or by the near coincident crack trajectories in Figure 14.  
+
+For the coarse unstructured mech. although the results in Figure 14 show some differences in terms of 
+
+the crack trajectories (which are corrected with mesh refinement), this doesn’t translate, as mentioned 
+
+before, into relevant differences in the quantitative structural response (see Figure 13). 
+
+a) b) 
+
+  
+c) d) 
+
+  
+Figure 14 Results obtained by using the strain injection techniques. Crack patterns plotted in terms of the 
+
+equivalent plastic strain; a) Unstructured fine mesh; b) Structured fine mesh; c) Unstructured coarse mesh; d) 
+
+overlap of results obtained with both fine meshes. 
+
+Relative to the results obtained by the irreducible formulation, Figure 15 shows different results in 
+
+terms of the crack patterns. This issue is related to the mesh bias influence, since the crack pattern 
+
+obtained for the structured mesh seems to be clearly influenced by horizontal mesh direction.  
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+23 
+
+a) b) 
+
+  
+
+c)  
+
+ 
+Figure 15 Results obtained by using the irreducible formulation. Crack patterns plotted in terms of the 
+
+equivalent plastic strain; a) Unstructured fine mesh; b) Structured fine mesh; c) overlap of results obtained with 
+
+both meshes. 
+
+5.2 Full size concrete gravity dam 
+
+The Koyna Dam in India, whose geometry is depicted in Figure 16, is an example of a full-scale 
+
+concrete gravity dam that can be used for testing new modeling techniques. The crack propagation 
+
+throughout the dam body, under quasi-static conditions, caused by an hypothetical overflow, was first 
+
+studied by Gioia [14] by using linear elastic fracture mechanics. The authors found that a crack 
+
+developing from point B in Figure 16, is the most critical in terms of the ultimate structural resistance 
+
+and, for this reason, an initial imperfection is assigned to that location. 
+
+a) b) 
+
+ 
+
+ 
+
+Figure 16 Koyna Dam. a) geometrical description; b) material properties, being u  the ultimate tensile 
+
+strength, E  the Young’s modulus, v  the Poisson’s ratio and fG  the fracture energy. 
+
+During the numerical simulations, the dam initially undergoes its self-weight and the full reservoir 
+
+hydrostatic pressure, and then, is subjected to a step by step constant pressure increase due to 
+
+overflow. The loading corresponding to the overflow is indirectly applied by using arc-length 
+
+techniques in which the crack mouth opening displacement at point B is controlled. All the 
+
+computations were performed under plane strain conditions. 
+
+103 m
+
+14,8 m
+
+70 m
+
+19,3 m
+
+36,5 m
+
+BOverflow
+Pressure
+
+Full Reservoir
+
+Pressure
+
+Density = 2,45 kg/m
+3
+
+A
+u E  Gf
+
+[MPa] [GPa] [N/m]
+
+1,0 25,0 0,2 200
+
+
+
+0.95
+
+
+
+24 
+
+For assessing the mesh influence in the obtained results two distinct finite element meshes, structured 
+
+and unstructured, are used (Figure 17).  
+
+a) b) 
+
+  
+Figure 17 Finite element meshes; a) structured mesh; b) unstructured mesh. 
+
+The analysis of the results are performed in two stages: 
+
+1- First, the results obtained with the injection techniques and both finite element meshes (of 
+
+Figure 17) are compared. 
+
+2- Second, the results obtained with the injection techniques are compared with results obtained 
+
+by using an irreducible finite element formulation. Since in both cases, the constitutive model 
+
+is the same, the eventual enhanced behavior reflects, exclusively, improvements related to the 
+
+finite element formulation. Comparison with other authors’ results is also performed at this 
+
+stage. 
+
+5.2.1 Results obtained with the strain injection techniques 
+
+Figure 18 illustrates the dam structural response, due to the overflow, in terms of the displacement 
+
+measured at the top (point A of Figure 16). 
+
+  
+Figure 18. Comparison of results obtained using the strain injection techniques for two different meshes 
+
+(Figure 17). Structural resistance to reservoir overflow. 
+
+A C 
+
+D 
+
+
+
+25 
+
+The curves of Figure 18 display minimal differences which is a strong indication of very similar 
+
+structural behavior. For both meshes, point A is a limit point, from where the crack progresses without 
+
+increasing the load (“snap-through”) until point C. After this point, of unstable physical crack 
+
+propagation, the crack still grows but requiring load increase. Figure 19 and Figure 20 show the crack 
+
+propagation evolution at three different stages of the computations (see the points in Figure 18), for 
+
+the unstructured mesh. 
+
+a) Point A b) Point C c) Point D 
+
+   
+
+Figure 19 Results obtained with the strain injection techniques for the unstructured mesh. Crack patterns, 
+
+plotted in terms of the equivalent plastic strain, for the three points represented in Figure 18.  
+
+a) Point A b) Point C c) Point D 
+
+  
+
+ 
+
+Figure 20 Results obtained with the strain injection techniques for the unstructured mesh. Crack propagation 
+
+and injection domains; a) and b) Evolution of the injection domain at point A and C of Figure 18;  
+
+c) crack path, ( )h h 0 12, at Point D. 
+
+Figure 21 compares the results obtained using both meshes in terms of the crack propagation. This 
+
+comparison clearly displays that both solutions are very similar in terms of the crack pattern (see 
+
+Figure 21 c)) which indicates that the results are independent of the mesh alignment. Figure 22 shows 
+
+the deformed configurations for both finite element meshes. 
+
+a) Structured mesh b) Unstructured mesh c) Overlap of the results 
+
+   
+
+Figure 21 Crack patterns plotted in terms of the equivalent plastic strain; a) Structured mesh; b) Unstructured 
+
+                                                      
+
+12
+ The grey regions in Figure 20 c), at some distance of the crack path, correspond to regions where 
+
+h
+ 
+
+approach zero outside the zones where the strain are localizing, do not having any physical meaning neither any 
+
+influence in the computations (see REMARK 4-1). 
+
+ 
+
+
+
+26 
+
+mesh; c) Overlap of both solutions in the some plot.  
+
+Results obtained using the strain injection techniques. 
+
+a) Structured mesh b) Unstructured mesh 
+
+ 
+ 
+
+Figure 22 Deformed configurations. 
+
+Results obtained using the strain injection techniques. 
+
+5.2.2 Comparisons with the classic displacement-based finite element formulation  
+
+In Figure 23, results obtained with the proposed techniques are compared with those obtained with the 
+
+displacement-based irreducible formulation and by Gioia [14] using Linear Elastic Fracture 
+
+Mechanics (LEFM). 
+
+a) Structured mesh b) Unstructured mesh 
+
+  
+
+Figure 23 Structural resistance to reservoir overflow. Comparison of results obtained using the strain 
+
+injection techniques and the irreducible formulation for both meshes of Figure 17: a) Structured mesh; b) 
+
+Unstructured mesh. 
+
+There it can be checked that, due to stress locking effects, the classical formulations overestimate the 
+
+ultimate structural load carrying capacity. This mesh dependent behavior is further noticeable for the 
+
+unstructured mesh, which is consistent with the fact that stress locking effects are, normally, more 
+
+
+
+27 
+
+severe for this kind of meshes. In Figure 23 it is also included the result obtained by Gioia (LEFM), 
+
+using a structured mesh under plane strain conditions
+13
+
+.  
+
+Spurious stress locking effects can also be identified by the plot of the equivalent plastic deformation 
+
+in Figure 24. This figure shows that, for the results obtained with the classical formulation, the non-
+
+linear effects spread spuriously, by several elements in the direction orthogonal to the crack. Instead, 
+
+for the results obtained with the strain injection techniques the plastic effects are highly concentrated 
+
+in a one-element-width localization band, this indicating that no spurious stresses are being 
+
+transferred by the open crack. 
+
+a) Structured mesh  b) Unstructured mesh 
+
+ 
+
+Irreducible 
+
+formulation 
+
+ 
+
+ 
+
+Strain 
+
+Injection 
+
+ 
+
+Figure 24 Crack patterns plotted in terms of the equivalent plastic strain. Comparison of results obtained 
+
+using the strain injection techniques and the irreducible formulation for both meshes of Figure 17. 
+
+These results clearly display the advantages of the strain injection techniques in front of the classical 
+
+irreducible formulations. In particular, they show that stress locking effects are effectively minimized. 
+
+6 Conclusions 
+
+In this work, the potential of the recently proposed strain injection techniques, so far with applications 
+
+limited to some academic benchmarks, has been explored for studying crack propagation in concrete 
+
+gravity dams. 
+
+The obtained results clearly show the improvements obtained by using the proposed methodology in 
+
+terms of mesh independence, either avoiding mesh bias or stress locking effects. This spurious 
+
+undesirable behavior can lead to unrealistic failure mechanisms or to the overestimation of the 
+
+ultimate structural load carrying capacity. In the Konya simulation, for instance, the displacement 
+
+                                                      
+
+13
+ Other authors have studied crack propagation in this dam (cf. [17, 27, 51]) in plane stress conditions. 
+
+Although the obtained results are not too different, a rigorous comparison cannot be performed due to the 
+
+different choice of the plane analysis assumptions, and for this reason, comparisons with those results have been 
+
+skipped in this work. 
+
+
+
+28 
+
+based classical formulation delivers results overestimating the structural resistance in about 20 %, 
+
+which is not on the safety side. 
+
+The new methodology has several advantages that the authors would like to remark: 
+
+ Mesh independence of the results. 
+
+ Low computational cost – the explored approach captures the crack inside the finite element, 
+
+which means that coarse meshes can be used when compared with the finer meshes required 
+
+by other methodologies (nonlocal [31, 32, 64], phase field [33, 47], etc.) that use several 
+
+elements across the band for modeling the crack. Moreover, all the additional degrees of 
+
+freedom (related to the enhanced strain modes) are condensed out at the element level. The 
+
+final result is a methodology that keeps the computational cost at the level of the standard 
+
+displacement-based finite element formulations. 
+
+ Nonintrusive numerical implementation in existing finite element codes – The strain-injection 
+
+technique in combination with the crack-path-field technique avoids the code invasive global 
+
+crack tracking algorithms, usually used in association with other intra-elemental approaches 
+
+(E-FEM [58] or X-FEM [65]), with no apparent cost in terms of robustness. This issue is a 
+
+strong advantage, since the implementation tasks, in a non-linear finite element code, affect, 
+
+essentially, the element level. 
+
+ Constitutive model generality – the method affects exclusively the finite element formulation, 
+
+this meaning that, in principle, any continuum constitutive model equipped with strain 
+
+softening can be used within the formulation. 
+
+Due to these important properties, that address the main issues of material failure modeling (mesh 
+
+independence, computational cost, robustness), the strain injection techniques render a methodology 
+
+particularly efficient for modeling tensile crack propagation in concrete dams. Moreover, the results 
+
+obtained in this paper show that the method is ready for being used in practice, allowing improved 
+
+estimation of the structural safety factor and helping in the security control of those gravity concrete 
+
+dams which might be particularly vulnerable to crack propagation.  
+
+The ongoing extension of the presented methodology to 3D cases will open the application field to 
+
+large arch dams. 
+
+ 
+
+ACKNOWLEDGMENTS 
+
+Ivo Dias gratefully acknowledges the financial support from Laboratório Nacional de Engenharia 
+
+Civil (LNEC), through a postdoctoral research grant (CoMatFail project). 
+
+The research leading to these results has received funding from the European Research Council under 
+
+the European Union's Seventh Framework Programme (FP/2007-2013) / ERC Grant Agreement n. 
+
+320815 (ERC Advanced Grant Project "Advanced tools for computational design of engineering 
+
+materials'' COMP-DES-MAT). 
+
+Oriol Lloberas-Valls gratefully acknowledges the funding received from the Spanish Ministry of 
+
+Economy and Competitiveness through the "Juan de la Cierva'' Postdoctoral Junior Grant: JCI-2012-
+
+13782 and the National Research Plan 2014: MAT2014-60919-R. 
+
+  
+
+
+
+29 
+
+REFERENCES 
+
+[1]. Oliver, J., Dias, I.F., and Huespe, A.E., Crack-path field and strain-injection techniques in 
+
+computational modeling of propagating material failure. Computer Methods in Applied Mechanics and 
+
+Engineering, 2014. 274(0): p. 289-348. 
+
+[2]. Dias, I.F., Crack Path Field and Strain Injection Techniques in Numerical Modeling of Propagating 
+
+Material Failure. 2012, Ph.D. Thesis. Universitat Politècnica de Catalunya: (BarcelonaTech/UPC), 
+
+Barcelona, Spain. 
+
+[3]. Dias, I.F., Oliver, J., and Huespe, A.E., Strain Injection Techniques in Numerical Modeling of 
+
+Propagating Material Failure, in Monograph CIMNE Nº-134. 2012, International Center for 
+
+Numerical Methods in Engineering: Barcelona. 
+
+http://www.cimne.com/compdesmat/cvdata/cntr1/dtos/img/mdia/Downloads/M134.pdf. 
+
+[4]. Carpintieri, A., Valente, S.V., Ferrara, G., and Imperato, A.L. Experimental and Numerical Fracture 
+
+Modelling of a Gravity Dam. in Fracture Mechanics of Concrete Structures. 1992: Elsevier Appl. Sci. 
+
+[5]. Anderson, C., Mohorovic, C., Mogck, L., Cohen, B., and Scott, G., Concrete Dams : Case Histories of 
+
+Failures and Nonfailures with Back Calculations. 1998: U.S. Department of Interior, Bureau of 
+
+Reclamation, Dam Safety Office. 
+
+[6]. Charles, J.A., Tedd, P., and Warren, A., Lessons from Historical Dam Incidents: Technical Summary. 
+
+2011: Environment Agency. 
+
+[7]. CSED, Safety of Existing Dams:Evaluation and Improvement. 1983: The National Academies Press. 
+
+[8]. ICOLD, Lessons from dam incidents. Complete ed ed. 1974, Paris: ICOLD. 
+
+[9]. Strom, R.W., Cunningham, G., and Safety, I.C.o.D., Training Aids for Dam Safety: Evaluation of 
+
+Concrete Dam Stability. 1990: U.S. Government Printing Office. 
+
+[10]. ICOLD, Monitoring of dams and their foundations. State of the art. Bulletin number 68. 1989, Paris: 
+
+ICOLD. 
+
+[11]. Saouma, V.E., Ayari, M.L., and Boggs, H. Fracture Mechanics of Concrete Gravity Dams. in 
+
+SEM/RILEM International Conference on Fracture of Concrete Rock. 1987. Houston, Texas,. 
+
+[12]. Chappell, J., Ingraffea, F., and R., C.A., A fracture mechanics investigation of the cracking of Fontana 
+
+Dam. Report 81-7. 1981, Ithaca, New York: Cornell University, Department of Structural Engineering, 
+
+School of Civil and Environmental Engineering. 
+
+[13]. Linsbauer, H.N. Fracture mechanics models for characterizing crack behaviour of gravity dams. in 
+
+Proceedings of the 15th ICOLD. 1985. Lausanne. 
+
+[14]. Gioia, G., Bazant, Z.P., and Pohl, B.P., Is no-tension dam design always safe. Dam Engineering, 1992. 
+
+3: p. 23-34. 
+
+[15]. Plizzari, G., LEFM Applications to Concrete Gravity Dams. Journal of Engineering Mechanics, 1997. 
+
+123(8): p. 808-815. 
+
+[16]. Brühwiler, E. and Wittmann, F.H., Failure of dam concrete subjected to seismic loading conditions. 
+
+Engineering Fracture Mechanics, 1990. 35(1–3): p. 565-571. 
+
+[17]. Bhattacharjee, S. and Léger, P., Application of NLFM Models to Predict Cracking in Concrete Gravity 
+
+Dams. Journal of Structural Engineering, 1994. 120(4): p. 1255-1271. 
+
+[18]. Hillerborg, A., Modeer, M., and Petersson, P.E., Analysis of crack formation and crack growth in 
+
+concrete by means of fracture mechanics and finite elements. Cement and concrete research, 1976. 
+
+6(6): p. 773-782. 
+
+[19]. Dugdale, D.S., Yielding of steel sheets containing slits. Journal of the Mechanics and Physics of 
+
+Solids, 1960. 8(2): p. 100-104. 
+
+[20]. Rots, J.G., Computational Modeling of Concrete Fracture. 1988, Delft University of Technology. 
+
+[21]. Rashid, Y., Analysis or prestressed concrete pressure vessels. Nuclear Engineering and Design 1968. 
+
+7: p. 773-782. 
+
+[22]. Oliver, J., Cervera, M., Oller, S., and Lubliner, J. Isotropic damage models and smeared crack analysis 
+
+of concrete. in Proc. SCI-C Computer Aided Analysis and Design of Concrete Structures. 1990. 
+
+http://www.cimne.com/compdesmat/cvdata/cntr1/dtos/img/mdia/Downloads/M134.pdf
+
+
+30 
+
+[23]. Pietruszczak, S. and Mróz, Z., Finite element analysis of deformation of strain-softening materials. 
+
+International Journal for Numerical Methods in Engineering, 1981. 17(3): p. 327-334. 
+
+[24]. Barpi, F. and Valente, S., Numerical Simulation of Prenotched Gravity Dam Models. Journal of 
+
+Engineering Mechanics, 2000. 126(6): p. 611-619. 
+
+[25]. Shi, Z., Suzuki, M., and Nakano, M., Numerical Analysis of Multiple Discrete Cracks in Concrete 
+
+Dams Using Extended Fictitious Crack Model. Journal of Structural Engineering, 2003. 129(3): p. 
+
+324-336. 
+
+[26]. Cai, Q., Robberts, J.M., and Van Rensburg, B.W.J., Finite element fracture modeling of concrete 
+
+gravity dams. Journal of the South African Institution of Civil Engineering, 2008. 50(1): p. 13-24. 
+
+[27]. Ghrib, F. and Tinawi, R., Nonlinear Behavior of Concrete Dams Using Damage Mechanics. Journal of 
+
+Engineering Mechanics, 1995. 121(4): p. 513-527. 
+
+[28]. Xu, Q., Chen, J.-y., Li, J., and Xu, G., Coupled elasto-plasticity damage constitutive models for 
+
+concrete. Journal of Zhejiang University SCIENCE A, 2013. 14(4): p. 256-267. 
+
+[29]. Cervera, M., Oliver, J., and Faria, R., Seismic Evaluation of Concrete Dams Via Continuum Damage 
+
+Models. Earthquake Engineering & Structural Dynamics, 1995. 24(9): p. 1225-1245. 
+
+[30]. de Araújo, J. and Awruch, A.M., Cracking safety evaluation on gravity concrete dams during the 
+
+construction phase. Computers & Structures, 1998. 66(1): p. 93-104. 
+
+[31]. Pijaudier Cabot, G. and Bazant, Z., Nonlocal damage theory. Journal Engineering Mechanics ASCE, 
+
+1987. 113: p. 1512-1533. 
+
+[32]. de Borst, R. and Mühlhaus, H.-B., Gradient-dependent plasticity: Formulation and algorithmic aspects. 
+
+International Journal for Numerical Methods in Engineering, 1992. 35(3): p. 521-539. 
+
+[33]. Miehe, C., Welschinger, F., and Hofacker, M., Thermodynamically consistent phase-field models of 
+
+fracture: Variational principles and multi-field FE implementations. International Journal for 
+
+Numerical Methods in Engineering, 2010. 83(10): p. 1273-1311. 
+
+[34]. Oliver, J., Huespe, A., and Sanchez, P., A comparative study on finite elements for capturing strong 
+
+discontinuities: E-FEM vs X-FEM. Computer Methods in Applied Mechanics and Engineering, 2006. 
+
+195(37-40): p. 4732-4752. 
+
+[35]. Mosler, J. and Meschke, G., Embedded crack vs. smeared crack models: a comparison of elementwise 
+
+discontinuous crack path approaches with emphasis on mesh bias. Computer Methods in Applied 
+
+Mechanics and Engineering, 2004. 193(30-32): p. 3351-3375. 
+
+[36]. Bažant, Z., Tabbara, M., Kazemi, M., and Pijaudier‐Cabot, G., Random Particle Model for Fracture of 
+Aggregate or Fiber Composites. Journal of Engineering Mechanics, 1990. 116(8): p. 1686-1705. 
+
+[37]. Potyondy, D.O. and Cundall, P.A., A bonded-particle model for rock. International Journal of Rock 
+
+Mechanics and Mining Sciences, 2004. 41(8): p. 1329-1364. 
+
+[38]. Meguro, K. and Hakuno, M., Fracture analyses of concrete structures by the modified distinct element 
+
+method. Structural Engineering/Earthquake Engineering, 1989. 6(2): p. 283-294. 
+
+[39]. Azevedo, N.M., Lemos, J.V., and de Almeida, J.R., Influence of aggregate deformation and contact 
+
+behaviour on discrete particle modelling of fracture of concrete. Engineering Fracture Mechanics, 
+
+2008. 75(6): p. 1569-1586. 
+
+[40]. Herrmann, H.J. and Roux, S., Modelization of fracture in disordered systems, in Statistical Models for 
+
+the Fracture of Disordered Media, S.R. H. J. Hemnann, Editor. 1990, North-Holland: Amsterdan. p. 
+
+159-188. 
+
+[41]. Schlangen, E. and Garboczi, E.J., Fracture simulations of concrete using lattice models: Computational 
+
+aspects. Engineering Fracture Mechanics, 1997. 57(2–3): p. 319-332. 
+
+[42]. Kozicki, J. and Tejchman, J., 2Dl Lattice Model for Fracture in Brittle Materials. Arch. Hydro-Engrg. 
+
+Environ. Mech, 2006. 53(2): p. 137-154. 
+
+[43]. Saether, E., Yamakov, V., Phillips, D.R., and Glaessgen, E.H., An Overview of the State of the Art in 
+
+Atomistic and Multiscale Simulation of Fracture NASA/TM-2009-215564, Editor. 2009. 
+
+[44]. Gumbsch, P., An Atomistic Study of Brittle Fracture: Towards Explicit Failure Criteria from Atomistic 
+
+Modelling. J.~Mater.\ Res., 1995. 10: p. 2897-2907. 
+
+
+
+31 
+
+[45]. Jirásek, M. and Zimmermann, T., Rotating Crack Model with Transition to Scalar Damage. Journal of 
+
+Engineering Mechanics, 1998. 124(3): p. 277-284. 
+
+[46]. Oliver, J., Dias, I.F., and Huespe, A., Strong discontinuities, mixed finite element formulations and 
+
+localized strain injection, in fracture modeling of quasi-brittle materials, in Computational Modelling 
+
+of Concrete Structures. 2010, CRC Press. p. 381-389. 
+
+[47]. Miehe, C., Hofacker, M., and Welschinger, F., A phase field model for rate-independent crack 
+
+propagation: Robust algorithmic implementation based on operator splits. Computer Methods in 
+
+Applied Mechanics and Engineering, 2010. 199(45–48): p. 2765-2778. 
+
+[48]. Cervera, M., Chiumenti, M., and Codina, R., Mesh objective modeling of cracks using continuous 
+
+linear strain and displacement interpolations. International Journal for Numerical Methods in 
+
+Engineering, 2011. 87(10): p. 962-987. 
+
+[49]. Linder, C. and Raina, A., A strong discontinuity approach on multiple levels to model solids at failure. 
+
+Computer Methods in Applied Mechanics and Engineering, 2013. 253: p. 558-583. 
+
+[50]. Chen, L., Rabczuk, T., Bordas, S.P.A., Liu, G.R., Zeng, K.Y., and Kerfriden, P., Extended finite 
+
+element method with edge-based strain smoothing (ESm-XFEM) for linear elastic crack growth. 
+
+Computer Methods in Applied Mechanics and Engineering, 2012. 209-212: p. 250-265. 
+
+[51]. Roth, S.-N., Léger, P., and Soulaïmani, A., A combined XFEM–damage mechanics approach for 
+
+concrete crack propagation. Computer Methods in Applied Mechanics and Engineering, 2015. 283: p. 
+
+923-955. 
+
+[52]. Simó, J. and Ju, J., Strain and stress based continuum damage models. I. Formulation. International 
+
+Journal of Solid and Structures, 1987. 23: p. 821-840. 
+
+[53]. Malkus, D.S. and Hughes, T.J.R., Mixed finite element methods - reduced and selective integration 
+
+techniques: a unification of concepts. Comp. Meth. Appl. Mech. Eng., 1978. 15: p. 63-81. 
+
+[54]. Kosloff, D. and Frazier, G.A., Treatment of hourglass patterns in low order finite element codes. 
+
+International Journal for Numerical and Analytical Methods in Geomechanics, 1978. 2(1): p. 57-72. 
+
+[55]. Belytschko, T. and Bachrach, W.E., Efficient implementation of quadrilaterals with high coarse-mesh 
+
+accuracy. Comput. Methods Appl. Mech. Eng., 1986. 54(3): p. 279-301. 
+
+[56]. Bochev, P. and Gunzburger, M., An Absolutely Stable Pressure-Poisson Stabilized Finite Element 
+
+Method for the Stokes Equations. SIAM J. Numer. Anal., 2004. 42(3): p. 1189-1207. 
+
+[57]. Dohrmann, C.R. and Bochev, P.B., A stabilized finite element method for the Stokes problem based on 
+
+polynomial pressure projections. International Journal for Numerical Methods in Fluids, 2004. 46(2): 
+
+p. 183-201. 
+
+[58]. Oliver, J. and Huespe, A.E., Continuum approach to material failure in strong discontinuity settings. 
+
+Computer Methods in Applied Mechanics and Engineering, 2004. 193(30-32): p. 3195-3220. 
+
+[59]. Oliver, J., Huespe, A.E., Samaniego, E., and Chaves, E.W.V. On Strategies for Tracking Strong 
+
+Discontinuities in Computational Failure Mechanics. in Fifth World Congress on Computational 
+
+Mechanics (WCCM V). 2002. Vienna University of Technology, Austria. 
+
+[60]. Feenstra, P. and de Borst, R., Constitutive model for reinforced concrete. Journal of Engineering 
+
+Mechanics – ASCE, 1995. 121(5): p. 587-595. 
+
+[61]. Oliver, J., Huespe, A., Blanco, S., and Linero, D., Stability and robustness issues in numerical 
+
+modeling of material failure with the strong discontinuity approach. Computer Methods in Applied 
+
+Mechanics and Engineering, 2006. 195(52): p. 7093-7114. 
+
+[62]. Oliver, J., Huespe, A., and Cante, J., An implicit/explicit integration scheme to increase computability 
+
+of non-linear material and contact/friction problems. Computer Methods in Applied Mechanics and 
+
+Engineering, 2008. 197(21-24): p. 1865-1889. 
+
+[63]. Crisfield, M.A., Non-Linear Finite Element Analysis of Solids and Structures: Advanced Topics, 1st 
+
+edition 1997, New York, NY, USA John Wiley & Sons, Inc. 508. 
+
+[64]. Iordache, M.-M. and Willam, K., Localized failure analysis in elastoplastic Cosserat continua. Comput. 
+
+Methods Appl. Mech. Engrg., 1998(151): p. 559-586. 
+
+[65]. Belytschko, T., Moes, N., Usui, S., and Parimi, C., Arbitrary discontinuities in finite elements. 
+
+International Journal for Numerical Methods in Engineering, 2001. 50(4): p. 993-1013. 
+
+

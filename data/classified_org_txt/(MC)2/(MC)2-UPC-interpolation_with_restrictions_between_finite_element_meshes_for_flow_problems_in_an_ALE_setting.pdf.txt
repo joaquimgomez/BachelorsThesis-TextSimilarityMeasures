@@ -1,0 +1,2396 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+International Journal for Numerical Methods in Engineering, Volume XX, Number 000, 2016
+
+Interpolation with restrictions between finite element meshes for flow
+problems in an ALE setting
+
+ARNAU PONT, RAMON CODINA, JOAN BAIGES
+
+Centre Internacional de Metodes Numerics en Enginyeria
+Universitat Politecnica de Catalunya,
+
+C/ Gran Capita, s/n, Campus Nord UPC, 08034 Barcelona, Spain
+
+The need for remeshing when computing flow problems in domains suffering large deformations has moti-
+vated the implementation of a tool which allows the proper transmission of information between finite element
+meshes. Since the Lagrangian projection of results from one mesh to another is a dissipative method, a new
+conservative interpolation method has been developed. A series of constraints, such as the conservation of mass or
+energy, are applied to the interpolated arrays through Lagrange multipliers in an error minimization problem, so that
+the resulting array satisfies these physical properties while staying as close as possible to the original interpolated
+values in the L2 norm. Unlike other conservative interpolation methods which require a considerable effort in
+mesh generation and modification, the proposed formulation is mesh independent and is only based on the physical
+properties of the field being interpolated. Moreover, the performed corrections are neither coupled with the main
+calculation nor with the interpolation itself, for which reason the computational cost is very low.
+
+Key words: Conservation; Finite Element Method; Interpolation; Numerical Methods; Restrictions.
+
+1. INTRODUCTION
+The interpolation of numerical solutions between computational meshes is a well known
+
+procedure with multiple applications, for example the transmission of arrays in case of prob-
+lems with evolving domains, coupling between different physical problems or computational
+codes, initialization or update of boundary conditions or visualization of results. In some
+of these cases, a simple Lagrangian interpolation within the elements is acceptable, but
+in other scenarios the non-conservative character of the interpolation operation can cause
+considerable dissipation and other kinds of numerical error. This has led to the development
+of multiple methods for the transmission of information between meshes in finite element
+computations.
+
+The accurate projection of transmission conditions between two subdomains was the
+main motivation for the development of an interpolation method based on the conservation
+of relevant magnitudes, Houzeaux and Codina (2001), which has already been applied to
+the fixed mesh ALE method by Codina et al. (2009). In this paper, the projection of vector
+fields corresponding to the transmission conditions between subdomains in a domain de-
+composition problem is constrained by the conservation of mass in a weak sense and by the
+conservation of the L2 norm of the solution along the boundary. The application of these
+restrictions is performed by solving an optimization problem with constraints controlled
+by Lagrange multipliers which enforce that the distance between the interpolated and the
+corrected solutions is minimum in the L2 norm and that the restrictions are fulfilled. This
+concept is the background of the formulation presented in this work.
+
+The pioneer works on conservative interpolation between computational meshes were
+an answer to the needs regarding the domain deformation in ALE (Arbitrary Lagrangian
+Eulerian) calculations, where the computational nodes of the mesh may either remain fixed as
+
+Address correspondence to J. Baiges, Departament d’Enginyeria Civil i Ambiental, Campus Nord - Universitat Politec-
+nica de Catalunya, Edifici C1, Jordi Girona 1-3, 08034 Barcelona, Spain / jbaiges@cimne.upc.edu
+
+iC 2016 The Authors. Journal Compilation iC 2016 Wiley Periodicals, Inc.
+
+
+
+2 INTERNATIONAL JOURNAL FOR NUMERICAL METHODS IN ENGINEERING
+
+in the Eulerian configuration or can be prescribed an arbitrary velocity, Donea et al. (2004).
+The techniques for achieving the conservation of certain magnitudes during the interpolation
+process consisted in either building a new mesh by locally modifying the original one, or
+interpolating the results to a new random grid after computing the intersections between both
+meshes. The first case corresponds to the local rezoning, which normally takes place at every
+time step but at a low computational cost. An example of such an algorithm is presented by
+Margolin and Shashkov (2003), a second order accurate scheme which divides the new cells
+taking into account the intersections with the old ones and guarantees the conservation of the
+mass fluxes along the edges of the finite volumes in 2D. This method was extended to 3D
+domains by Garimella et al. (2007). On the other hand, global remapping does not assume
+any relation between the original and the target mesh, for which reason these algorithms deal
+with the whole domain and increase the computational cost, although they might be used less
+often during the simulation. In this sense, Ramshaw (1985) and Dukowicz and Kodis (1987)
+present a remapping method which computes the intersection volume between meshes with a
+surface integral and builds the interpolated field performing an area-weight averaging. On the
+other hand, some disciplines such as weather forecast use conservative numerical methods
+in a semi-Lagrangian frame of reference which require the tracking of the trajectory and the
+interpolation of the convection velocity to an Eulerian frame of reference. An area-weighted
+interpolation is also used to prevent loss of accuracy by Scroggs and Semazzi (1995). The
+concept of interpolation with constraints is presented by Chesshire and Henshaw (1994) for
+finite volumes and finite differences, where the integration weights and the interpolation co-
+efficients are forced to fulfill certain conditions. Alauzet and Mehrenberger (2010) propose a
+P1 exact, mass conservative interpolation scheme which also fulfills the maximum principle
+by reconstructing the mass field and its gradient with the elemental intersections between
+both meshes. Another popular technique developed recently is the common-refinement or
+the supermesh, Jiao and Heath (2004), Farrell et al. (2009) and Farrell and Maddison (2011).
+It consists in the construction of an intermediate mesh as a union of the original and the target
+meshes in order to allow an efficient Galerkin projection of the results, which minimizes the
+L2 norm of the interpolation error. An important method regarding the formulation that will
+be presented in this work is that of Chippada et al. (1998). It is not based on grid operations or
+algorithms but on the physics of the problem, in this case the shallow water equations. The
+unknown velocity on the target mesh is expressed as an L2 projection of the old one plus
+a correction factor defined in terms of the gradient of a scalar function (pseudo-pressure),
+which leads to an elliptic problem of the projected velocity correction. Additionally, this
+method yields local mass conservation without changing the vorticity of the velocity field.
+
+As stated before, one of the main fields of application of conservative interpolation
+methods is the transmission of loads between interfaces belonging to non coincident meshes.
+This scenario happens in coupled problems such as fluid-structure interaction or in domain
+decomposition methods. In the first case, Cebral and Lohner (1997) propose the conservation
+of the load along the interface with a node-projection scheme. On the other hand, Farhat
+et al. (1998) use a quadrature-projection of the loads, which involves the transmission of the
+integration points to the target mesh, and finally the local version of the common-refinement
+Jiao and Heath (2004), being this last one the only whose error is independent of the degree
+of mismatching between meshes. A comparison between them can be found in Jaiman et al.
+(2005), where the common-refinement method is recommended due to its general good
+performance with a reasonable computational cost. In the case of non-conforming domain
+decomposition methods, one of the most extended methods of conservative interpolation is
+the mortar element, Bernardi (1994).
+
+An alternative approach to the remeshing problem is that presented by Chiandussi et al.
+(2000), which presents a method for a homogeneous distortion of moving computational
+meshes by preventing those elements located near the boundaries to collapse. This is achieved
+
+
+
+INTERPOLATION WITH RESTRICTIONS 3
+
+FIGURE 1. Interpolation of a finite element solution between two computational meshes.
+
+by solving a virtual structural problem on the mesh and giving the problematic elements a
+higher Young modulus in order to reach a uniform mesh displacement field. For problems
+involving moderate deformations leading to high local mesh distortion, this method avoids
+remeshing, whereas for large deformations it would reduce the remeshing frequency. For this
+reason, it is foreseen as a complementary tool to the present work.
+
+The presented methodology overcomes the typical difficulties related to the described
+conservative schemes. First of all, the method is valid for all discretizations and is indepen-
+dent of the degree of coincidence between them. Moreover, neither algorithms related to the
+mesh, such as rezoning, nor computation of local integrals are performed, for which reason
+the computational cost will be low and only dependent on the size of the meshes. Another
+important property is that, unlike many of the aforementioned methods, the conservation is
+achieved interpolating directly the solution values instead of fluxes at overlapping bound-
+aries. Although the conservation of magnitudes will be global and not satisfied locally, the
+procedure presented in this work allows to enforce conservation conditions of a general form
+which may not be restricted to mass and momentum conservation.
+
+2. FORMULATION
+
+2.1. The concept
+Let us consider a finite element partition Th,1 of a domain Ω ⊂ Rd, d > 1, and a discrete
+
+solution uh,1 of an arbitrary problem defined in the subspace of functions Vh,1 ⊂ V , where
+V is the space of functions where the continuous solution lives. For the sake of conciseness,
+we will consider scalar functions in this section. Given another finite element partition Th,2
+of the same domain, the objective is to construct uh,2 from uh,1 with the same approximation
+properties to the continuous solution as uh,1. We will call uh,2 the interpolation of uh,1 on
+Th,2 (see Fig. 1), and Vh,2 the corresponding finite element space.
+
+In order to simplify the notation for the rest of the paper, the finite element functions will
+be expressed in terms of the shape functions of each finite element partition, which will be
+denoted as {Nan}, where n = 1, 2 refers to the mesh and the superscript to the nodes, so that
+a will run from 1 to the number of nodes of each mesh. Denoting by Uan the corresponding
+nodal values and assuming a standard Lagrangian interpolation, we may write
+
+uh,n =
+∑
+a
+
+NanU
+a
+n , n = 1, 2,
+
+
+
+4 INTERNATIONAL JOURNAL FOR NUMERICAL METHODS IN ENGINEERING
+
+where summation is understood to run over the set of nodal values.
+Let us describe two simple possibilities to compute uh,2.
+
+Option 1: L2 projection
+The interpolation uh,2 might consist in an L2 projection of uh,1 onto Vh,2. This is
+
+equivalent to minimize the functional J (vh,2) =
+1
+2
+‖vh,2 − uh,1‖2L2(Ω), and leads to the
+
+problem: find uh,2 ∈ Vh,2 such that∫
+Ω
+uh,2vh,2 =
+
+∫
+Ω
+uh,1vh,2,
+
+for all test functions vh,2 ∈ Vh,2. Using the shape functions and nodal values, the problem to
+be solved becomes: ∑
+
+b
+
+∫
+Ω
+Na2N
+
+b
+2U
+
+b
+2 =
+
+∑
+c
+
+∫
+Ω
+Na2N
+
+c
+1U
+
+c
+1 , (1)
+
+for all nodes a of Th,2. Let us call Un the array of nodal values of uh,n, M2 the standard
+mass matrix of Th,2 and P21 the array whose components appear in the right-hand-side of
+Eq. (1). The solution to this equation can thus be written as
+
+U2 = M
+−1
+2 P21.
+
+Apart from the cost of solving this algebraic system, the algorithmic difficulty of this method
+is the evaluation of the components of P21. Suppose that numerical integration associated to
+Th,2 is used, with integration points {x
+
+g
+2} and associated weights {w
+
+g
+2}. Then∑
+
+c
+
+∫
+Ω
+Na2N
+
+c
+1U
+
+c
+1 ≈
+
+∑
+c
+
+∑
+g
+
+w
+g
+2N
+
+a
+2 (x
+
+g
+2)N
+
+c
+1(x
+
+g
+2)U
+
+c
+1
+
+The difficulty is the evaluation of N c1(x
+g
+2). This requires finding the element domain K1 ∈
+
+Th,1 where x
+g
+2 belongs. If node c belongs to this element K1, then N
+
+c
+1(x
+
+g
+2) can be computed
+
+from interpolation. Otherwise, it is zero.
+
+Option 2: standard Lagrangian interpolation
+The method described above requires the solution of a system of equations, which may
+
+be inconvenient from a computational point of view, even if it is easy to invert the mass
+matrix. A simpler alternative is to obtain the nodal values of uh,2 simply by interpolation,
+i.e.,
+
+Ua2 =
+∑
+b
+
+N b1(x
+a
+2)U
+
+b
+1 ,
+
+where xa2 are the coordinates of node a. This is a node of Th,2, whereas {N
+b
+1} are the shape
+
+functions of Th,1. Therefore, one needs to find the element K1 ∈ Th,1 where xa2 belongs, and
+then proceed to interpolate as in the previous approach.
+
+Interpolation with restrictions
+The approach described above has the drawback of being non-conservative and very
+
+diffusive, which is precisely what the application of certain restrictions aims to compensate.
+However, it is more flexible and easier to parallelize, whereas the L2 projection, in spite of
+yielding a smaller interpolation error, is not completely conservative either and in some cases
+the mass and other quantities should be corrected as well. Therefore, the idea we propose
+consists in obtaining ũh,2 ∈ Vh,2 that satisfies two important features:
+
+
+
+INTERPOLATION WITH RESTRICTIONS 5
+
+• It must remain the nearest solution to uh,2 in the L2 norm, uh,2 being obtained from a
+standard Lagrangian interpolation, for example.
+• It must fulfill some physical properties of uh,1, which could involve for example the
+
+conservation of a set of magnitudes.
+
+In order to describe the second point, let us define the restriction operators (forms). When
+applied to the finite element functions, these operators give a scalar result corresponding to
+a relevant magnitude of the physical problem being calculated. We write them as
+
+Rn,i : Vh,n −→ R, (2)
+where the subindex n = 1, 2 refers either to the donor 1 or to the target mesh 2, and i =
+1, ...,m is the restriction counter. OperatorsRn,i can be written in terms of their nodal values,
+so that
+
+Rn,i(uh,n) =
+∑
+a
+
+Ran,iU
+a
+n ,
+
+where Ran,i = Rn,i(N
+a
+n) for linear restrictions and R
+
+a
+n,i may depend on Un in the case of
+
+non-linear ones.
+Since it has been stated that the restriction consists in conserving the value of these
+
+selected magnitudes, the following equalities must hold:∑
+a
+
+Ra2,iŨ
+a
+2 =
+
+∑
+b
+
+Rb1,iU
+b
+1 , i = 1, . . . ,m, (3)
+
+where Ũ2 denotes the nodal values associated to ũh,2. The computational domain Ω remains
+the same for all stages of the process, since the interpolation process is completely static
+although the simulation considers a dynamic domain. In some cases, only a part of the
+domain needs to be interpolated, for example in case of fluid-structure interaction (FSI)
+problems, where the values at the interface must be exchanged between both subdomains.
+This scenario will not be considered in the present work.
+
+Although this method is only presented for some particular flow problems, it can be
+extended to other physical problems. For example, the formulation could be extended to
+flows with free surfaces in a straightforward way by restricting the constraints to the flow
+subdomain, which would require subelemental integration, Codina et al. (2009). Problems in
+which the restrictions are inequalities rather than equalities could also be treated by embed-
+ding the scheme in a iterative loop that requires to solve a sequence of problems with equality
+constraints, as it is done in optimization; these inequality restrictions are found for example
+in plasticity problems, where the stresses are required to be admissible, Brancherie et al.
+(2006). This last example requires a further extension consisting in posing the restriction in
+terms of variables defined at the numerical integration points, such as internal variables like
+plastic multipliers or damage; it is only required to be able to express these variables in terms
+of the nodal unknowns of the problem and proceed as we propose here.
+
+At this point it is important to distinguish the current method from the mortar method,
+Bernardi (1994). Unlike the present method, the mortar method consists in a domain de-
+composition technique which performs a L2 projection along an interface between non-
+matching grids satisfying adequate matching conditions. The restriction of these fluxes might
+be performed with Lagrange multipliers. In our case, the interpolation is performed point by
+point and the restrictions affect the whole domain.
+
+2.2. Application to linear restrictions
+Let us develop the concept introduced above in the case in which the restrictions are
+
+linear functionals. For example, bearing in mind that one of the main issues in the numer-
+
+
+
+6 INTERNATIONAL JOURNAL FOR NUMERICAL METHODS IN ENGINEERING
+
+ical computations of incompressible flows is the conservation of mass, it is reasonable to
+formulate a problem with this linear restriction.
+
+The restrictions can be enforced through Lagrange multipliers λ = (λ1, . . . , λm) ∈ Rm.
+Given uh,2 ∈ Vh,2, the interpolation of uh,1 ∈ Vh,1 on Th,2, let us define the following
+functional L : Vh,2 × Rm −→ R:
+
+L(vh,2,µ) =
+1
+
+2
+
+∥∥∥∥∥∑
+a
+
+Na2 (V
+a
+
+2 − U
+a
+2 )
+
+∥∥∥∥∥
+2
+
+L2(Ω)
+
+−
+m∑
+i=1
+
+µi
+
+(∑
+a
+
+Ra2,iV
+a
+
+2 −
+∑
+b
+
+Rb1,iU
+b
+1
+
+)
+, (4)
+
+where V a2 are the nodal values of vh,2, µ ∈ R
+m is an admissible set of Lagrange multipliers
+
+and the subscript in the norm indicates that it is the L2(Ω) one. Then the solution that
+minimizes the distance to the interpolated values and imposes the restrictions will be:
+
+[ũh,2,λ] = arg inf
+vh,2∈Vh,2
+
+sup
+µ∈Rm
+
+[L (vh,2,µ)] . (5)
+
+This is a saddle point problem. A necessary and sufficient condition for it to be well
+posed is that the finite element space Vh,2 and Rm satisfy the appropriate inf-sup condition.
+This in particular restricts the number of Lagrange multipliers. However, since m is usually
+very small, we have not encountered any stability problem.
+
+The equations to be solved are obtained by differentiation of the functional L with
+respect to the unknowns:
+
+∂L
+
+∂V b2
+= 0 =⇒
+
+∑
+a
+
+∫
+Ω
+N b2N
+
+a
+2 Ũ
+
+a
+2 −
+
+m∑
+i=1
+
+λiR
+b
+2,i =
+
+∑
+a
+
+∫
+Ω
+N b2N
+
+a
+2U
+
+a
+2 , for all b, (6)
+
+∂L
+
+∂µi
+= 0 =⇒
+
+∑
+a
+
+Ra2,iŨ
+a
+2 =
+
+∑
+b
+
+Rb1,iU
+b
+1 , for all i. (7)
+
+These two equations can be arranged into the following algebraic system:[
+M2 −RT2
+R2 0
+
+] [
+Ũ2
+λ
+
+]
+=
+
+[
+M2U2
+R1U1
+
+]
+,
+
+where Rn are the matrices of the linear restriction operators, n = 1, 2.
+In order to avoid solving the full linear system, which can be expensive and requires to
+
+add the Lagrange multiplier unknowns to the solver, we can solve first the Schur complement
+problem for the Lagrange multipliers, and later compute the nodal values Ũ2:
+
+R2M
+−1
+2 R
+
+T
+2 λ = R1U1 −R2U2, (8)
+
+Ũ2 = U2 +M
+−1
+2 R
+
+T
+2 λ. (9)
+
+Note that system (8) is of small size m ×m. The only difficulty for solving this problem is
+the calculation of M−12 . This is trivial if the mass matrix M2 is approximated by a diagonal
+matrix. If not, the problem can be solved using iterative methods, each iteration of which
+requiring the solution of a system of equations with matrixM2; it is known that these systems
+can be solved with a small computational cost.
+
+2.3. Non-linear restrictions
+The same idea can be applied in the case in which the restrictions are non-linear, i.e.,
+
+mappings Rn,i in (2) are non-linear. Let us assume that we write them as
+
+Rn,i(vh,n) =
+∑
+a
+
+Ran,i(Vn)V
+a
+n ,
+
+
+
+INTERPOLATION WITH RESTRICTIONS 7
+
+with the components Ran,i(Vn) depending of the nodal values Vn. We consider now the
+functional
+
+L(vh,2,µ) =
+1
+
+2
+
+∥∥∥∥∥∑
+a
+
+Na2 (V
+a
+
+2 − U
+a
+2 )
+
+∥∥∥∥∥
+2
+
+L2(Ω)
+
+−
+m∑
+i=1
+
+µi
+
+(∑
+a
+
+Ra2,i (V2)V
+a
+
+2 −
+∑
+b
+
+Rb1,i (U1)U
+b
+1
+
+)
+. (10)
+
+The optimization of this functional leads to the equations:
+
+∂L
+
+∂V b2
+= 0 =⇒
+
+∑
+a
+
+∫
+Ω
+N b2N
+
+a
+2 Ũ
+
+a
+2 −
+
+m∑
+i=1
+
+λi
+
+(
+Rb2,i(Ũ2) +
+
+∑
+a
+
+∂Ra2,i(Ũ2)
+
+∂Ũ b2
+Ũa2
+
+)
+
+=
+∑
+a
+
+∫
+Ω
+N b2N
+
+a
+2U
+
+a
+2 , for all b, (11)
+
+∂L
+
+∂µi
+= 0 =⇒
+
+∑
+a
+
+Ra2,i(Ũ2)Ũ
+a
+2 =
+
+∑
+b
+
+Rb1,i(U1)U
+b
+1 , for all i. (12)
+
+This is a non-linear system that needs to be linearized. Let us use a superscript between
+parenthesis to denote the iteration counter. Using a fixed point method for (11) and a fixed-
+point or Newton-Raphson linearization for (12) we have that∑
+
+a
+
+∫
+Ω
+N b2N
+
+a
+2 Ũ
+
+a,(k)
+2 −
+
+m∑
+i=1
+
+λ
+(k)
+i
+
+(
+Rb2,i(Ũ
+
+(k−1)
+2 ) +
+
+∑
+a
+
+∂Ra2,i(Ũ
+(k−1)
+2 )
+
+∂Ũ b2
+Ũ
+
+a,(k−1)
+2
+
+)
+
+=
+∑
+a
+
+∫
+Ω
+N b2N
+
+a
+2U
+
+a
+2 , for all b, (13)
+
+∑
+b
+
+(
+Rb2,i(Ũ
+
+(k−1)
+2 ) + γ
+
+∑
+a
+
+∂Ra2,i(Ũ
+(k−1)
+2 )
+
+∂Ũ b2
+Ũ
+
+a,(k−1)
+2
+
+)
+Ũ
+
+b,(k)
+2
+
+=
+∑
+b
+
+Rb1,i(U1)U
+b
+1 + γ
+
+∑
+a
+
+∂Ra2,i(Ũ
+(k−1)
+2 )
+
+∂Ũ b2
+Ũ
+
+a,(k−1)
+2 Ũ
+
+b,(k−1)
+2 , for all i. (14)
+
+For k = 1 the algorithm can be initialized taking Ũ(0)2 = U2. The Newton-Raphson
+linearization for (12) corresponds to γ = 1, whereas a fixed-point (Picard’s) method is
+obtained for γ = 0. Note that a Newton-Raphson linearization of (11) would imply a
+modification of the term multiplying Ũa,(k)2 in(13).
+
+Let us introduce matrix R̂2(Ũ2), of components
+
+R̂b2,i(Ũ2) =
+∑
+a
+
+∂Ra2,i(Ũ2)
+
+∂Ũ b2
+Ũa2 .
+
+We can now write (13)-(14) as[
+M2 −RT2 − R̂
+
+T
+2 (Ũ
+
+(k−1)
+2 )
+
+R2 + γR̂
+T (Ũ
+
+(k−1)
+2 ) 0
+
+] [
+Ũ
+
+(k)
+2
+λ
+
+]
+=
+
+[
+M2U2
+
+R1U1 + γR̂
+T (Ũ
+
+(k−1)
+2 )Ũ
+
+(k−1)
+2
+
+]
+.
+
+The matrix of this system can be made symmetric only if γ = 1.
+As for the linear problem, we could proceed to compute first λ by solving the corre-
+
+sponding Schur complement system, and then compute Ũ2.
+
+
+
+8 INTERNATIONAL JOURNAL FOR NUMERICAL METHODS IN ENGINEERING
+
+3. IMPLEMENTATION
+The implemented interpolator is based on a search octree method which has been ex-
+
+tended for MPI parallel computing. This algorithm builds cubic boxes around the selected
+entities (points, elements or subdomains) and organizes them hierarchically in a way that
+the search can proceed forwards and backwards recursively without having to apply brute
+force every time, Löhner (1995). First of all, an octree of subdomains links each node of the
+target mesh with the processor containing this coordinate at the old mesh. Each subdomain
+has its own octree of elements that finds the element of the old mesh which corresponds to
+a node of the new one. Once all connections have been made and communicated between
+processors, all arrays of the physical problem can be projected to the target mesh by perform-
+ing a Lagrangian interpolation within the found element. Finally, the obtained array can go
+through the optimization problem with restrictions in a completely independent subroutine
+(see Fig. 2).
+
+FIGURE 2. Scheme showing the computational implementation of the interpolation method.
+Example with 4 subdomains.
+
+4. APPLICATION TO THE INCOMPRESSIBLE NAVIER-STOKES EQUATIONS
+The presented formulation has been applied to the incompressible Navier-Stokes equa-
+
+tions solved in an ALE frame of reference. Our motivation to develop the formulation de-
+scribed here is to use it as a first step towards a complete ALE aeroacoustics calculation using
+Lighthill’s acoustic analogy, Lighthill (1952), with incompressible flow and 3D dynamic
+realistic vocal tract geometries. The simulation of syllables with a CFD code represents a
+challenge in regard to the accuracy of the interpolation of velocity and pressure fields during
+the remeshing stages. If we consider the numerical calculation of the syllable [as], sharp
+gradients are expected to appear when the upper inscissors approach the lower teeth, which
+combined with the large deformation of the domain from the initial open position to the
+
+
+
+INTERPOLATION WITH RESTRICTIONS 9
+
+final closed configuration, makes a conservative interpolation method extremely necessary
+in order to prevent the propagation of important numerical error sources.
+
+4.1. Continuous problem
+The incompressible Navier-Stokes equations model the motion of isentropic, low-speed
+
+viscous flows which do not involve relevant compressibility effects. These are to be solved
+in a computational domain Ω ⊂ Rd (where d = 2, 3 is the number of space dimensions) with
+boundary ∂Ω and prescribed initial and boundary conditions. Splitting ∂Ω into two disjoint
+sets ∂Ω = ΓD ∪ ΓN , the mathematical problem to be faced reads
+
+∂tu− ν∆u + u · ∇u +∇p = f in Ω, t > 0,
+∇ · u = 0 in Ω, t > 0,
+u (x, 0) = u0 (x) in Ω, t = 0,
+
+u (x, t) = uD (x, t) on ΓD, t > 0,
+
+n · σ (x, t) = tN (x, t) on ΓN , t > 0,
+where u is the velocity, p the pressure, f the vector of body forces, ν the kinematic viscosity,
+u0 the velocity initial condition, uD the velocity Dirichlet condition, n the exterior unit
+normal to ∂Ω, σ = −pI + νn · ∇u and tN the prescribed (pseudo-)traction.
+
+Let VD the space of vector functions with components in H1(Ω) and equal to uD on
+ΓD, and V0 the analogous space of functions vanishing on ΓD. Let also Q = L2(Ω), being
+the mean of these functions zero if ΓN is empty. Let 〈·, ·〉ω be the integral of the product of
+two functions in the domain ω (with the subscript omitted when ω = Ω) and (·, ·) the L2(Ω)-
+inner product. The weak form of the Navier-Stokes equations can be written as follows: for
+all time t > 0, find u(t) ∈ VD and p(t) ∈ Q, with appropriate regularity in time, such that
+
+(∂tu,v) + 〈u · ∇u,v〉+ ν(∇u,∇v)− (p,∇ · v) = 〈f ,v〉+ 〈tN ,v〉ΓN ,
+(q,∇ · u) = 0,
+
+for all v ∈ V0 and q ∈ Q, and supplemented with the weak form of the initial conditions.
+When the domain Ω is time dependent, this dependency can be taken into account using
+
+an ALE formulation. If udom is the velocity of the points in Ω, the only modification that
+needs to be introduced to the previous equations is the replacement of the advection velocity
+in the convective term by u− udom.
+
+4.2. Finite element approximation and time integration using a monolithic scheme
+Let us consider a finite element partition of the domain Ω of size h, and use this letter
+
+as subscript to denote finite element functions and spaces. Only conforming finite element
+approximations will be considered in what follows.
+
+Concerning the time integration, the monolithic approach for solving the incompressible
+Navier-Stokes equations consists in building a linearized system with both velocity and
+pressure degrees of freedom, which leads to the coupled calculation of the momentum and
+mass equations in one single step. To approximate the first order time derivative, a third order
+backward finite difference scheme (BDF3) has been used. Let us partition the time interval
+[0, T ] into N equal time steps of size δt := tn+1 − tn so that 0 ≡ t0 < t1 < . . . < tn <
+. . . < tN ≡ T . Given a generic time dependent function g(t), the following notation will be
+used for the BDF3 approximation to the first time derivative:
+
+∂tg|tn+1 ≈ δtg
+n+1 :=
+
+1
+
+δt
+
+(
+11
+
+6
+gn+1 − 3gn +
+
+3
+
+2
+gn−1 −
+
+1
+
+3
+gn−2
+
+)
+,
+
+where gn denotes evaluation of g at time step tn. At an arbitrary time step of the numerical
+
+
+
+10 INTERNATIONAL JOURNAL FOR NUMERICAL METHODS IN ENGINEERING
+
+simulation, the final fully discretized implicit scheme in space and time reads as follows.
+From known un−2h , u
+
+n−1
+h and u
+
+n
+h, compute the incompressible velocity and pressure at time
+
+step tn+1,
+[
+un+1h , p
+
+n+1
+h
+
+]
+∈ VD,h ×Qh, such that(
+
+δtu
+n+1
+h ,vh
+
+)
++ 〈un+1h · ∇u
+
+n+1
+h ,vh〉+ ν
+
+(
+∇un+1h ,∇vh
+
+)
+−
+(
+pn+1h ,∇ · vh
+
+)
++
+(
+qh,∇ · un+1h
+
+)
+= 〈fn+1,vh〉+ 〈tn+1N ,vh〉ΓN , (15)
+
+for all test functions [vh, qh] ∈ V0,h × Qh. This is the standard Galerkin approximation of
+the problem. Stabilization is required to deal with convection-dominated flows. Likewise,
+the pressure and velocity spaces have to satisfy an adequate inf-sup condition or, otherwise,
+a stabilization technique is also required. In our calculations we use the approach described
+in Codina (2002).
+
+4.3. Examples of restrictions for incompressible flows
+Let uh,1 be the velocity computed from (15) at a certain time step and with a mesh
+
+Th,1. Suppose now that Ω is remeshed and the new finite element partition is Th,2. Using the
+notation of the previous section, if uh,1 =
+
+∑
+aN
+
+a
+1U
+
+a
+1, the straightforward interpolation will
+
+produce uh,2 =
+∑
+
+bN
+b
+2U
+
+b
+2. From this, we wish to compute now ũh,2, an approximation to
+
+uh,2 satisfying certain restrictions.
+The imposition of restrictions is obviously problem-dependent. In the case of the incom-
+
+pressible Navier-Stokes equations, we will consider conservation of mass, conservation of
+kinetic energy and conservation of linear momentum. The first and last restrictions are linear,
+whereas the second is non-linear (quadratic). They can be written as:∫
+
+Ω
+∇ · ũh,2 =
+
+∫
+Ω
+∇ · uh,1, (16)∫
+
+Ω
+|ũh,2|2 =
+
+∫
+Ω
+|uh,1|2, (17)∫
+
+Ω
+ũh,2 =
+
+∫
+Ω
+uh,1. (18)
+
+Note that density can be cancelled in all these conditions, as well as the factor 1/2 of the
+kinetic energy in (17). The mass conservation equation (16) is crucial; even if we may assume
+uh,1 to be mass-conserving, i.e., the right-hand-side of (16) to be zero, this property cannot
+be guaranteed for uh,2, and therefore it may be very important to explicitly impose it.
+
+Let λ1, λ2 and λ2+j , j = 1, . . . , d, be the Lagrange multipliers to enforce (16), (17) and
+(18), respectively. In this case, the Lagrangian functional to be minimized, whose generic
+expression is (10), is given by
+
+L(vh,2,µ) =
+1
+
+2
+
+∫
+Ω
+
+(∑
+a
+
+Na2 (V
+a
+2 −U
+
+a
+2)
+
+)2
+
+− µ1
+∫
+
+Ω
+
+
+∑
+
+a
+
+d∑
+j=1
+
+∂jN
+a
+2 V
+
+a
+2,j −
+
+∑
+b
+
+d∑
+j=1
+
+∂jN
+b
+1U
+
+b
+1,j
+
+
+
+
+− µ2
+∫
+
+Ω
+
+
+(∑
+
+a
+
+Na2V
+a
+2
+
+)2
+−
+
+(∑
+b
+
+N b1U
+b
+1
+
+)2
+
+
+
+INTERPOLATION WITH RESTRICTIONS 11
+
+−
+d∑
+
+j=1
+
+µ2+j
+
+∫
+Ω
+
+(∑
+a
+
+Na2 V
+a
+
+2,j −
+∑
+b
+
+N b1U
+b
+1,j
+
+)
+. (19)
+
+The restrictions have been expressed in terms of the velocity nodal values, that now are
+vectors whose components have been identified with subscript j.
+
+Now we can proceed as in the general case, taking the derivatives of Lwith respect to the
+nodal unknowns and the Lagrange multipliers to obtain the optimality conditions, and then
+linearizing the resulting non-linear problem, the non-linearity being due to the imposition of
+conserving the kinetic energy.
+
+The optimality conditions read:
+∂L
+
+∂V b2,j
+= 0 =⇒
+
+∑
+a
+
+∫
+Ω
+N b2N
+
+a
+2 Ũ
+
+a
+2,j − λ1
+
+∫
+Ω
+∂jN
+
+b
+2 − 2λ2
+
+∑
+a
+
+∫
+Ω
+N b2N
+
+a
+2 Ũ
+
+a
+2,j − λ2+j
+
+∫
+Ω
+N b2
+
+=
+∑
+a
+
+∫
+Ω
+N b2N
+
+a
+2U
+
+a
+2,j , for all b, j = 1, . . . , d,
+
+∂L
+
+∂µ1
+= 0 =⇒
+
+∫
+Ω
+
+∑
+a
+
+d∑
+j=1
+
+∂jN
+a
+2 Ũ
+
+a
+2,j =
+
+∫
+Ω
+
+∑
+b
+
+d∑
+j=1
+
+∂jN
+b
+1U
+
+b
+1,j ,
+
+∂L
+
+∂µ2
+= 0 =⇒
+
+∫
+Ω
+
+(∑
+a
+
+Na2 Ũ
+a
+2
+
+)2
+=
+
+∫
+Ω
+
+(∑
+b
+
+N b1U
+b
+1
+
+)2
+,
+
+∂L
+
+∂µ2+j
+= 0 =⇒
+
+∫
+Ω
+
+∑
+a
+
+Na2 Ũ
+a
+2,j =
+
+∫
+Ω
+
+∑
+b
+
+N b1U
+b
+1,j , j = 1, . . . , d.
+
+Using the notation introduced for the general case, a Newton-Raphson linearization of the
+problem yields:∑
+
+a
+
+∫
+Ω
+N b2N
+
+a
+2 Ũ
+
+a,(k)
+2,j − λ
+
+(k)
+1
+
+∫
+Ω
+∂jN
+
+b
+2 − 2λ
+
+(k)
+2
+
+∑
+a
+
+∫
+Ω
+N b2N
+
+a
+2 Ũ
+
+a,(k−1)
+2,j − λ
+
+(k)
+2+j
+
+∫
+Ω
+N b2
+
+=
+∑
+a
+
+∫
+Ω
+N b2N
+
+a
+2U
+
+a
+2,j , for all b, j = 1, . . . , d,
+
+∫
+Ω
+
+∑
+a
+
+d∑
+j=1
+
+∂jN
+a
+2 Ũ
+
+a,(k)
+2,j =
+
+∫
+Ω
+
+∑
+b
+
+d∑
+j=1
+
+∂jN
+b
+1U
+
+b
+1,j ,
+
+2
+∑
+a,b
+
+d∑
+j=1
+
+∫
+Ω
+N b2N
+
+a
+2 Ũ
+
+a,(k−1)
+2,j Ũ
+
+b,(k)
+2,j =
+
+∫
+Ω
+
+(∑
+b
+
+N b1U
+b
+1
+
+)2
++
+
+∫
+Ω
+
+(∑
+a
+
+Na2 Ũ
+a,(k−1)
+2
+
+)2
+,
+
+∫
+Ω
+
+∑
+a
+
+Na2 Ũ
+a,(k)
+2,j =
+
+∫
+Ω
+
+∑
+b
+
+N b1U
+b
+1,j , j = 1, . . . , d.
+
+In the case of a Picard’s scheme for the third equation, it would read
+
+∑
+a,b
+
+d∑
+j=1
+
+∫
+Ω
+N b2N
+
+a
+2 Ũ
+
+a,(k−1)
+2,j Ũ
+
+b,(k)
+2,j =
+
+∫
+Ω
+
+(∑
+b
+
+N b1U
+b
+1
+
+)2
+.
+
+Let Rn,1 and Rn,3 be the matrices that arise from the imposition of the conservation of
+mass and linear momentum, respectively, on mesh n, n = 1, 2. Let alsoλ3 = (λ3, . . . , λ2+d).
+Using Picard’s linearization for the conservation of kinetic energy, the system to be solved
+
+
+
+12 INTERNATIONAL JOURNAL FOR NUMERICAL METHODS IN ENGINEERING
+
+at each iteration is
+
+
+M2 −RT2,1 −2M2Ũ
+(k−1)
+2 −R
+
+T
+2,3
+
+R2,1 0 0 0
+
+(Ũ
+(k−1)
+2 )
+
+TM2 0 0 0
+R2,3 0 0 0
+
+
+
+
+
+Ũ
+
+(k)
+2
+λ1
+λ2
+λ3
+
+
+ =
+
+
+
+
+M2U2
+R1,1U1
+
+UT1 M1U1
+R1,3U1
+
+
+ .
+
+As a measure of convergence of this iterative scheme, we have used precisely the kinetic
+energy of Ũ2. In general, convergence is quite fast, but it can deteriorate when dealing with
+fields with sharp gradients and highly non-coincident meshes. Convergence can be improved
+using under-relaxation.
+
+As in the general case, the Lagrange multipliers can be solved first from a Schur com-
+plement system, which is trivially constructed if M2 is approximated by a diagonal matrix.
+
+4.4. Time integration using a fractional step scheme and pressure interpolation
+Instead of using the monolithic approach to integrate in time the Navier-Stokes equa-
+
+tions, one can use a fractional step scheme, in which the calculation of the velocity and
+the pressure are segregated. The interest of this approach is well known; in particular, it
+is known that the computational cost is drastically reduced, particularly for problems with
+many degrees of freedom. In general, within each time step fractional step schemes consist
+in the computation of a non divergence-free velocity in a first stage and a Poisson problem
+for the pressure in a second step; finally, the velocity is corrected in order to fulfill the
+incompressibility condition and consistency (see Badia and Codina (2007) for a review).
+
+Let us consider the simplest backward Euler discretization of the Navier-Stokes equa-
+tions combined with a second order fractional step method. Supposing that there are only
+Dirichlet conditions, the equations to be solved are:
+
+1
+
+δt
+
+(
+ûn+1h − u
+
+n
+h,vh
+
+)
++ 〈ûn+1h · ∇û
+
+n+1
+h ,vh〉+ ν
+
+(
+∇ûn+1h ,∇vh
+
+)
+− (pnh,∇ · vh)
+
+= 〈fn+1,vh〉,(
+∇pn+1h ,∇qh
+
+)
+= (∇pnh,∇qh) +
+
+1
+
+δt
+
+(
+∇ · ûn+1h , qh
+
+)
+,
+
+1
+
+δt
+
+(
+un+1h − û
+
+n+1
+h ,vh
+
+)
++
+(
+∇pn+1h ,vh
+
+)
+− (∇pnh,vh) = 0,
+
+where û is the non-solenoidal intermediate velocity. Once again, the stabilization terms
+needed for using equal interpolation for the velocity and pressure fields have been omitted
+for the sake of simplicity.
+
+An important particularity of the second order fractional step scheme presented is that
+the momentum equation uses the pressure field of the previous time step. If the computational
+domain is remeshed at a certain time step, not only the velocity, but also the pressure must be
+interpolated to the target mesh when the calculation restarts. In order to ensure an accurate
+interpolation, the conservation of theL2-norm of the pressure can be imposed as a restriction.
+Proceeding as described for the general case, the calculation of the pressure nodal values P̃2
+from P2, computed from the standard interpolation of P1, consists in the optimization of the
+functional:
+
+L(qh,2,µ) =
+1
+
+2
+
+∥∥∥∥∥∑
+a
+
+Na2 (Q
+a
+2 − P
+
+a
+2 )
+
+∥∥∥∥∥
+2
+
+L2(Ω)
+
+
+
+INTERPOLATION WITH RESTRICTIONS 13
+
+Original value 0.013650
+
+After Interp. without restrictions 0.013621
+
+Interp. with restrictions 0.013653
+
+TABLE 1. Maximum values of |u| at the first interpolation stage.
+
+− µ
+∫
+
+Ω
+
+
+∑
+
+a,b
+
+Qb2N
+b
+2N
+
+a
+2Q
+
+a
+2 −
+
+∑
+c,d
+
+P d1N
+d
+1N
+
+c
+1P
+
+c
+1
+
+
+ , (20)
+
+where we have assumed that functions in the pressure spaces are interpolated also with the
+shape functions {Nai }, i = 1, 2.
+
+Now we can proceed as for the velocity interpolation with restrictions, obtaining the
+optimality conditions for (20), linearizing them, solving for the optimal Lagrange multiplier
+λ from a Schur complement problem and, finally, obtaining P̃2 as a correction of P2 with λ
+known. Details are omitted.
+
+5. NUMERICAL RESULTS
+
+5.1. Method validation: interpolation between identical translated meshes
+Before proceeding to analyze the correction performed by the restrictions on the inter-
+
+polated field in common application cases, such ALE calculations, a first case consisting in
+an analytical solution is presented to assess the dissipation caused by the non-conservative
+interpolation and the efficiency of the compensation introduced by the present method.
+This function is interpolated from an original structured mesh of bilinear elements with
+dimensionless size h = 0.025 covering the domain Ω = [0, 1] × [0, 1] to an identical mesh
+which has been shifted to the right with elements of size h/2, so the old and the new nodes
+do not coincide at all, see Bussetta et al. (2015). Afterwards, the function is interpolated back
+to the original mesh, repeating this sequence up to 20 times. The analytical solution is given
+by u = (ux, uy), with
+
+ux = 2x
+2y (x− 1)2 (y − 1) (2y − 1) ,
+
+uy = −2y2x (y − 1)2 (x− 1) (2x− 1) .
+
+Since u|Γ = 0, where Γ = ∂Ω, only the conservation of momentum and L2 norm are
+applied. Table 1 shows the evolution of the maximum of |u| during the first interpolation
+process: after a 2% loss caused by the point-by-point interpolation, the correction brings
+the maximum back to its original value with a small overflow. In spite of the benefit, this
+scenario shows that this global method does not respect the local features of the solution,
+such as peak values. However, this deviations are very small and new spurious peaks are
+not possible because the method enforces that the final solution remains the nearest possible
+to the interpolated one. The same happens with the sign preservation and the monotonicity
+of the solution, since the method does not enforce them explicitly and some unwanted sign
+changes might appear at points where the function or its derivative are very close to zero.
+Nonetheless, these errors will be always negligible for the same reason.
+
+Next, the accumulation of the interpolation error along the whole sequence and its
+compensation are analyzed. After the 20th interpolation the dissipation is considerable as
+it can be seen in the following series of plots of |u|, see Fig 3, which use the same scale in
+
+
+
+14 INTERNATIONAL JOURNAL FOR NUMERICAL METHODS IN ENGINEERING
+
+Original value 0.013650
+
+After Interp. without restrictions 0.012244
+
+Interp. with restrictions 0.013261
+
+TABLE 2. Maximum values of the final norm of |u|.
+
+order to reflect the degradation of the solution. Fig. 3d and Table 2 show how the imposition
+of momentum and L2 norm conservation compensate most of the dissipation.
+
+a) b)
+
+c) d)
+
+FIGURE 3. a) Original profile of |u|, b) final profile of |u| after interpolating without
+restrictions, c) final profile of |u| after interpolating with restrictions, d) Superposition of
+the previous profiles at y = 0.5.
+
+5.2. Flow around a cylinder
+In order to show the benefit of the presented formulation in a straightforward way, a sim-
+
+ple Re = 500 flow around a cylinder benchmark case has been computed with the monolithic
+approach of the incompressible Navier-Stokes equations in a static domain and a fine finite
+element mesh (see Guasch and Codina (2009) for more details). During 2000 time steps,
+5 equispaced interpolations to a coarse mesh have been performed in two different ways:
+
+
+
+INTERPOLATION WITH RESTRICTIONS 15
+
+Mesh Fine Coarse
+
+#elements 63,413 13,860
+
+#nodes 32,445 7,079
+
+Element type Stabilized P1/P1 Stabilized P1/P1
+
+TABLE 3. Parameters for the flow over a cylinder example.
+
+without applying any restrictions and enforcing the conservation of mass, momentum and
+kinetic energy to the velocity field. After each interpolation, the results have been projected
+back to the original mesh after only one time step, in order to avoid further distortion of the
+solution than that caused by the interpolation error. This procedure allows the comparison of
+the results to a reference case which undergoes the same interpolation stages, but projecting
+the velocity field always to the same, slightly moved, fine mesh. Therefore, in this case no
+accuracy losses are expected other than those due to the interpolation between meshes and
+the results can be considered as ideal for our purpose. The mesh parameters of the simulation
+are listed in Table 3.
+
+In spite of the small differences expected for only five bidirectional interpolations in
+an overall run of 2000 time steps, a considerable phase error between the reference curve
+and the solution computed without applying restrictions can be clearly observed in Fig. 4,
+which shows the last steps of the velocity time history. On the other hand, the red curve,
+corresponding to the velocity interpolated with restrictions, nearly fits the reference solution.
+This proves that the imposition of the restrictions leads to a reduction of the interpolation
+error and its propagation.
+
+FIGURE 4. Time history of the last time steps of the velocity field.
+
+
+
+16 INTERNATIONAL JOURNAL FOR NUMERICAL METHODS IN ENGINEERING
+
+5.3. A problem in aero-acoustics using an ALE description and remeshing
+Following the practical motivation of this work, a preliminary case representing the
+
+syllable [as] is presented next. It consists in an air flux (density 1.2 kg/m3 and viscosity
+1.5 · 10−5 Pa s) flowing through a constriction in a simplified 2D geometry based on the
+3D simplified model of a vocal tract, Cisonni et al. (2013). The computation starts from
+a developed flow computed with the incompressible Navier-Stokes equations on the initial
+open configuration corresponding to the phoneme [a], (see Fig. 6). The upper part of the
+vocal tract has been prescribed an initial velocity ramp followed by a constant vertical
+velocity of −5 m/s until the final position corresponding to the fricative sound is reached,
+which happens after a total closure path of 5.15 cm at t = 0.012 s. During this dynamic phase
+an ALE frame of reference is used and a total of 7 remeshing stages are performed due to the
+fast distortion of the elements. Moreover, the domain velocity and the closure itself change
+the flow characteristics, for which reason the time step has been changed progressively from
+the initial value δt = 10−5 s to a final size of δt = 2.5 · 10−6 s. The computational domain,
+from now on referred as Ω, with an inlet velocity of (2.4, 0) m/s, rigid walls with a non-
+slip condition except the vertical outlet boundary, has been discretized with two different
+finite element meshes (see Fig. 5), whereas the time integration scheme is BDF3 in all cases.
+Therefore, three time components of the velocity are interpolated in order to guarantee a
+smooth and accurate restart of the computation on the new mesh.
+
+It will be shown how the accuracy of the interpolation, and hence the impact of the
+restrictions, depend, as expected, on the degree of coincidence between the donor and the
+target mesh. Therefore, the same case will be run twice: first interpolating always to a similar
+mesh as usual, and then going from the original fine mesh to a coarse mesh and vice-
+versa. This scenario might not be usual in ALE calculations, but is indeed common in the
+computation of coupled problems with two or more different meshes, such as FSI and aero-
+acoustics, where the acoustic source term arising from the CFD calculation can be projected
+to a coarser mesh for the less demanding wave equation, Kaltenbacher et al. (2014). The
+results will be also analyzed from both a static and a dynamic point of view. In the first one,
+the effect of the restrictions within the interpolation will be assessed, whereas the latter will
+focus on the propagation of the interpolation error along a complete simulation.
+
+FIGURE 5. Original fine mesh (left) and coarse mesh used at the first interpolation (right).
+Dimensions in mm.
+
+5.3.1. Monolithic scheme. As stated above, the presented case has been run twice for
+analyzing the dependence of the formulation on the degree of coincidence between meshes.
+In both cases the following restrictions for the velocity field of the incompressible Navier-
+Stokes equations have been applied together: conservation of mass, conservation of mo-
+
+
+
+INTERPOLATION WITH RESTRICTIONS 17
+
+FIGURE 6. Initial geometry corresponding to phoneme [a] (left), final geometry correspond-
+ing to phoneme[s] (right).
+
+Initial mesh Fine Coarse
+
+#elements 254,907 16,784
+
+#nodes 131,058 8,706
+
+Element type Stabilized P1/P1 Stabilized P1/P1
+
+max. size 0.001 0.005
+
+min. size 10−5 2 · 10−4
+
+TABLE 4. Mesh parameters for the aero-acoustics example.
+
+mentum in x and y, and conservation of kinetic energy. On the other hand, when they are
+applied separately the compensation performed by each one turns to be nearly the same,
+for which reason the decoupled case will not be presented. Moreover, this fact reveals that
+the non-diagonal terms of the system matrix, which force the simultaneous fulfillment of all
+restrictions, scarcely modify the values of the Lagrange multipliers and only compensate the
+linearization. A direct solver has been used in order to better evaluate the interpolation error
+at the remeshing stages and its propagation, since it provides the exact discrete solution of
+the problem.
+
+5.3.1.1. Static analysis
+This subsection intends to illustrate the performance of the restrictions in a single inter-
+
+polation. The procedure is called static because the projection of results takes place in a fixed
+domain. Table 5 summarizes the corrections performed by each restriction in all the remesh-
+ing stages from the initial geometry [a] to the final configuration [s] in the aforementioned
+two different cases: projection to a similar fine mesh (F → F ) and intercalation of coarse
+meshes (F → C orC → F ). It shows the amount of mass as well as the deviation percentage
+of momentum and kinetic energy that needs to be compensated at each interpolation when
+all restrictions are applied together. First of all, the first interpolation to the coarse mesh with
+restrictions will be compared to that without them and to the equivalent ideal projection to
+a similar fine mesh, in order to check how far this method can compensate a non-accurate
+interpolation. Later on, the most critical interpolation will be carefully analyzed by evalu-
+
+
+
+18 INTERNATIONAL JOURNAL FOR NUMERICAL METHODS IN ENGINEERING
+
+# interp 1 1 2 2 3 3 4 4
+
+F → F F → C F → F C → F F → F F → C F → F C → F
+Mass 8.4e-5 0.029 1.0e-5 1.7e-4 3.4e-6 0.014 5.0e-5 5.7e-4
+
+MomX (%) 0.029 0.542 0.034 0.022 0.027 0.174 0.031 0.016
+
+MomY (%) 4.3e-4 0.004 0.002 1.8e-4 4.9e-3 0.113 9.3e-3 4.3e-3
+
+Kinet. (%) 0.027 0.328 0.049 0.031 0.079 0.514 0.101 0.062
+
+# interp 5 5 6 6 7 7
+
+F → F F → C F → F C → F F → F F → C
+Mass 1.8e-4 9.2e-3 2.5e-4 1.3e-3 2.9e-4 0.052
+
+MomX (%) 0.040 0.332 0.052 0.022 0.026 1.263
+
+MomY (%) 3.7e-3 0.145 4.9e-3 8.0e-3 0.013 0.069
+
+Kinet. (%) 0.143 1.208 0.201 0.116 0.267 1.908
+
+TABLE 5. Corrections performed by each restriction at all interpolation stages.
+
+Original value 29.637
+
+Target mesh fine coarse
+
+Interp. without restrictions 29.591 29.397
+
+Interp. with restrictions 29.600 29.435
+
+TABLE 6. Maximum values of the velocity norm at the first remeshing stage
+
+ating the contribution of the restrictions, not only as a whole, but seeing how they perform
+individually.
+
+It can be clearly seen, as expected, that the interpolations going from a fine mesh to
+a coarse one (F → C) are far more inaccurate than the others due to the low degree
+of coincidence between nodes. If we consider the first interpolation, which departs from
+the same solution in both cases, an interesting analysis regarding the peak value can be
+derived. The current formulation does not conserve explicitly the peak value, since this would
+require local restrictions, which are not part of the scope of this global method. However, the
+injection of mass, energy and momentum by the imposition of restrictions performs indeed
+a correction on the peak values which have been shaved by the interpolation. Table 6 shows
+the maximum values of the velocity norm, which appear around the obstacle, at the first
+remeshing stage.
+
+Although the resulting peak value after applying the restrictions will mostly depend on
+the capability of the mesh of capturing local sharp gradients, which is not always possible
+given a low degree of coincidence between meshes and a coarse resolution of the target mesh,
+the method manages to restore partially the lost peaks, above all in the coarse solution, which
+needs a greater correction than the fine one.
+
+The last interpolation to the coarse mesh is clearly the most critical one. The losses of
+mass and momentum are considerable, but the most remarkable fact is the loss of kinetic en-
+ergy, which nearly reaches the 2%. The next series of plots show the correction performed by
+
+
+
+INTERPOLATION WITH RESTRICTIONS 19
+
+each restriction separately and all together to the velocity field in Fig. 7, which corresponds
+to the last remeshing stage at the final geometry, (see Fig. 6).
+
+FIGURE 7. Velocity field before the last interpolation to the coarse mesh.
+
+FIGURE 8. Velocity field after the last interpolation to the coarse mesh before being
+corrected by the restrictions.
+
+Fig. 8 shows the non-conservative interpolation of the velocity field to the coarse mesh.
+For a better tracking of the whole process, the same scaling has been used. The conservation
+of mass is achieved by injecting fluid through the only open boundary, the outlet, as shown in
+(Fig. 9), taking into account the divergence theorem. Then, the mass is diffused into the bulk
+by a consistent mass matrix. However, the correction is essentially restricted to the boundary
+nodes because it must also satisfy that the final solution remains the nearest possible to the
+interpolated field. The correction of momentum follows a mesh dependent discontinuous
+pattern, since the corresponding restriction operator is the integral of the shape functions
+at the nodes (see Fig. 10). On the other hand, the correction of the kinetic energy follows
+perfectly the motion of the flow because it can be understood as the conservation of the
+velocity L2 norm. Bearing in mind that this correction has a quadratic effect, the injection
+of kinetic energy will be proportional to the velocity field in order to minimize the relative
+variation of the solution (see Fig. 11). The total correction scale (see Fig. 12) shows the key
+importance of this method when dealing with highly non-coincident grids, a typical scenario
+
+
+
+20 INTERNATIONAL JOURNAL FOR NUMERICAL METHODS IN ENGINEERING
+
+FIGURE 9. Correction of the velocity field performed by the conservation of mass.
+
+FIGURE 10. Correction of the velocity field performed by the conservation of momentum.
+
+that can be found in some coupled problems, otherwise the solution could get distorted in
+just one time step. Finally, Fig. 13 shows the final velocity field after applying the previous
+correction, which recovers most of the flow features of the original field that hat been lost
+during the non-conservative interpolation, (see Figs. 7 and 8).
+
+5.3.1.2. Dynamic analysis.
+Up to now, only the static transmission of information between two meshes has been
+
+analyzed. However, the most important features are the degradation of the results and the
+accumulation of error during a dynamic calculation when no restrictions are applied, as well
+as the global effect of the restrictions along the simulation. It is not easy to quantify the
+benefit just by adding the effect of the successive application of the restrictions because
+after losing mass, momentum and energy at one interpolation, the numerical solution of the
+Navier-Stokes equations is computed again and this interpolation error is partially compen-
+sated by the imposition of the incompressibility condition as well as by the injection of
+momentum and kinetic energy coming from the inlet boundary condition. For this reason, if
+we did not apply the restrictions and we measured the losses at the last interpolation, these
+values would not reveal the accumulated error, but just a frozen picture of the accuracy of
+a single interpolation. Instead, the accumulation of error arises from an interpolated value
+
+
+
+INTERPOLATION WITH RESTRICTIONS 21
+
+FIGURE 11. Correction of the velocity field performed by the conservation of kinetic energy.
+
+FIGURE 12. Total correction of the velocity when applying all restrictions together.
+
+which does not fulfill the physical problem features and that is later propagated when the
+computation restarts.
+
+In this case, only interpolations to similar fine meshes have been considered. Unlike the
+previous case, the numerical error cannot be assessed comparing the velocity before and
+after the interpolation stage, since the high degree of coincidence between meshes avoids a
+visible dissipation. The matter of study here is the accumulation of this error, hence the time
+histories of the velocity at a point under the tooth (78.7, 5.33) mm during the last two stages
+of the simulation, (see Figs. 15 and 16), and the final velocity fields at the configuration [s]
+have been compared, (see Fig. 14). In spite of keeping the same mean value, the solutions
+start diverging when the first vortices go across the analyzed point. Between interpolations
+5 and 6 the tooth is approximating its final position but the flow under the obstacle has
+not yet experimented important oscillations and the two solutions show a good agreement.
+However, at the following stage between interpolations 6 and 7, just before reaching the
+final position, the sudden presence of sharp velocity gradients amplifies the propagation of
+the initial interpolation error, leading to different peak values and to a considerable phase
+change. The impact of the application of the restrictions in the oscillating solution can be
+clearly observed in Fig. 17, where the Fast Fourier Transform of both velocity time histories
+has been computed.
+
+
+
+22 INTERNATIONAL JOURNAL FOR NUMERICAL METHODS IN ENGINEERING
+
+FIGURE 13. Final velocity field after applying all restrictions.
+
+a) b)
+
+FIGURE 14. Final velocity profile applying no restrictions (a), final velocity profile applying
+all restrictions (b)
+
+5.3.2. Second order fractional step scheme. The same case as for the monolithic scheme
+is now solved using a fractional step scheme. The same computational meshes have also been
+used. The problem has been computed again three times: without restrictions, with only
+velocity restrictions and with velocity and pressure restrictions as presented in Section 4, in
+order to evaluate the benefits of the interpolation procedure applied to the pressure field (see
+Fig. 18).
+
+Once again, in spite of showing some similar patterns, the solutions yield significant
+discrepancies regarding the peak value and the phase of oscillation. Unlike the monolithic
+case, the solutions with and without restrictions diverge at the stage between interpolations
+5 and 6. Fig. 19 shows that the red solution starts oscillating earlier than the blue one. In
+this case, the solution without enforcing the pressure constraint has not been plotted because
+it coincides perfectly with the solution applying all restrictions. On the other hand, at the
+following stage (Fig. 20), these two solutions finally diverge once sharp gradients appear at
+the analyzed point below the tooth, which shows that the enforcement of the pressure L2
+norm conservation is as important as the velocity restrictions to prevent phase error.
+
+
+
+INTERPOLATION WITH RESTRICTIONS 23
+
+FIGURE 15. Time history of the velocity between interpolations 5 and 6.
+
+FIGURE 16. Time history of the velocity between interpolations 6 and 7.
+
+6. CONCLUSIONS
+The presented formulation has proved to be very effective in compensating the inter-
+
+polation error when using two highly non-coincident computational grids, where it was
+already expected that the loss of mass, momentum and kinetic energy would be relevant
+in flow problems. It has also turned to be of crucial importance in scenarios, such as in
+Arbitrary Lagrangian Eulerian calculations, where the interpolations take place between
+similar fine meshes. In this case, the effect of the restrictions on the interpolated array is
+not so relevant but the accumulation and propagation of this theoretically small error due to
+the non-conservative interpolation turns to be relevant indeed after several thousands of time
+steps. One of the most important factors regarding the accuracy of the interpolation between
+meshes is the presence of sharp gradients as well as the mesh resolution and coincidence to
+
+
+
+24 INTERNATIONAL JOURNAL FOR NUMERICAL METHODS IN ENGINEERING
+
+FIGURE 17. FFT of the velocity between interpolations 6 and 7.
+
+a) b)
+
+c)
+
+FIGURE 18. Final velocity profile applying no restrictions (a), final velocity profile applying
+only velocity restrictions (b), final velocity profile applying all restrictions (c)
+
+
+
+INTERPOLATION WITH RESTRICTIONS 25
+
+FIGURE 19. Time history of the velocity between interpolations 5 and 6.
+
+FIGURE 20. Time history of the velocity between interpolations 6 and 7.
+
+capture them. Although this is a global method, it also manages to partially restore the lost
+peaks in the interpolated field.
+
+The method has been applied successfully to the solution of the incompressible Navier-
+Stokes equations. In this case, the most relevant restriction is the conservation of kinetic
+energy. It has also been proved that the propagation of interpolation error when using a
+non-conservative interpolation becomes considerable after several hundreds of time steps.
+Although the mean value is conserved, the oscillation pattern becomes clearly divergent
+when the vorticity increases. In a similar way, for second order fractional schemes the
+conservation of the pressure L2 norm has turned to be necessary to prevent phase error.
+
+From a computational point of view, the method yields a fast convergence and a very
+
+
+
+26 INTERNATIONAL JOURNAL FOR NUMERICAL METHODS IN ENGINEERING
+
+FIGURE 21. FFT of the velocity between interpolations 6 and 7.
+
+low computational cost, and is flexible enough for being easily extended to other physical
+problems with other restrictions to be imposed.
+
+Acknowledgments
+This work is partially supported by the EU-FET grant EUNISON 308874 and partially
+
+supported by the Spanish Government Elastic-Flow project DPI2015-67857-R. The authors
+thankfully acknowledge the computer resources, technical expertise and assistance provided
+by the Red Espanola de Supercomputacion (RES-BSC). Moreover, the first author would
+also like to acknowledge the Agencia de Gestio d’Ajuts Universitaris i de Recerca for the
+predoctoral FI Grant no. 2015 FI-B 00227. The second author gratefully acknowledges the
+support received from the Catalan Government through the ICREA Acadèmia Research
+Program.
+
+REFERENCES
+ALAUZET, F., and M. MEHRENBERGER. 2010. P1-conservative solution interpolation on unstructured triangular
+
+meshes. International Journal for Numerical Methods in Engineering, 84(13):1552–1588.
+BADIA, S., and R. CODINA. 2007. Algebraic pressure segregation methods for the incompressible Navier-
+
+Stokes equations. Archives of Computational Methods in Engineering, 15:1–52.
+BERNARDI, C. 1994. A new nonconforming approach to domain decomposition: the mortar element method.
+
+In Nonliner Partial Differential Equations and Their Applications.
+BRANCHERIE, DELPHINE, PIERRE VILLON, ADNAN IBRAHIMBEGOVI´ C, ALAIN RASSINEUX, and PIOTR
+
+BREITKOPF. 2006. Transfert de champs par approximation diffuse avec conservation de l’énergie.
+European Journal of Computational Mechanics/Revue Européenne de Mécanique Numérique, 15(1-3):107–
+118.
+
+BUSSETTA, PHILIPPE, ROMAIN BOMAN, and JEAN-PHILIPPE PONTHOT. 2015. Efficient 3d data transfer op-
+erators based on numerical integration. International Journal for Numerical Methods in Engineering, 102(3-
+4):892–929.
+
+CEBRAL, J. R., and R. LOHNER. 1997. Conservative load projection and tracking for fluid-structure problems.
+
+
+
+INTERPOLATION WITH RESTRICTIONS 27
+
+AIAA journal, 35(4):687–692.
+CHESSHIRE, G., and W. D. HENSHAW. 1994. A scheme for conservative interpolation on overlapping grids.
+
+SIAM Journal on Scientific Computing, 15(4):819–845.
+CHIANDUSSI, G., G. BUGEDA, and E. OÑATE. 2000. A simple method for automatic update of finite element
+
+meshes. Communications in Numerical Methods in Engineering, 16(1):1–19.
+CHIPPADA, S., C. N. DAWSON, M. L. MARTINEZ, and M. F. WHEELER. 1998. A projection method for
+
+constructing a mass conservative velocity field. Computer Methods in Applied Mechanics and Engineer-
+ing, 157(1):1–10.
+
+CISONNI, J., K. NOZAKI, A. VAN HIRTUM, X. GRANDCHAMP, and S. WADA. 2013. Numerical simulation
+of the influence of the orifice aperture on the flow around a teeth-shaped obstacle. Fluid Dynamics
+Research, 45(2):025505.
+
+CODINA, R. 2002. Stabilized finite element approximation of transient incompressible flows using orthogonal
+subscales. Computer Methods in Applied Mechanics and Engineering, 191(39):4295–4321.
+
+CODINA, R., G. HOUZEAUX, H. COPPOLA-OWEN, and J. BAIGES. 2009. The fixed-mesh ale approach for the
+numerical approximation of flows in moving domains. Journal of Computational Physics, 228(5):1591–
+1611.
+
+DONEA, J., A. HUERTA, J. P. PONTHOT, and A. RODRIGUEZ-FERRAN. 2004. Arbitrary Lagrangian-Eulerian
+methods, vol. 1: Fundamentals, E. Stein, R. de Borst & T. J. R. Hugues. Encyclopedia of Computational
+Mechanics.
+
+DUKOWICZ, J. K., and J. W. KODIS. 1987. Accurate conservative remapping (rezoning) for arbitrary
+lagrangian-eulerian computations. SIAM Journal on Scientific and Statistical Computing, 8(3):305–321.
+
+FARHAT, C., M. LESOINNE, and P LE TALLEC. 1998. Load and motion transfer algorithms for fluid/structure
+interaction problems with non-matching discrete interfaces: Momentum and energy conservation, optimal
+discretization and application to aeroelasticity. Computer methods in applied mechanics and engineer-
+ing, 157(1):95–114.
+
+FARRELL, P. E., and J. R. MADDISON. 2011. Conservative interpolation between volume meshes by local
+galerkin projection. Computer Methods in Applied Mechanics and Engineering, 200(1):89–100.
+
+FARRELL, P. E., M. D. PIGGOTT, C. C. PAIN, G. J. GORMAN, and C. R. WILSON. 2009. Conservative
+interpolation between unstructured meshes via supermesh construction. Computer Methods in Applied
+Mechanics and Engineering, 198(33):2632–2642.
+
+GARIMELLA, R., M. KUCHARIK, and M. SHASHKOV. 2007. An efficient linearity and bound preserving
+conservative interpolation (remapping) on polyhedral meshes. Computers & fluids, 36(2):224–237.
+
+GUASCH, O., and R. CODINA. 2009. Computational aeroacoustics of viscous low speed flows using subgrid
+scale finite element methods. Journal of Computational Acoustics, 17(03):309–330.
+
+HOUZEAUX, G., and R. CODINA. 2001. Transmission conditions with constraints in finite element do-
+main decomposition methods for flow problems. Communications in Numerical methods in Engineer-
+ing, 17(3):179–190.
+
+JAIMAN, R. K., X. JIAO, P. H. GEUBELLE, and E. LOTH. 2005. Assessment of conservative load transfer
+for fluid-solid interface with non-matching meshes. International Journal for Numerical Methods in
+Engineering, 64(15):2014–2038.
+
+JIAO, X., and M. T. HEATH. 2004. Common-refinement-based data transfer between non-matching meshes in
+multiphysics simulations. International Journal for Numerical Methods in Engineering, 61(14):2402–2427.
+
+KALTENBACHER, M., S. ZÖRNER, A. HÜPPE, and P. SIDLOF. 2014. 3d numerical simulations of human
+phonation. In Proceedings of the 11th world congress on computational mechanics-WCCM XI.
+
+LIGHTHILL, M. J. 1952. On sound generated aerodynamically. i. general theory. Proceedings of the Royal
+Society of London. Series A. Mathematical and Physical Sciences, 211(1107):564–587.
+
+LÖHNER, R. 1995. Robust, vectorized search algorithms for interpolation on unstructured grids. Journal of
+computational Physics, 118(2):380–387.
+
+MARGOLIN, L. G., and M. SHASHKOV. 2003. Second-order sign-preserving conservative interpolation
+(remapping) on general grids. Journal of Computational Physics, 184(1):266–298.
+
+RAMSHAW, J. D. 1985. Conservative rezoning algorithm for generalized two-dimensional meshes. Journal of
+Computational Physics, 59(2):193–199.
+
+SCROGGS, J. S., and F. H. M. SEMAZZI. 1995. A conservative semi-lagrangian method for multidimensional
+fluid dynamics applications. Numerical Methods for Partial Differential Equations, 11(5):445–452.
+
+

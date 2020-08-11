@@ -1,0 +1,618 @@
+mix finit element method convect stabil larg eddi simul incompress turbul flow oriol colomsa , santiago badiaa , b , javier principea , b acentr internacion de mtode numric l  enginyeria ( cimn ) , parc mediterrani de la tecnologia , upc , estev terrada 5 , 08860 castelldefel , spain ( { ocolom , sbadia , princip } @ cimne.upc.edu ) .
+buniversitat politcnica de catalunya , jordi girona 1-3 , edifici c1 , 08034 barcelona , spain .
+abstract variat multiscal method thought implicit larg eddi simul model turbul flow shown altern wide use physical-bas model .
+method tradit combin equal-ord velocity-pressur pair , sinc provid pressur stabil .
+work , consid differ approach , base inf-sup stabl element convection-on stabil .
+order , consid symmetr project stabil convect term use orthogon subscal decomposit .
+accuraci effici method compar residual-bas algebra subgrid scale orthogon subscal method equal-ord interpol assess paper .
+moreov , inf-sup stabl element use , grad-div stabil term shown essenti guarante accur solut .
+henc , studi influenc term larg eddi simul turbul incompress flow also perform .
+furthermor , recurs block precondit strategi consid resolut problem implicit treatment project term .
+two differ benchmark test solv : taylor-green vortex flow = 1600 , turbul channel flow re = 395 .
+keyword : larg eddi simul , turbul , variat multiscal , block recurs precondit , grad-div stabil 1 .
+introduct simul incompress turbul flow need solv mani problem scienc en- gineer , e.g. , flow around aircraft , wind turbin , car , bridg , etc .
+comput fluid dynam field constant evolv search best way achiev faster cheaper flow simul , take advantag increas comput power supercomput .
+turbul flow character multipl scale , space time , make simul realli challeng task .
+direct numer simul ( dns ) turbul flow use captur physic phenomena scale , even smallest one , consum larg amount comput resourc .
+techniqu increas use save lot comput cost larg eddi simul ( les ) , basic consist separ flow coars scale fine one , simul coarser model finer [ 1 ] .
+model fine scale les method develop physic approach , defin take account physic phenomena take place smallest scale , pure numer approach introduc modif govern equat continu level .
+last numer approach common denot implicit les ( ile ) , see instanc [ 2 ] .
+variat multiscal ( vms ) method introduc hugh [ 3 , 4 ] framework develop stabl accur numer approxim partial differenti equat , prevent numer instabl aris standard galerkin finit element ( fe ) method use .
+context incompress navier-stok equat two well known instabl .
+first , need satisfi compat veloc pressur approxim space , i.e. , inf-sup condit , satisfi equal order interpol use .
+second , instabl appear convect domin flow simul , solv ad kind extra dissip problem , , e.g. , [ 5 ] .
+also much less known loss accuraci preprint submit comput method appli mechan engin octob 30 , 2015 discret veloc due poor mass conserv [ 6 ] link poor resolut pressur typic mix interpol satisfi inf-sup condit [ 7 ] .
+vms method first thought ile method [ 8 , 9 , 10 ] , sinc , sever vms method develop use ile .
+distinguish introduc three scale decomposit resolv larg small scale unresolv scale [ 11 , 12 , 13 , 14 ] , smagorinski type model influenc unresolv scale onto small resolv one , introduc two scale decomposit resolv unresolv one [ 15 , 16 ] use residu base project base model unresolv scale account influenc resolv one .
+[ 17 ] , two scale vms approach orthogon subscal ( oss ) first introduc .
+main idea oss method select space small scale orthogon fe space , contrast tradit choic take subscal proport residu , call algebra subgrid scale ( asg ) [ 17 ] .
+apart choic space subscal , time depend vms split nonlinear term studi [ 18 ] .
+sever combin model possibl exhaust assess homogen wall bound turbul flow [ 16 ] .
+work , explicit algorithm comput orthogon project use project whole residu consid .
+altern definit oss method propos [ 19 ] use term-by-term stabil involv full residu .
+similar term-by-term stabil approach follow [ 20 ] , local project stabil ( lps ) method introduc .
+type techniqu also known symmetr project stabil , key ingredi lead differ scheme definit project [ 20 , 21 ] .
+one main interest term-by-term stabil one avoid addit pressur gradient stabil term use inf-sup stabl ( iss ) velocity-pressur pair .
+anoth advantag term-by-term stabil method project easili treat implicit , without residu term coupl .
+use equal-ord iss pair lps method assess laminar flow [ 22 ] , conclud grad-div stabil term relev convect stabil term iss fes use .
+conclus point [ 13 ] , turbul channel flow studi use projection-bas bubble-bas fe vms method introduc smagorinski type model stabil convect .
+main goal paper assess first time accuraci effici convection- stabil iss scheme ile method , symmetr project stabil use .
+particular , analyz term-by-term oss method implicit treatment project turbul flow .
+also analys influenc grad-div stabil accuraci method .
+iss discret , influenc term mass conserv well known [ 6 ] also influenc comput cost linear solver [ 23 , 24 ] .
+respect , present block precondit strategi make use recurs block factor [ 25 ] deal implicit project saddl point structur velocity-pressur coupl , also appli equal order interpol pressur stabil .
+comparison result made respect obtain use residual-bas asg also use block precondit strategi .
+work organ follow .
+navier-stok equat togeth notat use paper state sect .
+2 .
+vms framework introduc sect .
+3 , includ final discret formul asg method , given sect .
+3.1 , term-by-term oss given sect .
+3.2 , term-by-term oss iss element given sect .
+3.3 also brief discuss known properti grad-div stabil given sect .
+3.4 .
+recurs block iter strategi propos solv linear system monolith problem present sect .
+4 .
+numer result shown sect .
+5 , two differ turbul test analys : taylor-green vortex flow sect .
+5.2 turbul channel flow sect .
+5.3 .
+final , conclus point sect .
+6 .
+2 .
+problem statement let  bound domain rd , = 2 , 3 number space dimens ,  =  boundari ( 0 , ] time interv .
+strong form steadi navier-stok problem consist 2 find veloc field u pressur field p tu u + u  u +p = f  ( 0 , ] , ( 1 )   u = 0  ( 0 , ] , ( 2 ) f forc vector  kinemat viscos .
+hereaft bold charact denot vector tensor .
+equat ( 1 ) ( 2 ) need suppli appropri boundari initi condit .
+boundari  divid dirichlet ( d ) neumann ( n ) part d  n =  d  n =  .
+, boundari initi condit written u = ug d  ( 0 , ] , ( 3 ) ( p  +  ( u +ut ) )  n = tn n  ( 0 , ] , ( 4 ) u ( x , 0 ) = u0 ( x )  { 0 } , ( 5 ) n unit outward vector normal  .
+notat need state order deriv weak form problem ( 1 ) - ( 5 ) .
+denot lp (  ) , 1  p <  , space function p-th power absolut integr  .
+particular , case p = 2 , hilbert space scalar product ( u , v )   ( u , v ) : =   u ( x ) v ( x ) d ( 6 ) induc norm ul2 (  )  u = ( u , u ) 1/2 .
+space function whose distribut deriv order l2 (  ) denot hm (  ) .
+focus case = 1 , also hilbert space .
+h10 (  ) set function h1 (  ) zero trace  h1g (  ) set function h1 (  ) whose trace satisfi ( 3 ) .
+furthermor , denot h1 (  ) topolog dual h10 (  )  ,  dualiti pair h1 (  ) h10 (  ) .
+given banach space x , lp ( 0 , ; x ) space time-depend function x-norm lp ( 0 , ) .
+bold letter use space vector function .
+, equat ( 1 ) - ( 5 ) one deriv weak form problem , consist find [ u , p ]  l2 ( 0 , ; vg )  l1 ( 0 , ; q0 ) ( tu , v ) +b ( u , ( u , p ) , ( v , q ) ) = f , v v  v0 , q  q0 , ( 7 ) satisfi initi condit ( 5 ) weak sens .
+v0 : = h10 (  ) , vg : = h1g (  ) q0 : = l2 (  ) /r form b ( u , ( u , p ) , ( v , q ) ) defin b ( u , ( u , p ) , ( v , q ) ) : =  ( u , v ) + b ( u , u , v )  ( p ,   v ) + ( q ,   u ) ( 8 ) trilinear form convect term b ( u , v , w ) defin skew symmetr version b ( u , v , w ) = 1 2 ( u  v , w )  1 2 ( v , u  w ) + 1 2 ( v , ( u  n ) w ) n .
+( 9 ) 3 .
+vms method let us consid fe partit th domain  construct conform finit dimension space veloc v0 , h  v0 , vg , h  vg , pressur q0 , h  q0 .
+galerkin fe approxim problem ( 7 ) consist find [ uh , ph ]  l2 ( 0 , ; vg , h )  l1 ( 0 , ; q0 , h ) ( tuh , vh ) +b ( uh , ( uh , ph ) , ( vh , qh ) ) = f , vh vh  v0 , h , qh  q0 , h .
+( 10 ) order overcom numer instabl , eventu , bypass inf-sup condit aris problem ( 10 ) solv , use vms approach [ 3 , 4 ] consist two-scal decomposit space v0 , vg q0 v0 = v0 , hv0 , vg = vg , hvg q = q0 , hq0 , v0 , vg q0 infinite-dimension space complet fe space v0 , vg q0 , respect .
+3 hereinaft subscript (  ) h denot fe compon tild (  ) subgrid compon .
+appli two-scal decomposit ( 7 ) obtain ( tuh , vh ) + ( tu , vh ) +b ( u ; [ uh , ph ] , [ vh , qh ] )  ( u , vh +  vh +qh ) h ( p ,   vh ) = f , vh , ( 11 ) (  ,  ) h =  kth (  ,  ) k sum scalar product ( 6 ) element k partit th .
+term involv subscal come element-wis integr part , boundari term ( vh , n  u ) h ( qh , n  u ) h neglect ( subscript h use denot sum element integr boundari element ) .
+also involv approxim b ( , u , uh )   ( u ,  vh ) impli neglect ( vh , n  au ) h ( u ,   vh ) .
+approxim discuss [ 18 ] togeth choic defin type scale split ( linear nonlinear ) , see also [ 16 ] .
+problem ( 11 ) depend u  v0 p  q0 , v0 q0 infinite-dimension .
+therefor , equat u p obtain appli two-scal decomposit direct solv , model step need obtain feasibl method .
+work consid veloc subscal linear ( = uh ) quasi-stat , pressur subscal neglect equal order interpol use .
+differ approach could use definit subscal , see [ 16 ] deep explan differ choic numer evalu equal order approxim .
+approxim navier-stok oper stabil paramet 1m 1c ( see exampl [ 18 ] ) , fine scale problem written 1m u = pv ( ru ) , ( 12 ) 1c p = pq ( rp ) .
+( 13 ) ( 12 ) - ( 13 ) p denot project onto space subscal , discuss .
+turn , vector ru residu navier-stok momentum equat ( 1 ) rp residu incompress constraint ( 2 ) , defin ru = f  tuh + vh  uh  vh qh , ( 14 ) rp =   uh .
+( 15 ) final , express stabil paramet m c m = ( c1 h2 + c2|uh| h ) 1 , ( 16 ) c = h2 c1m .
+( 17 ) h mesh size c1 c2 algorithm constant .
+choic valu c1 c2 make signific differ vms method , special turbul flow , energi dissip introduc stabil method take import role final solut .
+work , select c1 = 12 c2 = 2 , follow [ 16 ] .
+introduc u p ( 11 ) get final discret problem ( tuh , vh ) +bh ( uh , ( uh , ph ) , ( vh , qh ) ) = lh ( vh , qh ) vh  v0 , h , qh  q0 , h , ( 18 ) bilinear form bh linear form lh depend particular vms method discuss .
+3.1 .
+residual-bas asg space subscal v0 determin definit project p appear right-hand side ( 12 ) - ( 13 ) .
+asg method obtain take subscal space residu , , pv : = pq : = .
+final discret given ( 18 ) bh = basg lh = lasg given basg ( uh , ( uh , ph ) , ( vh , qh ) ) : = b ( uh , ( uh , ph ) , ( vh , qh ) ) ( 19 ) + ( m ( tuh  uh + uh  uh +ph ) , vh + uh  vh +qh ) , lasg ( vh , qh ) : = f , vh+ ( mf , vh + uh  vh +qh ) .
+( 20 ) 4 note pressur subscal term neglect ( 19 ) , taken c = 0 .
+observ [ 16 ] ( use equal order interpol ) term introduc extra dissip general improv solut signific .
+3.2 .
+term term oss anoth possibl introduc [ 17 ] consid space subscal orthogon fe space .
+main motiv method stabil estim project onto fe space pressur convect term alreadi obtain standard galerkin method therefor  miss  part orthogon one .
+orthogon subscal ( oss ) method obtain take pv : =   h = ih h project onto fe space .
+l 2 orthogon fe subscal space guarante consid m-weight project ( mh ( w ) , vh ) = ( mw , vh ) vh  v0 , h .
+( 21 ) requir solut linear system defin m-weight mass matrix .
+note choic , residu momentum equat depend tuh .
+likewis , p ( f ) case well defin f  l2 (  ) d. case minimum regular , f  h1 (  ) , term simpli neglect without upset accuraci method .
+remark 3.1 .
+altern consid standard l2 project ( h ( w ) , vh ) = ( w , vh ) vh  v0 , h , ( 22 ) modifi model subscal u = pv ( mru ) , ( 23 ) p = pq ( crp ) .
+( 24 ) modif orthogon fe subscal space guarante ( thus ( tuh , u ) = 0 ) standard mass matric use .
+advantag take profit build effici solver .
+numer test favour altern .
+neglect pressur subscal oss method given ( 18 ) b = boss lh ( vh , qh ) = f , vh boss ( uh , ( uh , ph ) , ( vh , qh ) ) = b ( uh , ( uh , ph ) , ( vh , qh ) ) ( 25 ) + ( m ( uh + uh  uh +ph ) , vh + uh  vh +qh )  ( mh , vh + uh  vh +qh ) .
+h : = h ( ru ) comput solv ( mh , h ) + ( m ( uh + uh  uh +ph ) , h ) = ( mf , h ) h  vh,0 , ( 26 ) implicit implement method would requir introduct extra variabl ( project h ) , import , variabl would coupl veloc pressur .
+due laplacian term formul , velocity-project coupl non-symmetr , seen ( 25 ) ( 26 ) .
+order reduc coupl variabl consid term term oss method propos [ 19 ] .
+main goal altern stabil separ convect term pressur gradient term two uncoupl orthogon project .
+note [ 19 ] term term oss better stabil properti classic one .
+consid quasi-stat linear subscal discret problem given ( 18 ) b = btbt_oss lh ( vh , qh ) = f , vh btbt_oss ( uh , ( uh , ph ) , ( vh , qh ) ) = b ( uh , ( uh , ph ) , ( vh , qh ) ) ( 27 ) + ( muh  uh , uh  vh ) + ( mph , qh )  ( mh , uh  vh )  ( mh , qh ) .
+5 h : = h ( uh  uh ) h : = h ( ph ) comput solv ( mh , h ) = ( muh  uh , h ) h  vh,0 , ( 28 ) ( mh , h ) = ( mph , h ) h  vh,0 .
+( 29 ) note term term oss method implicit fe project , 3d+1 unknown per node , asg number unknown d+1 per node .
+priori seem increas unknown make former method appeal front asg , see later increas comput cost linear increas unknown case .
+furthermor , optim block precondit techniqu use solv problem ( 18 ) - ( 27 ) - ( 28 ) - ( 29 ) take advantag block structur .
+point discuss sect .
+4 .
+3.3 .
+term term oss iss element equal order interpol pressur stabil mandatori iss fe space pressur stabil guarante .
+, could defin term term oss method iss fe sta- biliz convect term orthogon fe project .
+approach would reduc number unknown per node , keep stabil properti better condit matrix asg .
+definit term term oss-iss method given equat ( 18 ) b = btbt_oss_iss lh ( vh , qh ) = f , vh btbt_oss_iss ( uh , ( uh , ph ) , ( vh , qh ) ) = b ( uh , ( uh , ph ) , ( vh , qh ) ) ( 30 ) + ( muh  uh , uh  vh )  ( mh , uh  vh ) + ( c  uh ,   vh ) , complement fe project convect term defin ( 28 ) .
+note case includ effect pressur subscal , , grad-div stabil .
+howev ( constant stabil paramet ) project diverg requir implement ( 13 ) need comput vanish , impli discret mass conserv equat .
+case pressur stabil use .
+m variabl neglect project reduc comput cost .
+note , howev , approxim introduc consist error .
+3.4 .
+grad-div stabil import highlight presenc pressur subscal term , c ( uh , vh ) ( 30 ) , first introduc [ 26 ] .
+even though usual includ vms formul sometim neglect practic , particular equal order interpol pressur stabil consid [ 16 ] .
+shown [ 22 ] , use grad-div stabil simul laminar flow produc small improv result obtain equal order interpol clear improv result obtain iss element .
+vms decomposit , term come residu incompress constraint addit improv conserv mass well effect error pressur field produc veloc field .
+[ 7 , 27 ] author assess use iss element incompress navier-stok equat laminar regim , highlight import term .
+optim choic paramet c , discuss [ 28 ] , depend relat norm veloc pressur ( therefor problem depend ) order one also much bigger .
+hand , [ 29 ] prove regular mesh , taylor-hood approxim converg point-wis divergence-fre solut , one obtain use scott-vogelius ( sv ) element [ 30 ] , c  .
+, seen optim valu c open question , state [ 7 ] , may consid search optim paramet trade-off mass momentum balanc fe system .
+work tri evalu import term turbul incompress flow iss element use .
+thus , detail discuss valu take c consid numer test section .
+apart influenc mass conserv , term also known introduc numer dissip equal order [ 16 ] iss element use [ 7 ] .
+energi balanc term-by- term oss obtain take vh = uh qh = ph ( 18 ) use ( 30 ) 1 2 dt uh2 + uh2 + 1/2m ( uh  uh  h )  2 + 1/2c   uh 2 = f , uh .
+( 31 ) 6 apart viscous dissip come galerkin method , neglig turbul flow , get extra dissip come control orthogon project convect term dissip come grad-div stabil .
+equal order interpol use extra dissip necessari good result obtain take c = 0 [ 16 ] .
+discuss , iss discret , numer dissip introduc grad-div term crucial obtain accur solut .
+instanc , given veloc space , taylor-hood element one order less pressur space stabil equal order counterpart , lead poorer approxim mass conserv equat .
+note c goe zero dissip introduc accuraci satisfact mass conserv poor .
+hand take c larg result strong imposit mass conserv ( act penalti term ) give , taylor-hood pair regular mesh , exact ( point-wis ) zero diverg limit [ 29 ] .
+case turn extra dissip also vanish 1/2c   uh2  0 limit c    1/2 c [ 31 ] .
+case import keep mind c chang veloc field chang dissip term ( 31 ) also chang .
+therefor conclud whether method less dissip look 1/2c   uh2 .
+possibl arriv conclus paramet influenc much solut , case equal order interpol .
+point discuss detail present numer result sect .
+5 .
+final , grad-div term also strong influenc condit linear system therefor converg iter solver .
+monolith system consid , term act augment lagrangian term improv converg block iter scheme also known introduc stiff veloc block [ 23 , 24 ] .
+altern paramet tune need , e.g. , taylor hood element , use divergence-fre fes also satisfi inf-sup condit ( obvious , element grad-div stabil vanish ) .
+one group element scott-vogelius pair [ 30 ] given triangular/tetrahedr element pk/p disck1 .
+element similar taylor-hood element except pressur space discontinu , impli properti point-wis divergence- free ( take pressur test function diverg veloc ) .
+scott-vogelius element iss mild assumpt mesh , e.g. , order interpol k  mesh barycentre-refin regular mesh [ 31 ] .
+quadrilater mesh , zhang introduc new divergence-fre iss element [ 32 ] .
+work propos new famili quadrilater element differ interpol space veloc compon , 3d case state qk+1 , k , k qk , k+1 , k qk , k , k+1/qdisck .
+case , pressur field also discontinu spurious mode filter .
+consid approach .
+4 .
+block precondit monolith problem common approach oss method use treat project explicit .
+mean comput valu resolut velocity-pressur system iter solut converg .
+although result matrix better condit number asg method , increas nonlinear iter due explicit treatment orthogon project may caus lose effici method mani case .
+[ 16 ] comput cost analysi method turbul incompress flow effect shown .
+altern , implicit approach oss method increas number unknown problem , usual veloc pressur unknown , also fe project .
+treat fe project new unknown , system equat solv increas equat ( 21 ) ( 22 ) .
+project unknown coupl veloc pressur block non-symmetr make applic block precondit techniqu difficult .
+mention , case term term oss term term oss iss element consid .
+order present recurs block-precondit techniqu , let us assum solv navier-stok problem use ( fix idea ) backward euler time integr monolith approach , i.e. , without velocity-pressur segreg algorithm .
+consid implicit term-by-term oss stabil given bilinear form ( 27 ) general case talk number unknown appear system , sinc veloc , pressur two project .
+7 case term term oss iss element asg obtain elimin row column system .
+assum uh , ph , h h defin fe interpol nodal valu { ua } a=1 , ... , nu , { p b } b=1 , ... , np , {  l } l=1 , ... , n {  } m=1 , ... , n , fe approxim veloc- iti , pressur project field written uh ( x ) = nu a=1 a ( x ) u , ph ( x ) = np b=1 b ( x ) p b , h ( x ) = n l=1  ( x )  l , h ( x ) = n m=1  ( x )  , { a , } a=1 , ... , nu ; i=1 , ... , , { b } b=1 , ... , np , { l , } l=1 , ... , n ; i=1 , ... , { m , } m=1 , ... , n ; i=1 , ... , lagrangian basi associ vh qh .
+nu , np , n n total amount node veloc , pressur project field .
+matrix form problem ( 18 ) bilinear form ( 27 ) , project ( 28 ) - ( 29 ) written   1 t + k + c + a g b ,  0 l 0 b ,  bt ,  0 m ,  0 0 bt ,  0 m ,      u p     =   fu 0 0 0   , ( 32 ) , k , c , g matric aris galerkin integr mass , diffus , convect , veloc diverg pressur gradient term , respect .
+definit remain term given aab : = ( mu  a , u  b ) + ( c  a ,   b ) , , b = 1 , ... , nu , lab : = ( ma , b ) , , b = 1 , ... , np , bab ,  : =  ( mu  a , b ) , = 1 , ... , nu , b = 1 , ... , n , bt , ab ,  : = ( ma , u  b ) , = 1 , ... , n , b = 1 , ... , nu , mab ,  : =  ( ma , b ) , , b = 1 , ... , n , bab ,  : =  ( ma , b ) , = 1 , ... , np , b = 1 , ... , n , bt , ab ,  : = ( ma , b ) , = 1 , ... , n , b = 1 , ... , np , mab ,  : =  ( ma , b ) , , b = 1 , ... , n , b node identif .
+note = gt , dirichlet boundari condit consid .
+general , n = n , , m ,  = m ,  .
+asg method , first two row column matrici system ( 32 ) present , differ definit a l straight forward bilinear form ( 19 ) .
+case oss-iss method , last row column disappear , keep definit remain term .
+solv system ( 32 ) use recurs block-precondit techniqu .
+methodolog use [ 25 ] multiphys problem like thermal coupl inductionless mhd .
+idea construct recurs block precondition size 2  2 incomplet block factor origin 2 2 block matric .
+let us consid block system equival ( 32 ) defin [ m bt b k ] [  u ] = [ 0 fu ] , ( 33 ) k : = [ 1 t + k + c + a g l ] , b : = [ b ,  0 0 b ,  ] , bt : = [ bt ,  0 0 bt ,  ] , m : = [ m ,  0 0 m ,  ] ,  : = [   ] , u : = [ u p ] fu : = [ fu 0 ] .
+8 matrix appear system equat ( 33 ) factor exact lu matrix product follow a : = [ m bt b k ] = [ m 0 b s ] [ m1 b  0 ] ( 34 ) = [ 0 bm1 ] [ m bt 0 s ] , s : = k  bt m1 b schur complement respect u .
+order construct precon- dition system ( 33 ) build inexact factor a diagon block recurs precondit anoth block precondition .
+consid three differ precondition a , tri approxim lu decomposit ( 34 ) diagon precondition ( ) : pd ( a ) = [ m 0 0 s ] 1 = [ m1 0 0 s1 ] , ( 35 ) upper precondition ( u ) : pu ( a ) = [ m bt 0 s ] 1 = [ m1 m1 bt s1 0 s1 ] , ( 36 ) lower precondition ( u ) : pl ( a ) = [ m 0 b s ] 1 = [ m1 0 s1bm1 s1 ] .
+( 37 ) appli ( 35 ) - ( 37 ) need comput action m1 s1 .
+first case , m1 block diagon thus requir invers project mass matrix , m1 ,  1  ,  .
+serial comput , appli direct method wherea parallel comput approxim one applic diagon dd precondition construct valu diagon m ,  m ,  , respect .
+second case approxim schur complement invers s  k , , neglect contribut form project bt m1 b precondition .
+approxim correspond use solut system aris non-consist formul artifici pressur streamlin diffus ad .
+stabil precondition therefor guarante .
+applic k1 consid three precondition equival ( 35 ) - ( 37 ) .
+use notat k : = 1tm + k + c + a veloc block matrix : l dk 1  g schur complement associ pressur field , follow block precondition diagon precondition ( ) : pd ( k ) = [ k 0 0 ] 1 = [ k1 0 0 s1 ] , ( 38 ) upper precondition ( u ) : pu ( k ) = [ k g 0 ] 1 = [ k1 k1 gs1 0 s1 ] , ( 39 ) lower precondition ( u ) : pl ( k ) = [ k 0 ] 1 = [ k1 0 s1dk1 s1 ] .
+( 40 ) usual , invers schur complement approxim pressur laplacian matrix , s1  tl1p .
+regim viscous term becom domin , one use cahouet-chabard precondition approxim invers schur complement , i.e. , s1  ( + c ) mp+ tl1p .
+serial case , laplacian matrix invert use direct method , parallel context ap- proxim invers lp one applic bddc precondition matrix .
+someth similar done invers veloc block matrix k .
+use direct method serial case one applic bddc precondition parallel solver treat .
+refer [ 33 ] applic bddc precondition nonsymmetr problem .
+detail descript implement algorithm use recurs block-precondit techniqu refer [ 25 ] .
+besid monolith approach , split velocity-pressur techniqu common use high reynold turbul flow , interpret one applic block-precondition [ 34 , 35 ] .
+high order time integr scheme segreg veloc pressur comput recent propos [ 36 ] .
+use stabil inf-sup stabl fes propos herein particular well-suit type scheme , keep index-2 differential-algebra natur problem .
+9 5 .
+numer test section provid numer result turbul incompress flow simul use method state .
+first , compar analysi three stabil method develop sect .
+3 .
+paramet elect pressur subscal term assess numer test perform section .
+, first , show result comput cost vms method consid work .
+check effici method solv simpl 2d steadi problem analyt solut .
+5.1 .
+analyt collid flow section solv problem analyt solut model collid flow .
+test use [ 34 ] discuss error estim stoke navier-stok problem use iss fe velocity-pressur pair .
+analyt solut express : u ( x , , ) = [ 20xy3 5x4  5y4 ] , ( 41 ) p ( x , ) = 60x2i  20y3 + 40 .
+( 42 ) problem solv squar domain [ 1 , 1 ]  [ 1 , 1 ] reynold number = 25 .
+analys solver iter converg h precondition defin sect .
+4 well elaps cpu time error veloc pressur field .
+due simplic test , solv problem serial use q1/q1 element mesh asg term-by-term oss , q2/q1 element mesh oss-iss method .
+show result use lower-triangular precondition global matrix pl ( a ) , defin ( 37 ) .
+diagon version pd ( a ) defin ( 35 ) give poorer perform result obtain upper-triangular version pu ( a ) ( 36 ) .
+velocity-pressur block , precon- dition defin ( 38 ) - ( 40 ) consid .
+fig .
+1 depict solver iter need solv problem well total elaps cpu time differ mesh compos 4 , 8 , 16 , 32 64 element per direct .
+oss-iss method consid , use q2/q1 element , number element per direct divid two .
+amount solver iter shown fig .
+1 ( ) comput ad solver iter need nonlinear iter .
+see figur oss-iss method increas solver iter coarser mesh , compar two method .
+behaviour produc fact case mesh coars , 2  2 q2/q1 element , nonlinear iter suffer drastic increas .
+finer mesh , oss-iss method need less solver iter two .
+see diagon precondition pd ( k ) oss-iss scale refin mesh .
+upper lower precondition , pu ( k ) pl ( k ) , similar result slight better perform upper version method .
+asg oss method also need similar number iter solv problem , oss method littl bit asg .
+look elaps comput time , fig .
+1 ( b ) , see oss method clear expens , term consum time , two method .
+asg method slight faster oss-iss , differ almost neglig pu ( k ) precondition .
+fact expens method oss method justifi number degre freedom ( dof ) appear system equat .
+state sect .
+4 , oss method two vectori unknown asg method .
+hand , oss-iss method also addit vectori unknown asg , pressur field approxim half node .
+without take account boundari condit , 44 element mesh ( 22 oss-iss case ) , would 175 dof oss method , 75 dof asg method 109 dof oss-iss method .
+, see , although dof , oss-iss method compar term comput time asg .
+, number dof wrong measur cpu cost .
+expens problem simul pressur poisson equat , case smaller ( one order less ) iss element .
+, project dof almost free , sinc involv mass matrix solv .
+, iss method exhibit clear lower number iter .
+10 0 500 1000 1500 2000 2500 3000 3500 4000 4500 4 8 16 32 64 # te ra ti n # element per direct acumul solver iter asg - asg - u asg - l oss - oss - u oss - l oss_iss - oss_iss - u oss_iss - l ( ) solver iter 0 50 100 150 200 250 4 8 16 32 64 im e # element per direct cpu time asg - asg - u asg - l oss - oss - u oss - l oss_iss - oss_iss - u oss_iss - l ( b ) elaps cpu time figur 1 : collid flow solver iter elaps cpu time use pu ( a ) global matrix .
+let us focus error veloc pressur field .
+sinc solv problem analyt solut , evalu exact error fe approxim , eu : = uh  u ep : = ph  p .
+fig .
+2 depict converg error refin mesh .
+fig .
+2 ( ) see veloc error converg expect , 2nd order rate asg oss method , approxim q1/q1 element , 3rd order rate oss-iss method , approxim q2/q1 element .
+look fig .
+2 ( b ) , seen pressur 0.0001 0.001 0.01 0.1 1 10 4 8 16 32 64 e rr r # element per direct veloc error norm asg - asg - u asg - l oss - oss - u oss - l oss_iss - oss_iss - u oss_iss - l 2nd order 3rd order ( ) veloc error 0.01 0.1 1 10 100 1000 4 8 16 32 64 e rr r # element per direct pressur error norm asg - asg - u asg - l oss - oss - u oss - l oss_iss - oss_iss - u oss_iss - l 2nd order ( b ) pressur error figur 2 : collid flow error converg use pu ( a ) global matrix .
+error norm converg 2nd order rate method , expect .
+note differ result chang precondition , sinc solut case modifi system solv .
+order check effici method compar error norm elaps com- putat time .
+way idea time need given method achiev certain solut accuraci .
+fig .
+3 show comparison veloc ( fig .
+3 ( ) ) pressur ( fig .
+3 ( b ) ) field , see , exclud coarser mesh , oss-iss method much effici two .
+furthermor , effici precondition upper version pu ( k ) .
+5.2 .
+taylor green vortex flow shown mani author vms stabil term act les model turbul flow , introduc appropri dissip small scale captur coars solut .
+particular , asg oss method assess [ 16 ] , show method capabl perform good les simul differ turbul benchmark problem .
+order check perform convection-on oss stabil iss element les 11 0.0001 0.001 0.01 0.1 1 10 0.01 0.1 1 10 100 1000 e rr r cpu time veloc error norm vs. cpu time asg - asg - u asg - l oss - oss - u oss - l oss_iss - oss_iss - u oss_iss - l ( ) veloc error vs. cpu time 0.01 0.1 1 10 100 1000 0.01 0.1 1 10 100 1000 e rr r cpu time veloc error norm vs. cpu time asg - asg - u asg - l oss - oss - u oss - l oss_iss - oss_iss - u oss_iss - l ( b ) pressur error vs. cpu time figur 3 : collid flow error vs. cpu time use pu ( a ) global matrix .
+simul , analys behaviour taylor green vortex ( tgv ) flow .
+problem wide use benchmark turbul numer simul .
+5.2.1 .
+test set comput domain cube ( 0 , 2 ) 3 period boundari condit initi condit given analyt field ( see , e.g. , [ 37 ] ) u ( x , , z , 0 ) =   uxuy uz   =   u0 cos ( x ) sin ( ) sin ( z ) u0 sin ( x ) cos ( ) sin ( z ) 0   ( 43 ) p ( x , , z , 0 ) = p0 + 1 16 ( cos ( 2x ) + cos ( 2y ) ) ( cos ( 2z ) + 2 ) , u0 = 2  3 sin (  + 2 3 ) .
+choos  = 0 , give mean initi veloc u0 = 1 .
+solv tgv problem use reynold number = 1600 .
+5.2.2 .
+comparison differ vms method problem solv = 0.0 = 10.0 fix time step size t = 5.0  102 use crank-nicolson time integr scheme , result compar dns brachet et al .
+[ 37 ] .
+discret domain use differ choic number element order approxim , two differenti group discret ; one 323 veloc dof anoth 643 veloc dof .
+former compos follow mesh : 323 q1/q1 , 163 q2/q2 element 163 q2/q1 element use iss discret .
+second group mesh made : 643 q1/q1 , 323 q2/q2 323 q2/q1 element .
+stabil formul , asg oss , algorithm constant c1 = 12 c2 = 2 cc = 0.0 , oss-iss method c1 c2 algorithm constant use , cc = 4.0 unless note otherwis .
+choic cc oss-iss method assess follow subsect .
+fig .
+4 show energi evolut energi dissip rate asg , oss , oss-iss method .
+first thing state point asg method 323 q1/q1 fail converg earli stage problem , behaviour also observ [ 16 ] .
+look fig .
+4 ( ) clear degre interpol make great differ solut , even number dof , solut accur higher order interpol use .
+figur see loos precis pressur iss element q2/q1 affect solut , give result q1/q1 q2/q2 solut .
+fig .
+4 ( b ) see oss-iss method dissip other .
+behaviour caus lack 12 0.05 0.06 0.07 0.08 0.09 0.1 0.11 0.12 0.13 0 2 4 6 8 10 e n e rg time energi evolut asgs_32_q1/q1 oss_32_q1/q1 oss_iss_16_q2/q1 asgs_16_q2/q2 oss_16_q2/q2 dns ( ) energi evolut 0 0.002 0.004 0.006 0.008 0.01 0.012 0.014 0 2 4 6 8 10 ip ti n r te time energi dissip rate ( total ) asgs_32_q1/q1 oss_32_q1/q1 oss_iss_16_q2/q1 asgs_16_q2/q2 oss_16_q2/q2 dns ( b ) total energi dissip rate figur 4 : energi total energi dissip rate evolut 323 veloc dof accuraci pressur field , turn affect conserv mass problem .
+exhaust analysi effect term done .
+although import improv solut achiev increas order interpola- tion , 323 veloc dof still coars mesh result shown fig .
+4 far dns one .
+, problem solv finer mesh , doubl veloc dof per direct , result shown fig .
+5 .
+case , method converg time step .
+fig .
+5 ( ) depict energi evolut also seen increas degre interpol result accur solut .
+asg oss method 323 q2/q2 element accur result , provid solut almost top dns .
+littl differ stabil method discret use .
+furthermor , result oss-iss method closer q1/q1 discret q2/q2 one .
+total energi dissip rate shown fig .
+5 ( b ) denot good agreement q2/q2 solut dns , q1/q1 discret asg oss method still diffus .
+note oss-iss method discret less energi dissip q1/q1 discret .
+0.05 0.06 0.07 0.08 0.09 0.1 0.11 0.12 0.13 0 2 4 6 8 10 e n e rg time energi evolut asgs_64_q1/q1 oss_64_q1/q1 oss_iss_32_q2/q1 asgs_32_q2/q2 oss_32_q2/q2 dns ( ) energi evolut 0 0.002 0.004 0.006 0.008 0.01 0.012 0.014 0.016 0 2 4 6 8 10 ip ti n r te time energi dissip rate ( total ) asgs_64_q1/q1 oss_64_q1/q1 oss_iss_32_q2/q1 asgs_32_q2/q2 oss_32_q2/q2 dns ( b ) total energi dissip rate figur 5 : energi total energi dissip rate evolut 643 veloc dof analys suitabl les model , import turbul quantiti take account energi spectra .
+give us inform energi distribut among scale problem .
+order assess behaviour propos method aspect , compar result dns gassner et al .
+[ 38 ] .
+fig .
+6 energi spectra = 9.0 13 depict discret group .
+coarser case shown fig .
+6 ( ) far dns result , follow pattern , energi greatest scale littl energi small scale , without pileup energi small scale .
+mesh refin , see fig .
+6 ( b ) , comput energi spectra tend dns one .
+note also plot , q2/q2 discret better agreement dns , special small scale , influenc enrich interpol space patent .
+0.001 0.01 10 lo g ( e ) log ( time ) energi spectra oss_32_q1/q1 oss_iss_16_q2/q1 asgs_16_q2/q2 oss_16_q2/q2 dns ( ) 323 veloc dof 0.001 0.01 10 lo g ( e ) log ( time ) energi spectra asgs_64_q1/q1 oss_64_q1/q1 oss_iss_32_q2/q1 asgs_32_q2/q2 oss_32_q2/q2 dns ( b ) 643 veloc dof figur 6 : energi spectra = 9.0 5.2.3 .
+comput cost clear good les model reproduc accur possibl turbul quantiti , even coars mesh .
+result present show asg oss method perform better oss-iss q2/q2 element use .
+addit , seen method converg dns result mesh refin .
+crucial point alway taken account talk numer simul comput cost .
+end , look cheapest method allow us reproduc accur physic phenomena take place turbul flow .
+subsect discuss comput cost associ method effici solv kind flow .
+check comput cost look number solver iter need method , shown fig .
+7 .
+particular , fig .
+7 ( ) depict total amount solver iter time step , ad nonlinear iter .
+note chang nonlinear iter along time clear notic jump curv .
+see cheapest method oss-iss discret , 323 643 veloc dof , much less solver iter per time step method .
+also seen asg littl bit cheaper oss method , caus size system , much bigger oss case due implicit treatment project .
+interest result also seen 7 ( ) improv comput cost go q1/q1 q2/q2 discret , keep constant number dof .
+look 7 ( b ) realiz end comput , total amount solver iter need oss-iss method around 1.5 time less asg method , finer mesh , half coars mesh .
+result indic oss-iss good approach les model turbul problem sinc , although seen accur look turbul quantiti , much cheaper refin mesh order get better result remain competit method .
+, let us remark pressur poisson solver comput intens , iss method involv q1 pressur space q2 one stabil method .
+5.2.4 .
+influenc pressur subscal term said also state sect .
+3.4 , pressur subscal c (   uh ,   vh ) term import role use iss element .
+subsect go analys effect 14 0 50 100 150 200 0 2 4 6 8 10 # te ra ti n time solver iter asgs_32_q1/q1 asgs_64_q1/q1 oss_32_q1/q1 oss_64_q1/q1 oss_iss_16_q2/q1 oss_iss_32_q2/q1 asgs_16_q2/q2 asgs_32_q2/q2 oss_16_q2/q2 oss_32_q2/q2 ( ) solver iter per time step 0 5000 10000 15000 20000 25000 30000 0 2 4 6 8 10 # te ra ti n time acumul solver iter asgs_32_q1/q1 asgs_64_q1/q1 oss_32_q1/q1 oss_64_q1/q1 oss_iss_16_q2/q1 oss_iss_32_q2/q1 asgs_16_q2/q2 asgs_32_q2/q2 oss_16_q2/q2 oss_32_q2/q2 ( b ) acumul solver iter figur 7 : comput cost term result simul tgv problem .
+henc , redefin c definit ( 17 ) c = cc (  + c2 c1 h|uh| ) , ( 44 ) equival ( 17 ) cc = 1.0 .
+keep algorithm paramet c1 = 12.0 c2 = 2.0 constant , consid differ valu cc evalu influenc pressur subscal term solut .
+case choos six differ configur cc = { 0.0 , 0.25 , 0.5 , 1.0 , 2.0 , 4.0 } solv problem 163 q2/q1 element mesh .
+compar solut one obtain oss method 163 q2/q2 element discret .
+fig .
+8 ( ) energi dissip rate fe counterpart shown .
+viscous term uh2 appear equat ( 31 ) .
+see reduc cc method becom dissip may seem good idea keep term small possibl order get closer dns curv .
+look energi spectra shown fig .
+8 ( b ) , see good choic .
+actual happen cc goe zero dissip take place largest scale problem , smallest one keep energi , result energi pileup tail spectra .
+mean energi dissip correct way small scale , one influenc viscous dissip term , energi desir one .
+therefor , good select choos cc = 4.0 , result closer oss method better energi spectra shape .
+higher valu cc eventu lead unstabl solut , instanc , cc = 8.0 t = 5.0  102 solut fail converg = 0.4 .
+state sect .
+3.4 , pressur subscal term essenti enforc incompress constrain discret level .
+fig .
+9 total energi dissip rate ( fig .
+9 ( ) ) depict togeth veloc diverg l2-norm uh ( fig .
+9 ( b ) ) .
+see , effect , uh reduc c increas .
+case cc = 0.0 give especi bad result term mass conserv , affect also energi dissip rate .
+case , seen fig .
+8 ( b ) , over-dissip larg scale under-dissip smallest one make spatial deriv relev fluid flow , increas   uh term .
+introduct c  uh energi dissip equat ( 31 ) chang way flow dissip energi among differ scale , decreas energi small scale , , reduc import spatial deriv , reflect lower valu   uh also lower dissip rate , seen fig .
+9 ( ) , even posit term ad ( 31 ) .
+5.2.5 .
+refin analysi oss-iss method comput cost analysi shown seen oss-iss great potenti les model , especi comput cost taken account .
+subsect aim 15 0 0.002 0.004 0.006 0.008 0.01 0.012 0.014 0 2 4 6 8 10 ip ti n r te time energi dissip rate ( fe counterpart ) 0.0 0.25 0.5 1.0 2.0 4.0 dns oss_16_q2/q2 ( ) viscous energi dissip rate 0.001 0.01 10 lo g ( e ) log ( time ) energi spectra 0.0 0.25 0.5 1.0 2.0 4.0 dns ( b ) energi spectra figur 8 : comparison differ cc choic oss-iss 323 veloc dof 0 0.005 0.01 0.015 0.02 0.025 0.03 0 2 4 6 8 10 si p ti n ra te time total energi dissip rate c_c =0.0 c_c =0.25 c_c =0.5 c_c =1.0 c_c =2.0 c_c =4.0 dns ( ) total energi dissip rate 0 0.2 0.4 0.6 0.8 1 1.2 1.4 1.6 1.8 0 2 4 6 8 10 l 2 -n rm time veloc diverg norm c_c =0.0 c_c =0.25 c_c =0.5 c_c =1.0 c_c =2.0 c_c =4.0 ( b )   uh figur 9 : total energi dissip veloc diverg l2-norm differ cc choic oss-iss 323 veloc dof check perform method refin mesh reduc element size increas interpol order .
+determin best algorithm constant pressur subscal term cc = 4.0 iss fes use , keep valu constant chang discret .
+refin analysi done determin les approach present work effect converg dns solut refin mesh .
+section 5.2 tgv problem solv use differ discret 323 643 veloc dof .
+go also solv problem 963 veloc dof , 483 q2/q1 element mesh .
+furthermor , also use q3/q2 fes .
+particular , 213 323 q3/q2 element mesh use , correspond group 643 963 veloc dof , respect .
+also decreas time step t = 2.5  102 discret 643 veloc dof t = 1.5  102 discret 963 veloc dof .
+fig .
+10 depict kinet energi total energi dissip rate evolut differ discret consid refin analysi .
+look energi evolut fig .
+10 ( ) clear seen solut converg dns result , give 323 q3/q2 element mesh accur solut , also evid fig .
+10 ( b ) total energi dissip rate discret top dns solut .
+also see fig .
+10 relev degre interpol , give much better result discret higher order given number dof .
+, ask tune paramet c affect finer mesh use .
+particular , want know import cc paramet becom higher order fes use .
+16 0.05 0.06 0.07 0.08 0.09 0.1 0.11 0.12 0.13 0 2 4 6 8 10 e n e rg time energi evolut 16-q2/q1 ( 32 vel .
+dof ) 32-q2/q1 ( 64 vel .
+dof ) 21-q3/q2 ( 63 vel .
+dof ) 48-q2/q1 ( 96 vel .
+dof ) 32-q3/q2 ( 96 vel .
+dof ) dns ( ) energi evolut 0 0.002 0.004 0.006 0.008 0.01 0.012 0.014 0.016 0 2 4 6 8 10 si p ti n ra te time total energi dissip rate 16-q2/q1 ( 32 vel .
+dof ) 32-q2/q1 ( 64 vel .
+dof ) 21-q3/q2 ( 63 vel .
+dof ) 48-q2/q1 ( 96 vel .
+dof ) 32-q3/q2 ( 96 vel .
+dof ) dns ( b ) total energi dissip rate figur 10 : energi total energi dissip rate evolut refin mesh cc = 4.0 .
+answer question solv tgv problem two differ discret : 323 q2/q1 213 q3/q2 element mesh , three differ valu cc : 0.0 , 1.0 4.0 .
+0 0.005 0.01 0.015 0.02 0.025 0 2 4 6 8 10 si p ti n ra te time total energi dissip rate 32-q2/q1 , c_c =0.0 32-q2/q1 , c_c =1.0 32-q2/q1 , c_c =4.0 21-q3/q2 , c_c =0.0 21-q3/q2 , c_c =1.0 21-q3/q2 , c_c =4.0 dns ( ) total energi dissip rate 0 0.5 1 1.5 2 2.5 0 2 4 6 8 10 l 2 -n rm time veloc diverg norm 32-q2/q1 , c_c =0.0 32-q2/q1 , c_c =1.0 32-q2/q1 , c_c =4.0 21-q3/q2 , c_c =0.0 21-q3/q2 , c_c =1.0 21-q3/q2 , c_c =4.0 ( b )   uh figur 11 : total energi dissip veloc diverg l2-norm differ cc choic oss-iss 643 veloc dof fig .
+11 depict total energi dissip rate ( fig .
+11 ( ) ) veloc diverg l2-norm ( fig .
+11 ( b ) ) two discret consid differ choic cc .
+still see depend cc , differ reduc higher order interpol use , expect .
+also seen increas cc , differ two discret reduc ( fix cc ) .
+behaviour particular signific look veloc diverg norm fig .
+11 ( b ) , see cc = 0 two discret give complet differ evolut   uh , cc = 4.0 result almost .
+figur , see largest valu   uh cc larger largest one depict fig .
+9 ( b ) , result 163 q2/q1 element mesh .
+go also test 483 q2/q1 323 q3/q2 element mesh ( fig .
+12 ) .
+figur see differ three cc case reduc .
+look fig .
+12 ( ) seen cc = 0 q2/q1 element , although result far dns , maximum valu dissip rate much lower given fig .
+11 ( ) .
+use q3/q2 element , chang cc produc lower differ compar q2/q1 approxim .
+diverg norm depict fig .
+12 also show improv respect fig .
+11 .
+case , maximum valu diverg cc q2/q1 element lower case 643 veloc dof also case 323 veloc dof .
+summar , check refin mesh converg dns result , given number dof , result improv higher order interpol use .
+hand , 17 0 0.002 0.004 0.006 0.008 0.01 0.012 0.014 0.016 0 2 4 6 8 10 si p ti n ra te time total energi dissip rate 48-q2/q1 , c_c =0.0 48-q2/q1 , c_c =1.0 48-q2/q1 , c_c =4.0 32-q3/q2 , c_c =0.0 32-q3/q2 , c_c =1.0 32-q3/q2 , c_c =4.0 dns ( ) total energi dissip rate 0 0.2 0.4 0.6 0.8 1 1.2 1.4 1.6 1.8 0 2 4 6 8 10 l 2 -n rm time veloc diverg norm 48-q2/q1 , c_c =0.0 48-q2/q1 , c_c =1.0 48-q2/q1 , c_c =4.0 32-q3/q2 , c_c =0.0 32-q3/q2 , c_c =1.0 32-q3/q2 , c_c =4.0 ( b )   uh figur 12 : total energi dissip veloc diverg l2-norm differ cc choic oss-iss 963 veloc dof seen increas cc reduc   u , consequ accuraci solut .
+5.3 .
+turbul channel flow re = 395 sect .
+5.2 test homogen turbul flow .
+, want check behaviour propos oss-iss stabil method wall bound turbul test .
+, use turbul channel flow ( tcf ) test reynold number base wall friction ( re ) equal 395 .
+test exhaust test use vms method oss [ 16 ] .
+5.3.1 .
+test set domain tcf problem re = 395 given box length ( 2  2  2/3 ) .
+x-direct flow direct , also call stream-wis direct , y-direct wall-norm direct , z-direct span-wis direct .
+homogen dirichlet boundari condit veloc dof impos wall-norm direct boundari ( =  =  ) , period boundari condit defin stream-wis span-wis direct .
+fig .
+13 depict schemat geometri comput domain test .
+figur 13 : channel comput domain .
+problem solv use two differ mesh , 323 q2q1 213 q3/q2 element mesh .
+mesh refin element near wall wall-norm direct , like one use [ 16 ] .
+algorithm constant appear oss-iss method discuss follow subsect .
+obtain result compar dns comput [ 39 , 40 ] ( mkm-dns ) , , paramet elect accord one defin cite paper .
+bulk mean veloc half channel height taken equal one , u = 1  = 1 .
+know estim reynold number base bulk mean veloc , = u2/  13 , 750 ( see [ 41 ] ) , one obtain valu 18 viscos ,  = 1.4545  104 .
+reynold number base friction veloc , determin friction veloc magnitud : u = re/ = 5.745 102 .
+thus , wall shear stress read w = u2 = 3.3010  103 .
+forc equival pressur gradient impos drive movement flow stream-wis direct , fx = w/ .
+order achiev statist steadi state solut , initi solut provid follow [ 42 ] .
+initi solut consist unidirect veloc profil ad fluctuat : ux = c ( 1 y8 ) +  lx 2 sin ( y ) cos ( 4x lx ) sin ( 2z lz ) , ( 45 ) uy =  ( 1 + cos ( y ) ) sin ( y ) sin ( 4x lx ) sin ( 2z lz ) , uz =  lz 2 sin ( 4x lx ) sin ( y ) cos ( 2z lz ) .
+constant c chosen way field without fluctuat would bulk mean veloc u = 1.0 .
+fluctuat constant  10 % bulk mean veloc .
+5.3.2 .
+effect pressur subscal term conserv mass said sect .
+3.4 , pressur subscal term notic effect solut iss element use .
+effect term also analys previous test , see sect .
+5.2 .
+also assess effect term wall-bound flow .
+first focus effect second term ( 44 ) , look c2/c1 ratio affect solut keep cc = 1.0 .
+turbul regim , expect viscous counterpart 16 relev solut , expect convect counterpart .
+, keep c1 = 12.0 increas c2 1.0 16.0 .
+variat c2 effect c also m .
+solv problem = 0 = 20 ( time need cross channel 10 time , base initi mean bulk veloc u ) start initi solut ( 45 ) use implicit version ( 3-3 ) srk scheme .
+energi   uh evolut plot fig .
+14 .
+0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0 10 20 30 40 50 60 70 e n e rg time energi evolut c2 = 1.0 c2 = 2.0 c2 = 4.0 c2 = 8.0 c2 = 16.0 ( ) energi evolut 0 0.5 1 1.5 2 2.5 0 10 20 30 40 50 60 70 n rm time veloc diverg norm c2 = 1.0 c2 = 2.0 c2 = 4.0 c2 = 8.0 c2 = 16.0 ( b )   uh figur 14 : energi evolut veloc diverg norm differ valu c2 , keep c1 = 12.0 cc = 1.0 clear seen fig .
+14 modif c2 effect solut .
+see fig .
+14 ( ) energi drop faster lower valu c2 use .
+look fig .
+14 ( b ) see veloc diverg l2-norm higher lower valu c2 taken .
+evolut   uh give us inform flow evolv .
+initi structur condit , flow start becom chaotic around = 10 , depend case , turbul structur increas rotat flow particl , grow spatial deriv .
+stage , energi dissip equilibrium intern energi extern forc reach .
+stage seen fig .
+15 , depict vortic isosurfac || = 5.0 colour veloc field modul = 0.15 ( fig .
+15 ( ) ) , = 12.0 ( fig .
+15 ( b ) ) = 70.0 ( fig .
+15 ( ) ) set c2 = 1.0 cc = 32.0 , use 323 q2/q1 element mesh .
+19 ( ) = 0.15 ( b ) = 12.0 ( c ) = 70.0 figur 15 : veloc modul differ time c1 = 12.0 , c2 = 1.0 cc = 32.0 use 323 q2/q1 element mesh .
+increas c2 decreas valu m , increas c .
+mean energi dissip equat ( 31 ) , dissip convect term 1/2m ( uh  uh  h ) 2 becom less relev front 1/2c   uh2 .
+, know influenc c2 , aim distinguish effect modifi m c , keep constant fix valu c2 = 8.0 analys influenc c solut , chang cc .
+situat , m remain constant case see effect pressur subscal term .
+test , solv problem = 300 , energi evolut stabil cc choic .
+fig .
+16 see energi evolut ( fig .
+16 ( ) ) diverg 0.2 0.3 0.4 0.5 0.6 0.7 0 50 100 150 200 250 300 e n e rg time energi evolut cc = 1.0 cc = 4.0 cc = 8.0 cc = 16.0 cc = 32.0 cc = 64.0 ( ) energi evolut 0 0.2 0.4 0.6 0.8 1 1.2 1.4 0 50 100 150 200 250 300 l 2 -n rm time veloc diverg norm cc = 1.0 cc = 4.0 cc = 8.0 cc = 16.0 cc = 32.0 cc = 64.0 ( b )   uh figur 16 : energi evolut veloc diverg norm differ valu cc , keep c1 = 12.0 c2 = 8.0 norm evolut ( fig .
+16 ( b ) ) follow pattern observ fig .
+14 .
+case see improv mass conserv pronounc increas cc increas c2 .
+also see fig .
+16 ( ) certain threshold result improv littl .
+case , result cc = 32.0 cc = 64.0 almost .
+compar result mkm-dns , contrast mean veloc fluctuat fig .
+17 .
+obtain result solv problem = 300 = 330 time step size t = 0.03 , collect 1000 sampl obtain mean quantiti .
+mean quantiti comput integr desir quantiti within element ad element result belong y-orthogon plane .
+thus , sinc use high-ord element , number point appear graphic smaller number dof .
+procedur also follow [ 43 ] note integr averag procedur take account inform secondari node wide use point-wis averag contempl .
+fig .
+17 ( ) depict mean stream-wis veloc normal prescrib wall-shear veloc , u .
+pictur see differ chang cc , dissip energi shown fig .
+16 ( ) becom clear look veloc magnitud .
+increas   uh , consequ loos mass conserv , result mean veloc profil much lower dns .
+see cc = 32.0 cc = 64.0 mean veloc profil top dns result , even coars mesh solv problem .
+look stream-wis veloc fluctuat ( fig .
+17 ( b ) ) 20 0 2 4 6 8 10 12 14 16 18 20 22 1 10 100 u + y+ mean stream-wis veloc cc = 1.0 cc = 4.0 cc = 8.0 cc = 16.0 cc = 32.0 cc = 64.0 mkm-dns ( ) mean streamwis veloc 0 0.5 1 1.5 2 2.5 3 3.5 0 50 100 150 200 250 300 350 u ' y+ stream-wis veloc fluctuat cc = 1.0 cc = 4.0 cc = 8.0 cc = 16.0 cc = 32.0 cc = 64.0 mkm-dns ( b ) rms streamwis veloc fluctuat 0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1 0 50 100 150 200 250 300 350 v ' y^+ wall-norm veloc fluctuat cc = 1.0 cc = 4.0 cc = 8.0 cc = 16.0 cc = 32.0 cc = 64.0 mkm-dns ( c ) rms wall-norm veloc fluctuat 0 0.2 0.4 0.6 0.8 1 1.2 1.4 1.6 0 50 100 150 200 250 300 350 w ' y^+ span-wis veloc fluctuat cc = 1.0 cc = 4.0 cc = 8.0 cc = 16.0 cc = 32.0 cc = 64.0 mkm-dns ( ) rms spanwis veloc fluctuat figur 17 : mean stream-wis veloc rms veloc fluctuat use 163 q2/q1 mesh differ choic cc .
+see increas increas cc .
+behaviour justifi fact low cc valu less energi system , , fluctuat magnitud also lower .
+wall-norm span-wis veloc fluctuat also give smallest fluctuat magnitud smallest cc valu , increas cc fluctuat grow certain point decreas , becom closer dns curv .
+fig .
+17 clear see increas cc result improv , procedur may drawback .
+ill-condit system equat cc   .
+tabl 1 summar total accumul solver iter well elaps time need solv problem differ choic cc .
+see tabl 1 , solv tcf problem cc = 64.0 tabl 1 : solver iter elaps time solv tcf problem = 300 = 330 differ cc valu .
+cc solver iter elaps time ( ) increment time ( % ) 1.0 397899 19238 0.0 4.0 402490 19674 2.27 8.0 422217 19987 3.89 16.0 466687 20803 8.13 32.0 539879 22794 18.48 64.0 626487 24817 29.00 29.0 % expens solv cc = 1.0 .
+thus , clear point could prefer refin mesh rather increas cc valu want accur result .
+provid result shown , case cc = 32.0 give almost solut cc = 64.0 case , hereinaft consid case parametr constant c1 = 12.0 , c2 = 8.0 cc = 32.0 .
+21 5.3.3 .
+refin given cc let us explor happen mesh refin tcf test .
+consid four differ discret chang element size order interpol : 163 q2/q1 , 243 q2/q1 , 163 q3/q2 323 q2/q1 .
+discret 323 , 483 , 483 643 veloc dof , respect .
+look energi evolut ( fig .
+18 ( ) ) veloc diverg l2-norm ( fig .
+18 ( b ) ) de- pict fig .
+18 see littl differ case consid section .
+mean given appropri parametr constant , energi evolv similar way discret , similar evolut mass conserv .
+0.4 0.42 0.44 0.46 0.48 0.5 0.52 0.54 0.56 0.58 0.6 0 50 100 150 200 250 300 e n e rg time energi evolut 16-q2/q1 24-q2/q1 16-q3/q2 32-q2/q1 ( ) energi evolut 0 0.005 0.01 0.015 0.02 0.025 0.03 0 50 100 150 200 250 300 l 2 -n rm time veloc diverg norm 16-q2/q1 24-q2/q1 16-q3/q2 32-q2/q1 ( b )   uh figur 18 : energi evolut veloc diverg norm refin mesh , keep c1 = 12.0 , c2 = 8.0 cc = 32.0 focus averag turbul quantiti shown fig .
+19 , also see similar result differ case .
+fig .
+19 ( ) mean stream-wis veloc plot , seen method almost top dns curv .
+163 q3/q2 discret give mean veloc profil slight lower discret , also reflect energi evolut shown fig .
+18 ( ) .
+look veloc fluctuat span-wis , wall-norm , span-wis direct depict fig .
+19 ( b ) , fig .
+19 ( c ) fig .
+19 ( ) , respect , converg dns solut clear .
+6 .
+conclus articl consid numer simul turbul incompress flow use term-by-term oss method convection-stabil appli iss element .
+consid implicit treatment project .
+solut monolith linear system block pre- condit strategi make use recurs block factor propos .
+among three variant propos , name diagon , lower upper triangular , last two much faster first one , expect , upper triangular slight faster problem consid .
+use strategi , comparison three method , asg , term-by-term oss , convection- oss iss element reveal accuraci similar order interpol veloc , oss-iss slight inferior respect .
+hand , comput cost analys oss-iss clear cheapest one finer discret use .
+anoth advantag oss-iss method chang natur time problem , i.e. , discret system index-2 differential-algebra equat .
+thus , allow us , e.g. , use segreg runge-kutta ( srk ) time integr scheme appli asg oss method .
+issu discuss work , say srk scheme well suit perform high-ord time integr well use adapt time-step techniqu .
+method first introduc test laminar incompress flow [ 36 ] .
+final , also analys influenc grad-div stabil result iss discret consid .
+clear shown term affect solut .
+increas valu cc result better mass conserv better result satur point .
+22 0 2 4 6 8 10 12 14 16 18 20 22 1 10 100 u + y+ mean stream-wis veloc 16-q2/q1 24-q2/q1 16-q3/q2 32-q2/q1 mkm-dns ( ) mean streamwis veloc 0 0.5 1 1.5 2 2.5 3 3.5 0 50 100 150 200 250 300 350 u ' y+ stream-wis veloc fluctuat 16-q2/q1 24-q2/q1 16-q3/q2 32-q2/q1 mkm-dns ( b ) rms streamwis veloc fluctuat 0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1 0 50 100 150 200 250 300 350 si p ti n ra te y^+ wall-norm veloc fluctuat 16-q2/q1 24-q2/q1 16-q3/q2 32-q2/q1 mkm-dns ( c ) rms wall-norm veloc fluctuat 0 0.2 0.4 0.6 0.8 1 1.2 1.4 0 50 100 150 200 250 300 350 si p ti n ra te y^+ span-wis veloc fluctuat 16-q2/q1 24-q2/q1 16-q3/q2 32-q2/q1 mkm-dns ( ) rms spanwis veloc fluctuat figur 19 : mean stream-wis veloc rms veloc fluctuat use differ discret .
+moreov , effect smaller mesh refin also higher order interpol use .
+acknowledg work partial fund european research council fp7 programm idea start grant .
+258443 - comfus : comput method fusion technol- ogi .
+o. colom grate acknowledg support receiv catalan govern fi fellowship .
+refer [ 1 ] p. sagaut , larg eddi simul incompress flow , vol .
+3 , springer berlin , 2000 .
+[ 2 ] j. p. bori , f. f. grinstein , e. s. oran , r. l. kolb , new insight larg eddi simul , fluid dynam research 10 ( 4-6 ) ( 1992 ) 199 .
+[ 3 ] t. j. hugh , multiscal phenomena : green  function , dirichlet-to-neumann formul , subgrid scale model , bubbl origin stabil method , comput method appli mechan engin 127 ( 1-4 ) ( 1995 ) 387401 .
+[ 4 ] t. j. hugh , g. r. feijo , l. mazzei , j.-b .
+quinci , variat multiscal methoda paradigm comput mechan , comput method appli mechan engin 166 ( 1-2 ) ( 1998 ) 324 .
+23 http : //www.ulb.tu-darmstadt.de/tocs/133724328.pdf http : //iopscience.iop.org/1873-7005/10/4-6/a01 http : //www.sciencedirect.com/science/article/pii/0045782595008449 http : //www.sciencedirect.com/science/article/pii/0045782595008449 http : //www.sciencedirect.com/science/article/pii/s0045782598000796 http : //www.sciencedirect.com/science/article/pii/s0045782598000796 [ 5 ] a. n. brook , t. j. hugh , streamlin upwind/petrov-galerkin formul convect dom- inat flow particular emphasi incompress navier-stok equat , comput method appli mechan engin 32 ( 1-3 ) ( 1982 ) 199259 .
+[ 6 ] a. link , collis cross-shap domain - steadi 2d navier-stok exampl demonstrat- ing import mass conserv cfd , comput method appli mechan engin 198 ( 41-44 ) ( 2009 ) 32783286 .
+[ 7 ] m. olshanskii , g. lube , t. heister , j. lwe , grad-div stabil subgrid pressur mod- el incompress navier-stok equat , comput method appli mechan engin 198 ( 49-52 ) ( 2009 ) 39753988 .
+[ 8 ] t. j. r. hugh , l. mazzei , .
+a. oberai , .
+a. wray , multiscal formul larg eddi simul : decay homogen isotrop turbul , physic fluid 13 ( 2 ) ( 2001 ) 505512 .
+[ 9 ] t. j. r. hugh , .
+a. oberai , l. mazzei , larg eddi simul turbul channel flow variat multiscal method , physic fluid 13 ( 6 ) ( 2001 ) 17841799 .
+[ 10 ] r. codina , stabil finit element approxim transient incompress flow use orthogo- nal subscal , comput method appli mechan engin 191 ( 3940 ) ( 2002 ) 4295 4321 .
+[ 11 ] b. koobus , c. farhat , variat multiscal method larg eddi simul compress turbul flow unstructur meshesappl vortex shed , comput method appli mechan engin 193 ( 15-16 ) ( 2004 ) 13671383 .
+[ 12 ] v. john , a. kindl , variant projection-bas finit element variat multiscal method simul turbul flow , intern journal numer method fluid 56 ( 8 ) ( 2008 ) 13211328 .
+[ 13 ] v. john , a. kindl , numer studi finit element variat multiscal method turbul flow simul , comput method appli mechan engin 199 ( 13-16 ) ( 2010 ) 841852 .
+[ 14 ] a. masud , r. calder , variat multiscal method incompress turbul flow : bubbl function fine scale field , comput method appli mechan engin 200 ( 33- 36 ) ( 2011 ) 25772593 .
+[ 15 ] y. bazilev , v. calo , j. cottrel , t. hugh , a. reali , g. scovazzi , variat multiscal residual- base turbul model larg eddi simul incompress flow , comput method appli mechan engin 197 ( 1-4 ) ( 2007 ) 173201 .
+[ 16 ] o. colom , s. badia , r. codina , j. princip , assess variat multiscal model larg eddi simul turbul incompress flow , comput method appli mechan engin 285 ( 2015 ) 3263 .
+[ 17 ] r. codina , stabil incompress convect orthogon sub-scal finit element method , comput method appli mechan engin 190 ( 13-14 ) ( 2000 ) 15791599 .
+[ 18 ] r. codina , j. princip , o. guasch , s. badia , time depend subscal stabil finit element approxim incompress flow problem , comput method appli mechan engin 196 ( 21-24 ) ( 2007 ) 24132430 .
+[ 19 ] r. codina , analysi stabil finit element approxim oseen equat use orthogon subscal , appli numer mathemat 58 ( 3 ) ( 2008 ) 264283 .
+[ 20 ] m. braack , e. burman , local project stabil oseen problem interpret variat multiscal method , siam journal numer analysi 43 ( 6 ) ( 2006 ) 25442566 .
+24 http : //www.sciencedirect.com/science/article/pii/0045782582900718 http : //www.sciencedirect.com/science/article/pii/0045782582900718 http : //www.sciencedirect.com/science/article/pii/s0045782509002138 http : //www.sciencedirect.com/science/article/pii/s0045782509002138 http : //www.sciencedirect.com/science/article/pii/s004578250900303x http : //www.sciencedirect.com/science/article/pii/s004578250900303x http : //pof.aip.org/resource/1/phfle6/v13/i2/p505_s1 http : //pof.aip.org/resource/1/phfle6/v13/i2/p505_s1 http : //pof.aip.org/resource/1/phfle6/v13/i6/p1784_s1 http : //pof.aip.org/resource/1/phfle6/v13/i6/p1784_s1 http : //www.sciencedirect.com/science/article/pii/s0045782502003377 http : //www.sciencedirect.com/science/article/pii/s0045782502003377 http : //www.sciencedirect.com/science/article/pii/s0045782504000398 http : //www.sciencedirect.com/science/article/pii/s0045782504000398 http : //onlinelibrary.wiley.com/doi/10.1002/fld.1712/abstract http : //onlinelibrary.wiley.com/doi/10.1002/fld.1712/abstract http : //www.sciencedirect.com/science/article/pii/s0045782509000395 http : //www.sciencedirect.com/science/article/pii/s0045782509000395 http : //www.sciencedirect.com/science/article/pii/s0045782511001435 http : //www.sciencedirect.com/science/article/pii/s0045782511001435 http : //www.sciencedirect.com/science/article/pii/s0045782507003027 http : //www.sciencedirect.com/science/article/pii/s0045782507003027 http : //www.sciencedirect.com/science/article/pii/s0045782514004113 http : //www.sciencedirect.com/science/article/pii/s0045782514004113 http : //www.sciencedirect.com/science/article/pii/s0045782500002541 http : //www.sciencedirect.com/science/article/pii/s0045782500002541 http : //www.sciencedirect.com/science/article/pii/s0045782507000035 http : //www.sciencedirect.com/science/article/pii/s0045782507000035 http : //www.sciencedirect.com/science/article/pii/s0168927406002194 http : //www.sciencedirect.com/science/article/pii/s0168927406002194 http : //www.jstor.org/stable/40232751 http : //www.jstor.org/stable/40232751 [ 21 ] s. badia , stabil finit element method base scottzhang projector .
+circumvent- ing infsup condit stoke problem , comput method appli mechan engin 247248 ( 0 ) ( 2012 ) 6572 .
+[ 22 ] g lube , g rapin , j lwe , local project stabil incompress flow : equal-ord vs. inf-sup stabl interpol , electron transact numer analysi 32 ( 2008 ) 106122 .
+[ 23 ] m. olshanskii , a. reusken , grad-div stablil stoke equat , mathemat compu- tation 73 ( 248 ) ( 2004 ) 16991718 .
+[ 24 ] t. heister , g. rapin , effici augment lagrangian-typ precondit oseen problem use grad-div stabil , intern journal numer method fluid 71 ( 1 ) ( 2013 ) 118134 .
+[ 25 ] s. badia , a. f. martn , r. plana , block recurs lu precondition thermal coupl incompress inductionless mhd problem , journal comput physic 274 ( 2014 ) 562591 .
+[ 26 ] l. p. franca , t. j. r. hugh , two class mix finit element method , comput method appli mechan engin 69 ( 1 ) ( 1988 ) 89129 .
+[ 27 ] t. gelhard , g. lube , m. a. olshanskii , j.-h. starck , stabil finit element scheme lbb-stabl element incompress flow , journal comput appli mathemat 177 ( 2 ) ( 2005 ) 243267 .
+[ 28 ] e. w. jenkin , v. john , a. link , l. g. rebholz , paramet choic grad-div stabil stoke equat , advanc comput mathemat 40 ( 2 ) ( 2013 ) 491516 .
+[ 29 ] m. case , v. ervin , a. link , l. rebholz , connect scott-vogelius grad-div stabi- lize taylor-hood fe approxim navier-stok equat , siam journal numer analysi 49 ( 4 ) ( 2011 ) 14611481 .
+[ 30 ] l. r. scott , m. vogelius , conform finit element method incompress near incom- pressibl continua , lectur appli mathemat 22 ( 1985 ) 221244 .
+[ 31 ] a. link , l. g. rebholz , n. e. wilson , converg rate grad-div stabil taylor-hood scott-vogelius solut incompress flow problem , journal mathemat analysi applic 381 ( 2 ) ( 2011 ) 612626 .
+[ 32 ] s. zhang , famili qk+1 , k qk , k+1 divergence-fre finit element rectangular grid , siam journal numer analysi 47 ( 3 ) ( 2009 ) 20902107 .
+[ 33 ] m. yano , d. l. darmof , bddc precondit high-ord galerkin least-squar method use inexact solver , comput method appli mechan engin 199 ( 4548 ) ( 2010 ) 29582969 .
+[ 34 ] h. c. elman , d. j. silvest , a. j. wathen , finit element fast iter solver : appli- cation incompress fluid dynam , oxford univers press , 2005 .
+[ 35 ] s. badia , r. codina , algebra pressur segreg method incompress navier-stok equat , archiv comput method engin 15 ( 3 ) ( 2008 ) 343369 .
+[ 36 ] o. colom , s. badia , segreg runge-kutta method incompress navier- stoke equat , intern journal numer method engin press ( 2015 ) doi:10.1002/nme.4987 .
+[ 37 ] m. brachet , direct simul three-dimension turbul taylorgreen vortex , fluid dynam research 8 ( 1-4 ) ( 1991 ) 18 .
+[ 38 ] g. j. gassner , a. d. beck , accuraci high-ord discret underresolv turbu- lenc simul , theoret comput fluid dynam 27 ( 3-4 ) ( 2013 ) 221237 .
+25 http : //www.sciencedirect.com/science/article/pii/s0045782512002435 http : //www.sciencedirect.com/science/article/pii/s0045782512002435 https : //scholar.google.es/scholar ? q=lube+rapin+appli & btng= & hl=ca & as_sdt=0 % 2c5 https : //scholar.google.es/scholar ? q=lube+rapin+appli & btng= & hl=ca & as_sdt=0 % 2c5 http : //www.ams.org/mcom/2004-73-248/s0025-5718-03-01629-6/ http : //onlinelibrary.wiley.com/doi/10.1002/fld.3654/abstract http : //onlinelibrary.wiley.com/doi/10.1002/fld.3654/abstract http : //linkinghub.elsevier.com/retrieve/pii/s0021999114004355 http : //linkinghub.elsevier.com/retrieve/pii/s0021999114004355 http : //www.sciencedirect.com/science/article/pii/0045782588901685 http : //www.sciencedirect.com/science/article/pii/s0377042704004236 http : //www.sciencedirect.com/science/article/pii/s0377042704004236 http : //link.springer.com/article/10.1007/s10444-013-9316-1 http : //link.springer.com/article/10.1007/s10444-013-9316-1 http : //epubs.siam.org/doi/abs/10.1137/100794250 http : //epubs.siam.org/doi/abs/10.1137/100794250 http : //www.sciencedirect.com/science/article/pii/s0022247x1100240x http : //www.sciencedirect.com/science/article/pii/s0022247x1100240x http : //epubs.siam.org/doi/abs/10.1137/080728949 http : //www.sciencedirect.com/science/article/pii/s0045782510001738 http : //www.sciencedirect.com/science/article/pii/s0045782510001738 http : //link.springer.com/article/10.1007/s11831-008-9020-3 http : //link.springer.com/article/10.1007/s11831-008-9020-3 http : //onlinelibrary.wiley.com/doi/10.1002/nme.4987/abstract http : //onlinelibrary.wiley.com/doi/10.1002/nme.4987/abstract http : //www.sciencedirect.com/science/article/pii/016959839190026f http : //link.springer.com/article/10.1007/s00162-011-0253-7 http : //link.springer.com/article/10.1007/s00162-011-0253-7 [ 39 ] r. d. moser , j. kim , n. n. mansour , direct numer simul turbul channel flow re=590 , physic fluid 11 ( 4 ) ( 1999 ) 943945 .
+[ 40 ] j. kim , p. moin , r. moser , turbul statist fulli develop channel flow low reynold number , journal fluid mechan 177 ( 1987 ) 133166 .
+[ 41 ] s. b. pope , turbul flow , cambridg univers press , 2000 .
+[ 42 ] p. moin , j. kim , numer solut time-depend viscous incompress fluid flow involv solid boundari , journal comput physic 35 ( 3 ) ( 1980 ) 381392 .
+[ 43 ] p. gamnitz , v. gravemei , w. .
+wall , time-depend subgrid scale residual-bas larg eddi simul turbul channel flow , comput method appli mechan engineer- ing 199 ( 13-16 ) ( 2010 ) 819827 .
+26 http : //scitation.aip.org/content/aip/journal/pof2/11/4/10.1063/1.869966 http : //scitation.aip.org/content/aip/journal/pof2/11/4/10.1063/1.869966 http : //journals.cambridge.org/article_s0022112087000892 http : //journals.cambridge.org/article_s0022112087000892 http : //www.sciencedirect.com/science/article/pii/0021999180900765 http : //www.sciencedirect.com/science/article/pii/0021999180900765 zotero : //attachment/3162/ zotero : //attachment/3162/ introduct problem statement vms method residual-bas asg term term oss term term oss iss element grad-div stabil block precondit monolith problem numer test analyt collid flow taylor green vortex flow test set comparison differ vms method comput cost influenc pressur subscal term refin analysi oss-iss method turbul channel flow re=395 test set effect pressur subscal term conserv mass refin given cc conclus

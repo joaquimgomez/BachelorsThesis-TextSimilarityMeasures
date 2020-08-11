@@ -1,0 +1,5769 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Assessment of variational multiscale models for the large eddy
+simulation of turbulent incompressible flows
+
+Oriol Colomésa, Santiago Badiac,a, Ramon Codinac,b, Javier Principed,a,∗
+
+a Centre Internacional de Mètodes Numèrics en Enginyeria (CIMNE), Parc Mediterrani de la Tecnologia, UPC, Esteve
+Terradas 5, 08860 Castelldefels, Spain.
+
+b Centre Internacional de Mètodes Numèrics en Enginyeria (CIMNE), Jordi Girona 1-3, Campus Nord UPC, Edifici
+C1, 08034 Barcelona, Spain.
+
+c Universitat Politècnica de Catalunya Jordi Girona 1-3, Campus Nord UPC, Edifici C1, 08034 Barcelona, Spain.
+d Universitat Politècnica de Catalunya, Urgell 187, 08036 Barcelona, Spain.
+
+Abstract
+
+In this work we study the performance of some variational multiscale models (VMS) in the large eddy
+simulation (LES) of turbulent flows. We consider VMS models obtained by different subgrid scale ap-
+proximations which include either static or dynamic subscales, linear or nonlinear multiscale splitting
+and different choices of the subscale space. After a brief review of these models, we discuss some im-
+plementation aspects particularly relevant to the simulation of turbulent flows, namely the use of a
+skew symmetric form of the convective term and the computation of projections when orthogonal sub-
+scales are used. We analyze the energy conservation (and numerical dissipation) of the alternative VMS
+formulations, which is numerically evaluated. In the numerical study, we have considered three well
+known problems: the decay of homogeneous isotropic turbulence, the Taylor-Green vortex problem and
+the turbulent flow in a channel. We compare the results obtained using the different VMS models and
+against a classical LES scheme based on filtering and the Smagorinsky closure. Altogether, our results
+show the tremendous potential of VMS for the numerical simulation of turbulence. Further, we study
+the sensitivity of VMS to the algorithmic constants and analyze the behavior in the small time step
+limit. We have also carried out a computational cost comparison of the different formulations. Out of
+these results, we can state that the numerical results obtained with the different VMS formulations (as
+far as they converge) are quite similar. However, some choices are prone to instabilities and the results
+obtained in terms of computational cost are certainly different. The dynamic orthogonal subscales model
+turns out to be best in terms of efficiency and robustness.
+
+Keywords: turbulence, large eddy simulation, stabilization, variational multiscale
+
+1. Introduction
+
+LES techniques for the numerical simulation of turbulent flows [54] are based on a scale separation
+that permits to reduce the computational cost with respect to direct numerical simulation (DNS). Such
+scale separation is traditionally achieved by filtering the original Navier-Stokes equations, which leads to
+an extra forcing term defined by a physical (functional or structural) model. This widely used approach
+is usually referred to as explicit LES [54].
+
+By contrast, implicit LES techniques (ILES) rely on purely numerical artifacts without any modifi-
+cation of the continuous problem. This approach was seldom followed, the MILES (Monotone Integrated
+LES) approach [12, 26, 30, 49] being the main exception, until the VMS method was introduced [36, 37]
+and subsequently proposed as a LES method (see below). ILES techniques are usually considered to
+be based on the addition of purely dissipative numerical terms, see [54, Section 5.3.4]. It is worth to
+
+∗Corresponding author
+Email addresses: ocolomes@cimne.upc.edu (Oriol Colomés), sbadia@cimne.upc.edu (Santiago Badia),
+
+ramon.codina@upc.edu (Ramon Codina), principe@cimne.upc.edu (Javier Principe)
+
+Preprint submitted to Elsevier November 18, 2013
+
+
+
+emphasize that this is not the case of some particular VMS models, as it is shown in [52] and discussed
+below.
+
+VMS was introduced in [36, 37] as a framework for the development of stabilization techniques, which
+aim to overcome numerical difficulties encountered when using the standard Galerkin method. On the
+one hand, the velocity and pressure finite element (FE) spaces need to satisfy the inf-sup compatibility
+condition that guarantees pressure stability and precludes the use of equal order interpolation. Mixed
+methods satisfying this condition can be used and their finite volume counterpart, based on staggered
+grids, are common in the LES community. Stabilization techniques that permit the use of equal order
+interpolation were proposed, e.g., in [24, 38], and finally recast into the VMS framework. On the other
+hand, global nonphysical oscillations appear in the convection dominated regime, when the mesh is not
+fine enough, that is, for high mesh Reynolds number flows. The only way to overcome this problem
+is through the addition of some form of dissipation which was recognized in the early development of
+stabilized methods [14]. Let us note that the common practice in the LES community is to rely on the
+explicit extra term introduced by the physical model using high order approximations of the convective
+term. 1
+
+The first attempts to perform LES using VMS models were presented in [39, 40, 44]. The VMS
+models used in these works divide resolved scales into large and small introducing a Smagorinsky-type
+dissipative term acting on the small scales only. As a result, an important fraction of the degrees of
+freedom are used for the small resolved scales whereas consistency is retained in the large resolved
+scales only. ILES using a VMS approach with a resolved and a modeled subgrid scale (the setting that
+permits to recover stabilized formulations) was suggested in [19] and performed in [16, 10]. Excellent
+results were first presented in [10], but using isogeometric analysis for the space approximation [35].
+Compared to classical LES based on filtering, the VMS approach does not face difficulties associated
+with inhomogeneous non-commutative filters in wall-bounded flows and retains numerical consistency
+in the FE equations up to the interpolation order whereas, e.g., the Smagorinsky model introduces a
+consistency error of order h4/3 (see [39, 40, 10]).
+
+Scale separation is achieved in the VMS formalism by a variational projection. The continuous
+unknown is split into a resolvable FE component and a subgrid or subscale component. The action
+of the subscales onto the FE scales can be approximated in different ways, leading to different VMS
+models. The choice of the subscales space was first discussed in [18] where the L2-orthogonal to the FE
+space was advocated. The possibility of considering the subscales time dependent and to keep the VMS
+decomposition in all the nonlinear terms was studied [19, 22] and important improvements have been
+observed when using these models for the simulation of laminar flows [22, 2].
+
+In this work we assess these VMS models in the numerical simulation of turbulent flows. We present
+a detailed numerical experimentation for three well known problems: the decay of homogeneous isotropic
+turbulence (DHIT), the Taylor-Green vortex (TGV) and the turbulent flow in a channel (TCF). Thus,
+both unbounded and bounded flows are considered.
+
+We refer to the original references for a comprehensive treatment of their assumptions and their
+numerical analysis. Our intention here is to compare the different VMS schemes in terms of quality of
+the results and computational cost and discuss some implementation aspects that we find particularly
+relevant for the simulation of turbulent flows. The first of them is the treatment of the convective
+term. As it is well-known, the numerical analysis requires a skew-symmetric form of this term in order
+to avoid any positive contribution to the energy estimates that cannot be properly controlled. We
+show numerically that such a contribution actually appears if a non skew-symmetric form is used.
+Another point that deserves attention is the use of consistent mass matrices to perform projections
+when orthogonal subscales are considered. Even though it is cheaper to use lumped mass matrices, only
+the use of consistent matrices guarantees exact L2 orthogonality. An alternative is the use of Scott-Zhang
+projections recently proposed in [4], although we do not consider this approach here.
+
+We also discuss the influence of the algorithmic constants in the stabilization parameters in the
+
+1It is worth to point out that both problems (convection instability and compatibility conditions) are also present in
+the linear Oseen problem. One of the weakness of an explicit LES approach without a numerical dissipation term is that
+convection is stabilized by a term that comes from the physical model of the nonlinear Navier Stokes equations and such
+a term is not present when the linear Oseen problem is considered.
+
+2
+
+
+
+numerical results. In particular, we show that the choice of the second stabilization parameter (the one
+multiplying the div-div term) has an important influence on the numerical results while it is not essential
+for stability and convergence of the methods. We further analyze the behavior of the VMS formulation as
+the time step size is reduced. These two facts are actually related by the way the stabilization parameters
+are usually defined (see [27, 34]).
+
+Finally, we compare the results obtained using VMS models against those obtained using classical
+LES based on filtering and the Smagorinsky closure. We do so using the Galerkin approximation of the
+Navier Stokes equations with a Taylor-Hood Q2/Q1 interpolation which satisfies the inf-sup condition,
+relying on the Smagorinsky term to stabilize convection as it is usually done in the LES community.
+
+The article is organized as follows. In Section 2 we present the VMS formulation, how to compute
+truly orthogonal subscales and the different models we aim at analyzing, whereas in Section 3 we discuss
+energy conservation statements and how they are influenced by the choice of the VMS method and the
+definition of the convective term. Sections 5, 6, 7 are devoted to the numerical approximation of the
+DHIT, the TGV and the TCF problems. Sections 8 and 9 discuss the effect of the algorithmic constants
+on the results and the behavior of the different schemes in the small time step limit. Some remarks close
+the article in Section 10.
+
+2. Formulation
+
+2.1. Navier-Stokes problem
+
+Let Ω be a bounded domain of Rd, where d = 2, 3 is the number of space dimensions, Γ = ∂Ω its
+boundary and [0, T ] the time interval. The strong form of the incompressible Navier-Stokes problem
+consists of finding the velocity field u and the pressure field p such that
+
+∂tu− ν∆u + u · ∇u +∇p = f in Ω× (0, T ), (1)
+∇ · u = 0 in Ω× (0, T ), (2)
+
+with f the force vector and ν the kinematic viscosity. Hereinafter bold characters denote vectors and
+tensors.
+
+Equations (1)-(2) have to be supplied with appropriate boundary and initial conditions. The bound-
+ary Γ is divided into the Dirichlet (ΓD) and the Neumann (ΓN ) parts such that ΓD ∪ ΓN = Γ and
+ΓD ∩ ΓN = Ø. Then, the boundary and initial conditions can be written as
+
+u = ug on ΓD × (0, T ], (3)
+(−pI + ν(∇u +∇uT )) · n = tN on ΓN × (0, T ], (4)
+
+u(x, 0) = u0(x) in Ω× {0}, (5)
+
+n being the unit outward vector normal to Γ. To simplify the exposition, we will consider ug = 0 and
+ΓD = Γ in what follows.
+
+In order to derive the weak form of the problem (1)-(5) we define some notation that will be used
+hereafter. We denote by Lp(Ω), 1 ≤ p < ∞, the spaces of functions such that their p-th power is
+absolutely integrable in Ω. For the case in which p = 2, we have a Hilbert space with scalar product
+
+(u, v)Ω ≡ (u, v) :=
+∫
+
+Ω
+
+u(x) v(x)dΩ (6)
+
+and induced norm ‖u‖L2(Ω) ≡ ‖u‖ = (u, u)1/2. Abusing of the notation, the same symbol as in (6) will
+be used for the integral of the product of two functions, even if these are not in L2(Ω), and both for
+scalar and vector fields. The space of functions whose distributional derivatives up to order m are in
+the L2(Ω) space are denoted by Hm(Ω). We will focus on the case of m = 1, which is also a Hilbert
+space. H10 (Ω) is the set of functions in H
+
+1(Ω) that have zero trace on ΓD. Furthermore, we denote by
+H−1(Ω) the topological dual of H10 (Ω) and by 〈·, ·〉 the duality pairing between H−1(Ω) and H10 (Ω).
+Given a Banach space X, Lp(0, T ;X) is the space of time dependent functions such that their X-norm
+is in Lp(0, T ).
+
+3
+
+
+
+The weak form of the incompressible Navier-Stokes problem (1)-(5) consists, e.g., in finding [u, p] ∈
+L2(0, T ;V0)×D′(0, T ;Q0) (distributions in time with values in Q0) such that
+
+(∂tu,v) +B(u; [u, p], [v, q]) = 〈f ,v〉 ∀v ∈ V0, ∀q ∈ Q0, (7)
+
+satisfying the initial condition (5) in a weak sense. Here V0 := H10 (Ω)d, Q0 := L2(Ω)/R and the form
+B(a; [u, p], (v, q)) is defined as
+
+B(a; [u, p], [v, q]) := ν(∇u,∇v) + b(a,u,v)− (p,∇ · v) + (q,∇ · u) (8)
+
+where the trilinear weak form of the convective term b(u,v,w) can be written in the following three
+equivalent ways
+
+b(u,v,w) = (u · ∇v,w) Non conservative, (9)
+
+b(u,v,w) =
+1
+
+2
+(u · ∇v,w)−
+
+1
+
+2
+(v,u · ∇w) Skew-symmetric (type 1), (10)
+
+b(u,v,w) = (u · ∇v,w) +
+1
+
+2
+(v ·w,∇ · u) Skew-symmetric (type 2). (11)
+
+This equivalence is lost at the discrete level.
+
+2.2. VMS framework
+
+Let us consider the FE partition Th of the domain Ω from which we can construct conforming finite
+dimensional spaces for the velocity V0,h ⊂ V0, and for the pressure Q0,h ⊂ Q0.
+
+The Galerkin FE approximation of (7) consists in finding [uh, ph] ∈ L2(0, T ;V0,h) × D′(0, T ;Q0,h)
+such that
+
+(∂tuh,vh) +B(uh; [uh, ph], [vh, qh]) = 〈f ,vh〉 ∀vh ∈ V0,h,∀qh ∈ Q0,h. (12)
+
+It is well known that (12) has numerical instabilities for high mesh Reynolds number problems, i.e.,
+when the nonlinear convective term dominates the viscous term. Another drawback of that formulation
+is the discrete inf-sup condition that must be satisfied by the pair V0,h ×Q0,h in order to have a well-
+posed problem with bounded pressure. These difficulties are overcome by using the VMS approach that
+follows.
+
+Let us consider a two-scale decomposition of spaces V0 and Q0 such that V0 = V0,h ⊕ Ṽ0 and
+Q = Q0,h ⊕ Q̃0, where Ṽ0 and Q̃0 are infinite-dimensional spaces that complete the FE spaces in V0
+and Q0, respectively. Hereinafter the subscript (·)h will denote the FE component and the tilde (̃·) the
+subgrid component. Applying the two-scale decomposition to (7) we obtain a discrete problem
+
+(∂tuh,vh) + (∂tũ,vh) +B(a; [uh, ph], [vh, qh]) + (ũ,L∗a(vh, qh))h − (p̃,∇ · vh) = 〈f ,vh〉 , (13)
+
+where (·, ·)h =
+∑
+K∈Th(·, ·)K is the sum of scalar products (6) over each element K of the partition Th,
+
+and
+L∗a(vh, qh) := −ν∇
+
+2vh − a · ∇vh −∇qh (14)
+
+is the formal of the adjoint operator of the momentum equation. The term involving the adjoint op-
+erator comes from an elementwise integration by parts of the terms involving the subscales, in which
+the boundary terms (vh, νn · ∇ũ)∂h and (qh,n · ũ)∂h have been neglected (here ∂h means the sum
+over all elements of the integral on the boundary of each element). It also involves the approximation
+b(a, ũ,uh) ≈ −(ũ,a · ∇vh) which implies neglecting (vh,n · aũ)∂h and (ũ,∇ · avh). These approxima-
+tions are discussed in [22] together with the choice of a which defines the type of scale splitting (linear
+or nonlinear), also discussed below.
+
+The discrete problem depends on ũ ∈ Ṽ0 and on p̃ ∈ Q̃0, Ṽ0 and Q̃0 being infinite-dimensional.
+Therefore, the equations for ũ and p̃ obtained after applying the two-scale decomposition cannot be
+directly solved, but some modeling steps are needed to obtain a feasible method. Considering the subscale
+as a time-dependent variable of the problem (see below) and approximating the Navier-Stokes operator
+
+4
+
+
+
+by two stabilization parameters τ−1m and τ
+−1
+c (see for example [22]), the fine scale problem can be written
+
+as
+
+∂tũ + τ
+−1
+m ũ = P(Ru), (15)
+τ−1c p̃ = P(Rp). (16)
+
+In (15)-(16) P denotes the projection onto the space of subscales, which is discussed below. In turn, the
+vector R is the residual of the Navier-Stokes equations (1)-(2), defined as R = [Ru, Rp]
+
+T , with
+
+Ru = f − ∂tuh − La(uh, ph), (17)
+Rp = −∇ · uh. (18)
+
+where
+La(vh, qh) := −ν∇2vh + a · ∇vh +∇qh (19)
+
+Finally, the expressions of the stabilization parameter τm is
+
+τm =
+
+(
+c1ν
+
+h2
++
+c2|a|
+h
+
+)−1
+, (20)
+
+whereas we consider two possible definitions of τc, viz. τc = 0 (which implies p̃ = 0) and
+
+τc =
+h2
+
+c1τm
+, (21)
+
+where h is the mesh size and c1 and c2 are algorithmic constants. Let us comment on expression (20):
+
+• The influence of the constants c1 and c2 is discussed in Section 8. A theoretical way to determine
+them would be to impose that the numerical dissipation they introduce be equal to the molecular
+dissipation in turbulent regimes, as explained in [31].
+
+• The definition of τm in (20) is not standard, in the sense that the one used often depends on the
+time step size of the time discretization, δt. Instead of (20), τ−1m =
+
+1
+δt
+
++ c1ν
+h2
+
++
+c2|a|
+h
+
+is more often
+considered (see, e.g., [34, 27]). We refer to Section 9 for a more detailed discussion about this
+topic. Likewise, other expressions with the same asymptotic behavior in terms of h, ν and |a| can
+also be employed.
+
+• Expression (20) corresponds to linear isotropic elements. If elements of oder p are used (p is not the
+pressure, here), c1 must be replaced by c1p
+
+4 and c2 by c2p. For anisotropic elements, the definition
+of h within each element is not obvious. A possibility is explained in [51].
+
+In the following three sections we discuss the particular ingredients of our VMS models. A different
+summary can also be found in [21], together with some numerical experiments.
+
+2.2.1. The dynamics of the subscales
+
+Stabilized formulations were originally developed for steady convection-diffusion [14] and Stokes
+[24, 38] problems. As the numerical instabilities have a spatial nature, the time dependency of the
+subscales was not considered, and the standard choice [39, 40, 10] was to take
+
+ũ = τmP(Ru), (22)
+that is, to neglect the temporal derivative of the subscales in (15). In this case, the subscales are called
+quasi-static in what follows.
+
+The subscale as a time dependent variable of the problem was introduced in [19, 22]. It gives rise to
+important properties like commutativity of space and time discretization, stability without restrictions
+on the time step size [22, 5] and, combined with orthogonal subscales, to convergence towards weak
+solutions of the Navier-Stokes equations [7] and the possibility of predicting backscatter [21, 52].
+
+Equation (15) can be analytically integrated to give
+
+ũ(t∗) = ũ(0) + µ−1(t∗)
+
+∫ t∗
+0
+
+µ(t)PRudt, µ(s) = exp
+∫ s
+
+0
+
+τ−1(t)dt, (23)
+
+where it is explicitly seen that the subscale is a function of the residual but also of the flow history. In
+practice this integration is performed numerically, as described below.
+
+5
+
+
+
+2.2.2. (Non)linear scale splitting
+
+The original VMS formulation [36, 37] was developed having linear problems in mind and its extension
+to the Navier-Stokes equations was implicitly based on a “linearization”, fixing the advection velocity
+and applying the multiscale splitting to the rest of the terms. A nonlinear scale splitting was used in
+[39, 40] together with an explicit resolution of the small scales in which a Smagorinsky damping was
+introduced. A nonlinear scale splitting with modeled subscales was used in [19, 10] and in [22], where it
+was shown that it leads to global conservation of momentum. We therefore consider both options
+
+a = uh for linear subscales, (24)
+
+a = uh + ũ for nonlinear subscales. (25)
+
+Remark 2.1. When we use the nonlinear definition for the advection velocity, a = uh + ũ, the skew-
+symmetric term type 2 (11) in the FE equation (13) reads:
+
+b(a,uh,vh) = ((uh + ũ) · ∇uh,vh) +
+1
+
+2
+(uh · vh,∇ · uh) +
+
+1
+
+2
+(uh · vh,∇ · ũ). (26)
+
+The last term is not well-defined, since it includes derivatives of the discontinuous subscale ũ. One
+possibility is to neglect it (as previously done with other similar terms when arriving to (13)), which
+implies
+
+b(a,uh,uh) = −
+1
+
+2
+(|uh|2,∇ · ũ), (27)
+
+the same result obtained when the non conservative form is used. By contrast , the skew-symmetric term
+type 1 in the FE equation (13) reads
+
+b(a,uh,vh) =
+1
+
+2
+((uh + ũ) · ∇uh,vh)−
+
+1
+
+2
+((uh + ũ) · uh,∇ · vh) (28)
+
+from where
+b(a,uh,uh) = 0. (29)
+
+In Subsection (5.2) we will see the influence of the two forms of the convective term on the results. It is
+worth noting that the same approximations have been introduced in all cases to implement b(a, ũ,uh),
+but these approximations are taken into account in the (usual) energy estimates of Section 3.
+
+Remark 2.2. At the continuous level, the different expressions of the convective term are also equivalent
+to the so called conservation form
+
+b(u,v,w) = −(u⊗ v,∇w).
+
+In the discrete problem, the nonlinear scale splitting leads to the following terms in the momentum
+equation:
+
+b(a,uh + ũ,vh) = −(uh ⊗ uh,∇vh)− (uh ⊗ ũ,∇vh)− (ũ⊗ uh,∇vh)− (ũ⊗ ũ,∇vh). (30)
+
+Even if this is not exactly what we get using the non-conservative or skew-symmetric forms because of the
+approximation error, this allows us to interpret the different contributions arising from the nonlinear
+scale splitting. As it is explained in [21], from (30) we can identify the contributions from the cross
+stresses, the Reynolds stresses and the subgrid scale tensor.
+
+2.2.3. The space for the subscales
+
+The selection of the space for the approximation of the subscales determines the projection P ap-
+pearing in the right-hand side of (15) and (16). The first option, already considered in [39, 40, 10] and
+named Algebraic Subgrid Scale (ASGS) in [18] is to take the subscales in the space of the residuals, that
+is,
+
+P := I. (31)
+
+Another possibility introduced in [18] is to consider the space of the subscales orthogonal to the FE
+space. The main motivation of the method is that a stability estimate for the projection onto the FE
+
+6
+
+
+
+space of the pressure and/or the convective terms can already be obtained in the standard Galerkin
+method and therefore the only “missing” part is the orthogonal one. The Orthogonal Subscales (OSS)
+method is then characterized by the following projection definition:
+
+P := Π⊥h = I−Πh, (32)
+
+where Πh is the projection onto the FE space. With this choice, the residual of the momentum equation
+does not depend on ∂tuh. Likewise, P(f) in this case is only well defined for f ∈ L2(Ω)d. In the case of
+minimum regularity, f ∈ H−1(Ω)d, this term can be simply neglected without upsetting the accuracy
+of the method.
+
+In fact, with this choice, the orthogonality between the space of subscales and the FE space is only
+guaranteed when the stabilization parameters are constant. If this is not the case, the method is still
+optimally convergent [20] but this property is lost. In order to have truly orthogonal subscales, which
+guarantees a proper separation of the FE and the subgrid scale kinetic energies (see below and Section
+3) a slight modification of the projection Πh is needed (see [20]). We will use two different weighted
+projections: one for the velocity subscales (Πm) in (15) and another for the pressure subscales (Πc) in
+(16). We define the weighted projections Πm and Πc such that given any vector w ∈ V0 and any scalar
+r ∈ Q0 we have
+
+(τmΠm(w),vh) = (τmw,vh) ∀vh ∈ V0,h, (33)
+(τcΠc(r), qh) = (τcr, qh) ∀qh ∈ Q0,h. (34)
+
+These definitions guarantee the orthogonality between the FE and subscales spaces in the case of static
+subscales, that is, neglecting temporal derivatives in (15). It then follows that the term containing the
+temporal derivative of the subscale in the FE equation (13) also vanishes.
+
+However, if the dynamic version of the method is used, the weight of the projection (33) must be
+conveniently modified to ensure the mentioned orthogonality. As it can be seen in (23), the definition
+of the weight depends on the time integration strategy, as explicitly stated in Section 4.
+
+3. Energy balance statements
+
+In this section we revisit global energy conservation statements of the method. As shown in [52],
+similar statements can be obtained locally (in a volume ω ⊂ Ω).
+
+Taking vh = uh and qh = ph in (13) we have the energy balance on the FE component
+
+1
+
+2
+dt‖uh‖2︸ ︷︷ ︸
+
+I
+
++ ν‖∇uh‖2︸ ︷︷ ︸
+II
+
++ b(a,uh,uh)︸ ︷︷ ︸
+III
+
+(35)
+
++ (∂tũ,uh) + (ũ,L∗a(uh, ph))h − (p̃,∇ · uh)︸ ︷︷ ︸
+IV
+
+= 〈f ,uh〉︸ ︷︷ ︸
+V
+
+,
+
+In equation (35) we group the terms as
+
+I) FE kinetic energy variation: 1
+2
+dt‖uh‖2
+
+II) FE viscous dissipation: ν‖∇uh‖2
+III) FE convective term: b(a,uh,uh)
+IV) FE to SGS energy transfer: εh = (∂tũ,uh) + (ũ,L∗a(uh, ph))h − (p̃,∇ · uh)
+V) FE component of external power: 〈f ,uh〉
+
+Multiplying (15) by ũ and (16) by p̃, integrating over the domain and decomposing the residual of the
+momentum equation as Ru = f − ∂tuh − La(uh, ph), we obtain the global energy balance on the fine
+scale
+
+1
+
+2
+dt‖ũ‖2︸ ︷︷ ︸
+I
+
++ τ−1m ‖ũ‖
+2︸ ︷︷ ︸
+
+II
+
++ τ−1c ‖p̃‖
+2︸ ︷︷ ︸
+
+III
+
+(36)
+
++ (P(∂tuh), ũ) + (P(La(uh, ph)), ũ)h + (P(∇ · uh), p̃)︸ ︷︷ ︸
+IV
+
+= (P(f), ũ)︸ ︷︷ ︸
+V
+
+.
+
+7
+
+
+
+We group the terms in (36) as
+
+I) SGS kinetic energy variation: 1
+2
+dt‖ũ‖2
+
+II) SGS velocity dissipation: τ−1m ‖ũ‖2
+III) SGS pressure dissipation: τ−1c ‖p̃‖2
+IV) SGS to FE energy transfer: ε̃ = (P(∂tuh), ũ) + (ũ,P(La(uh, ph)))h + (p̃,P(∇ · uh))
+V) SGS component of external power: (P(f), ũ)
+
+Finally, adding up equations (35) and (36) we obtain an equation for the total kinetic energy
+
+1
+
+2
+dt‖uh‖2 +
+
+1
+
+2
+dt‖ũ‖2 + ν‖∇uh‖2 + b(a,uh,uh) + τ−1m ‖ũ‖
+
+2 + τ−1c ‖p̃‖
+2 (37)
+
++ (∂tũ,uh) + (P(∂tuh), ũ) + (P(La(uh, ph)) + L∗a(uh, ph), ũ)h
++ (P(∇ · uh)−∇ · uh, p̃) = 〈f ,uh〉+ ((P(f), ũ) .
+
+Let us note the presence of b(a,uh,uh), which is zero only when the skew-symmetric type 1 form is
+considered. Other choices could result in a spurious positive contribution to the FE kinetic energy as it
+is actually observed in the DHIT problem and could result in a loss of stability, although that was not
+observed.
+
+3.1. Static subscales
+
+In this case the energy balance for the subscale is meaningless because there are explicit expressions
+for the subscales (22) and (16). When (22) and (16) are used in (35), we obtain
+
+1
+
+2
+dt‖uh‖2 + ν‖∇uh‖2 + b(a,uh,uh) + (τmP (∂tuh) ,L∗a(uh, ph))h (38)
+
++ (τmP (La(uh, ph)) ,L∗a(uh, ph))h + τc ‖P(∇ · uh)‖
+2
+
+= 〈f ,uh〉+ (τmP(f),L∗a(uh, ph))h .
+
+In the case of the ASGS method, where P := I, the fourth term on the left hand side is a source of
+problems. One the one hand, it cannot be neglected because it is needed to make the method consistent.
+On the other hand, it can only be controlled by the dissipation of the time integration scheme and is
+therefore responsible for the introduction of a restriction on the time step size. As a side problem, it is
+very inconvenient for an implementation if any explicit (operator splitting) time integration is chosen as
+it results in a nonsymmetric mass matrix. This term is not present if the OSS method is chosen using
+the projection P := I−Πh. Stability of both the fully discrete and the semidiscrete Stokes problem have
+been proven in [5].
+
+The important term is the fifth one, which permits to control τm ‖P (a · ∇uh +∇ph)‖
+2
+; the FE part
+
+in the OSS formulation is readily controlled using inverse estimates. It therefore provides the essential
+numerical stability. The last term acts as a penalty on the divergence constraint, adding volumetric
+diffusion and provides (extra, non-essential) numerical stability.
+
+For the OSS method, it is proved in [31] that the dissipative structure of the discrete problem has the
+same statistical behavior in fully developed turbulence than the continuous problem, in the sense that
+this dissipation has the same estimates as the molecular one. Both dissipations could be made equal by
+a proper choice of the stabilization parameters in (20). This, however, requires a small change in the
+advection velocity of this expression, which depends on an integral length of the problem. See [31] for
+details.
+
+3.2. Dynamic subscales
+
+In this case both the FE and subgrid components are to be considered and an estimator for both
+the FE and subgrid velocity can be obtained. The stability of the subgrid scale velocity can then be
+used to obtain a stability estimate of the FE component in a norm that includes the convective and
+
+8
+
+
+
+pressure terms [22, 5, 6].2 Therefore, the numerical dissipation of the method is actually given by the
+energy transfer εh from the FE to the subscale component. Using (15)-(16), we get:
+
+εh = (∂tũ,uh)− (τm∂tũ,L∗a(uh, ph))h − (τmP (∂tuh) ,L
+∗
+a(uh, ph))h (39)
+
+− (τmP (La(uh, ph)) ,L∗a(uh, ph))h + τc ‖P∇ · uh‖
+2
+.
+
+The last two terms in (39) are positive, providing dissipation of the FE energy, but the first three
+could be negative, providing these models with a mechanism to predict a backward energy transfer, not
+frequently found in classical LES models [54]. It is justified in [21] that even if the first three terms may
+be negative at a certain time instant, their averaged contribution in a time window greater than the
+largest period needs to be positive, which is the behavior expected of backscatter from a physical point
+of view.
+
+For the ASGS method, i.e., P := I, the last term in the left hand side of (37) vanishes and the
+previous one reads
+
+(La(uh, ph) + L∗a(uh, ph), ũ)h = −2 (ν∆uh, ũ)h . (40)
+
+In turn, the time derivatives of the FE and subscale velocities can be combined as
+
+1
+
+2
+dt‖uh‖2 +
+
+1
+
+2
+dt‖ũ‖2 + (∂tũ,uh) + (∂tuh, ũ) =
+
+1
+
+2
+dt‖uh + ũ‖2 (41)
+
+to rewrite (37) as
+
+1
+
+2
+dt‖uh + ũ‖2 + ν‖∇uh‖2 + b(a,uh,uh) (42)
+
++ τ−1m ‖ũ‖
+2 + τ−1c ‖p̃‖
+
+2 − 2 (ν∆uh, ũ) = 〈f ,uh〉+ 〈f , ũ〉 .
+
+From this equation, a stability estimate for ‖uh + ũ‖ can be obtained as the last term on the left hand
+side can be controlled using the second one (see [5, Remark 4.7]).
+
+Another important point of (42) is that it immediately shows that when the mesh is fine enough,
+i.e.,
+
+|a|h
+ν
+� 1,
+
+the dissipation of the total energy depends only on the viscosity. Therefore, the dissipative structure is
+correctly predicted when a laminar flow is considered or when the discretization is fine enough to resolve
+all scales of the flow, an important advantage over other LES techniques.
+
+On the other hand, for the OSS method, the FE and subgrid kinetic energy can be summed to obtain
+the total one
+
+1
+
+2
+dt‖uh‖2 +
+
+1
+
+2
+dt‖ũ‖2 =
+
+1
+
+2
+dt‖uh + ũ‖2. (43)
+
+since (∂tũ,uh) = (∂tuh, ũ) = 0 as soon as we enforce the subscale to be orthogonal to the FE space.
+This property also guarantees that
+
+(Πm(La(uh, ph)), ũ) = 0 (44)
+(Πc(∇ · uh), p̃) = 0 (45)
+
+which implies that the last term on the left hand side of (37) vanishes and that the previous one can be
+written as
+
+(P(La(uh, ph)) + L∗a(uh, ph), ũ)h = ((La(uh, ph) + L
+∗
+a(uh, ph), ũ)h = −2 (ν∆uh, ũ)h (46)
+
+2However, it should be kept in mind that the numerical solution of the problem is the FE component. There is no
+reason to add the subscale to the final solution as the approximation is limited by the interpolation order, see [22, Remark
+10].
+
+9
+
+
+
+as in the ASGS case. Let us note that the Laplacian term can be eliminated without afecting the
+convergence properties of the method. Then, the global energy balance equation (37) reads
+
+1
+
+2
+dt‖uh‖2 +
+
+1
+
+2
+dt‖ũ‖2 + ν‖∇uh‖2 + b(a,uh,uh) (47)
+
++ τ−1m ‖ũ‖
+2 + τ−1c ‖p̃‖
+
+2 = 〈f ,uh〉+ (P(f), ũ) ,
+
+which is exactly (42) except for the projection of the force in the last term. Stability and convergence
+of this formulation have been proved in [6, 7].
+
+4. Final discrete problem
+
+Applying a time integration algorithm to (13)-(15)-(16) we get the fully discrete problem. The final
+implementation of the discrete problem is written here considering a Picard linearization of the convec-
+tive term and the Backward Euler (BE) scheme for the time discretization. It can be straightforwardly
+modified to consider the Crank-Nicolson time integration scheme; this last scheme is the one used in
+the numerical examples of Sections 5, 6 and 7.
+
+4.1. Algebraic Subgrid Scales (ASGS)
+
+Taking the nonlinear advection velocity definition (25) and considering the time derivative in the
+fine scales, we have the Dynamic and Nonlinear ASGS method, hereinafter Dyn-Nl-ASGS. At time step
+n and nonlinear iteration i, given u
+
+n,i−1
+h , u
+
+n−1
+h , ũ
+
+n,i−1 and ũn−1 we compute u
+n,i
+h and p
+
+n,i
+h such that
+
+1
+
+δt
+(u
+n,i
+h ,vh) +B(a
+
+n,i−1; [u
+n,i
+h , p
+
+n,i
+h ], [vh, qh]) (48)
+
++
+
+(
+τm,t
+
+[
+1
+
+δt
+u
+n,i
+h + Lan,i−1(u
+
+n,i
+h , p
+
+n,i
+h )
+
+]
+,L∗an,i−1(vh, qh)
+
+)
+h
+
++
+(
+τc∇ · u
+
+n,i
+h ,∇ · vh
+
+)
+−
+
+1
+
+δt
+
+(
+τm,t
+
+[
+1
+
+δt
+u
+n,i
+h + Lan,i−1(u
+
+n,i
+h , p
+
+n,i
+h )
+
+]
+,vh
+
+)
+h
+
+= 〈vh, f〉+
+1
+
+δt
+(un−1h ,vh) +
+
+1
+
+δt
+(ũn−1,vh)
+
+−
+1
+
+δt
+
+(
+τm,t
+
+[
+1
+
+δt
+un−1h + f +
+
+1
+
+δt
+ũn−1
+
+]
+,vh
+
+)
++
+
+(
+τm,t
+
+[
+1
+
+δt
+un−1h + f +
+
+1
+
+δt
+ũn−1
+
+]
+,L∗an,i−1(vh, qh)
+
+)
+h
+
+,
+
+where τm,t =
+(
+δt−1 + τ−1m
+
+)−1
+and an,i−1 = u
+
+n,i−1
+h + ũ
+
+n,i−1.
+In turn, ũn,i is computed by solving the discretization of the fine scale problem (15). Note that in
+
+the nonlinear version of the algorithm, the stabilization parameter τm,t depends on the subscale itself
+through a in (20), making the fine scale equation also nonlinear, although it is local and does not increase
+the size of the global linear system to be solved. At each integration point of each element we iteratively
+solve
+
+ũn,i,k = τk−1m,t
+1
+
+δt
+ũn−1 + τk−1m,t
+
+[
+f −
+
+(u
+n,i
+h − u
+
+n−1
+h )
+
+δt
+− Lan,i,k−1(u
+
+n,i
+h , p
+
+n,i
+h )
+
+]
+. (49)
+
+where an,i,k−1 = u
+n,i
+h + ũ
+
+n,i,k−1 is used in (20) to obtain τk−1m,t .
+Alternatively, one can send the corresponding fine scale convective term ũ · ∇uh to the left-hand
+
+side, improving the convergence of the iterative process as
+
+ũn,i,k + ũn,i,k · ∇un,ih = τ
+k−1
+m,t
+
+1
+
+δt
+ũn−1 + τk−1m,t
+
+[
+f −
+
+(u
+n,i
+h − u
+
+n−1
+h )
+
+δt
+− L
+
+u
+n,i
+h
+
+(u
+n,i
+h , p
+
+n,i
+h )
+
+]
+. (50)
+
+This is a simple fixed-point iterative scheme that we have found efficient and robust for the numerical
+simulations presented in this paper, although in other situations we have found more convenient to use
+a conventional Newton-Raphson scheme to solve the nonlinear subscale equation [2].
+
+10
+
+
+
+For the simplest ASGS scheme we do not consider the time derivative of the fine scale, we consider
+them quasi-static, i.e., (∂tũ,vh) = 0. Note that in any case the subscales will depend on time through
+the finite element residual and the stabilization parameter. On the other hand, the advection velocity
+is considered to be linear as indicated in (24). We label this method as Static Linear ASGS (Sta-Lin-
+ASGS). Note that the Sta-Lin-ASGS method does not need to explicitly compute ũ; invoking (20) and
+(21) in (13) we get a discrete equation only in terms of the FE component.
+
+We can readily define the rest of possible combinations of time and nonlinear treatment consider-
+ing the linear advection velocity definition and the time-dependence in the subscales (Dyn-Lin-ASGS
+method) or keeping the static definition of the subscales with the nonlinear choice for the advection
+velocity (Sta-Nl-ASGS method).
+
+4.2. Orthogonal Subscales (OSS)
+
+Let us state the Dynamic and Nonlinear OSS (Dyn-Nl-OSS) method, which means to take into
+account the nonlinearity of the advection velocity (25) and the time derivative of the subscales. At time
+step n and nonlinear iteration i, given u
+
+n,i−1
+h , u
+
+n−1
+h , ũ
+
+n,i−1 and ũn−1 we compute u
+n,i
+h and p
+
+n,i
+h solving
+
+1
+
+δt
+(u
+n,i
+h ,vh) +B(a
+
+n,i−1; [u
+n,i
+h , p
+
+n,i
+h ], [vh, qh]) (51)
+
++
+
+(
+τm,t
+
+[
+1
+
+δt
+u
+n,i
+h + Lan,i−1(u
+
+n,i
+h , p
+
+n,i
+h )
+
+]
+,L∗an,i−1(vh, qh)
+
+)
++
+(
+τc∇ · u
+
+n,i
+h ,∇ · vh
+
+)
+= 〈vh, f〉+
+
+1
+
+δt
+(un−1h ,vh)
+
++
+
+(
+τm,t
+
+[
+f +
+
+1
+
+δt
+ũn−1 − ξn,i−1m
+
+]
+,L∗an,i−1(vh, qh)
+
+)
+−
+(
+τcξ
+
+n,i−1
+c ,∇ · vh
+
+)
+,
+
+where ξm and ξc are the weighted projections of the residuals Ru and Rp (see below) evaluated at the
+corresponding time step and nonlinear iteration.
+
+Like the Dyn-NL-ASGS method, we also need to compute the subscale velocity ũ explicitly. We
+compute the discrete subscale problem with the OSS counterpart of (49) or (50), viz.
+
+ũn,i,k + ũn,i,k · ∇un,ih = τ
+k−1
+m,t
+
+1
+
+δt
+ũn−1 (52)
+
++ τk−1m,t
+
+[
+f −
+
+(u
+n,i
+h − u
+
+n−1
+h )
+
+δt
+− L
+
+u
+n,i
+h
+
+(u
+n,i
+h , p
+
+n,i
+h )
+
+]
+− τk−1m,t ξ
+
+n,i−1
+m .
+
+Note that ξn,im actually depends on ũ
+n,i via the advection velocity of the convective term an,i = u
+
+n,i
+h +
+
+ũn,i. In order to simplify the fine scale computation (52) we use the projection at the previous nonlinear
+iteration, i.e., ξn,i−1m .
+
+For the dynamic OSS case we should introduce some modifications in the computation of the pro-
+jection Πm. At the fully discrete level, in order for ũ
+
+n+1 to be L2 orthogonal to Vh, we must add to the
+FE residual the subscale time derivative contribution from the previous time step and use τm,t instead
+of τm in the computation of the projections. Finally, the projections of the residuals onto the FE spaces
+ξn,im and ξ
+
+n,i
+c are such that
+
+(τm,tξ
+n,i
+m ,vh) = (τm,t(R
+
+n,i
+u +
+
+1
+
+δt
+ũn−1),vh) ∀vh ∈ V0,h, (53)
+
+(τcξ
+n,i
+c , qh) = (τcR
+
+n,i
+p , qh) ∀qh ∈ Q0,h, (54)
+
+where the residuals Rn,iu and R
+n,i
+p are evaluated using (17) and (18) with a
+
+n,i = u
+n,i
+h + ũ
+
+n,i, u
+n,i
+h , u
+
+n−1
+h
+
+and p
+n,i
+h . Note that when convergence of the nonlinear iteration is achieved, (52) and (53) guarantee
+
+that (vh, ũ
+n) = 0 for any vh ∈ V0,h.
+
+11
+
+
+
+5. Decay of homogeneous isotropic turbulence
+
+5.1. Problem definition
+
+This problem, one of the most used benchmarks to test LES models, consists of analysing the
+statistics of the turbulent flow in a 3D box of size Ω = (0, 2π)× (0, 2π)× (0, 2π) with periodic boundary
+conditions in all directions, which is started with a field having a predetermined energy spectra. We solve
+this problem using the different VMS models of Section 4 and structured meshes with Nx × Ny × Nz
+linear, quadratic and cubic hexahedral elements, taking (Nx, Ny, Nz) = (32, 32, 32), (64, 64, 64) and
+(128, 128, 128).
+
+5.1.1. Initial condition
+
+The initial energy spectra [46] is given by
+
+E(k, 0) =
+q2
+
+2A
+k
+−(σ+1)
+0 k
+
+4 exp
+
+(
+−
+σ
+
+2
+
+(
+k
+
+k0
+
+)2)
+, (55)
+
+where k0 is the wave number at which E(k, 0) is maximum, q
+2/2 = 3/2 is the total kinetic energy,
+
+σ = 4 and A =
+∫∞
+
+0
+kσ exp(−σk2/2) = 3
+
+32
+
+√
+π
+2
+
+. Following Rogallo [53], we generate the initial field on
+the Fourier space such that it satisfies continuity and has the energy spectrum prescribed in (55). We
+finally transform the initial field to the physical space applying the inverse Fast Fourier Transform.
+We compare the results agains those available in [1], so we set k0 = 6 and the viscosity such that the
+associated Taylor-microscale Reynolds number is Reλ = 952, which results in ν = 3.5014006 · 10−4. The
+initial analytical energy spectrum and the one computed in a 1283 Q1 elements mesh are shown in Fig. 1
+
+0 0.2 0.4 0.6 0.8 1 1.2 1.4 1.6 1.8 2
+−14
+
+−12
+
+−10
+
+−8
+
+−6
+
+−4
+
+−2
+
+0
+
+log(k)
+
+lo
+g
+
+(E
+(k
+
+))
+
+Initial energy spectra
+
+ 
+
+ 
+Analytical
+
+Computed (1283)
+
+Figure 1: Analytical and computed initial energy spectra
+
+5.1.2. Setting
+
+We test the ASGS method and the OSS method reported in Section 4. The problem is solved
+considering three different cases for both methods, depending on the definition of the advection velocity
+and the tracking of the subscales. The advection velocity a can be linear or nonlinear and the subscales
+can be dynamic or static (see Subsection 2.2). Table 1 collects all the VMS combinations to be compared
+for the different simulations.
+
+In terms of the numerical parameters of the methods, we use the skew-symmetric convective term
+type 1 defined in Subsection 2.1. The stabilization parameter τc is set equal to zero and the algorithmic
+constants that concerns on τm are c1 = 12 and c2 = 2, see Section 8. Further, we use linear, quadratic
+and cubic FEs.
+
+The time integration has been performed using the Crank-Nicolson scheme with an adaptive time
+step. The initial time step is set to δt0 = 5.0 · 10−3 and it is increased at each step multiplying it by
+
+12
+
+
+
+Case Id. Label Method Advection velocity (a) Subscales tracking
+1 Sta-Lin-ASGS ASGS Linear (a = uh) Static (∂tũ = 0)
+2 Dyn-Lin-ASGS ASGS Linear (a = uh) Dynamic (∂tũ 6= 0)
+3 Dyn-Nl-ASGS ASGS Nonlinear (a = uh + ũ) Dynamic (∂tũ 6= 0)
+4 Sta-Lin-OSS OSS Linear (a = uh) Static (∂tũ = 0)
+5 Dyn-Lin-OSS OSS Linear (a = uh) Dynamic (∂tũ 6= 0)
+6 Dyn-Nl-OSS OSS Nonlinear (a = uh + ũ) Dynamic (∂tũ 6= 0)
+
+Table 1: DHIT test cases
+
+an amplification factor. For this test the amplification is equal to 1.1, reading δti = 1.1 · δti−1. The
+time step is increased step by step until it reaches a predefined threshold, e.g., 0.1 s. If convergence is
+not attained at either the nonlinear or solver loop we apply a reduction factor (5.0 for this test) and
+recalculate the solution using the reduced time step, i.e., δti =
+
+1
+5.0
+δti−1. The amplification of the time
+
+step when the solution converges allows one to decrease the total amount of time steps needed for the
+computation. At each time step the nonlinear system is solved as described in Section 4.
+
+5.2. Numerical results
+
+5.2.1. Energy Conservation
+
+In this section we present results of the energy budget described in Section 3 obtained in a 323
+
+elements mesh for the ASGS and OSS methods using the dynamic and nonlinear cases. Fig. 2 depicts
+the energy balance evolution for the mean flow equation (35) and the subscale equation (36) separately
+for the Dyn-Nl-ASGS case. It can be seen that the variation of kinetic energy shown by the FE component
+in Fig. 2(a) is offset in a large part by the transfer of energy to the subscales, while remaining energy
+on the mean flow balance is offset by the viscous term. On the other side, Fig. 2(b) shows that the
+energy transferred from the FE equation is mainly dissipated by the subscale velocity term. There is an
+small variation of the kinetic energy of the subscale at the beginning of the simulation. Note that since
+the viscosity is small, so are the viscous effects compared to the dissipation introduced by the subscale
+velocity. As we use a skew-symmetric form of the convective term, this term does not affect the energy
+balance and is not plotted in Fig. 2(a). Since τc = 0, the pressure subscale term τ
+
+−1
+c ‖p̃‖2 = τc‖P(∇·uh)‖2
+
+is also zero and does not appear in Fig. 2(b).
+
+0 1 2 3 4 5 6
+
+−1
+
+−0.8
+
+−0.6
+
+−0.4
+
+−0.2
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+Mean flow energy balance. Mesh: 32, Method: Dyn−Nl−ASGS
+
+Time
+
+D
+is
+
+si
+p
+
+a
+tio
+
+n
+ (
+
++
+) 
+
+/ 
+P
+
+ro
+d
+
+u
+ct
+
+io
+n
+
+ o
+f 
+
+e
+n
+
+e
+rg
+
+y 
+(−
+
+)
+
+ 
+
+ 
+FE kinetic energy variation
+FE viscous term
+FE to SS tranfer terms
+
+(a) Mean flow equation energy balance
+
+0 1 2 3 4 5 6
+
+−1
+
+−0.8
+
+−0.6
+
+−0.4
+
+−0.2
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+Subscale energy balance. Mesh: 32, Method: Dyn−Nl−ASGS
+
+Time
+
+D
+is
+
+si
+p
+
+a
+tio
+
+n
+ (
+
++
+) 
+
+/ 
+P
+
+ro
+d
+
+u
+ct
+
+io
+n
+
+ o
+f 
+
+e
+n
+
+e
+rg
+
+y 
+(−
+
+)
+
+ 
+
+ 
+SGS kinetic energy variation
+SGS velocity dissipation
+SGS to FE energy transfer
+
+(b) Subscale equation energy balance
+
+Figure 2: Mean flow and subscale energy balances
+
+The energy balance evolution for the mean flow and the subscales equations in (35)-(36) for the
+Dyn-Nl-OSS case are shown in Fig. 3. Fig. 3(a) depicts the energy balance evolution for the mean flow
+equation. Like the ASGS method, the loss of kinetic energy is balanced by the FE to subscales energy
+transfer terms. The FE viscous term also has a very little impact on the dissipation of energy. On the
+
+13
+
+
+
+other side, the subscales energy balance shown in Fig. 3(b) shows that almost all the energy transferred
+by the FE to the subscales is offset by the subscale velocity term, again like in the ASGS method. The
+only important difference between both methods is that no oscillations are observed in the FE kinetic
+energy evolution when the OSS method is used.
+
+0 1 2 3 4 5 6
+
+−1
+
+−0.8
+
+−0.6
+
+−0.4
+
+−0.2
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+Mean flow energy balance. Mesh: 32, Method: Dyn−Nl−OSS
+
+Time
+
+D
+is
+
+si
+p
+
+a
+tio
+
+n
+ (
+
++
+) 
+
+/ 
+P
+
+ro
+d
+
+u
+ct
+
+io
+n
+
+ o
+f 
+
+e
+n
+
+e
+rg
+
+y 
+(−
+
+)
+
+ 
+
+ 
+FE kinetic energy variation
+FE viscous dissipation
+FE to SGS energy tranfer
+
+(a) Mean flow equation energy balance
+
+0 1 2 3 4 5 6
+
+−1
+
+−0.8
+
+−0.6
+
+−0.4
+
+−0.2
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+Subscale energy balance. Mesh: 32, Method: Dyn−Nl−OSS
+
+Time
+D
+
+is
+si
+
+p
+a
+
+tio
+n
+
+ (
++
+
+) 
+/ 
+
+P
+ro
+
+d
+u
+
+ct
+io
+
+n
+ o
+
+f 
+e
+
+n
+e
+
+rg
+y 
+
+(−
+)
+
+ 
+
+ 
+SGS kinetic energy variation
+SGS velocity dissipation
+SGS to FE energy transfer
+
+(b) Subscale equation energy balance
+
+Figure 3: Mean flow and subscale energy balances
+
+The global energy balance terms obtained solving the problem with the skew-symmetric convective
+term type 2 for the Dyn-Nl-ASGS and Dyn-Nl-OSS cases is shown in Fig. 4. We note that the loss of
+skew-symmetry in the convective term has a non-negligible effect (see Figs.4(a) and 4(b)). In particular,
+this term introduces negative dissipation (production of energy) into the problem. As we will show in
+Section 5.2.3, this fact implies that the method is less dissipative and the energy decays in a slower
+rate than using the convective term type 1. This negative contribution, however, is not predictable and
+could result in a blow up of the calculation. We refer to Section 8 for some comments about numerical
+instabilities associated to the type 2 convective term.
+
+0 1 2 3 4 5 6
+
+−1
+
+−0.5
+
+0
+
+0.5
+
+1
+
+1.5
+Energy balance. Mesh: 32, Method: Dyn−Nl−ASGS
+
+Time
+
+D
+is
+
+si
+p
+
+a
+tio
+
+n
+ (
+
++
+) 
+
+/ 
+P
+
+ro
+d
+
+u
+ct
+
+io
+n
+
+ o
+f 
+
+e
+n
+
+e
+rg
+
+y 
+(−
+
+)
+
+ 
+
+ 
+FE kinetic energy variation
+SGS kinetic energy variation
+FE viscous dissipation
+SGS velocity dissipation
+FE convective term
+FE−SGS balance
+
+(a) Global energy balance for Dyn-Nl-ASGS
+
+0 1 2 3 4 5 6
+
+−1
+
+−0.5
+
+0
+
+0.5
+
+1
+
+1.5
+Energy balance. Mesh: 32, Method: Dyn−Nl−OSS
+
+Time
+
+D
+is
+
+si
+p
+
+a
+tio
+
+n
+ (
+
++
+) 
+
+/ 
+P
+
+ro
+d
+
+u
+ct
+
+io
+n
+
+ o
+f 
+
+e
+n
+
+e
+rg
+
+y 
+(−
+
+)
+
+ 
+
+ 
+FE kinetic energy variation
+SGS kinetic energy variation
+FE viscous dissipation
+SGS velocity dissipation
+FE convective term
+FE−SGS balance
+
+(b) Global energy balance for Dyn-Nl-OSS
+
+Figure 4: Global energy balance using skew-symmetric convective term type 2
+
+5.2.2. Computational costs analysis
+
+The actual implementation in the parallel FE multiphysics code FEMPAR [8] is based on a classical
+domain decomposition strategy. At each nonlinear iteration the monolithic linear system is solved using
+
+14
+
+
+
+a classical GMRES method applied to the Schur complement over the interfaces of the subdomains.
+This iterative procedure is preconditioned using a balancing Neumann-Neumann method applied to the
+monolithic system. The cost of each iteration is that of local Dirichlet solves for the Schur complement
+application and a local Neumann solve and a global solve for the preconditioner application (see [45,
+23, 9]). All local systems are solved using the sparse direct solvers in PARDISO library [55, 56].
+
+An important issue when comparing different computational methods is their corresponding com-
+putational cost. In order to characterize the performance of the different VMS methods introduced in
+Section 2, we analyze some quantities that define the computational cost of each method, viz. nonlinear
+iterations, iterative solver iterations and the adaptive time step evolution.
+
+All cases compared here have been solved using a 323 linear hexahedral element mesh. This dis-
+cretization is very coarse and it allows us to stress the differences between the proposed methods. In
+fact, due to this discretization, the linear and static ASGS case (Sta-Lin-ASGS) and the dynamic and
+linear ASGS case (Dyn-Lin-ASGS) do not converge at t = 0.0 and t = 0.123, respectively; the nonlinear
+iterations diverge even reducing the time step size. Anyway, all the methods converge as h→ 0.
+
+The number of nonlinear iterations needed at each time step by the ASGS method is smaller than
+the one required by the OSS method in all cases. This is due to the evaluation of the projections at
+the previous nonlinear iteration i − 1; the implicit treatment of the projection is carried out by the
+nonlinear loop. Alternatively, since the projection is a linear operation, it can be performed together
+with the linear system [20], although a more involved implementation is required. Referring to the OSS
+method, we observe that the dynamic cases, both linear and nonlinear, need less iterations to achieve
+convergence without any significant difference between each other.
+
+However, the number of nonlinear iterations is not the only measure of the computational cost as
+the cost of each iteration is not fixed when iterative linear solvers are considered. Fig. 5(a) shows the
+maximum number of solver iterations for each time step for the methods that have attained convergence.
+Unlike the nonlinear iterations, here we see that the ASGS method requires more solver iterations than
+OSS. The maximum solver iterations at each time step for the dynamic and nonlinear ASGS case is
+variable, starting from near 600, dropping to 200 and rising to around 300 iterations at the end of
+the computation. Meanwhile, all cases of the OSS method seem to remain almost constant, around 60
+iterations in the dynamic cases and around 40 iterations in the static one.
+
+0 1 2 3 4 5 6
+0
+
+100
+
+200
+
+300
+
+400
+
+500
+
+600
+
+Maximum solver iterations for each time step
+
+Time
+
+S
+o
+lv
+
+e
+r 
+
+it
+e
+ra
+
+ti
+o
+n
+s
+
+ 
+
+ 
+
+Dyn−Nl−ASGS
+
+Sta−Lin−OSS
+
+Dyn−Lin−OSS
+
+Dyn−Nl−OSS
+
+(a) Maximum solver iterations at each time step
+
+0 1 2 3 4 5 6
+0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+x 10
+
+4 Acumulated solver iterations for each time step
+
+Time
+
+S
+o
+lv
+
+e
+r 
+
+it
+e
+ra
+
+ti
+o
+n
+s
+
+ 
+
+ 
+
+Dyn−Nl−ASGS
+
+Sta−Lin−OSS
+
+Dyn−Lin−OSS
+
+Dyn−Nl−OSS
+
+(b) Accumulated solver iterations at each time step
+
+Figure 5: Maximum and accumulated solver iterations
+
+The adaptive time stepping described in the previous subsection has an important role on the
+computational cost, as mentioned earlier. If the time step is reduced in order to ensure convergence, the
+global computational cost is increased. Then, we are looking for those methods that do not require time
+step reductions, consequently reducing the total amount of time step evaluations. In this case, any of
+the methods shown in Fig. 5 need to reduce the time step. Since we do not have any time step reduction
+and the number of solver iterations per step is stabilized after t = 1, the total amount of accumulated
+
+15
+
+
+
+solver iterations (in nonlinear and time loops) shown in Fig. 5(b) increases almost linearly. We see in
+this figure that the ASGS scheme performs worse than OSS counterparts in this aspect. With respect
+to the OSS method, we see that the number of nonlinear iterations needed by the static version of this
+method results in a steeper slope of the accumulated solver iterations. No significant differences appear
+between the dynamic linear and nonlinear definitions of the OSS method.
+
+Summarizing, ASGS methods need less nonlinear iterations, but on the other hand OSS methods
+need less solver iterations. On the other hand, ASGS formulations are prone to instabilities; linear
+formulations diverge and the nonlinear dynamic formulation requires much more solver iterations.
+
+We can clearly state that the most efficient method for this setting, in terms of computational cost,
+is the dynamic (both linear and nonlinear) OSS method; all OSS cases are below ASGS. It has to be
+said that the dynamic nonlinear OSS case requires less nonlinear iterations in some of the time step
+computations.
+
+5.2.3. Total energy evolution
+
+In this section we present the total energy evolution of the resolved scales, i.e., the FE component.
+The results are shown in Fig. 6(a). We observe that all methods have a very similar performance for
+this test case, still far from the DNS result. Note that we do not plot the non-converged results from
+the ASGS static cases.
+
+0 1 2 3 4 5 6
+0
+
+0.5
+
+1
+
+1.5
+
+Global Energy
+
+Time
+
+E
+n
+e
+rg
+
+y
+
+ 
+
+ 
+
+Dyn−Nl−ASGS
+
+Sta−Lin−OSS
+
+Dyn−Lin−OSS
+
+Dyn−Nl−OSS
+
+AGARD database
+
+(a) Using the skew-symmetric term type 1
+
+0 1 2 3 4 5 6
+0
+
+0.5
+
+1
+
+1.5
+
+Global Energy
+
+Time
+
+E
+n
+e
+rg
+
+y
+
+ 
+
+ 
+
+Dyn−Nl−ASGS−sk1
+
+Dyn−Nl−ASGS−sk2
+
+Dyn−Nl−OSS−sk1
+
+Dyn−Nl−OSS−sk2
+
+AGARD database
+
+(b) Using the skew-symmetric term type 2
+
+Figure 6: Total energy evolution for a 323 elements mesh with the scaled initial condition
+
+The results shown so far have been obtained using the skew-symmetric convective term type 1
+defined in (10). We test the influence of this term by solving the same problem with the convective
+skew-symmetric term (type 2) in (11) for dynamic and nonlinear ASGS and OSS schemes. The results
+obtained for this test are shown in Fig. 6(b), where it is seen that the solution using the type 2 term is
+above the one obtained with term type 1, which shows that the convective term is actually productive.
+
+5.2.4. Energy spectra
+
+According to [46], for a DNS in an isotropic decaying turbulence problem, the resolution of the small
+scales is judged by the shape of the energy spectra at high wave numbers and requires kmaxη ≈ 1,
+η = (ν3/�)1/4 being the Kolmogorov length scale. In this case kmax ≈ 182, which means at least a 3003
+FE mesh for a DNS computation, with a very important computational cost. In this section we evaluate
+the capability of the VMS method to represent the energy of the eddies at the inertial subrange without
+solving the small scales and compare the results against Kolmogorov’s law prediction
+
+E(k) ∝ �2/3k−5/3,
+
+� being the turbulent energy dissipation and k the turbulent kinetic energy.
+
+16
+
+
+
+In Fig. 7 the energy spectra at time t = 0.2 for the different cases described in Table 1, excluding
+the non-converged ones, using a 323 linear hexahedral element mesh is presented. We can see in Fig. 7
+that the energy spectra at t = 0.2 decays with a different slope depending on the VMS method used.
+Although the differences are small and only appear at large wavenumbers, we see that the dynamic OSS
+models are less dissipative than the Dyn-Nl-ASGS and Sta-Lin-OSS ones.
+
+10
+0
+
+10
+1
+
+10
+−3
+
+10
+−2
+
+10
+−1
+
+10
+0
+
+Energy spectra, t=0.2
+
+   k
+−5/3
+
+log k
+
+lo
+g
+
+ E
+(k
+
+)
+
+   k
+−5/3
+
+   k
+−5/3
+
+   k
+−5/3
+
+ 
+
+ 
+
+Dyn−Nl−ASGS
+
+Sta−Lin−OSS
+
+Dyn−Lin−OSS
+
+Dyn−Nl−OSS
+
+Figure 7: Energy spectra at t = 0.2
+
+5.2.5. h-p refinement
+
+The energy decay computed using a 323 linear FE mesh is far from the one obtained using DNS [1],
+as shown in Fig. (6(a)) and discussed above. To make clear that these poor results are due to this crude
+discretization, we present a mesh refinement analysis, both reducing the element length h and increasing
+the interpolation order p. We choose the Dynamic and Nonlinear OSS method (Dyn-Nl-OSS), which is
+the one that shows the lowest slope in the accumulated iterations evolution (Fig. 5(b)) for the 323 linear
+elements mesh. We solve the problem using the discretizations exposed in Table 2.
+
+Label Mesh elements Element type
+32 (Q1) 323 hexahedral linear (Q1)
+64 (Q1) 643 hexahedral linear (Q1)
+128 (Q1) 1283 hexahedral linear (Q1)
+32 (Q2) 323 hexahedral quadratic (Q2)
+64 (Q2) 643 hexahedral quadratic (Q2)
+32 (Q3) 323 hexahedral cubic (Q3)
+
+Table 2: h-p refinement cases
+
+In Fig. (8) we show the total kinetic energy evolution obtained using the discretizations defined in
+Table 2. Reducing the mesh size h and/or increasing the polynomial order p (not to be confused with
+the pressure) the result becomes closer to the DNS, as expected. In Fig. 8(b) three groups can be clearly
+observed, namely 32 (Q1), 32 (Q2) and 64 (Q1) and the remaining three. The best results are obtained
+using Q2 elements although the difference is really small.
+
+Given the differences in the total energy evolution the time at which the k−5/3 law is achieved differs
+for the different methods. We show the energy spectra at time t = 0.2, t = 0.4 and t = 0.8 for the
+different cases presented before in Fig. 9. As it can be observed in Fig. 9(a), at t = 0.2, the energy
+spectra obtained using the 32 (Q1) mesh is almost parallel to the k−3/5 line, while for the other cases
+low wave numbers are still being activated, as expected (kinetic energy decay occurs earlier in the 32
+(Q1) case). At t = 0.4, as shown in Fig. 9(b), the 32 (Q1) case has the right energy decay slope, while
+for the cases with more degrees of freedom the contribution of the small scales to the energy is still
+increasing. Finally, Fig. 9(c) shows us that the energy spectra for all cases has a proper energy cascade
+at t = 0.8.
+
+17
+
+
+
+0 1 2 3 4 5 6
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+1.2
+
+1.4
+
+1.6
+Global Energy
+
+Time
+
+E
+n
+
+e
+rg
+
+y
+
+ 
+
+ 
+Dyn−Nl−OSS
+Dyn−Nl−OSS−64 (Q1)
+Dyn−Nl−OSS−128 (Q1)
+Dyn−Nl−OSS−32 (Q2)
+Dyn−Nl−OSS−64 (Q2)
+Dyn−Nl−OSS−32 (Q3)
+AGARD database
+
+(a) Total evolution
+
+0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8
+1
+
+1.1
+
+1.2
+
+1.3
+
+1.4
+
+1.5
+
+Global Energy
+
+Time
+
+E
+n
+
+e
+rg
+
+y
+
+ 
+
+ 
+
+Dyn−Nl−OSS
+Dyn−Nl−OSS−64 (Q1)
+Dyn−Nl−OSS−128 (Q1)
+Dyn−Nl−OSS−32 (Q2)
+Dyn−Nl−OSS−64 (Q2)
+Dyn−Nl−OSS−32 (Q3)
+AGARD database
+
+(b) Close up view
+
+Figure 8: Total kinetic energy evolution
+
+10
+0
+
+10
+1
+
+10
+−3
+
+10
+−2
+
+10
+−1
+
+10
+0
+
+Energy spectra, t=0.2
+
+   k
+−5/3
+
+log k
+
+lo
+g
+ E
+
+(k
+)
+
+   k
+−5/3
+
+   k
+−5/3
+
+   k
+−5/3
+
+   k
+−5/3
+
+   k
+−5/3
+
+ 
+
+ 
+
+Dyn−Nl−OSS
+
+Dyn−Nl−OSS−64 (Q1)
+
+Dyn−Nl−OSS−128 (Q1)
+
+Dyn−Nl−OSS−32 (Q2)
+
+Dyn−Nl−OSS−64 (Q2)
+
+Dyn−Nl−OSS−32 (Q3)
+
+(a) Energy spectra at t = 0.2
+
+10
+0
+
+10
+1
+
+10
+−3
+
+10
+−2
+
+10
+−1
+
+10
+0
+
+Energy spectra, t=0.4
+
+   k
+−5/3
+
+log k
+
+lo
+g
+ E
+
+(k
+)
+
+   k
+−5/3
+
+   k
+−5/3
+
+   k
+−5/3
+
+   k
+−5/3
+
+   k
+−5/3
+
+ 
+
+ 
+
+Dyn−Nl−OSS
+
+Dyn−Nl−OSS−64 (Q1)
+
+Dyn−Nl−OSS−128 (Q1)
+
+Dyn−Nl−OSS−32 (Q2)
+
+Dyn−Nl−OSS−64 (Q2)
+
+Dyn−Nl−OSS−32 (Q3)
+
+(b) Energy spectra at t = 0.4
+
+10
+0
+
+10
+1
+
+10
+−3
+
+10
+−2
+
+10
+−1
+
+10
+0
+
+Energy spectra, t=0.8
+
+   k
+−5/3
+
+log k
+
+lo
+g
+
+ E
+(k
+
+)
+
+   k
+−5/3
+
+   k
+−5/3
+
+   k
+−5/3
+
+   k
+−5/3
+
+   k
+−5/3
+
+ 
+
+ 
+
+Dyn−Nl−OSS
+
+Dyn−Nl−OSS−64 (Q1)
+
+Dyn−Nl−OSS−128 (Q1)
+
+Dyn−Nl−OSS−32 (Q2)
+
+Dyn−Nl−OSS−64 (Q2)
+
+Dyn−Nl−OSS−32 (Q3)
+
+(c) Energy spectra at t = 0.8
+
+Figure 9: Energy spectra at different times for the h-p refinement discussion
+
+18
+
+
+
+5.2.6. Comparison with a non-stabilized method
+
+All the results presented up to this point have been computed using a VMS method, either ASGS or
+OSS. But, what would be the result using other methods? Are the methods presented here, comparable
+with classical LES methods? Which methods perform better? To answer all these questions, we have
+solved the problem adding a physical model without stabilization. To do that, an inf-sup stable element
+is needed and we have used the Taylor-Hood Q2/Q1 element. We use the classical static Smagorinsky
+model, consisting in adding a turbulent viscosity νt that depends on the velocity gradient and the
+characteristic element length h. This additional viscosity also acts as stabilization of convection, as
+usual in standard LES simulations. Then, we have to solve the standard Galerkin problem using Taylor-
+Hood Q2/Q1 elements and introducing a modified viscosity defined as
+
+ν = νl + νt, (56)
+
+where νl is the real flow viscosity and νt = (Csh)
+2|∇su|. Cs is the Smagorinsky constant, which we set
+
+equal to 0.15.
+In Fig. 10 we show the total kinetic energy time evolution and the energy spectra of this method
+
+compared with the dynamic and nonlinear OSS method. In particular, we show the results for those
+cases from Table 2 such that they have 653 velocity nodes. We can see in Fig. 10(a) that the total
+kinetic energy is decaying faster for the non-stabilized method than for the OSS method. This behavior
+is directly related to the shape of the energy spectra in Figs. 10(b)-10(d), where we can see that the
+Smagorinsky method presents lower values of energy at t = 0.4. It is important to point out the pile-up
+that appears in the Smagorinsky spectra, denoting that small scales are not dissipating energy properly.
+
+6. Taylor-Green Vortex
+
+6.1. Problem definition
+
+The Taylor-Green vortex (TGV) problem is a typical and widely used problem in turbulence nu-
+merical simulations. This problem aims to show, in a relatively simple flow, the basic turbulence decay
+mechanisms like the turbulent energy cascade, the production of small eddies and the enhancement of
+dissipation by the stretching of vortex lines.
+
+6.1.1. Initial condition
+
+As in the previous example, the computational domain is the unit cube with periodical boundary
+conditions. The initial analytical condition for this problem, unlike the DHIT problem, is defined in the
+physical space (see, e.g., [28]), and given by
+
+ux = u0 cos(x) sin(y) sin(z), (57)
+
+uy = −u0 sin(x) cos(y) sin(z),
+uz = 0,
+
+p = p0 +
+1
+
+16
+(cos(2x) + cos(2y)) (cos(2z) + 2) ,
+
+with
+
+u0 =
+2
+√
+
+3
+sin
+
+(
+γ +
+
+2π
+
+3
+
+)
+.
+
+We choose γ = 0, which gives the mean initial velocity u0 = 1. The initial velocity field on the Fourier
+space has eight modes located at k = (±1,±1,±1), which means that the initial flow generates a single
+vortex scale. The pressure constant parameter p0 is chosen equal to zero.
+
+6.1.2. Setting
+
+We solve the TGV problem using a Reynolds number Re = 1, 600. The most common Reynolds
+numbers available in the literature are Re = 800, Re = 1, 600 and Re = 3, 000 (see, e.g., [11, 25, 28, 41]).
+We use the same VMS methods as for the DHIT problem defined in Section 5 to solve this test, namely
+the ASGS and OSS methods, both with linear and nonlinear definitions of the convective term and
+
+19
+
+
+
+0 1 2 3 4 5 6
+0
+
+0.5
+
+1
+
+1.5
+Global Energy
+
+Time
+
+E
+n
+
+e
+rg
+
+y
+
+ 
+
+ 
+Dyn−Nl−OSS−64 (Q1)
+Dyn−Nl−OSS−32 (Q2)
+Q2Q1−32
+AGARD database
+
+(a) Energy evolution
+
+10
+0
+
+10
+1
+
+10
+−3
+
+10
+−2
+
+10
+−1
+
+10
+0
+
+Energy spectra, t=0.2
+
+   k
+−5/3
+
+log k
+
+lo
+g
+ E
+
+(k
+)
+
+   k
+−5/3
+
+   k
+−5/3
+
+ 
+
+ 
+
+Dyn−Nl−OSS−64 (Q1)
+
+Dyn−Nl−OSS−32 (Q2)
+
+Q2Q1−32
+
+(b) Energy spectra at t = 0.2
+
+10
+0
+
+10
+1
+
+10
+−3
+
+10
+−2
+
+10
+−1
+
+10
+0
+
+Energy spectra, t=0.4
+
+   k
+−5/3
+
+log k
+
+lo
+g
+ E
+
+(k
+)
+
+   k
+−5/3
+
+   k
+−5/3
+
+ 
+
+ 
+
+Dyn−Nl−OSS−64 (Q1)
+
+Dyn−Nl−OSS−32 (Q2)
+
+Q2Q1−32
+
+(c) Energy spectra at t = 0.4
+
+10
+0
+
+10
+1
+
+10
+−3
+
+10
+−2
+
+10
+−1
+
+10
+0
+
+Energy spectra, t=0.8
+
+   k
+−5/3
+
+log k
+
+lo
+g
+ E
+
+(k
+)
+
+   k
+−5/3
+
+   k
+−5/3
+
+ 
+
+ 
+
+Dyn−Nl−OSS−64 (Q1)
+
+Dyn−Nl−OSS−32 (Q2)
+
+Q2Q1−32
+
+(d) Energy spectra at t = 0.8
+
+Figure 10: Total kinetic energy evolution and energy spectra using OSS and non-stabilized method with an inf-sup stable
+Q2/Q1 element
+
+static or dynamic tracking in time of the subscales, as it is summarized in Table 1. The stabilization
+parameters for each method are the same chosen for the DHIT test, see Subsection 5.1.2, and discussed
+in Section8.
+
+Initially we consider a mesh of 323 hexahedral linear elements (Q1), but we will redefine this dis-
+cretization to analyze the method performance when we refine the mesh, decreasing the element size
+h or increasing the degree of the interpolation polynomial p. That will imply to solve the problem on
+meshes with 643 and 1283 linear (Q1), quadratic (Q2) or cubic (Q3) hexahedral elements.
+
+6.2. Numerical results
+
+6.2.1. Vorticity
+
+The TGV test is characterized by its laminar evolution at the initial time steps, when the flow is
+strongly anisotropic due to the structured large-scale vortices directly related to the initial condition. If
+the Reynolds number is large enough, the vortex-stretching process, which activates the energy cascade
+effect, transfers energy from large to small-scales and the flow becomes unstable and turbulent. According
+to Brachet et al. [13], the flow becomes nearly isotropic for Re ≥ 1, 000.
+
+In Fig. 11 we present some vorticity isosurface images showing this process for a 1283 linear hexhae-
+dral elements mesh, for the dynamic and nonlinear OSS method. Note that the initial condition (Fig.
+11(a)) consists in eight vortices with the same scale corresponding to the eight Fourier modes located
+at k = (±1,±1,±1), as it has been pointed out previously.
+
+20
+
+
+
+(a) Isosurface for |ω| = 1.0 at t = 0.0 (b) Isosurface for |ω| = 1.0 at t = 2.0
+
+(c) Isosurface for |ω| = 2.5 at t = 4.1 (d) Isosurface for |ω| = 5.0 at t = 6.1
+
+(e) Isosurface for |ω| = 8.0 at t = 8.2 (f) Isosurface for |ω| = 9.0 at t = 10.2
+
+Figure 11: Vorticity isosurfaces with velocity contour at different time steps
+
+21
+
+
+
+6.2.2. Comparison of VMS methods
+
+In order to compare the different VMS methods defined previously and to test their performance as
+LES models we solve the TGV test on a 323 linear elements mesh with a Reynolds number Re = 1, 600,
+for all the cases listed in Table 1. As for the DHIT test, the linear and static ASGS case (Sta-Lin-
+ASGS) and the dynamic and linear ASGS case (Dyn-Lin-ASGS) diverge at some time step before t = 9.
+Anyway, all the methods converge as h→ 0. We want to show the amount of numerical dissipation, the
+energy cascade in the spectra and the enstrophy evolution (compared to DNS) in all cases. We compare
+first the kinetic energy evolution with the kinetic energy evolution obtained by Brachet et al. [13], (Fig.
+12(a)). We also present the energy spectra at t = 9, when the flow is supposed to be nearly isotropic at
+large wave numbers, (Fig. 12(b)).
+
+0 1 2 3 4 5 6 7 8 9 10
+0.05
+
+0.06
+
+0.07
+
+0.08
+
+0.09
+
+0.1
+
+0.11
+
+0.12
+
+0.13
+
+Global Energy
+
+Time
+
+E
+n
+
+e
+rg
+
+y
+
+ 
+
+ 
+
+Dyn−Nl−ASGS−32
+
+Sta−Lin−OSS−32
+
+Dyn−Lin−OSS−32
+
+Dyn−Nl−OSS−32
+
+DNS (Brachet et al)
+
+(a) Total kinetic energy evolution
+
+10
+1
+
+10
+−3
+
+10
+−2
+
+Energy spectra, t=9
+
+   k
+−5/3
+
+log k
+
+lo
+g
+
+ E
+(k
+
+)
+
+   k
+−5/3
+
+   k
+−5/3
+
+   k
+−5/3
+
+ 
+
+ 
+
+Dyn−Nl−ASGS−32
+
+Sta−Lin−OSS−32
+
+Dyn−Lin−OSS−32
+
+Dyn−Nl−OSS−32
+
+(b) Energy spectra at t = 9.0
+
+Figure 12: Total kinetic energy evolution and energy spectra
+
+In Fig. 12(a), we can see that for a 323 trilinear hexahedral elements mesh all methods show a
+premature decay of energy. We recognize the same behavior observed for the same mesh in the DHIT
+test, see Subsection 5.2.3. For this mesh, it is clear that the methods are not able to simulate properly
+the transition to turbulence. The energy spectra at t = 9.0 shows us that the flow is isotropic at large
+wave numbers since it is decaying following the k−5/3 Kolmogorov law.
+
+As in the DHIT test, the cases with nonlinear and dynamic definitions of the subscales, using either
+ASGS or OSS methods, seem to be slightly less dissipative. Furthermore, OSS is a little bit less dissipative
+than ASGS, but the differences are not important.
+
+6.2.3. h-p refinement
+
+As in the DHIT problem, we perform a refinement study reducing h and/or increasing p using
+Dyn-Nl-OSS. Fig. 13(a) displays the total kinetic energy evolution for all the cases defined in Table 2,
+compared with the DNS [13]. The results show that all cases, excluding the 323 linear hexahedral mesh,
+follow almost perfectly the line defined by the DNS result points.
+
+In Fig. 13(b) we show the dissipation rate of the problem, also compared with the DNS results. The
+dissipation rate is directly related to the enstrophy of the problem, � = 2ν
+
+(
+1
+2
+
+〈
+|ω|2
+
+〉)
+, where |ω| is the
+
+modulus of the vorticity. This parameter gives us an idea of how and when the flow is dissipating energy
+due to the viscous effects. The dissipation should have a peak when the energy is decaying faster and
+its shape is related to the slope in which the energy decays.
+
+As in the DHIT problem three different groups of curves (excluding the DNS) can be observed in
+Fig. 13(b). First, the lowest curve, corresponding to the 323(Q1) mesh, has a peak at t ≈ 7, different
+from all the other curves. This means that the kinetic energy is decaying faster at this time for this
+case than for the remaining cases, which is in agreement with the results shown in Fig. 13(a). A second
+group of curves is made by those cases with 643 discretization nodes, namely 643(Q1) and 323(Q2).
+These cases have a peak at t ≈ 8, which is closer to the peak of the DNS. On the other hand, the shape
+of these curves is more similar to the DNS, since the energy evolution in Fig. 13(a) is also closer to
+the DNS one. We also have to note that Q2 FEs perform better than Q1 FEs for identical number of
+nodes. Finally, we distinguish a third group composed by the cases with 1283 nodes, which have a peak
+
+22
+
+
+
+0 1 2 3 4 5 6 7 8 9 10
+0.05
+
+0.06
+
+0.07
+
+0.08
+
+0.09
+
+0.1
+
+0.11
+
+0.12
+
+0.13
+
+Global Energy
+
+Time
+
+E
+n
+e
+rg
+
+y
+
+ 
+
+ 
+
+Dyn−Nl−OSS−32
+
+Dyn−Nl−OSS−64 (Q1)
+
+Dyn−Nl−OSS−128 (Q1)
+
+Dyn−Nl−OSS−32 (Q2)
+
+Dyn−Nl−OSS−64 (Q2)
+
+Dyn−Nl−OSS−32 (Q3)
+
+DNS (Brachet et al)
+
+(a) Total kinetic energy evolution
+
+0 1 2 3 4 5 6 7 8 9 10
+0
+
+0.002
+
+0.004
+
+0.006
+
+0.008
+
+0.01
+
+0.012
+
+0.014
+
+Kinetic energy dissipation rate (−)
+
+Time
+
+D
+is
+
+s
+ip
+
+a
+ti
+o
+n
+
+ 
+
+ 
+
+Dyn−Nl−OSS−32
+
+Dyn−Nl−OSS−64 (Q1)
+
+Dyn−Nl−OSS−128 (Q1)
+
+Dyn−Nl−OSS−32 (Q2)
+
+Dyn−Nl−OSS−64 (Q2)
+
+Dyn−Nl−OSS−32 (Q3)
+
+DNS (Brachet et al)
+
+(b) Dissipation rate evolution
+
+Figure 13: Total kinetic energy and dissipation rate evolution for the h-p refinement cases
+
+at about the same time than the DNS, t ≈ 9. Among this group the 643(Q2) discretization is the case
+that presents the best results compared with the DNS, as it was for the DHIT problem.
+
+Remark 6.1. We have to note that all the quantities shown so far (kinetic energy, energy spectra and
+enstrophy) have been calculated only taking into account the resolved scales of the flow, that is, using
+the FE portion of the velocity, uh, instead the full velocity field, u. As discussed in [22] we do not see
+any reason to consider uh + ũ a better solution than uh once optimal convergence has been shown.
+
+Fauconnier et al. [25] show separately the dissipation results obtained with the resolved scales and
+the total dissipation, taking into account the resolved and the subgrid scales. Our results for the cases
+with 643 grid nodes, which are the used on [25], are, qualitatively speaking, similar to those obtained by
+the different methods proposed on that article only taking into account the resolved scales.
+
+Fig. 14 displays the energy spectra at t = 9, when the dissipation is maximum and the flow is
+evolving to turbulence. We compare the energy spectra obtained solving all the cases considered before
+with the DNS computed by [28], using the same Reynolds number (Re = 1600) at the same time.
+
+10
+1
+
+10
+−3
+
+10
+−2
+
+Energy spectra, t=9
+
+   k
+−5/3
+
+log k
+
+lo
+g
+
+ E
+(k
+
+)
+
+   k
+−5/3
+
+   k
+−5/3
+
+   k
+−5/3
+
+   k
+−5/3
+
+   k
+−5/3
+
+ 
+
+ 
+
+Dyn−Nl−OSS−32
+
+Dyn−Nl−OSS−64 (Q1)
+
+Dyn−Nl−OSS−128 (Q1)
+
+Dyn−Nl−OSS−32 (Q2)
+
+Dyn−Nl−OSS−64 (Q2)
+
+Dyn−Nl−OSS−32 (Q3)
+
+DNS (Gassner et al)
+
+Figure 14: Energy spectra at t = 9
+
+Excluding the too coarse 323(Q1) approximation, the energy spectra follow accurately the DNS
+energy spectra. For low wave numbers, the differences with the DNS are minimal. It is on the highest
+wave numbers where some differences between the methods appear. Note that the 323(Q3) case follows
+
+23
+
+
+
+very accurately the DNS spectrum. In general, we see that the spectra decay following a slope close to
+the k−5/3 Kolmogorov law.
+
+7. Turbulent channel flow
+
+After studying the performance of VMS in the LES of homogenous flows we turn our attention to
+wall-bounded turbulent flow and present results of fully developed turbulent flow in a channel.
+
+7.1. Problem definition
+
+This test consists of a fluid that flows between two parallel walls driven by an imposed pressure
+gradient which is defined by the Reynolds number based on the wall shear velocity, Reτ . In the important
+amount of literature devoted to this problem the usual Reynolds numbers are: Reτ = 590, Reτ = 395
+and Reτ = 180 (see [10, 15, 27, 29, 32, 40, 42, 43, 47, 48]). We will restrict our attention to Reτ = 180
+and Reτ = 395.
+
+7.1.1. Computational domain and mesh definition
+
+We consider a computational domain defined by a box of length (Lx × Ly × Lz), which depends on
+the Reynolds number. For Reτ = 180 the domain size is (4πδ × 2δ × 4/3πδ) while for Reτ = 395 the
+size of the channel is (2πδ × 2δ × 2/3πδ). The x-direction is the flow direction, also called streamwise
+direction, the y-direction is the wall-normal direction and the z-direction is the spanwise direction. In
+Fig. 15 we show schematically the geometry of the computational domain for this test.
+
+Figure 15: Channel computational domain
+
+In the wall-normal direction boundaries (y = −δ and y = δ) we impose a non-slip condition. The
+streamwise and spanwise directions are assumed to be homogeneous, so we use periodic boundary
+conditions in these directions.3
+
+We solve the problem using different mesh discretizations, all of them uniform in the homogeneous
+directions and refined near the walls in the wall-normal direction. In particular we will use meshes
+composed by 323, 643 or 1283 hexahedral linear (Q1), quadratic (Q2) or cubic (Q3) elements. The
+refinement in the wall-normal direction follows a hyperbolic function, also used in [15, 27, 29, 32, 47],
+defined as
+
+yi =
+tanh
+
+(
+γ
+(
+
+2i
+npy
+− 1
+))
+
+tanh(γ)
+,
+
+where i = 1, ..., npy with npy the total amount of nodes in the wall-normal direction. Here, γ is chosen
+to be equal to 2.75 for both Reτ = 180 and Reτ = 395.
+
+3According to Kim et al. [43], the use of periodic boundary conditions in the homogeneous directions can be justified
+when the computational box is such that the largest eddies in the flow fit in the computational domain. This is the case
+considered here.
+
+24
+
+
+
+7.1.2. Setting
+
+As it has been said above, we solve the problem using two different friction Reynolds numbers,
+Reτ = 180 and Reτ = 395. We compare our results against those obtained by DNS in [48, 43] and we
+choose our parameters accordingly. We take the bulk mean velocity and the half channel height equal
+to one, Ū = 1 and δ = 1. The viscosity is computed from the estimated Reynolds number based on the
+bulk mean velocity Re. Then, from the friction Reynolds number Reτ we compute the friction velocity
+(uτ), the wall shear stress (τw) and a driving force equivalent to a pressure gradient (fx), given by [50]:
+
+uτ =
+νReτ
+δ
+
+, τw = ρu
+2
+τ , fx =
+
+τw
+δ
+.
+
+We use the Crank-Nicolson time integration scheme with a constant time step. Ham et al. test in
+[33] the influence of the time step for a fully implicit Finite Difference midpoint method, equivalent
+to Crank-Nicolson, on the statistics of a channel flow DNS. They found little variation in statistical
+turbulence quantities up to δt+ = 1.6. Following Gravemeier et al. [29], we define a time step in wall
+
+units δt+ =
+δtu2τ
+ν
+≈ 0.69, which, according to [33], should not affect the turbulent quantity statistics.
+
+The same authors performed 25,000 time steps in order to allow the flow to develop and they collected
+the statistics during another 5,000 time steps. A total averaging time about 500δ/U0 is used in [17] once
+the statistically stable regime is achieved.
+
+In Table 3 we present the value of the different parameters defined above for the two different friction
+Reynolds numbers.
+
+Reτ 180 395
+ν 3.5714 · 10−4 1.4545 · 10−4
+uτ 6.4286 · 10−2 5.7455 · 10−2
+τw 4.1327 · 10−3 3.3010 · 10−3
+fx 4.1327 · 10−3 3.3010 · 10−3
+δt 0.06 0.03
+
+Table 3: Test parameters for the different friction Reynolds number
+
+For the initial condition we impose a parabolic profile obtained solving the stationary Stokes problem
+with the driving force and viscosity defined above. Additionally, with the aim to achieve a fully developed
+flow earlier, we introduce a perturbation with a maximum value of 10% the bulk velocity.
+
+Our purpose is to check the VMS methods defined in Subsection 2.2 for a wall-bounded flow. Fol-
+lowing the computations performed for the previous tests, we solve the problem using the same cases
+defined in Table 1 and the numerical parameters τc = 0 and τm are defined in the same way, now with
+the algorithmic constants c1 = 12 and c2 = 8 (see Subsection 8) and the characteristic length, h, is
+choosen to be the minumum element length.
+
+7.2. Numerical results
+
+7.2.1. Velocity profiles
+
+We first present the mean streamwise velocity profile scaled by the wall shear stress velocity, 〈u〉+ =
+〈u〉
+uτ
+
+for all cases defined in Table 1, where 〈·〉 denotes the mean value in streamwise and spanwise direction
+and in time.
+
+In Fig. 16(a) we show the mean streamwise velocity normalized by the wall-shear velocity, uτ ,
+obtained for all cases considered in Table 1 in a 323 trilinear elements mesh for the Reτ = 395 case. We
+compare the results with the DNS one obtained in [48]. We can observe in Fig. 16(a) that all methods
+perform quite similar and fit pretty well to the DNS result. Fig. 16 also depicts the streamwise, spanwise
+and wall-normal root mean square (rms) velocity fluctuation components normalized by the wall-shear
+stress velocity.
+
+25
+
+
+
+10
+0
+
+10
+1
+
+10
+2
+
+0
+
+5
+
+10
+
+15
+
+20
+
+25
+Mean streamwise velocity
+
+y+
+
+<
+u
+
+>
++
+
+ 
+
+ 
+
+Sta−Lin−ASGS
+Dyn−Lin−ASGS
+Dyn−Nl−ASGS
+Sta−Lin−OSS
+Dyn−Lin−OSS
+Dyn−Nl−OSS
+DNS MKM
+
+(a) Mean streamwise velocity
+
+0 50 100 150 200 250 300 350 400
+0
+
+0.5
+
+1
+
+1.5
+
+2
+
+2.5
+
+3
+
+3.5
+
+4
+
+4.5
+Streamwise velocity fluctuation
+
+y+
+
+u
+’+
+
+ 
+
+ 
+
+Sta−Lin−ASGS
+Dyn−Lin−ASGS
+Dyn−Nl−ASGS
+Sta−Lin−OSS
+Dyn−Lin−OSS
+Dyn−Nl−OSS
+DNS MKM
+
+(b) Rms streamwise velocity fluctuation
+
+0 50 100 150 200 250 300 350 400
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+1.2
+
+1.4
+Wall normal velocity fluctuation
+
+y+
+
+v’
++
+
+ 
+
+ 
+Sta−Lin−ASGS
+Dyn−Lin−ASGS
+Dyn−Nl−ASGS
+Sta−Lin−OSS
+Dyn−Lin−OSS
+Dyn−Nl−OSS
+DNS MKM
+
+(c) Rms wall-normal velocity fluctuation
+
+0 50 100 150 200 250 300 350 400
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+1.2
+
+1.4
+
+1.6
+
+1.8
+Spanwise velocity fluctuation
+
+y+
+
+w
+’+
+
+ 
+
+ 
+Sta−Lin−ASGS
+Dyn−Lin−ASGS
+Dyn−Nl−ASGS
+Sta−Lin−OSS
+Dyn−Lin−OSS
+Dyn−Nl−OSS
+DNS MKM
+
+(d) Rms spanwise velocity fluctuation
+
+Figure 16: Mean streamwise velocity and rms velocity fluctuations for Reτ = 395 case using a 32
+3 Q1 mesh
+
+7.2.2. Reynolds shear stress
+
+Another turbulent quantity widely used in the channel flow test is the Reynolds shear stress. At the
+continuous level the Reynolds shear stress is defined as
+
+Rxy = −〈u′v′〉+ ν
+∂ 〈u〉
+∂y
+
+, (58)
+
+being u and v the velocity in the streamwise direction and wall-normal direction, respectively, and the
+prime denoting the fluctuations, that is to say, the variable minus the mean.
+
+It can be seen that for the discrete equation (13), one can obtain the Reynolds shear stress defined
+as follows:
+
+Rxy = −
+〈
+a′xa
+′
+y
+
+〉
++ ν
+
+∂ 〈uh〉
+∂y
+
+= −〈u′hv
+′
+h〉︸ ︷︷ ︸
+
+I
+
+−〈u′hṽ
+′〉 − 〈ũ′v′h〉 − 〈ũ
+
+′ṽ′〉︸ ︷︷ ︸
+II
+
++ ν
+∂ 〈uh〉
+∂y︸ ︷︷ ︸
+III
+
+. (59)
+
+being ai the i component of the advection velocity. In (59) we have used the nonlinear definition of the
+advection velocity defined in (25).
+
+The first term on the second part of (59) (term I) is the contribution of the resolved scales, the
+FE component, to the cross term
+
+〈
+a′xa
+′
+y
+
+〉
+. Term II denotes the contribution of the subgrid scales and
+
+their interaction with the FE components, that is the unresolved part of the equation. Finally, term
+
+26
+
+
+
+III accounts for the viscous portion of the Reynolds shear stress. Note that the derivatives of the
+approximated subscales are not computable, since these approximated subscales are discontinuous and
+have been designed to approximate the effect of the exact subscales on the finite element scales on the
+element.
+
+For a fully developed and statistically stable turbulent flow, the Reynolds shear stress along the wall-
+normal direction has a linear shape (see [43]). Normalized by the viscous term III value at the wall, the
+total Reynolds shear stress in terms of y/δ should have the following expression: Rxy(y/δ) = (−y/δ).
+Fig. 17 depicts the absolute value of the Reynolds shear stress along the upper half channel (y > 0),
+with the different terms appearing in (59) and compared with the DNS in [48], for the Dyn-Nl-OSS case
+with Reτ = 395. The computed results are almost identical to the DNS ones. It has to be noted that
+the computed results are evaluated at the integration points due to the presence of the derivative in the
+Reynolds shear stress, which using linear FEs is constant in each element. Then, using two Gauss points
+per direction for the numerical integration, term III will be constant for those two Gauss points being
+at the same element. This behavior is observed in Fig. 17, where the viscous term is pairwise constant.
+This last fact also affects the total Reynolds shear stress, since the resolved term has different values
+at each element Gauss point, the sum of terms I and III results in an oscillatory shape near the wall,
+where the viscous term is more relevant. It is also seen that the unresolved term II does not contribute
+to the Reynolds shear stress, which is a good property of the tested VMS methods. The results for the
+remaining cases in Table 1 are similar to those presented in Fig. 17 and have not been reported.
+
+0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1
+−0.2
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+1.2
+Reynolds shear stress. Mesh: 32, Method: Dyn−Nl−OSS
+
+y
+
+A
+ve
+
+ra
+g
+
+e
+d
+
+ s
+h
+
+e
+a
+
+r 
+st
+
+re
+ss
+
+ 
+
+ 
+
+Resolved
+Viscous
+SGS
+Total
+Resolved MKM
+Viscous MKM
+Total MKM
+
+Figure 17: Reynolds stress of the Dyn-Nl-OSS case
+
+8. Sensitivity with respect to the stabilization parameters
+
+All the VMS models considered herein depend on the stabilization parameters τm and τc, which
+contain constants c1 and c2 whose value is chosen from numerical experiments. However, we can infer
+from (38) or (39) how this dependency will be. As mentioned before, the last two terms in (39) are
+dissipative and therefore increasing τm and/or τc we obtain a more dissipative method. From (20)-(21),
+increasing τm results in a reduction of τc. More precisely
+
+τc = ν +
+c2
+c1
+|a|h (60)
+
+from where we see that increasing c1 reduces both τm and τc but increasing c2 reduces τm but increases
+τc. On the other hand, only the fourth term in (39) is essential to control τm ‖P (a · ∇uh +∇ph)‖
+
+2
+and
+
+it is possible to choose τc = 0.
+The results presented above have been obtained using different settings of the numerical stabilization
+
+parameters τm and τc. In DHIT and TGV tests, we take the algorithmic constants c1 = 12 and c2 = 2
+for τm and we set τc = 0, while for the TCF test we have used c1 = 12 and c2 = 8 for τm and also
+
+27
+
+
+
+τc = 0. In this section we analyze the influence of these parameters on the numerical results and justify
+our choice of the constants for the large eddy simulation of turbulent flows.
+
+We have performed a sensitivity analysis of the VMS schemes with respect to the value of c1 and c2.
+To see the effect of such algorithmic constants on τm and τc independently, we define a new constant cc
+which allow us to redefine (60) as
+
+τc = cc
+
+(
+ν +
+
+c2
+c1
+|a|h
+
+)
+(61)
+
+These experiments have been done for the DHIT test using the Dyn-Nl-OSS case in a 323 Q1 mesh and
+the results are depicted in Fig. 20. They show important changes in the dissipation the VMS methods
+introduce when constants are changed. In particular, for high Reynolds number problems, the constant
+c1 does not have so much influence on τm, as it can be seen in Fig. 20(b) where cc = 0, but it does
+on τc (when cc = 1 in (61)). With respect to c2, we observe in Fig. 20(b) that it influences the energy
+dissipation of the method, which is increased when the value of this constant is decreased. When τc is
+activated (cc = 1), we observe a growth of the energy dissipation when the coefficient c2/c1 increases,
+see Fig. 20(e). This behavior is what we are expecting since the method becomes more diffusive when
+τc is increased due to the last term in (39).
+
+Concerning the energy spectra, it is also shown in Fig. 20(c) and Fig. 20(d) that the only constant
+that influences the result when τc = 0 is c2. In these figures we can see that when we increase c2 the
+method is less dissipative, resulting in an inappropriate slope of the energy spectra. We can observe
+that with c2 = 2 the decay of the energy behaves correctly, keeping the k
+
+−5/3 law. For the largest values
+of c2 the energy at small scales is not properly dissipated. Note that for c2 = 2 the slope of the energy
+spectrum is kept almost constant along the time, which does not happen in the other cases. When we
+activate τc, Figures 20(f) and 20(g), we are introducing additional dissipation into the system which
+eliminates the pile up of the energy spectra for all the cases, but generally results in steeper slopes. Here
+we also have to note that the energy spectra slope is time dependent for all cases except for c2 = 2.
+This analysis led us to choose c1 = 12 and c2 = 2 for τm and set τc = 0 for homogeneous turbulence,
+i.e., DHIT and TGV tests.
+
+In order to go in depth about the effect of the algorithmic constants c1 and c2 and the stabilization
+parameter τc of the incompressibility equation, we compare the results for the TCF problem with a
+friction Reynolds number Reτ = 180 using the same choice made for homogeneous turbulence (c1 = 12,
+c2 = 2 and τc = 0) against the setting of the incompressible case in [3] (c1 = 12, c2 = 2 and τc as in
+(21)) and a less dissipative setting with c1 = 12, c2 = 8 and τc = 0.
+
+10
+0
+
+10
+1
+
+10
+2
+
+0
+
+5
+
+10
+
+15
+
+20
+
+25
+Mean streamwise velocity
+
+y+
+
+<
+u
+
+>
++
+
+ 
+
+ 
+Sta−Lin−ASGS, c
+
+1
+=12, c
+
+2
+=8, τ
+
+c
+=0
+
+Sta−Lin−ASGS, c
+1
+=12, c
+
+2
+=2, τ
+
+c
+≠0
+
+Sta−Lin−ASGS, c
+1
+=12, c
+
+2
+=2, τ
+
+c
+=0
+
+DNS MKM
+
+Figure 18: Comparison of mean streamwise velocity for Reτ = 180 case using a 32
+3 Q1 mesh
+
+In Fig. 18 the mean velocity in the streamwise direction is shown. As in the case of homogeneous
+turbulence, some differences between the three cases can be observed, the choice used in section 7 being
+the most accurate one. The effect of the algorithmic constant c2 and the stabilization parameter τc in
+the problem solution can be clearly observed, i.e., the less dissipative choice gives the best results. Fig.
+
+28
+
+
+
+0 20 40 60 80 100 120 140 160 180
+0
+
+0.5
+
+1
+
+1.5
+
+2
+
+2.5
+
+3
+
+3.5
+
+4
+Streamwise velocity fluctuation
+
+y+
+
+u
+’+
+
+ 
+
+ 
+Sta−Lin−ASGS, c
+
+1
+=12, c
+
+2
+=8, τ
+
+c
+=0
+
+Sta−Lin−ASGS, c
+1
+=12, c
+
+2
+=2, τ
+
+c
+≠0
+
+Sta−Lin−ASGS, c
+1
+=12, c
+
+2
+=2, τ
+
+c
+=0
+
+DNS MKM
+
+(a) Rms streamwise velocity fluctua-
+tion
+
+0 20 40 60 80 100 120 140 160 180
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0.9
+
+1
+Wall normal velocity fluctuation
+
+y+
+
+v’
++
+
+ 
+
+ 
+
+Sta−Lin−ASGS, c
+1
+=12, c
+
+2
+=8, τ
+
+c
+=0
+
+Sta−Lin−ASGS, c
+1
+=12, c
+
+2
+=2, τ
+
+c
+≠0
+
+Sta−Lin−ASGS, c
+1
+=12, c
+
+2
+=2, τ
+
+c
+=0
+
+DNS MKM
+
+(b) Rms wall-normal velocity fluctua-
+tion
+
+0 20 40 60 80 100 120 140 160 180
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+1.2
+
+1.4
+Spanwise velocity fluctuation
+
+y+
+
+w
+’+
+
+ 
+
+ 
+
+Sta−Lin−ASGS, c
+1
+=12, c
+
+2
+=8, τ
+
+c
+=0
+
+Sta−Lin−ASGS, c
+1
+=12, c
+
+2
+=2, τ
+
+c
+≠0
+
+Sta−Lin−ASGS, c
+1
+=12, c
+
+2
+=2, τ
+
+c
+=0
+
+DNS MKM
+
+(c) Rms spanwise velocity fluctuation
+
+Figure 19: Comparison of rms velocity fluctuations
+
+29
+
+
+
+ 
+
+ 
+
+c
+1
+: 
+2
+.0
+
+, 
+c
+2
+: 
+2
+.0
+
+c
+1
+: 
+2
+.0
+
+, 
+c
+2
+: 
+4
+.0
+
+c
+1
+: 
+2
+.0
+
+, 
+c
+2
+: 
+8
+.0
+
+c
+1
+: 
+2
+.0
+
+, 
+c
+2
+: 
+1
+2
+.0
+
+c
+1
+: 
+1
+2
+.0
+
+, 
+c
+2
+: 
+2
+.0
+
+c
+1
+: 
+1
+2
+.0
+
+, 
+c
+2
+: 
+4
+.0
+
+c
+1
+: 
+1
+2
+.0
+
+, 
+c
+2
+: 
+8
+.0
+
+c
+1
+: 
+1
+2
+.0
+
+, 
+c
+2
+: 
+1
+2
+.0
+
+c
+1
+: 
+2
+4
+.0
+
+, 
+c
+2
+: 
+2
+.0
+
+c
+1
+: 
+2
+4
+.0
+
+, 
+c
+2
+: 
+4
+.0
+
+c
+1
+: 
+2
+4
+.0
+
+, 
+c
+2
+: 
+8
+.0
+
+c
+1
+: 
+2
+4
+.0
+
+, 
+c
+2
+: 
+1
+2
+.0
+
+A
+G
+
+A
+R
+
+D
+ d
+
+a
+ta
+
+b
+a
+s
+e
+
+(a
+)
+
+L
+e
+g
+e
+n
+
+d
+
+0
+0
+.1
+
+0
+.2
+
+0
+.3
+
+0
+.4
+
+0
+.5
+
+0
+.6
+
+0
+.7
+
+0
+.8
+
+1
+
+1
+.1
+
+1
+.2
+
+1
+.3
+
+1
+.4
+
+1
+.5
+
+G
+lo
+
+b
+a
+
+l 
+E
+
+n
+e
+
+rg
+y
+, 
+
+c c
+=
+
+0
+.0
+
+T
+im
+
+e
+
+Energy
+
+ 
+
+ 
+
+(b
+)
+
+G
+lo
+
+b
+a
+l
+
+e
+n
+
+e
+rg
+
+y
+w
+
+it
+h
+c
+c
+
+=
+0
+
+1
+0
+
+0
+1
+0
+
+1
+1
+0
+
+−
+3
+
+1
+0
+
+−
+2
+
+1
+0
+
+−
+1
+
+1
+0
+
+0
+
+E
+n
+
+e
+rg
+
+y
+ s
+
+p
+e
+
+c
+tr
+
+a
+, 
+
+t=
+0
+
+.4
+, 
+
+c
+c
+=
+
+0
+.0
+
+  
+ k
+
+−
+5
+/3
+
+lo
+g
+ k
+
+log E(k)
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+ 
+
+ 
+
+(c
+)
+
+E
+n
+
+e
+rg
+
+y
+sp
+
+e
+c
+tr
+
+a
+a
+t
+t
+
+=
+0
+.4
+
+w
+it
+
+h
+c
+c
+
+=
+0
+
+1
+0
+
+0
+1
+0
+
+1
+1
+0
+
+−
+3
+
+1
+0
+
+−
+2
+
+1
+0
+
+−
+1
+
+1
+0
+
+0
+
+E
+n
+
+e
+rg
+
+y
+ s
+
+p
+e
+
+c
+tr
+
+a
+, 
+
+t=
+0
+
+.8
+, 
+
+c
+c
+=
+
+0
+.0
+
+  
+ k
+
+−
+5
+/3
+
+lo
+g
+ k
+
+log E(k)
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+ 
+
+ 
+
+(d
+)
+
+E
+n
+
+e
+rg
+
+y
+sp
+
+e
+c
+tr
+
+a
+a
+t
+t
+
+=
+0
+.8
+
+w
+it
+
+h
+c
+c
+
+=
+0
+
+0
+0
+.1
+
+0
+.2
+
+0
+.3
+
+0
+.4
+
+0
+.5
+
+0
+.6
+
+0
+.7
+
+0
+.8
+
+1
+
+1
+.1
+
+1
+.2
+
+1
+.3
+
+1
+.4
+
+1
+.5
+
+G
+lo
+
+b
+a
+
+l 
+E
+
+n
+e
+
+rg
+y
+, 
+
+c c
+=
+
+1
+.0
+
+T
+im
+
+e
+
+Energy
+
+ 
+
+ 
+
+(e
+)
+
+G
+lo
+
+b
+a
+l
+
+e
+n
+
+e
+rg
+
+y
+w
+
+it
+h
+c
+c
+
+=
+1
+
+1
+0
+
+0
+1
+0
+
+1
+1
+0
+
+−
+3
+
+1
+0
+
+−
+2
+
+1
+0
+
+−
+1
+
+1
+0
+
+0
+
+E
+n
+
+e
+rg
+
+y
+ s
+
+p
+e
+
+c
+tr
+
+a
+, 
+
+t=
+0
+
+.4
+, 
+
+c
+c
+=
+
+1
+.0
+
+  
+ k
+
+−
+5
+/3
+
+lo
+g
+ k
+
+log E(k)
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+ 
+
+ 
+
+(f
+)
+
+E
+n
+
+e
+rg
+
+y
+sp
+
+e
+c
+tr
+
+a
+a
+t
+t
+
+=
+0
+.4
+
+w
+it
+
+h
+c
+c
+
+=
+1
+
+1
+0
+
+0
+1
+0
+
+1
+1
+0
+
+−
+3
+
+1
+0
+
+−
+2
+
+1
+0
+
+−
+1
+
+1
+0
+
+0
+
+E
+n
+
+e
+rg
+
+y
+ s
+
+p
+e
+
+c
+tr
+
+a
+, 
+
+t=
+0
+
+.8
+, 
+
+c
+c
+=
+
+1
+.0
+
+  
+ k
+
+−
+5
+/3
+
+lo
+g
+ k
+
+log E(k)
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+  
+ k
+
+−
+5
+/3
+
+ 
+
+ 
+
+(g
+)
+
+E
+n
+
+e
+rg
+
+y
+sp
+
+e
+c
+tr
+
+a
+a
+t
+t
+
+=
+0
+.8
+
+w
+it
+
+h
+c
+c
+
+=
+1
+
+F
+ig
+
+u
+re
+
+2
+0
+:
+
+C
+o
+m
+
+p
+a
+ri
+
+so
+n
+
+o
+f
+
+th
+e
+
+g
+lo
+
+b
+a
+l
+
+e
+n
+
+e
+rg
+
+y
+a
+n
+
+d
+e
+n
+
+e
+rg
+
+y
+sp
+
+e
+c
+tr
+
+a
+fo
+
+r
+d
+
+iff
+e
+re
+
+n
+t
+c
+1
+,
+c
+2
+
+a
+n
+
+d
+c
+c
+
+in
+th
+
+e
+D
+
+H
+IT
+
+te
+st
+
+30
+
+
+
+19 depicts the rms velocity fluctuations in all directions. The fluctuations in the streamwise direction
+are better predicted using (c1 = 12, c2 = 8 and τc = 0) but the spanwise and wall-normal directions are
+not.
+
+9. Behavior in the small time step limit
+
+Small time step instabilities for VMS LES simulations of turbulent flows have been reported in
+[34, 27]. In these references, the VMS models differ from the ones in this work. Instead of the definition
+of τm in (20), a time step dependent stabilization parameter τm
+
+τm =
+
+(
+1
+
+δt
++
+c1ν
+
+h2
++
+c2|a|
+h
+
+)−1
+,
+
+is considered in all cases.4 The plain introduction of a time step dependency in τm faces serious difficul-
+ties:
+
+• The method becomes unstable in the small time step limit since it converges to the unstable
+Galerkin formulation.
+
+• If τc is computed from (21) (as it is usually done, see, e.g., [10, 34, 27, 29]), τm ∼ δt and τc ∼ δt−1
+in the small time step limit. If this approach is followed , the essential numerical dissipation given
+by the fifth term in (38) is reduced as δt → 0, whereas the numerical dissipation introduced by
+the last term in the left hand side (a incompressibility penalty term) of (38) is increased. It has a
+compensating effect in practice, but the penalty term does not properly act as a turbulence model.
+
+Let us perform a test to study the small time step behavior of the VMS methods presented in Section
+2, using the skew-symmetric type 1 form of the convective term, as in previous numerical experiments.
+We also include a combination we do not advocate here, static subscales and nonlinear splitting, an
+approach followed in [16, 10, 34, 27, 29]. The behaviour of all the methods for the TCF test with
+δt = 0.002 is summarized in Table 4, where YES means that the simulation was succesful, NO means
+that the simulation diverged and δt ↓ means that the simulation was succesful only when the adaptive
+time step strategy described in Section 5.1.2 was used.
+
+It is important to note that the static and nonlinear ASGS formulation used in [10, 34, 27, 29] with
+the convective term type 2 becomes unstable after some time, as also reported in these works, even
+for the time step size defined in section 7.1.2. However, using the the skew-symmetric type 1 form of
+the convective term, which exactly conserves energy, the simulation ended succesfully for the time step
+defined in section 7.1.2, but failed to converge with the small one. This result is a numerical evidence of
+the fact that the use of convective terms without the skew-symmetric property produce energy (see also
+Section 5.2.3) that can make simulations unstable. Further, these results evidence once again that it is
+a good choice to stick to provably unconditionally stable formulations, i.e., the dynamic formulations
+and/or orthogonal subscales formulations with a skew-symmetric convective term.
+
+Method ASGS OSS
+Tracking Static Dynamic Static Dynamic
+
+Advection Linear Nonlinear Linear Nonlinear Linear Nonlinear Linear Nonlinear
+Converged Yes No Yes Yes δt ↓ δt ↓ Yes Yes
+
+Table 4: Small time step convergence analysis
+
+4The parameter τm,t for the dynamic subscales model also scales with δt, as discussed in Section (4). However, this
+dependence comes from a consistent time integration of the subscale time derivative (see also [22, Section 3.2]).
+
+31
+
+
+
+10. Conclusions
+
+In this paper we have assessed the performance of the numerical formulations previously developed
+in our group [19, 22, 21, 52] for turbulent incompressible flow problems. The methods proposed are
+different to those whose testing in turbulent regimes has been published before, the closest ones being
+those reported in [10, 27]. In [10] the ASGS method with quasi-static subscales is used but the time step
+dependency is included in the stabilization parameter (with the inconsistencies and problems discussed
+in section 9) and the nonlinear scale splitting is applied in the finite element equation only (not in the
+subscale equation). Time dependendent subscales are used in [27], but the authors consider a linear
+scale splitting. Furthermore, in both works τc 6= 0.
+
+Apart from the numerical experimentation, we have also discussed some theoretical aspects, such as
+the dissipative structure of the methods and the way energy is conserved, which we have numerically
+verified. Related to this point, one of the aspects treated is the use of different skew-symmetric forms of
+the convective term, with its impact on energy conservation and the realization that if a skew symmetric
+form is not used negative energy dissipation may introduced to the scheme, which may be a source of
+instability. Other side points that we have discussed and checked numerically are the dependence of the
+algorithmic constants on the results or the effect of small time steps when the stabilization parameters
+depend on them.
+
+The most important conclusions however come from the different problems that we have solved nu-
+merically. As a general conclusion, all methods presented yield similar results, all displaying the features
+of turbulent flows, reproducing appropriately global outputs such as energy spectra. The methods are
+stable and converge to reference solutions, both when the mesh is refined and when the polynomial
+order is increased. Regarding this point, let us mention that we have found a good compromise to use
+quadratic elements, with better results than for linear elements with the same number of degrees of free-
+dom. Likewise, the OSS method with dynamic subscales could be the formulation to be favored, since
+it is the one that introduces (slightly) less dissipation and shows better results in the time evolution of
+global energy, completely free of oscillations.
+
+On the other hand, we have thoroughly analyzed the effect of the algorithmic constants for isotropic
+turbulence and wall-bounded turbulent flows, and chose them based on this sensitivity analysis. An
+important observation in this line is the fact that all the methods considered in this work are certainly
+sensitive to the algorithmic constants and they have to be properly chosen in order to simulate turbulent
+flows. In fact, the difference in the numerical results are much more influenced by the algorithmic con-
+stants than by the choice of the VMS formulation itself. This strong influence seems to be a characteristic
+feature of turbulence, since in our experience it is not so important in laminar flows.
+
+Apart from the quality of the results, the OSS method with dynamic subscales is convenient in terms
+of numerical performance. It requires more nonlinear iterations than ASGS, but less iterations of the
+linear solver, altogether leading to lower computational cost. In both formulations, ASGS and OSS, the
+use of dynamic subscales has been found to be crucial for nonlinear convergence. In fact, in some cases
+quasi-static subscales have even failed to converge.
+
+Acknowledgements
+
+This work has been partially funded by the European Research Council under the FP7 Programme
+Ideas through the Starting Grant No. 258443 - COMFUS: Computational Methods for Fusion Technol-
+ogy. We also acknowledge the financial support received from the Spanish Ministry of Economics and
+Competitiveness, National Programme of R&D to the project PARANAT (ENE2011-28825). R. Cod-
+ina gratefully acknowledges the support received from the ICREA Acadèmia Progam from the Catalan
+Government. Furthermore, O. Colomés would like to acknowledge the support received from the Catalan
+Government through a FI fellowship.
+
+[1] AGARD-AR-345. A selection of test cases for the validation of large-eddy simulations of turbulent
+flows. Technical report, 1998.
+
+[2] M. Avila, J. Principe, and R. Codina. A finite element dynamical nonlinear subscale approximation
+for the low Mach number flow equations. Journal of Computational Physics, 230(10–11):7988–8009,
+2011.
+
+32
+
+
+
+[3] M. Avila, J. Principe, and R. Codina. Large eddy simulation of low Mach number flows using a
+dynamical and nonlinear finite element subgrid scale model. submitted.
+
+[4] S. Badia. On stabilized finite element methods based on the Scott-Zhang projector. Circumvent-
+ing the inf-sup condition for the Stokes problem. Computer Methods in Applied Mechanics and
+Engineering, 247-248(0):65–72, 2012.
+
+[5] S. Badia and R. Codina. On a multiscale approach to the transient Stokes problem: Dy-
+namic subscales and anisotropic space-time discretization. Applied Mathematics and Computation,
+207(2):415–433, 2009.
+
+[6] S. Badia, R. Codina, and J. V. Gutiérrez-Santacreu. Long-term stability estimates and existence of
+a global attractor in a finite element approximation of the Navier-Stokes equations with numerical
+subgrid scale modeling. SIAM J. Numer. Anal., 48(3):1013–1037, 2010.
+
+[7] S. Badia and J. V. Gutiérrez-Santacreu. Convergence towards weak solutions of the Navier-Stokes
+equations for a finite element approximation with numerical subgrid scale modeling. IMA Journal
+of Numerical Analysis, In press, 2013.
+
+[8] S. Badia, A. Mart́ın, and J.Principe. Enhanced balancing Neumann-Neumann preconditioning in
+computational fluid and solid mechanics. International Journal for Numerical Methods in Engi-
+neering, 96(4):203–230, 2013.
+
+[9] S. Badia, A. F. Mart́ın, and J. Principe. Implementation and scalability analysis of balancing
+domain decomposition methods. Archives of Computer Methods in Engineering, 20:239–262, 2013.
+
+[10] Y. Bazilevs, V. Calo, J. Cottrell, T. Hughes, A. Reali, and G. Scovazzi. Variational multiscale
+residual-based turbulence modeling for large eddy simulation of incompressible flows. Computer
+Methods in Applied Mechanics and Engineering, 197(1–4):173–201, 2007.
+
+[11] A. D. Beck and G. J. Gassner. Numerical simulation of the Taylor-Green vortex at Re = 1600 with
+the Discontinuous Galerkin Spectral Element method for well-resolved and underresolved scenarios.
+1st International Workshop on High-Order CFD Methods at the 50th AIAA Aerospace Sciences
+Meeting, Nashville, TN, 2012.
+
+[12] J. P. Boris, F. F. Grinstein, E. S. Oran, and R. L. Kolbe. New insights into large eddy simulation.
+Fluid Dynamics Research, 10(4–6):199, 1992.
+
+[13] M. E. Brachet, D. I. Meiron, S. A. Orszag, B. G. Nickel, R. H. Morf, and U. Frisch. Small-scale
+structure of the Taylor-Green vortex. Journal of Fluid Mechanics, 130:411–452, 1983.
+
+[14] A. N. Brooks and T. J. R. Hughes. Streamline upwind/Petrov-Galerkin formulations for convection
+dominated flows with particular emphasis on the incompresible Navier-Stokes equations. Computer
+Methods in Applied Mechanics and Engineering, 32:199–259, 1982.
+
+[15] R. Calderer and A. Masud. Residual-based variational multiscale turbulence models for unstruc-
+tured tetrahedral meshes. Computer Methods in Applied Mechanics and Engineering, 254(0):238–
+253, 2013.
+
+[16] V. Calo. Residual based mulstiscale turbulence modeling: finite volume simulations of bypass transi-
+tion. PhD thesis, Department of Civil and Environmental Engineering, Stanford University, 2004.
+
+[17] H. Choi and P. Moin. Effects of the computational time step on numerical solutions of turbulent
+flow. Journal of Computational Physics, 113(1):1–4, 1994.
+
+[18] R. Codina. Stabilization of incompressibility and convection through orthogonal sub-scales in finite
+element methods. Computer Methods in Applied Mechanics and Engineering, 190(13–14):1579–
+1599, 2000.
+
+33
+
+
+
+[19] R. Codina. Stabilized finite element approximation of transient incompressible flows using orthog-
+onal subscales. Computer Methods in Applied Mechanics and Engineering, 191(39–40):4295–4321,
+2002.
+
+[20] R. Codina. Analysis of a stabilized finite element approximation of the Oseen equations using
+orthogonal subscales. Applied Numerical Mathematics, 58:264–283, 2008.
+
+[21] R. Codina, J. Principe, and S. Badia. Dissipative structure and long term behavior of a finite
+element approximation of incompressible flows with numerical subgrid scale modeling. In R. Borst
+and E. Ramm, editors, Multiscale Methods in Computational Mechanics, volume 55 of Lecture Notes
+in Applied and Computational Mechanics, pages 75–93. Springer Netherlands, 2011.
+
+[22] R. Codina, J. Principe, O. Guasch, and S. Badia. Time dependent subscales in the stabilized finite
+element approximation of incompressible flow problems. Computer Methods in Applied Mechanics
+and Engineering, 196(21–24):2413–2430, 2007.
+
+[23] C. R. Dohrmann. A preconditioner for substructuring based on constrained energy minimization.
+SIAM Journal on Scientific Computing, 25(1):246–258, 2003.
+
+[24] J. Douglas and J. Wang. An absolutely stabilized finite element method for the Stokes problem.
+Mathematics of computation, 52:495–508, 1989.
+
+[25] D. Fauconnier, C. De Langhe, and E. Dick. Construction of explicit and implicit dynamic finite
+difference schemes and application to the large-eddy simulation of the Taylor-Green vortex. Journal
+of Computational Physics, 228(21):8053–8084, 2009.
+
+[26] C. Fureby and F. F. Grinstein. Large eddy simulation of high-Reynolds-number free and wall-
+bounded flows. Journal of Computational Physics, 181(1):68–97, 2002.
+
+[27] P. Gamnitzer, V. Gravemeier, and W. A. Wall. Time-dependent subgrid scales in residual-based
+large eddy simulation of turbulent channel flow. Computer Methods in Applied Mechanics and
+Engineering, 199(13–16):819–827, 2010.
+
+[28] G. Gassner and A. Beck. On the accuracy of high-order discretizations for underresolved turbulence
+simulations. Theoretical and Computational Fluid Dynamics, pages 1–17.
+
+[29] V. Gravemeier, M. W. Gee, M. Kronbichler, and W. A. Wall. An algebraic variational multiscale-
+multigrid method for large eddy simulation of turbulent flow. Computer Methods in Applied Me-
+chanics and Engineering, 199(13–16):853–864, 2010.
+
+[30] F. F. Grinstein, L. G. Margolin, and W. J. Rider. Implicit large eddy simulation: computing turbulent
+fluid dynamics. Cambridge university press, 2007.
+
+[31] O. Guasch and R. Codina. Statistical behavior of the orthogonal subgrid scale stabilization terms in
+the finite element large eddy simulation of turbulent flows. Computer Methods in Applied Mechanics
+and Engineering, 2013.
+
+[32] J. Gullbrand and F. K. Chow. The effect of numerical errors and turbulence models in large-
+eddy simulations of channel flow, with and without explicit filtering. Journal of Fluid Mechanics,
+495:323–341, 2003.
+
+[33] F. Ham, F. Lien, and A. Strong. A fully conservative second-order finite difference scheme for
+incompressible flow on nonuniform grids. Journal of Computational Physics, 177(1):117–133, 2002.
+
+[34] M.-C. Hsu, Y. Bazilevs, V. Calo, T. Tezduyar, and T. Hughes. Improving stability of stabilized
+and multiscale formulations in flow simulations at small time steps. Computer Methods in Applied
+Mechanics and Engineering, 199(13–16):828 – 840, 2010.
+
+[35] T. Hughes, J. Cottrell, and Y. Bazilevs. Isogeometric analysis: CAD, finite elements, NURBS,
+exact geometry and mesh refinement. Computer Methods in Applied Mechanics and Engineering,
+194(39–41):4135 – 4195, 2005.
+
+34
+
+
+
+[36] T. J. Hughes. Multiscale phenomena: Green’s functions, the Dirichlet-to-Neumann formulation,
+subgrid scale models, bubbles and the origins of stabilized methods. Computer Methods in Applied
+Mechanics and Engineering, 127(1–4):387–401, 1995.
+
+[37] T. J. Hughes, G. R. Feijóo, L. Mazzei, and J.-B. Quincy. The variational multiscale method - A
+paradigm for computational mechanics. Computer Methods in Applied Mechanics and Engineering,
+166(1–2):3–24, 1998.
+
+[38] T. J. R. Hughes, L. P. Franca, and M. Balestra. A new finite element formulation for computa-
+tional fluid dynamics: V. Circumventing the Babuska-Brezzi condition: a stable Petrov-Galerkin
+formulation of the Stokes problem accommodating equal-order interpolations. Computer Methods
+in Applied Mechanics and Engineering, 59(1):85–99, 1986.
+
+[39] T. J. R. Hughes, L. Mazzei, and K. E. Jansen. Large eddy simulation and the variational multiscale
+method. Computing and Visualization in Science, 3:47–59, 2000.
+
+[40] T. J. R. Hughes, A. A. Oberai, and L. Mazzei. Large eddy simulation of turbulent channel flows
+by the variational multiscale method. Physics of Fluids, 13(6):1784–1799, 2001.
+
+[41] J.B. Chapelier, M. De La Llave Plata, and F. Renac, E. Martin. Final abstract for ONERA
+Taylor-Green DG participation, 2012.
+
+[42] V. John and A. Kindl. Variants of projection-based finite element variational multiscale methods
+for the simulation of turbulent flows. International Journal for Numerical Methods in Fluids,
+56(8):1321–1328, 2008.
+
+[43] J. Kim, P. Moin, and R. Moser. Turbulence statistics in fully developed channel flow at low Reynolds
+number. Journal of Fluid Mechanics, 177:133–166, 1987.
+
+[44] B. Koobus and C. Farhat. A variational multiscale method for the large eddy simulation of com-
+pressible turbulent flows on unstructured meshes–application to vortex shedding. Computer Meth-
+ods in Applied Mechanics and Engineering, 193(15–16):1367–1383, 2004.
+
+[45] J. Mandel. Balancing domain decomposition. Communications in Numerical Methods in Engineer-
+ing, 9(3):233–241, 1993.
+
+[46] N. N. Mansour and A. A. Wray. Decay of isotropic turbulence at low Reynolds number. Physics
+of Fluids, 6(2):808–814, 1994.
+
+[47] A. Masud and R. Calderer. A variational multiscale method for incompressible turbulent flows:
+Bubble functions and fine scale fields. Computer Methods in Applied Mechanics and Engineering,
+200(33–36):2577–2593, 2011.
+
+[48] R. D. Moser, J. Kim, and N. N. Mansour. Direct numerical simulation of turbulent channel flow
+up to Reτ = 590. Physics of Fluids, 11(4):943–945, 1999.
+
+[49] X. Nogueira, L. Cueto-Felgueroso, I. Colominas, and H. Gómez. Implicit large eddy simulation of
+non-wall-bounded turbulent flows based on the multiscale properties of a high-order finite volume
+method. Computer Methods in Applied Mechanics and Engineering, 199(912):615–624, Jan. 2010.
+
+[50] S. B. Pope. Turbulent Flows. Cambridge University Press, 2000.
+
+[51] J. Principe and R. Codina. On the stabilization parameter in the subgrid scale approximation of
+scalar convection–diffusion–reaction equations on distorted meshes. Computer Methods in Applied
+Mechanics and Engineering, 199(21):1386–1402, 2010.
+
+[52] J. Principe, R. Codina, and F. Henke. The dissipative structure of variational multiscale methods
+for incompressible flows. Computer Methods in Applied Mechanics and Engineering, Accepted,
+2009.
+
+35
+
+
+
+[53] Rogallo. Numerical experiments in homogeneous turbulence. Number 81315 in NASA Technical
+Memorandum. 1981.
+
+[54] P. Sagaut. Large eddy simulation for incompressible flows. Scientific Computing, Springer, 2006.
+
+[55] O. Schenk and K. Gärtner. Solving unsymmetric sparse systems of linear equations with PARDISO.
+Future Generation Computer Systems, 20(3):475 – 487, 2004.
+
+[56] O. Schenk and K. Gärtner. On fast factorization pivoting methods for sparse symmetric indefinite
+systems. Electronic Transactions on Numerical Analysis, 23:158–179, 2006.
+
+36
+
+
+	Introduction
+	Formulation
+	Navier-Stokes problem
+	VMS framework
+	The dynamics of the subscales
+	(Non)linear scale splitting
+	The space for the subscales
+
+
+	Energy balance statements
+	Static subscales
+	Dynamic subscales
+
+	Final discrete problem
+	Algebraic Subgrid Scales (ASGS)
+	Orthogonal Subscales (OSS)
+
+	Decay of homogeneous isotropic turbulence
+	Problem definition
+	Initial condition
+	Setting
+
+	Numerical results
+	Energy Conservation
+	Computational costs analysis
+	Total energy evolution
+	Energy spectra
+	h-p refinement
+	Comparison with a non-stabilized method
+
+
+	Taylor-Green Vortex
+	Problem definition
+	Initial condition
+	Setting
+
+	Numerical results
+	Vorticity
+	Comparison of VMS methods
+	h-p refinement
+
+
+	Turbulent channel flow
+	Problem definition
+	Computational domain and mesh definition
+	Setting
+
+	Numerical results
+	Velocity profiles
+	Reynolds shear stress
+
+
+	Sensitivity with respect to the stabilization parameters
+	Behavior in the small time step limit
+	Conclusions
+

@@ -1,0 +1,3101 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+MONOTONICITY-PRESERVING FINITE ELEMENT SCHEMES BASED ON
+DIFFERENTIABLE NONLINEAR STABILIZATION
+
+SANTIAGO BADIA† AND JESÚS BONILLA‡
+
+Abstract. In this work, we propose a nonlinear stabilization technique for scalar conservation laws
+with implicit time stepping. The method relies on an artificial diffusion method, based on a graph-
+Laplacian operator. It is nonlinear, since it depends on a shock detector. Further, the resulting
+method is linearity preserving. The same shock detector is used to gradually lump the mass matrix.
+The resulting method is LED, positivity preserving, and also satisfies a global DMP. Lipschitz conti-
+nuity has also been proved. However, the resulting scheme is highly nonlinear, leading to very poor
+nonlinear convergence rates. We propose a smooth version of the scheme, which leads to twice dif-
+ferentiable nonlinear stabilization schemes. It allows one to straightforwardly use Newton’s method
+and obtain quadratic convergence. In the numerical experiments, steady and transient linear trans-
+port, and transient Burgers’ equation have been considered in 2D. Using the Newton method with
+a smooth version of the scheme we can reduce 10 to 20 times the number of iterations of Anderson
+acceleration with the original non-smooth scheme. In any case, these properties are only true for the
+converged solution, but not for iterates. In this sense, we have also proposed the concept of projected
+nonlinear solvers, where a projection step is performed at the end of every nonlinear iterations onto
+a FE space of admissible solutions. The space of admissible solutions is the one that satisfies the
+desired monotonic properties (maximum principle or positivity).
+
+Keywords: Finite elements, discrete maximum principle, monotonicity, nonlinear solvers, shock cap-
+turing
+
+Contents
+
+1. Introduction 2
+2. Preliminaries 3
+2.1. The continuous problem 3
+2.2. Finite element spaces and meshes 4
+2.3. The semi-discrete problem 4
+3. Nonlinear stabilization 5
+4. Monotonicity properties 7
+5. Symmetric mass matrix stabilization 9
+6. Lipschitz continuity 9
+7. Differentiable stabilization 10
+8. Nonlinear Solvers 12
+9. Numerical Experiments 13
+9.1. Steady problems 13
+
+Date: December 22, 2016.
+† Universitat Politècnica de Catalunya, Jordi Girona1-3, Edifici C1, E-08034 Barcelona & Centre Internacional de
+
+Mètodes Numèrics en Enginyeria, Parc Mediterrani de la Tecnologia, Esteve Terrades 5, E-08860 Castelldefels, Spain
+E-mail: sbadia@cimne.upc.edu. SB was partially supported by the European Research Council under the FP7 Program
+Ideas through the Starting Grant No. 258443 - COMFUS: Computational Methods for Fusion Technology and the FP7
+NUMEXAS project under grant agreement 611636. SB gratefully acknowledges the support received from the Catalan
+Government through the ICREA Acadèmia Research Program.
+
+‡ Universitat Politècnica de Catalunya, Jordi Girona1-3, Edifici C1, E-08034 Barcelona & Centre Internacional de
+Mètodes Numèrics en Enginyeria, Parc Mediterrani de la Tecnologia, Esteve Terrades 5, E-08860 Castelldefels, Spain
+E-mail: jbonilla@cimne.upc.edu. JB gratefully acknowledges the support received from ”la Caixa” Foundation through
+its PhD scholarship program.
+
+1
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 2
+
+9.2. Transient transport problems 16
+9.3. Burgers’ equation 18
+10. Conclusions 19
+Appendix A. Proof of Theorem 6.1 21
+References 25
+
+1. Introduction
+
+Many partial differential equations (PDEs) satisfy some sort of maximum principle or positivity
+property. However, numerical discretizations usually violate these structural properties at the discrete
+level, with implications in terms of accuracy and stability, e.g., leading to non-physical local oscillations.
+
+It is well-understood now how to build methods that satisfy some sort of discrete maximum principle
+(DMP) based on explicit time integration combined with finite volume or discontinuous Galerkin
+schemes [9, 27]. However, implicit time integration is preferred in problems with multiple scales in
+time when the fastest scales are not relevant. E.g., under-resolved simulations of multi-scale problems
+in time are essential in plasma physics [20]. Unfortunately, implicit DMP-preserving hyperbolic solvers
+are scarce and not so well developed.
+
+In the frame of finite element (FE) discretizations, the local instabilities present in the solution of
+hyperbolic problems have motivated the use of so-called shock capturing schemes based on artificial
+diffusion (see, e.g., [18]). These methods introduce nonlinear stabilization, in contrast with classical
+SUPG-type linear stabilization techniques [16, 17]. Since linear schemes are at most first-order accurate
+and highly dissipative [11], recent research on FE techniques for conservation laws has focused on the
+development of less dissipative nonlinear schemes. Many of these ideas come from the numerical
+approximation of convection dominated convection-diffusion-reaction (CDR), where one encounters
+similar issues. The cornerstone of these methods is the design of a nonlinear artificial diffusion that
+vanishes in smooth regions and works on discontinuities or sharp layers. Many residual-based diffusion
+methods have been considered so far (see, e.g., [10] and references therein). Most of these approaches
+have failed to reach DMP-preserving methods. A salient exception is the method by Burman and Ern
+[7], which satisfies a DMP under mesh restrictions. Recently, due to some interesting novel approaches
+in the field, the state-of-the-art in nonlinear stabilization has certainly advanced [1–3, 6, 8, 23, 24].
+
+Implicit FE schemes for hyperbolic problems rely on four key ingredients:
+(1) The first ingredient is the definition of the shock detector that only activates the nonlinear
+
+diffusion around shocks/discontinuities. Recent nonlinear stabilization techniques have been
+developed based on shock detectors driven by gradient jumps [1, 5] or edge differences [3, 23,
+24]. The use of such schemes was proposed in [5] for 1D problems and extended to multiple
+dimensions in [1]. A salient property of the scheme in [1] is that it is DMP-preserving, but it
+relies on the DMP of the Poisson operator, which is only true under stringent constraints on
+the mesh. Another salient feature of the gradient-jump diffusion approach in [1] is the fact that
+it leads to so-called linearity preserving methods, i.e., the artificial diffusion vanishes for first
+order polynomials. This property is related to high-order convergence on smooth regions [25].
+A modification of the nonlinear diffusion in [23] that also satisfies this property is proposed in
+[24].
+
+(2) The second ingredient is the amount of diffusion to be introduced on shocks, which is the
+amount of diffusion introduced in a first order linear scheme. In this sense, one can consider
+flux-corrected transport techniques [26].
+
+(3) The third ingredient is the form of the discrete viscous operator. In order to keep the DMP
+on arbitrary meshes, Guermond and Nazarov have proposed to use graph-theoretic, instead of
+PDE-based, operators for the artificial diffusion terms. This approach has been used in [3, 29]
+(for the steady-state convection-diffusion-reaction problem) and in [12] (for linear conservation
+laws) combined with artificial diffusion definitions similar to the one in [13].
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 3
+
+(4) The fourth ingredient is the perturbation of the mass matrix, in order to satisfy a DMP. Full
+mass lumping is one choice, but it introduces an unacceptable phase error. For continuous FE
+methods, improved techniques can be found in [14]. Alternatively, limiting-type strategies are
+used, e.g., in [23, 24].
+
+(5) The method in [3] is Lipschitz continuous, which is needed for the well-posedness of the result-
+ing nonlinear scheme. However, in practice, all the methods presented above are still highly
+nonlinear, and nonlinear convergence becomes very hard and expensive. It leads to a fifth
+additional ingredient that has not been considered so far in much detail. In order to reduce
+the computational cost of these schemes, we consider the smoothing of the nonlinear artificial
+diffusion, to make it differentiable up to some fixed order. The possibility to define smooth
+nonlinear schemes can improve the nonlinear convergence of the methods and make them
+practical for realistic applications. Further, the smoothing step enables advanced linearization
+strategies based on Newton’s method. It also involves the development of efficient nonlinear
+solvers, e.g., based on the combination of Newton, line search, and/or Anderson acceleration
+techniques.
+
+All the results commented above are restricted to linear (or bilinear) FEs. We are not aware of
+the existence of high-order implicit DMP-preserving FE schemes. For explicit time integration and
+limiters, second order methods can be found in [12]. The use of hp-adaptive schemes that keep first
+order schemes around shocks has been proposed in [15].
+
+In this work, we propose a novel nonlinear stabilization method that satisfies a DMP, positivity,
+and local extremum diminishing (LED) properties at the discrete level. It combines: (1) a novel shock
+detector related to the one in [1], which is simple and linearity preserving; (2) the graph-Laplacian
+artificial viscous term proposed in [13]; (3) an edge FCT-type definition of the amount of diffusion
+(see [23]); (4) a novel gradual mass lumping technique that exploits the same shock detector used
+for the artificial diffusion. We prove that the resulting method ticks all the boxes, i.e., it is total
+variation diminishing (TVD), DMP, positivity-preserving, linearity preserving, Lipschitz continuous,
+and introduces low dissipation. With regard to the last point, we prove that the amount of diffusion
+is the minimum needed in our analysis to prove the DMP. Further, we consider a novel approach to
+design a smoothed version of the resulting scheme that is twice differentiable. We prove that linear
+preservation is weakly enforced in this case, but all the other properties remain unchanged. Finally,
+we analyze the effect of the smoothing in the computational cost, and observe a clear reduction in the
+CPU cost of the nonlinear solver when using the smooth version of the method proposed herein while
+keeping almost unchanged the sharp layers of the non-smooth version. Future work will be focused on
+the entropy stability analysis of these schemes for nonlinear scalar conservation laws. A partial result
+in this direction is the proof of entropy stability for a related method when applied to the 1D Burger’s
+equations (see [5]).
+
+This work is structured as follows. In Sect. 2 the continuous problem and its discretization using the
+FE method are presented. Sect. 3 contains the formulation of a novel nonlinear stabilization method.
+Sect. 4 is devoted to the monotonicity analysis of the proposed method. An alternative approach
+is presented in Sect. 5. Lipschitz continuity of the methods is proved in Sect. 6. A differentiable
+version the previous method is presented in Sect. 7. Sect. 8 is devoted to nonlinear solvers. Different
+numerical experiments are introduced in Sect. 9. Finally, in Sect. 10 we draw some conclusions.
+
+2. Preliminaries
+
+2.1. The continuous problem. Let Ω ⊂ Rd be a bounded domain, where d is the space dimension,
+and (0, T ] the time interval. The scalar conservation equation reads: find u(x, t) such that
+
+∂tu+ ∇ · f(u) = g, on Ω× (0, T ],
+where f ∈ Lip(R;Rd) is the flux. It is also subject to the initial condition u(x, 0) = u0 ∈ L∞(Ω) and
+boundary condition u(x, t) = uD(x, t) on the inflow Γin
+
+.= {(x, t) ∈ ∂Ω× (0, T ] | f(x, t) ·n(x, t) < 0}.
+There exist a unique entropy solution u of the above problem that satisfies the entropy inequalities
+∂tE(u) + ∇ · F (u) ≤ 0 for all convex entropies E ∈ Lip(R;R) with its associated entropy fluxes
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 4
+
+F i(u) =
+∫ u
+
+0 E
+′(v)f ′i(v)dv, 1 ≤ i ≤ d (see Kružkov [21]). Let us consider the weak form of this
+
+problem consists in seeking u such that u = uD on Γin × (0, T ] and
+(∂tu, v) + (f ′(u) ·∇u, v) = (g, v) ∀v ∈ L2(Ω), (1)
+
+almost everywhere in (0, T ], with g ∈ L2(Ω).
+
+2.2. Finite element spaces and meshes. Let Th be a conforming partition of Ω into elements, K.
+Elements can be triangles or quadrilaterals for d = 2, or tetrahedrals or hexahedra for d = 3. The set
+of interpolation nodes of Th is represented by Nh, whereas Nh(K) denotes the set of nodes belonging
+to element K ∈ Th. Moreover, Ωi is the macroelement composed by the union of the elements K ∈ Th
+such that i ∈ Nh(K). Nh(Ωi) denotes the set of nodes in that macroelement. The continuous linear
+FE space is defined as
+
+Vh
+.=
+{
+vh ∈ C0(Ω) : vh|K ∈ Pk(K) ∀K ∈ Th
+
+}
+for triangular or tetrahedral elements (replacing P1(K) by Q1(K) for quadrilateral or hexahedral
+elements). P1(K) (resp., Q1(K)) is the space of polynomials with total (resp., partial) degree less
+or equal to 1. The nodal basis of Vh is written {ϕi}i∈Nh , and the FE functions can be expressed as
+vh =
+
+∑
+i∈Nh ϕivi, where vi is the value of vh at node i.
+
+2.3. The semi-discrete problem. The semi-discrete Galerkin FE approximation of (1) reads: find
+uh ∈ Vh such that uh(Γin, t) = πh(uD) and
+
+(∂tuh, vh) + (f ′(uh) ·∇uh, vh) = (g, vh) ∀vh ∈ Vh, (2)
+for t ∈ (0, T ], with initial conditions uh(·, 0) = πh(u0). πh denotes a FE interpolation, e.g., the
+Scott-Zhang projector [28].
+
+Using the notation Muh
+.= (uh, ·) and F(wh)uh
+
+.= (f ′(wh) ·∇uh, ·) we can write problem (2) in
+compact form as
+
+M∂tuh + F(uh)uh = g (3)
+in V ′h, i.e., the dual space of Vh. Further, we define Mij
+
+.= (ϕj , ϕi), Fij(uh)
+.= (f ′(uh) ·∇ϕj , ϕi), and
+
+gi
+.= (g, ϕi).
+In order to carry out the time discretization of (3), let us consider a partition of the time domain
+
+(0, T ] into sub-intervals (tn, tn+1], with 0 .= t0 < t1 < . . . < tN .= T . We consider the Backward-
+Euler (BE) implicit time integrator to keep at the time-discrete level the monotonicity properties of
+the semi-discrete problem, leading to the discrete problem: given u0h
+
+.= πh(u0) ∈ Vh, compute for
+n = 1, . . . , N − 1
+
+Mδtun+1h + F(u
+n+1
+h )u
+
+n+1
+h = g in V
+
+′
+h, (4)
+
+where δtun+1h
+.= ∆t−1n+1(u
+
+n+1
+h − u
+
+n
+h), and ∆tn+1
+
+.= |tn+1 − tn|. Implicit strong stability preserving
+Runge-Kutta methods [19] also preserve the monotonic properties at the discrete level [19], under
+some restrictions on the time step size. For the sake of brevity we consider the BE scheme.
+
+Systems (3) and (4) will be supplemented with additional stabilization terms to minimize the oscil-
+lations generated by the Galerkin FE approximation. Of particular interest are methods which provide
+solutions that satisfy the following property for all nodes, for zero forcing terms.
+
+Definition 2.1 (Local DMP). A solution u ∈ Vh satisfies the local DMP if
+umini ≤ ui ≤ u
+
+max
+i , where u
+
+max
+i
+
+.= max
+j∈Nh(Ωi)\{i}
+
+uj , u
+min
+i
+
+.= min
+j∈Nh(Ωi)\{i}
+
+uj .
+
+Actually, for steady problems, if this is satisfied for all i ∈ Nh, then the extrema will be at the
+boundary and there exist no local extrema.
+
+Furthermore, it is useful to define local extremum diminishing (LED) methods for transient problems.
+
+Definition 2.2 (LED). A method is called LED if for g = 0 and any time in (0, T ], the solution
+satisfies
+
+dtui ≤ 0 if ui is a maximum and dtui ≥ 0 if ui is a minimum.
+For time-discrete methods, the same definition applies, replacing dt by δt.
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 5
+
+3. Nonlinear stabilization
+
+We want to design a linearity preserving LED method for stabilizing the scalar semi-discrete hyper-
+bolic problem (3) (or the discrete problem (4)), described in the previous section. As written above,
+this method is based on a graph-theoretic approach. Let us consider a nonlinear stabilization operator
+B(uh) : Vh → V ′h and denote Bij(uh)
+
+.= 〈B(uh)ϕj , ϕi〉. Particularly, we require that the stabilization
+term will satisfy the following properties (see also [13]):
+
+(1) compact support: Bij(uh) = 0 if j /∈ Nh(Ωi) for any uh ∈ Vh,
+(2) symmetry: Bij(uh) = Bji(uh) for any uh ∈ Vh,
+(3) conservation:
+
+∑
+j 6=i Bij(uh) = −Bii(uh) for any uh ∈ Vh,
+
+(4) linear preservation: B(uh) = 0 for any uh ∈ P1(Ω).
+To achieve this properties we define the nonlinear stabilization term
+
+〈B(wh)uh, vh〉
+.=
+∑
+i∈Nh
+
+∑
+j∈Nh(Ωi)
+
+νij(wh)viuj`(i, j), uh, vh ∈ Vh, (5)
+
+where the graph-theoretic Laplacian is defined as `(i, j) .= 2δij−1, and the artificial diffusion computed
+as
+
+νij(wh)
+.= max {αi(wh)Fij(wh), αj(wh)Fji(wh), 0} for i 6= j,
+
+νii(wh)
+.=
+
+∑
+j∈Nh(Ωi)
+
+j 6=i
+
+νij(wh), (6)
+
+where αi(·) is the shock detector. We note that this choice leads to a symmetric stabilization operator
+B(wh). In order to define the shock detector, let us introduce some notation. Let i ∈ Nh be a node of
+the mesh, v a vector field, and w a scalar field. Let rij = xj − xi be the vector pointing from nodes
+i to j in Nh and r̂ij
+
+.= rij|rij | . Let x
+sym
+ij be the point at the intersection between the line that passes
+
+through xi and xj and ∂Ωi that is not xj (see Fig. 1). The set of all symmetric nodes with respect to
+node i is represented with N symh (Ωi). We define r
+
+sym
+ij
+
+.= xsymij − xi, and u
+sym
+j
+
+.= uh(x
+sym
+ij ). Then, one
+
+can define the jump and the mean of the unknown gradient at node i in direction rij as
+
+J∇uhKij
+.=
+uj − ui
+|rij |
+
++
+u
+
+sym
+j − ui
+|rsymij |
+
+,
+
+{{|∇uh · r̂ij |}}ij
+.=
+
+1
+2
+
+(
+|uj − ui|
+|rij |
+
++
+|usymj − ui|
+|rsymij |
+
+)
+.
+
+We note that the symmetric nodes and their corresponding values usymj are used in the proof of the
+following results, Lemma 3.2, and Theorem 6.1, but not required in the implementation of (11). For
+triangular or tetrahedral meshes, since ∇uh is constant, u
+
+sym
+j can be computed easily as
+
+u
+sym
+j = uh(xi) + ∇uh(xi) · r
+
+sym
+ij .
+
+For quadrilateral or hexahedral structured (possibly adapted and nonconforming) meshes, usymj is also
+easy to obtain since jsym is already in Nh(Ωi). It also applies for symmetric meshes, when a mesh
+is said to be symmetric with respect to its internal nodes if for any i ∈ Nh all symmetric nodes
+jsym ∈ N symh (Ωi) already belong to Nh(Ωi).
+
+Making use of these definitions, the proposed shock detector at node i ∈ Nh for a FE solution uh
+reads:
+
+αi(uh)
+.=
+
+
+
+
+
+
+∣∣∣∑
+j∈Nh(Ωi)
+
+J∇uhKij
+
+∣∣∣∑
+j∈Nh(Ωi)
+
+2{{|∇uh·r̂ij |}}ij
+
+
+q if ∑j∈Nh(Ωi){{|∇uh · r̂ij |}}ij 6= 0,
+
+0 otherwise,
+
+(7)
+
+for some q ∈ R+. We note that this shock detector is motivated from [1], where the directional nodal-
+wise jumps and mean values are first used for such purposes. For triangular or tetrahedral meshes, the
+only difference strives in the fact that the supremum over all j ∈ Nh(Ωi) in both the numerator and
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 6
+
+Figure 1. Representation of the symmetric node jsym of j with respect to i.
+
+denominator was used in [1] instead of the sum. In the next lemma we show that in fact (7) detects
+extrema.
+
+Lemma 3.1. The shock detector αi(uh) defined in (7) is equal to 1 if uh has an extremum at point
+xi. Otherwise, αi(uh) < 1 in general, and αi(uh) = 0 for q =∞.
+
+Proof. Using the fact that uh has an extremum at xi,∣∣∣∣∣∣
+∑
+
+j∈Nh(Ωi)
+
+J∇uhKij
+
+∣∣∣∣∣∣ =
+∣∣∣∣∣∣
+∑
+
+j∈Nh(Ωi)
+
+uj − ui
+|rij |
+
++
+u
+
+sym
+j − ui
+|rsymij |
+
+∣∣∣∣∣∣
+=
+
+∑
+j∈Nh(Ωi)
+
+|uj − ui|
+|rij |
+
++
+∣∣usymj − ui∣∣
+|rsymij |
+
+=
+∑
+
+j∈Nh(Ωi)
+
+2{{|∇uh · r̂ij |}},
+
+since uj − ui has the same sign (or it is equal to zero) in all directions. It proves that αi(uh) = 1 on
+an extremum. In fact, if the solution does not have an extremum, these quantities neither can have
+the same sign nor be zero in all cases, and we only have∣∣∣∣∣∣
+
+∑
+j∈Nh(Ωi)
+
+J∇uhKij
+
+∣∣∣∣∣∣ <
+∑
+
+j∈Nh(Ωi)
+
+|uj − ui|
+|rij |
+
++
+∣∣usymj − ui∣∣
+|rsymij |
+
+=
+∑
+
+j∈Nh(Ωi)
+
+2{{|∇uh · r̂ij |}}. (8)
+
+Hence, αi(uh) < 1 when there is no extremum at xi. Moreover, for q =∞, the shock detector vanishes
+in all the nodes that are not extrema. �
+
+In addition to the nonlinear stabilization term B(uh), it is necessary to do a mass matrix lumping
+to prove that the LED property is satisfied. In the numerical analysis, it is enough to make this
+approximation when testing against the shape functions corresponding to nodes related to extrema,
+which is identified by the shock detector. Therefore, we propose the following stabilized semi-discrete
+version of (2):
+
+(1− αi(uh))(∂tuh, ϕi) + αi(uh)(∂tui, ϕi) + (f ′(uh) ·∇uh, ϕi)
++
+
+∑
+j∈Nh(Ωi)
+
+νij(uh)viuj l(i, j) = (g, ϕi) for any i ∈ Nh, (9)
+
+with the definition of the shock detector (7) and the nonlinear artificial diffusion (6). Thus, the
+definition of the mass matrix is nonlinear
+
+Mij(uh)
+.= (1− αi(uh))(ϕj , ϕi) + αi(uh)(δij , ϕi). (10)
+
+It can be understood as a mass matrix with gradual lumping. Full lumping is only attained at extrema.
+Denoting K(uh)
+
+.= F(uh) + B(uh), the stabilized problem (9) can be expressed in compact form as
+M(uh)dtuh + K(uh)uh = g in V ′h. (11)
+
+Analogously for the discrete problem (4),
+M(un+1h )δtu
+
+n+1
+h + K(u
+
+n+1
+h )u
+
+n+1
+h = g
+
+n+1 in V ′h. (12)
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 7
+
+Finally, let us note that the shock detector (7) leads to the one of Barrenechea and co-workers [3],
+
+α̃i
+.=
+
+
+
+
+
+∣∣∣∑
+
+j∈Nh(Ωi)
+ui−uj
+
+∣∣∣∑
+j∈Nh(Ωi)
+
+|ui−uj |
+
+
+q if ∑j∈Nh(Ωi) |ui − uj | 6= 0,
+
+0 otherwise,
+
+(13)
+
+when restricted to symmetric meshes of equilateral triangles.
+
+Lemma 3.2. For a symmetric triangular mesh where all the edges have the same length, αi in (7) is
+identical to α̃i in (13).
+
+Proof. For symmetric meshes, for every j ∈ Nh(Ωi), jsym ∈ Nh(Ωi). So, we can group nodes in Nh(Ωi)
+in pairs, getting
+
+2
+∑
+
+j∈Nh(Ωi)
+
+(ui − uj) =
+∑
+
+j∈Nh(Ωi)
+
+(ui − uj + ui − u
+sym
+ij ).
+
+We proceed analogously for the mean value. Further, since rij is identical for all j ∈ Nh(Ωi) by
+assumption, we get ∣∣∣∑j∈Nh(Ωi) J∇uhKij∣∣∣
+
+2
+∑
+j∈Nh(Ωi){{|∇uh · r̂ij |}}ij
+
+=
+
+∣∣∣∑j∈Nh(Ωi) ui − uj∣∣∣∑
+j∈Nh(Ωi) |ui − uj |
+
+.
+
+�
+
+For arbitrary symmetric meshes the methods only differ on the weights of the terms in the sums in
+(7) and all the required properties stated in (14) are readily satisfied for the use of the shock detector
+in (13). In general meshes, the shock detectors are different, and the one in (13) is not linearity
+preserving.
+
+4. Monotonicity properties
+
+In the sequel, we prove that the scheme (9) is LED. First, we define a set of necessary conditions on
+the nonlinear discrete operators that lead to LED schemes. They are the nonlinear extension of the
+ones for linear systems (see, e.g., [23]).
+
+Theorem 4.1. The semi-discrete problem (11) is LED if g(x) = 0 in Ω and, for every node i ∈ Nh
+such that ui is a local extremum, it holds:
+
+Mij(uh)
+.= δijmi, with mi > 0, (14)
+
+Kij(uh) ≤ 0 ∀i 6= j, and
+∑
+
+j∈Nh(Ωi)
+
+Kij(uh) = 0.
+
+Moreover, for g(x) ≤ 0 (resp. g(x) ≥ 0) in Ω and for all i ∈ Nh such that ui is a local maximum
+(resp. minimum), if (14) holds the maximum (resp. minimum) is diminishing (resp. increasing).
+These results are also true for the discrete problem (12). Furthermore, the discrete problem (12) is
+positivity-preserving for g = 0 and u0 ≥ 0.
+
+Proof. Let us start proving the LED property. If ui is a maximum, from (11), conditions in (14), and
+the fact that αi(uh) = 1, we have:
+
+gi = midtui +
+∑
+
+j∈Nh(Ωi)
+
+Kij(uh)uj ≥ midtui +
+∑
+
+j∈Nh(Ωi)
+
+Kij(uh)ui = midtui,
+
+for mi
+.=
+∫
+
+Ω ϕidΩ. As a result, dtui ≤ 0 and thus LED. We proceed analogously for the minimum.
+The proof is analogous for the discrete problem with BE time integration.
+
+Next, we prove positivity. Let us consider that at some time step m the solution becomes negative,
+and consider the node i in which the minimum value is attained. Using the previous result for a
+minimum at the discrete level, we have that δtumi ≥ 0 and thus u
+
+m
+i ≥ u
+
+m−1
+i . It leads to a contradiction,
+
+since um−1i ≥ 0. Thus, the solution must be positive at all times. �
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 8
+
+Theorem 4.2 (LED). The semi-discrete (resp., discrete) problem (11) (resp., (12)) leads to solutions
+uh ∈ Vh that enjoy the LED property in Def. 2.2 for any q ∈ R+.
+
+Proof. Assume uh reaches an extremum on i ∈ Nh. Then αi(uh) = 1 and Mij(uh)dtuj = midtui with
+mi =
+
+∫
+Ω ϕi. On the other hand, taking into account the definition of νij(uh) in (6), the convective
+
+term for j 6= i reads
+
+Kij(uh) = Fij(uh)−max {Fij(uh), αj(uh)Fji(uh), 0} ≤ 0.
+
+Using the fact that
+∑
+j∈Nh(Ωi) Fij(uh) = (f
+
+′(uh) ·∇1, ϕi) = 0, the definition of νii(uh), and (5), we
+have
+
+Kii(uh) = Fii(uh) +
+∑
+
+j∈Nh(Ωi)\{i}
+
+max {Fij(uh), αj(uh)Fji(uh), 0}
+
+=
+∑
+
+j∈Nh(Ωi)\{i}
+
+−Fij(uh) +
+∑
+
+j∈Nh(Ωi)\{i}
+
+max {Fij(uh), αj(uh)Fji(uh), 0}
+
+= −
+∑
+
+j∈Nh(Ωi)\{i}
+
+Kij(uh).
+
+Therefore it is clear that the conditions stated in Theorem 4.1 hold, thus the method is LED. The
+discrete case is proved analogously. �
+
+Corollary 4.3 (DMP). The discrete problem (12) leads to solutions that satisfy the local DMP property
+in Def. 2.1 at every tn, for n = 1, . . . , N .
+
+Proof. If the maximum (resp., minimum) at time tn is on a node whose value is not on the Dirichlet
+boundary, it is known from the LED property in Theorem 4.2 that it is bounded above (resp., below)
+by the maximum (resp., minimum) at the previous time step value. By induction, it will be bounded
+by the maximum (resp., minimum) at t = 0. Alternatively, the maximum or minimum is on the
+Dirichlet boundary. It proves the result. �
+
+Theorem 4.4. The diffusion defined in (6) is the one that introduces the minimum amount of nu-
+merical dissipation 〈B(uh)uh, uh〉 required to satisfy (14) when q =∞.
+
+Proof. Using the definition of the graph-Laplacian, the amount of dissipation introduced by the non-
+linear stabilization is
+
+〈B(uh)uh, uh〉 =
+∑
+i∈Nh
+
+∑
+j∈Nh(Ω)
+
+νij(uh)(ui − uj)2.
+
+Let us consider two connected nodes, i.e., i, j ∈ Nh and j ∈ Nh(Ωi). If neither i nor j are extrema, then
+αi(uh) = αj(uh) = 0 and νij = 0. Let us assume (without loss of generality) that uh has an extremum
+at i. If ui = uj , the dissipation is independent of the expression for νij . If ui > uj , αj = 0 (since
+q = ∞). Thus, νij = −max{Fij(uh), 0}. If Fij(uh) ≤ 0, no dissipation is introduced. If Fij(uh) > 0,
+then the diffusion introduced by the method is −Fij(uh) and Kij(uh) = 0.
+
+Let us assume that we have a method that is less dissipative than the one proposed herein. Based
+on the previous analysis, there exists a pair of connected nodes such that ui > uj and the dissipation
+introduced is smaller than −Fij(uh), for Fij(uh) > 0. As a result, Kij(uh) > 0. Thus, the properties
+in (4.1) do not hold. It proves the theorem. �
+
+Furthermore, it can be proved that the above method (11) (also (12)) is linearly preserving. In
+addition, using (13) instead, the method is still linearly preserving for symmetric meshes.
+
+Theorem 4.5 (Linearity preservation). Let uh be a continuous first order FE approximation of u ∈
+P1(Ω), then the semi-discrete and discrete problems (11) and (12), respectively, are linearity preserving,
+in the sense that the Galerkin problem and the stabilized one are identical.
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 9
+
+Proof. If uh ∈ P1(Ω), then it is obvious that ∇uh is constant. Thus, J∇uhKij = 0 for any direction
+rij , and αi(uh) = 0 for any i ∈ Nh. Therefore, recalling (6), it is easy to see that νij = 0 for any
+i, j ∈ Nh. Thus, the nonlinear stabilization and gradual lumping terms vanish and the Galerkin scheme
+is recovered. �
+
+5. Symmetric mass matrix stabilization
+
+The nonlinear mass matrix that has been considered in (10) is nonsymmetric by construction. In
+any case, we can easily consider a symmetric version of the method.
+
+Another alternative strategy to the nonlinear mass matrix definition in (10) is to consider the fully
+discrete problem (12), keeping the mass matrix at the current time step as a reaction term, leading to
+the following expression of the artificial diffusion
+
+ν̃ij(wh)
+.= νij(wh) + 1∆t max {αiMij , 0, αjMji} for i 6= j,
+
+ν̃ii(wh)
+.=
+
+∑
+j∈Nh(Ωi)
+
+j 6=i
+
+ν̃ij .
+(15)
+
+Let us consider another notion of DMP property.
+
+Definition 5.1 (Global DMP). A solution satisfies the global DMP if given (x, t) in Ω× (0, T ]
+min
+
+(y,t)∈Γ
+u(y, t) ≤ u(x, t) ≤ max
+
+(y,t)∈Γ
+u(y, t)
+
+where Γ .= Ω× {0} ∪ Γin.
+
+It is easy to check that the global DMP is a consequence of the local DMP and LED properties.
+It is possible to prove that the modified method with BE time integration satisfies the global DMP
+
+in Def. 5.1. Linear preservation can also be easily checked.
+
+Theorem 5.2 (Global DMP). Let uh be a continuous first order FE approximation of u. Then, the
+BE time discretization of problem (2) with g = 0, stabilized with (5), and using (15) as artificial
+diffusion, satisfies the global DMP property in Def. (5.1) for any q ∈ R+.
+
+Proof. Let us denote by K(u) and K̃(u) the stabilized matrix with the artificial diffusion computed
+with (6) and (15), respectively. Assume uh reaches a maximum on xi ∈ Ω\Γin. Then αi = 1, and we
+have:
+
+Mij(uh)uj + K̃ij(uh)uj = miui + Kij(uh)uj ,
+where we have used the fact that max {αiMij , 0, αjMji} = Mij . Thus, the equation related to the test
+function ϕi leads to∑
+
+j∈Nh(Ωi)
+
+Mij
+mi
+
+unj = u
+n+1
+i +
+
+∑
+j∈Nh(Ωi)
+
+Kij(uh)
+mi
+
+un+1j ≥ u
+n+1
+i +
+
+∑
+j∈Nh(Ωi)
+
+Kij(uh)
+mi
+
+un+1i = u
+n+1
+i .
+
+Note that Mij
+mi
+
+> 0, and
+∑
+j∈Nh(Ωi)
+
+Mij
+mi
+
+= 1. Hence un+1i is smaller or equal to a convex combination
+of unj , for j ∈ Nh(Ωi), and thus it is bounded above by the largest of these values. As a result,
+un+1h (x) ≤ max{maxy∈Ω u
+
+n
+h(y),max(y,tn+1)∈Γin uD(y, t
+
+n+1)}. Using a recursion argument, we prove
+the upper bound. We proceed analogously for the case lower bound. It proves the theorem. �
+
+6. Lipschitz continuity
+
+In the next, we want to prove the Lipschitz continuity of the nonlinear operator at every time step,
+i.e., T : Vh → V ′h defined as
+
+T(uh)
+.= ∆t−1n+1M(uh)uh + K(uh)uh − g −∆t
+
+−1
+n+1M(uh)u
+
+n
+h.
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 10
+
+In order to prove the Lipschitz continuity of T(·), we must deal with the nonlinear stabilization and
+gradual mass lumping terms. The Galerkin terms can be handled using the fact that f ∈ Lip(R;Rd).
+
+Let us introduce the following semi-norm generated by the graph-Laplacian operator
+
+|w|`
+.=
+
+√√√√1
+2
+∑
+i∈Nh
+
+∑
+j∈Nh(Ωi)
+
+(wi − wj)2.
+
+Further, we define |β| as the supremum of |f(v)| for v ∈ V admh , where V
+adm
+h ⊂ Vh is the subspace of
+
+functions that satisfy the global DMP in Def. 5.1.
+
+Theorem 6.1. Let us consider a non-degenerate partition Th. Given unh ∈ Vh and g ∈ V
+′
+h, the
+
+nonlinear operators B(·) : Vh → V ′h and M(·) : Vh → V
+′
+h are Lipschitz continuous in V
+
+adm
+h for q ∈ N
+
++,
+since they satisfy
+
+〈B(u)− B(v), z〉 ≤ qhd−1|β||u− v|`|z|`, for any z ∈ Vh,
+
+〈M(u)−M(v), z〉 ≤ C(qh
+d
+2 |u− v|` + ‖u− v‖)‖z‖, for any z ∈ Vh.
+
+Proof. The proof of the theorem is included in Appendix A. �
+
+7. Differentiable stabilization
+
+The previous nonlinear system is Lipschitz continuous, which improves the convergence of the
+nonlinear iterations. In fact, assuming that we supplement (1) with a diffusive term, existence and
+uniqueness can be proved in the diffusive regime (see [3]). However, even using Anderson acceleration
+nonlinear convergence can be very hard (see [23, 24] and Sect. 9).
+
+Based on these observations, we want to develop methods that lead to at least twice differentiable
+operators, i.e., ∂
+
+2T(uh)
+∂2uh
+
+∈ C0, using the previous framework. This allows the usage of the Newton
+method to linearize the system, and reduces the required number of nonlinear iterations. Smoothness
+is achieved by substituting the non-differentiable functions of the previous formulation with smooth
+approximations.
+
+In order to end up with a twice differentiable method, we propose to use the following artificial
+diffusion:
+
+νij
+.= max σ {max σ {αε,i(Fij(wh)), αε,jFji(wh)} , 0} , for i 6= j,
+
+νii
+.=
+
+∑
+j∈Nh(Ωi)
+
+j 6=i
+
+νij . (16)
+
+The function max σ(·) is a regularized maximum function
+
+max σ{x, y}
+.=
+|x− y|1,σ
+
+2
++
+x+ y
+
+2
+, (17)
+
+where |x|1,σ
+.=
+√
+x2 + σ is a smooth approximation of the absolute value. In order to keep dimensional
+
+consistency, σ should be a small parameter of order O
+(
+|β|2`2(d−1)
+
+)
+, where ` is a characteristic length
+
+of the problem. Let us define the smooth limiter function f(x) ∈ C2 that will be used in the definition
+of αε,
+
+f(x) .=
+{
+
+2x4 − 5x3 + 3x2 + x if x < 1
+1 if x ≥ 1 .
+
+This function is used to smoothly limit the value of x up to 1. Further, let us define another smooth
+approximation of the absolute value, namely
+
+|x|2,ε
+.=
+
+x2
+√
+x2 + ε
+
+.
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 11
+
+Finally, the shock detector is defined as
+
+αε,i(uh)
+.=
+
+
+f
+
+
+
+∣∣∣∑j∈Nh(Ωi) J∇uhKij∣∣∣1,ε + γ∑
+j∈Nh(Ωi) 2
+
+{{
+|∇uh · r̂ij |2,ε
+
+}}
+ij
+
++ γ
+
+
+
+
+
+q
+
+, (18)
+
+where γ is a small parameter that prevents division by zero.
+It has been proved in Lemma 3.1 that αi equals 1 when i is an extremum in Ωi. Let us prove that
+
+this is still true for αε,i.
+
+Lemma 7.1. If uh has an extremum on i ∈ Nh then αε,i(uh) = 1.
+
+Proof. It is clear that f(x) equals 1 for x ≥ 1, then the proof reduces to check that∣∣∣∣∣∣
+∑
+
+j∈Nh(Ωi)
+
+J∇uhKij
+
+∣∣∣∣∣∣
+1,ε
+
++ γ ≥
+∑
+
+j∈Nh(Ωi)
+
+2
+{{
+|∇uh · r̂ij |2,ε
+
+}}
+ij
+
++ γ.
+
+Taking into account that √
+x2 + ε = |x|1,ε > |x| ≥ |x|2,ε =
+
+x2
+√
+x2 + ε
+
+,
+
+and the fact that uj − ui has the same sign (or it is equal to zero) in all directions, it is easy to see
+that ∣∣∣∣∣∣
+
+∑
+j∈Nh(Ωi)
+
+J∇uhKij
+
+∣∣∣∣∣∣
+1,ε
+
+=
+
+∣∣∣∣∣∣
+∑
+
+j∈Nh(Ωi)
+
+uj − ui
+|rij |
+
++
+u
+
+sym
+j − ui
+|rsymij |
+
+∣∣∣∣∣∣
+1,ε
+
+≥
+
+∣∣∣∣∣∣
+∑
+
+j∈Nh(Ωi)
+
+uj − ui
+|rij |
+
++
+u
+
+sym
+j − ui
+|rsymij |
+
+∣∣∣∣∣∣
+=
+
+∑
+j∈Nh(Ωi)
+
+|uj − ui|
+|rij |
+
++
+∣∣usymj − ui∣∣
+|rsymij |
+
+≥
+∑
+
+j∈Nh(Ωi)
+
+2{{|∇uh · r̂ij |}}
+
+≥
+∑
+
+j∈Nh(Ωi)
+
+2
+{{
+|∇uh · r̂ij |2,ε
+
+}}
+.
+
+It proves that αε,i(uh) = 1 on an extremum. In fact, if the solution does not have an extremum, these
+quantities neither can have the same sign nor be zero in all cases. Since∣∣∣∣∣∣
+
+∑
+j∈Nh(Ωi)
+
+J∇uhKij
+
+∣∣∣∣∣∣ = limε→0
+∣∣∣∣∣∣
+∑
+
+j∈Nh(Ωi)
+
+J∇uhKij
+
+∣∣∣∣∣∣
+1,ε
+
+and ∑
+j∈Nh(Ωi)
+
+2{{|∇uh · r̂ij |}} = lim
+ε→0
+
+∑
+j∈Nh(Ωi)
+
+2
+{{
+|∇uh · r̂ij |2,ε
+
+}}
+,
+
+bound (8) leads to the fact that limε→0 αε,i(uh) < 1 when there is no extremum on i. �
+
+It is straightforward to check the following results.
+
+Corollary 7.2. System (11) with the definition of the shock detector (18) and artificial diffusion (16)
+is LED and satisfies the local DMP. The method tends to a linearly preserving scheme as γ → 0.
+
+Proof. From lemma 7.1 and the definition of the regularized maximum (17) it is easy to see that
+artificial diffusion in (16) is greater or equal to the one in (6). Hence, Theorem 4.2 still holds. The
+linearity preservation is straighforward. �
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 12
+
+Remark 7.3. Note that the smoothed shock detector is not linearly preserving because αε,i will never
+be zero. However, for regions where uh is constant the gradient is zero, thus the solution is not affected.
+In the case of uh ∈ P1(Ω), but not constant, αε,i goes to zero with γ. Values of γ of order 10−8 (or even
+smaller) have been considered in the numerical experiments section with good nonlinear convergence
+properties. Thus, the linearity preservation is virtually preserved in practice.
+
+As in the previous section, when restricted to symmetric meshes, the following approximation
+(similar to the one in Barrenechea et al. [3]) of (18) maintains the same properties
+
+α̃ε,i
+.=
+
+
+f
+
+
+∣∣∣∑j∈Nh(Ωi) ui − uj∣∣∣1,ε∗ + γ∗∑
+
+j∈Nh(Ωi) |ui − uj |2,ε∗ + γ
+∗
+
+
+
+
+
+q
+
+,
+
+with ε∗ ∼ O(h2ε) and γ∗ ∼ O(hγ).
+
+8. Nonlinear Solvers
+
+In this section the methods used for solving the system of nonlinear equations resulting from the
+above formulation (12) with the artificial diffusion defined in (16) is discussed. Taking advantage
+of the differentiability of the stabilization described in Sect. 7, Newton’s method is used for the
+smooth version of the method. In addition, we use fixed point iterations with Anderson acceleration
+to compare against Newton’s method performance. In order to define the schemes, it is useful to write
+the time-discrete problem (12) as
+
+A(un+1h )u
+n+1
+h = G
+
+where G is the force vector. Let J(un+1h )
+.= ∂T(u
+
+n+1
+h
+
+)
+∂u
+
+n+1
+h
+
+be the Jacobian.
+
+Since the above problem is nonlinear we will solve it iteratively. We denote by uk,n+1h the k-th
+iteration of uh at time step n + 1. Let us define some auxiliary variables used in the definition of
+the algorithms: m denotes the number of previous nonlinear iterations used in Anderson acceleration,
+s is the slope resulting form fitting the last m nonlinear errors, smin is the minimum slope allowed
+before increasing the relaxation, ω is the relaxation parameter, ωmin is its allowed minimum, kmax is
+the maximum nonlinear iterations allowed, tol is the nonlinear tolerance, and nlerr is the nonlinear
+error.
+
+For the non-differentiable methods in Sect. 3 we use Picard linearization with Anderson acceleration
+(see Alg. 1). Our particular implementation also includes a simple convergence rate test, where it is
+decided if the relaxation parameter should be reduced or not. This improves the global convergence
+rate and the robustness of the method. Moreover, we add a projection onto V admh to ensure that the
+global DMP in Def. 5.1 is satisfied at all nonlinear iterations. This step is of special interest in the
+case of solving for variables that cannot become negative, e.g., the density. In this case, the projection
+onto the space of admissible solutions is performed truncating the obtained solution. However, more
+sophisticated methodologies can be also applied but at a higher computational cost.
+
+For the differentiable method, Newton’s linearization is used (see Alg. 2). In addition, we supple-
+ment it with the line search method to improve robustness. We use numerical 1D minimization of the
+residual norm up to a tolerance of 10−4 for the line search method. Following the same approach in
+Alg. 1, a projection to the FE space of admissible solutions can be performed in Alg. 2. As said before,
+this step ensures that for all nonlinear iterations the solution satisfies the global DMP. The numerical
+experiments in the next section show that the modified method keeps quadratic convergence, even
+though we do not have a theoretical analysis.
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 13
+
+Algorithm 1: Fixed point iterations with relaxed Anderson acceleration
+Input: u0,n+1h , m, smin, ωmin, tol, A, G, kmax
+Output: uk,n+1h ,k
+k = 1, nlerr1 = tol
+while (nlerrk ≥ tol) and (k < kmax) do
+
+Set mk = min(k,m)
+Solve A(uk,n+1h )ũ
+
+k,n+1
+h = G
+
+Compute rk,n+1 = ũk,n+1h − u
+k,n+1
+h
+
+Minimize ‖
+∑mk
+i=1 ξ
+
+k
+i r
+k−mk+i,n+1‖ with respect to ξki subject to
+
+∑mk
+i=1 ξ
+
+k
+i = 1
+
+Set uk+1,n+1h = (1− ωk)
+∑mk
+i=1 ξ
+
+k
+i u
+
+k−m+i,n+1
+h + ωk
+
+∑mk
+i=1 ξ
+
+k
+i ũ
+
+k−mk+i,n+1
+h
+
+Project uk+1,n+1h to V
+adm
+h
+
+Set nlerrk = ‖u
+k+1,n+1
+h
+
+−uk,n+1
+h
+
+‖
+‖uk+1,n+1
+h
+
+‖
+
+Compute the slope (s) of {nlerri} with k ≥ i ≥ k −mk
+if (s < smin) and (ω > ωmin) then
+
+Set ωk+1 = ωk − 0.1
+else
+
+Set ωk+1 = ωk
+Update k = k + 1
+
+Algorithm 2: Newton’s method + Line search
+Input: u0,n+1h ,u
+
+n
+h, tol, J, R, kmax
+
+Output: uk,n+1h ,k
+k = 1, nlerr1 = tol
+while (nlerrk ≥ tol) and (k < kmax) do
+
+Solve J(uk,n+1h )∆u
+k,n+1
+h = −T(u
+
+k,n+1
+h )
+
+Minimize ‖T(uk,n+1h + ξ
+k∆uk,n+1h )‖ with respect to ξ ∈ [0, 1]
+
+Set uk+1,n+1h = u
+k,n+1
+h + ξ
+
+k∆uk,n+1h
+Project uk+1,n+1h to V
+
+adm
+h
+
+Set nlerrk = ‖ξ
+k∆uk,n+1
+
+h
+‖
+
+‖uk+1,n+1
+h
+
+‖
+Update k = k + 1
+
+9. Numerical Experiments
+
+9.1. Steady problems. First, in order to test the previous formulation, the convergence to a smooth
+solution is analyzed. For this purpose, the following equation is solved
+
+∇ · (vu) = 0 in Ω = [0, 1]× [0, 1],
+u = uD on Γin,
+
+(19)
+
+with v(x, y) .= (1, 0), and inflow boundary conditions uD = y − y2 on ∂Ω\{x = 1}. This problem
+consists in the transport of the parabolic profile along the x direction, which has the analytical solution
+u(x, y) = y − y2.
+
+Fig. 2 shows the convergence rates using the previously defined formulation ((12) with (16)), and
+the Galerkin formulation. To perform this test, an initial mesh of 12 × 12Q1 has been considered,
+then successive refinements have been performed up to a 96 × 96Q1 mesh. Analogous meshes has
+been also used for P1 FE. Newton’s method has been used with q = 4, ε = 10−7, σ = |β|h410−8 and
+γ = 10−10. In this case, σ has been scaled as |β|2L2(d−3)h4 in order to recover optimal convergence,
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 14
+
+where L denotes a characteristic length of the physical domain Ω. As desired, the convergence rates
+are not affected by the stabilization, while (as expected) the stabilized solutions have higher errors.
+
+nx = ny
+
+20 30 40 50 60 70 80 90
+
+ku
+h
+!
+
+u
+k 2
+
+10 -5
+
+10 -4
+
+10 -3
+
+10 -2
+
+P1 Galerkin
+
+Q1 Galerkin
+
+P1 Stabilized
+
+Q1 Stabilized
+
+Figure 2. Convergence test, L2(Ω) error versus size of the mesh. For P1 and Q1 FE
+meshes ranging from h = 1/12 to h = 1/96. Newton’s method has been used with
+parameters q = 4, ε = 10−7, σ = |β|h410−8 and γ = 10−10.
+
+A typical linear test to assess the performance of a shock capturing method is the propagation of
+a discontinuity. Consider now the previous hyperbolic PDE (19) with v(x, y) .= (1/2, sin−π/3), and
+inflow boundary conditions uD = 1 on {x = 0} ∩ {y > 0.7} and y = 1, while uD = 0 at the rest of the
+inflow boundary. This problem has the following analytical solution
+
+u(x, y) =
+{
+
+1 if y > 0.7 + 2x sin−π/3,
+0 otherwise.
+
+At Fig. 3(a), the numerical solution using the stabilization in (16) is shown. A 48 × 48Q1 mesh
+have been used. The values chosen for the parameters in (16) are q = 25, ε = 10−4, σ = |β|10−9,
+and γ = 10−10. This parameter choice makes the solution at the outflow sharp while the DMP is
+always satisfied. Furthermore, convergence is not jeopardized thanks to the smoothed stabilization.
+Particularly, it took 18 iterations for the Newton’s method to converge to a nonlinear tolerance of 10−6.
+The non-smooth version in Fig. 3(b) ((11) with (6)) did not converge using Anderson acceleration,
+adding a fixed relaxation parameter of ω = 0.5 took 392 iterations, and 117 with Alg. 1. In any
+case, observing Fig. 4, where the outflow profile is depicted, no apparent improvement on accuracy is
+observed when using the non-smooth version.
+
+Fig. 5 shows the solution for several combinations of q and ε, with σ = |β|ε10−5 and γ = 10−10,
+solved with the two nonlinear solvers presented in the previous section over a 48 × 48Q1 mesh. Fur-
+thermore, the ‖u − uh‖L1 and ‖u − uh‖ errors, computed at the whole domain and restricted to the
+outflow boundary, are listed in Table 1. These results show that, as expected, either increasing q or
+reducing ε the L1 error diminishes. Nevertheless, the computational cost also increases at a higher
+rate. The same can be observed for the L2 error. It is slightly reduced after increasing q or diminishing
+ε, while this makes nonlinear convergence much harder. Moreover, comparing both nonlinear solvers
+in Sect. 8, it is important to note that using Newton’s method the number of nonlinear iterations is
+reduced between 10 to 15 times.
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 15
+
+(a) Smooth stabilization (18), with parameters
+q = 25, ε = 10−4, σ = |β|10−9, and γ = 10−10.
+
+(b) Non-smooth version (7) with q = 25.
+
+Figure 3. Stabilized solution of the straight propagation of a discontinuity test using
+the steady version of discrete problem (12) with two stabilization choices (18) or (7).
+
+x
+0 0.2 0.4 0.6 0.8 1
+
+u
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+Non-smooth version
+
+Smoothed stabilization
+
+Figure 4. Stabilized solution of the straight propagation of a discontinuity test using
+the steady version of discrete problem (12) with two stabilization choices (18) and
+(7). The stabilization parameters used for the smoothed version are q = 25, ε = 10−4,
+σ = |β|10−9, and γ = 10−10.
+
+It is important to analyze the solution at each nonlinear iteration. If the projection to the space
+of admissible solutions is not performed, it is possible that the solution does neither satisfy the local
+nor the global DMP (Def. 2.1 or 5.1, resp.) at some nonlinear iterations. The DMP is only proved
+when convergence is attained. We denote by global DMP violation the difference between the global
+extremum of the analytical solution and the actual global extremum of the numerical solution. Fig. 6
+shows the global DMP violation of the maximum and the minimum values produced at each nonlinear
+iteration for different values of q, ε, and σ. For q = 25, the global DMP is clearly not satisfied at
+the beginning of the iterative process. In this particular case, this does not destroy the nonlinear
+convergence, but this is not the case in some other problems, e.g. Euler’s equations. Therefore, adding
+a projection step to V admh is highly recommended. Further, it can be observed in Table 1 that in
+practice the projection step almost does not affect Newton convergence rate.
+
+Finally, it is worth to test the nonlinear convergence of the method as the mesh is refined for a
+problem with a discontinuity. For this purpose, we have solved the previous benchmark with q = 4,
+ε = 10−2, σ = |β|h410−6, and γ = 10−10. The used meshes range form 12× 12Q1 to 96× 96Q1.
+
+At Fig. 7, the number of nonlinear iterations for each mesh size is depicted. For Alg. 1 it can
+be observed that the number of iterations is increasing. On the contrary, this behavior is much less
+pronounced for Alg. 2; the number of iterations slightly increases and remains constant in the last
+interval.
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 16
+
+Table 1. Straight propagation test errors and iterations, using the steady version
+of discrete problem (12) and nonlinear diffusion (16), for different values of q and ε,
+σ = |β|ε10−5, γ = 10−10, and both nonlinear solvers in Sect. 8.
+
+q ε
+Iterations
+
+L1 error
+L1 error
+
+L2 error
+L2 error
+
+A Ap N Np at Γout at Γout
+1 10−1 42 42 9 9 2.77e-02 5.57e-02 8.65e-02 1.23e-01
+1 10−2 43 42 8 8 2.61e-02 5.16e-02 8.40e-02 1.18e-01
+1 10−3 50 58 7 7 2.59e-02 5.09e-02 8.37e-02 1.17e-01
+1 10−4 50 57 7 7 2.58e-02 5.08e-02 8.37e-02 1.17e-01
+1 0 56 47 2.59e-02 5.10e-02 8.37e-02 1.17e-01
+4 10−1 51 64 8 8 2.20e-02 4.43e-02 7.79e-02 1.12e-01
+4 10−2 58 61 11 11 1.83e-02 3.45e-02 6.97e-02 9.70e-02
+4 10−3 60 68 10 10 1.77e-02 3.28e-02 6.83e-02 9.44e-02
+4 10−4 66 85 11 11 1.76e-02 3.25e-02 6.82e-02 9.40e-02
+4 0 70 73 1.76e-02 3.24e-02 6.81e-02 9.39e-02
+8 10−1 62 70 9 9 2.10e-02 4.27e-02 7.68e-02 1.11e-01
+8 10−2 71 63 11 11 1.62e-02 3.04e-02 6.63e-02 9.23e-02
+8 10−3 82 67 13 13 1.51e-02 2.75e-02 6.33e-02 8.74e-02
+8 10−4 70 77 12 12 1.49e-02 2.69e-02 6.27e-02 8.66e-02
+8 0 94 60 1.48e-02 2.68e-02 6.26e-02 8.64e-02
+25 10−1 39 58 11 12 2.03e-02 4.18e-02 7.63e-02 1.11e-01
+25 10−2 57 62 19 20 1.46e-02 2.78e-02 6.39e-02 8.95e-02
+25 10−3 154 66 15 15 1.28e-02 2.35e-02 5.90e-02 8.24e-02
+25 10−4 116 82 17 18 1.25e-02 2.27e-02 5.79e-02 8.18e-02
+25 0 86 163 1.23e-02 2.25e-02 5.75e-02 8.15e-02
+
+A: Alg. 1 without projecting to V admh , Ap: Alg. 1.
+N: Alg. 2 without projecting to V admh , Np: Alg. 2.
+
+Consider now the hyperbolic PDE (19) on Ω = [0, 1] × [−1, 1] with v(x, y) .= (y,−x), and inflow
+boundary conditions
+
+uD =
+{
+
+1 if 0.35 < x < 0.65,
+0 otherwise.
+
+This particular configuration has the following analytical solution
+
+u(x, y) =
+{
+
+1 if 0.35 <
+√
+x2 + y2 < 0.65,
+
+0 otherwise.
+At Fig. 8 the solutions at the outflow boundary are depicted for several combinations of q and ε, with
+σ = |β|ε10−5 and γ = 10−10. In all cases, we have considered the two schemes presented in Sect.
+8 using a 64 × 128Q1 FE mesh. As for the previous numerical experiment, we collect the number
+of iterations and the errors in Table 2. We observe that it is particularly difficult to converge to
+the solution for q = 1 and small values of ε. In any case, for q equal to 4 or greater, the number
+of iterations increase with q, as naturally expected. We also observe in this test that the number of
+nonlinear iterations can be highly reduced using Newton’s method. Particularly, it reduces the number
+of nonlinear iterations up to 20 times. 3D plots of the smoothest and the sharpest solutions in Fig. 8
+(respectively top-left and bottom-right subfigures) are shown in Fig. 9 .
+
+Fig. 10 shows that in this second test, as in the previous one, if the projection step is not performed
+the global DMP (Def. 5.1) is not satisfied at all nonlinear iterations. This is specially evident for the
+combination shown in the figure, i.e., high values of q and low values of ε and σ.
+
+9.2. Transient transport problems. Let us test the performance of the stabilization method in
+Sect. 7 for transient problems. For this purpose we will consider the 3 body rotation benchmark that
+reads as:
+
+∂tu+ ∇ · (vu) = 0 in Ω = [0, 1]× [0, 1],
+u = 0 on Γin,
+u = u0 at t = 0,
+
+(20)
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 17
+
+0 0.5 1
+0
+
+0.5
+
+1
+42 (42) A it., 9 (9) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+42 (43) A it., 8 (8) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+58 (50) A it., 7 (7) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+57 (50) A it., 7 (7) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+64 (51) A it., 8 (8) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+61 (58) A it., 11 (11) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+68 (60) A it., 10 (10) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+85 (66) A it., 11 (11) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+70 (62) A it., 9 (9) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+63 (71) A it., 11 (11) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+67 (82) A it., 13 (13) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+77 (70) A it., 12 (12) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+58 (39) A it., 12 (11) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+62 (57) A it., 20 (19) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+66 (154) A it., 15 (15) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+82 (116) A it., 18 (17) N it.
+
+" = 10!1 " = 10!2 " = 10!3 " = 10!4
+
+q = 25
+
+q = 8
+
+q = 4
+
+q = 1
+
+Figure 5. Straight propagation test solution at the outflow boundary ∂Ω\Γin. Using
+the steady version of discrete problem (12) and nonlinear diffusion (16), for different
+values of q and ε, σ = |β|ε10−5, γ = 10−10, and both nonlinear solvers in Sect. 8. The
+result in brackets shows the number of iterations if no projection to V admh is done.
+
+where v .= (1/2− y, x− 1/2) and
+
+u0(x, y)
+.=
+
+
+
+
+1
+4 + cos
+
+(
+π
+√
+
+(x−0.25)2+(y−0.5)2
+0.15
+
+)
+/4 if
+
+√
+(x−0.25)2+(y−0.5)2/0.15 ≤ 1
+
+1−
+√
+
+(x−0.5)2+(y−0.25)2/0.15 if
+√
+
+(x−0.5)2+(y−0.25)2/0.15 ≤ 1
+
+1 if
+{ √
+
+(x−0.5)2+(y−0.75)2/0.15 ≤ 1
+0.55 < x < 0.45, y > 0.85
+
+.
+
+The above problem is solved in a 150× 150 Q1 FE mesh, with solver parameters q = 25, γ = 10−8,
+σ = |β|10−10, and ε = 10−4. The discretization in time is performed using the BE method with a time
+step of 10−3. At Fig. 11(a), the initial solution is depicted. Figs. 11(b) to 11(d) show the solution
+after one revolution (at time t = 2π).
+
+The solution obtained with the stabilization in (16), (15), and (6) are depicted in Figs. 11(b),
+11(c), and 11(d), respectively. It is observed that the symmetric mass matrix method yields slightly
+more diffusive solutions than the LED method. This can be better observed in Fig. 12, where a
+cross-section of each of the figures rotated is depicted at t = 0 and after one revolution (t = 2π) for
+all three methods. As naturally expected, regularizing the stabilization makes the method faster to
+converge but the solution becomes smoother. Nevertheless, the regularization parameters (σ and ε)
+allow one to take the choice that better fits the requirements, either a faster but smoother method or
+the opposite. In any case, all schemes satisfy the DMP at all time steps.
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 18
+
+Iteration
+0 10 20 30 40
+
+D
+M
+
+P
+v
+io
+
+la
+ti
+o
+n
+
+#10!3
+
+-12
+
+-10
+
+-8
+
+-6
+
+-4
+
+-2
+
+0
+
+2
+
+Minumum value
+
+Maximum value
+
+(a) Using Alg. 1 with q = 1, ε = 10−1, σ =
+|β|10−6, and γ = 10−10.
+
+Iteration
+2 4 6 8
+
+D
+M
+
+P
+v
+io
+
+la
+ti
+o
+n
+
+#10!4
+
+-1
+
+0
+
+1
+
+Minumum value
+
+Maximum value
+
+(b) Using Alg. 2 with q = 1, ε = 10−1, σ =
+|β|10−6, and γ = 10−10.
+
+Iteration
+0 20 40 60 80 100 120
+
+D
+M
+
+P
+v
+io
+
+la
+ti
+o
+n
+
+-0.15
+
+-0.1
+
+-0.05
+
+0
+
+0.05
+
+Minumum value
+
+Maximum value
+
+(c) Using Alg. 1 with q = 25, ε = 10−4, σ =
+|β|10−9, and γ = 10−10.
+
+Iteration
+0 5 10 15
+
+D
+M
+
+P
+v
+io
+
+la
+ti
+o
+n
+
+#10!3
+
+-3
+
+-2
+
+-1
+
+0
+
+1
+
+2
+
+Minumum value
+
+Maximum value
+
+(d) Using Alg. 2 with q = 25, ε = 10−4, σ =
+|β|10−9, and γ = 10−10.
+
+Figure 6. Evolution of global DMP violation during nonlinear iterations when avoid-
+ing the projection step in Algs. 1 and 2 for the straight propagation of a discontinuity
+test.
+
+9.3. Burgers’ equation. Finally, let us test our stabilization with a nonlinear transient problem.
+Particularly the 2D Burgers’ equation, i.e. equation (20) with v .= (1, 1)u/2, is solved on Ω = [0, 1]×[0, 1]
+using a 150× 150Q1 mesh. The discretization in time is performed using the BE method with a time
+step of 10−2. The initial conditions at t = 0 are
+
+u0(x, y)
+.=
+
+
+
+−0.2 if x < 0.5 and y > 0.5
+−1 if x > 0.5 and y > 0.5
+0.5 if x < 0.5 and y < 0.5
+0.8 if x > 0.5 and y < 0.5
+
+,
+
+and the solution is advanced until t = 0.5.
+The following stabilization parameters have been used for obtaining the results in Fig. 13(a):
+
+q = 1, ε = 10−3, σ = |β|10−6, and γ = 10−8. Although the parameters used are not enforcing a
+particularly sharp solution (see Figs. 5 and 8), Fig. 13(a) shows properly transported and minimally
+smeared shocks. Only in the lower right region the method appears to be more diffusive than desired.
+Notice that in that region the gradient in the x direction spreads as y increases, while it should not.
+Nevertheless, in Fig. 13(b), that shows the solution for q = 4, ε = 10−4, σ = |β|10−7, and γ = 10−8.
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 19
+
+nx = ny
+
+12 18 24 36 48 72 96
+
+It
+er
+
+a
+ti
+o
+n
+s
+
+0
+
+20
+
+40
+
+60
+
+80
+
+100
+Fixed point (Alg. 1)
+
+Newton (Alg. 2)
+
+Figure 7. Straight propagation test nonlinear iterations as mesh refined from 12 ×
+12Q1 to 96 × 96Q1, for both Alg. 1 and Alg. 2. The shock capturing parameters
+used are q = 4, ε = 10−2, σ = |β|h410−6, and γ = 10−10.
+
+Table 2. Circular propagation test errors and iterations, using the steady version
+of discrete problem (12) and nonlinear diffusion (16), for different values of q and ε,
+σ = |β|ε10−5, γ = 10−10, and both nonlinear solvers in Sect. 8.
+
+q ε
+Iterations
+
+L1 error
+L1 error
+
+L2 error
+L2 error
+
+A Ap N Np at Γout at Γout
+1 10−1 30 30 9 9 1.42e-01 1.93e-01 2.01e-01 2.36e-01
+1 10−2 – 54 10 10 1.11e-01 1.50e-01 1.74e-01 2.05e-01
+1 10−3 – – 11 11 1.05e-01 1.42e-01 1.68e-01 1.99e-01
+1 10−4 196 – 19 19 1.04e-01 1.40e-01 1.68e-01 1.98e-01
+1 0 – – – – – –
+4 10−1 23 23 10 10 1.33e-01 1.82e-01 1.97e-01 2.31e-01
+4 10−2 64 64 15 15 8.47e-02 1.15e-01 1.55e-01 1.84e-01
+4 10−3 105 111 22 22 6.74e-02 9.31e-02 1.34e-01 1.64e-01
+4 10−4 – 139 24 24 6.38e-02 8.88e-02 1.29e-01 1.60e-01
+4 0 198 194 6.31e-02 8.80e-02 1.28e-01 1.59e-01
+8 10−1 23 22 11 11 1.32e-01 1.81e-01 1.97e-01 2.31e-01
+8 10−2 73 68 15 15 8.10e-02 1.10e-01 1.53e-01 1.82e-01
+8 10−3 95 96 19 19 5.91e-02 8.18e-02 1.28e-01 1.57e-01
+8 10−4 100 109 22 22 5.28e-02 7.46e-02 1.18e-01 1.50e-01
+8 0 256 231 5.12e-02 7.28e-02 1.16e-01 1.48e-01
+25 10−1 22 22 14 14 1.32e-01 1.80e-01 1.97e-01 2.31e-01
+25 10−2 45 49 16 15 7.82e-02 1.07e-01 1.51e-01 1.80e-01
+25 10−3 77 70 20 20 5.37e-02 7.50e-02 1.24e-01 1.54e-01
+25 10−4 131 109 23 24 4.51e-02 6.49e-02 1.11e-01 1.44e-01
+25 0 180 289 4.22e-02 6.14e-02 1.06e-01 1.39e-01
+
+A: Alg. 1 without projecting to V admh , Ap: Alg. 1.
+N: Alg. 2 without projecting to V admh , Np: Alg. 2.
+
+the method is less diffusive and the obtained shocks are even sharper. In any case, both choices satisfy
+the DMP for all time steps.
+
+10. Conclusions
+
+In this work, we have considered a nonlinear stabilization technique for the FE approximation
+of scalar conservation laws with implicit time stepping. The method relies on an artificial diffusion
+method, based on a graph-Laplacian operator. The artificial diffusion is judiciously chosen in order to
+satisfy a local DMP for steady problems. It is nonlinear, since it depends on a shock detector. Further,
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 20
+
+0 0.5 1
+0
+
+0.5
+
+1
+30 (30) A it., 9 (9) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+54 ({) A it., 10 (10) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+{ ({) A it., 11 (11) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+{ (196) A it., 19 (19) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+23 (23) A it., 10 (10) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+64 (64) A it., 15 (15) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+111 (105) A it., 22 (22) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+139 ({) A it., 24 (24) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+22 (23) A it., 11 (11) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+68 (73) A it., 15 (15) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+96 (95) A it., 19 (19) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+109 (100) A it., 22 (22) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+22 (22) A it., 14 (14) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+49 (45) A it., 15 (16) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+70 (77) A it., 20 (20) N it.
+
+0 0.5 1
+0
+
+0.5
+
+1
+109 (131) A it., 24 (23) N it.
+
+" = 10!1 " = 10!2 " = 10!3 " = 10!4
+
+q = 25
+
+q = 8
+
+q = 4
+
+q = 1
+
+Figure 8. Circular propagation test solution at the outflow boundary ∂Ω\Γin. Using
+the steady version of discrete problem (12) and nonlinear diffusion (16), for different
+values of q and ε, σ = |β|ε10−5, γ = 10−10 and both nonlinear solvers in Sect. 8. The
+result in brackets shows the number of iterations if no projection to V admh is done.
+
+the resulting method is linearity preserving. The same shock detector is used to gradually lump the
+mass matrix. The resulting method is LED, positivity preserving, and also satisfies a global DMP.
+Lipschitz continuity has also been proved.
+
+However, the resulting scheme is highly nonlinear, leading to very poor nonlinear convergence rates,
+even using Anderson acceleration techniques. It is due to the fact that the nonlinear operator to
+be inverted at every time step is non-differentiable. The critical problem of nonlinear convergence
+of implicit monotonic methods based on nonlinear artificial diffusion have already been previously
+reported in the literature (see [22]). As a result, we propose a smooth version of the scheme. It
+leads to twice differentiable nonlinear stabilization schemes, which allows one to straightforwardly use
+Newton’s method using the exact Jacobian. Twice differentiability ensures quadratic convergence.
+
+We have considered two nonlinear solvers, namely Anderson acceleration and Newton’s method.
+We have observed numerically that the effect of the smoothness has a positive impact in the reduction
+of the computational cost. The impact of using Newton’s method versus Anderson acceleration is also
+very positive. In general, using the Newton method with a smooth version of the method we can
+reduce 10 to 20 times the number of iterations of Anderson acceleration with the original non-smooth
+algorithms.
+
+All the monotonic properties are satisfied (as theoretically proved) in the numerical experiments.
+Steady and transient linear transport, and transient Burgers’ equation have been considered in 2D.
+In any case, these properties are only true for the converged solution, but not for iterates. In this
+sense, we have also proposed the concept of projected nonlinear solvers, where a projection step is
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 21
+
+(a) Smoothest solution with parameters: q = 1,
+ε = 10−1, σ = |β|10−6, and γ = 10−10.
+
+(b) Sharpest solution with parameters: q = 25
+and ε = 10−4, σ = |β|10−9, and γ = 10−10.
+
+Figure 9. Stabilized solution of the circular convection test using the steady version
+of the discrete problem (12) and the nonlinear diffusion (16) for two different parameter
+choices.
+
+Iteration
+0 50 100
+
+D
+M
+
+P
+v
+io
+
+la
+ti
+o
+n
+
+-0.2
+
+-0.1
+
+0
+
+0.1
+
+0.2
+
+Minumum value
+
+Maximum value
+
+(a) Using Alg. 1
+Iteration
+
+0 5 10 15 20 25
+
+D
+M
+
+P
+v
+io
+
+la
+ti
+o
+n
+
+#10!3
+
+-10
+
+-8
+
+-6
+
+-4
+
+-2
+
+0
+
+2
+
+4
+
+Minumum value
+
+Maximum value
+
+(b) Using Alg. 2
+
+Figure 10. Evolution of global DMP violation during nonlinear iterations when
+avoiding the projection step in Algs. 1 and 2 for the circular propagation of a discon-
+tinuity. Using q = 25, ε = 10−4, σ = |β|10−9, γ = 10−10.
+
+performed at the end of every nonlinear iterations onto a FE space of admissible solutions. The space
+of admissible solutions is the one that satisfies the desired monotonic properties (maximum principle
+or positivity). The projection has no effect on the quality of the nonlinear convergence.
+
+Future work should tackle the entropy stability analysis of the resulting schemes when applied to
+nonlinear problems. Some initial results in this direction can be found in [5]. The extension to systems
+of conservation laws and higher order methods in space and time is another interesting line of research.
+
+Appendix A. Proof of Theorem 6.1
+
+Let us proof Theorem 6.1. We assume that the FE mesh is quasi-uniform in order to reduce
+technicalities. However, the proof for Lipschitz continuity can be extended to more general meshes.
+We denote A = cB as A h B and A < cB as A . B, for any positive constant c that does not depend
+on the numerical or physical parameters.
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 22
+
+(a) Initial conditions. (b) LED scheme.
+
+(c) Global DMP scheme. (d) LED DMP nonsmooth stabilization.
+
+Figure 11. 3 Body rotation test results using discrete problem (12) and two different
+artificial diffusions ((16) leading an LED scheme, and (15) with (18) leading a global
+DMP scheme). Using a 150×150 Q1 element mesh, and parameters: q = 25, γ = 10−8,
+σ = |β|10−10, ε = 10−4, and ∆t = 10−3.
+
+From the definition of the nonlinear stabilization in (5), we get
+
+|〈B(u)u, z〉 − 〈B(v)v, z〉| ≤
+
+∣∣∣∣∣∣
+∑
+i∈Nh
+
+∑
+j∈Nh(Ωi)
+
+νij(v)`(i, j)(uj − vj)zi
+
+∣∣∣∣∣∣ (21)
++
+
+∣∣∣∣∣∣
+∑
+i∈Nh
+
+∑
+j∈Nh(Ωi)
+
+(νij(u)− νij(v))`(i, j)ujzi
+
+∣∣∣∣∣∣ .
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 23
+
+x
+
+0 0.25 0.5 0.75 1
+
+u
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+Cylinder cross-section
+
+x
+
+0 0.25 0.5 0.75 1
+
+u
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+Cone cross-section
+
+x
+
+0 0.25 0.5 0.75 1
+
+u
+
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+Sinus cross-section
+
+Initial conditions
+
+LED (Non-smooth 8)
+
+LED (smooth 8)
+
+Global DMP
+
+Figure 12. Cross-sections of each for the figures rotated in the three body rotation
+benchmark. The parameters used are q = 25, γ = 10−8, σ = |β|10−10, ε = 10−4,
+and ∆t = 10−3, in a 150 × 150 Q1 element mesh. The discrete problem (12) is used
+in combination with three different artificial diffusions (16) and (6) leading to a LED
+scheme, and (15) leading to a global DMP scheme.
+
+(a) Solution for:q = 1, ε = 10−2, σ = |β|10−6,
+and γ = 10−8.
+
+(b) Solution for: q = 4, ε = 10−3, σ = |β|10−7,
+and γ = 10−8.
+
+Figure 13. Burger’s equation solutions at t = 0.5 using discrete problem (12) and (6)
+with (16). Using a 150×150 Q1 element mesh, ∆t = 10−2, and two sets of parameters
+q, γ, σ, and ε.
+
+Using the definition of |β|, the Cauchy-Schwarz inequality, the fact that ‖ϕi‖ ≤ Chd/2, and the inverse
+inequality ‖∇vh‖ . h−1‖vh‖ for vh ∈ Vh (see [4]), we get:
+
+Fij(w) ≤ |β|‖∇ϕi‖L2‖ϕj‖L2 . hd−1|β|, (22)
+
+for any w ∈ V admh . Using (22), the first term in the RHS of (21) is bounded as follows:∣∣∣∣∣∣
+∑
+i∈Nh
+
+∑
+j∈Nh(Ωi)
+
+νij(v)`(i, j)(uj − vj)zi
+
+∣∣∣∣∣∣ . hd−1|β||u− v|`|z|`.
+The second term is bounded using the Cauchy-Schwarz inequality:
+
+∑
+i∈Nh
+
+∑
+j∈Nh(Ωi)
+
+(νij(u)− νij(v))`(i, j)ujzi .
+
+∣∣∣∣∣∣
+∑
+i∈Nh
+
+∑
+j∈Nh(Ωi)
+
+1
+2
+
+(νij(u)− νij(v))2(ui − uj)2
+∣∣∣∣∣∣
+
+1
+2
+
+× |z|`. (23)
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 24
+
+Using (22), we have:
+
+νij(u)− νij(v)
+= max{αi(u)Fij(u), αj(u)Fji(u), 0} −max{αi(v)Fij(v), αj(v)Fji(v), 0} (24)
+≤ max{(αi(u)Fij(u)− αi(v)Fij(v), αj(u)Fji(u)− αj(v)Fji(v), 0}
+. hd−1|β|max{|αi(u)− αi(v)|, |αj(u)− αj(v)|}.
+
+Let us assume that
+∑
+j∈Nh(Ωi){{|∇uh · rij |}}ij 6= 0. (The other case is straightforward.) On one hand,
+
+for a non-degenerate FE mesh, we have that ch ≤ rij ≤ Ch, j ∈ N
+sym
+h (Ωi), for positive constants c, C
+
+that do not depend on h. Using this fact in the definition of the shock detector (7), we get:
+
+αi(u)
+1
+q =
+
+∣∣∣∑j∈Nh(Ωi) J∇uhKij∣∣∣∑
+j∈Nh(Ωi) 2{{|∇uh · rij |}}ij
+
+=
+
+∣∣∣∑j∈Nh(Ωi) ui−uj|rij | + ui−usymj|rsymij |
+∣∣∣∑
+
+j∈Nh(Ωi)
+|ui−uj |
+|rij |
+
++
+|ui−u
+
+sym
+j
+|
+
+|rsym
+ij
+|
+
+(25)
+
+h
+
+∣∣∣∑j∈Nh(Ωi)(ui − uj) + (ui − usymj )∣∣∣∑
+j∈Nh(Ωi) |ui − uj |+ |ui − u
+
+sym
+j |
+
+.
+
+Now, we use the following result for two sequences {ai}ni=1 {b}
+n
+i=1 (see [3] for further details):
+
+|
+∑n
+i=1 ai|∑n
+i=1 |ai|
+
+−
+|
+∑n
+i=1 bi|∑n
+i=1 |bi|
+
+=
+|
+∑n
+i=1 ai| − |
+
+∑n
+i=1 bi|∑n
+
+i=1 |ai|
++
+
+n∑
+i=1
+|bi|
+(
+
+1∑n
+i=1 |ai|
+
+−
+1∑n
+
+i=1 |bi|
+
+)
+(26)
+
+≤
+|
+∑n
+i=1 ai − bi|∑n
+i=1 |ai|
+
++
+∑n
+i=1 |bi| −
+
+∑n
+i=1 |ai|∑n
+
+i=1 |ai|
+≤
+|
+∑n
+i=1 ai − bi|+
+
+∑n
+i=1 |ai − bi|∑n
+
+i=1 |ai|
+
+≤ 2
+∑n
+i=1 |ai − bi|∑n
+i=1 |ai|
+
+. (27)
+
+Using simple algebraic manipulation, we have aq − bq = (a − b)
+∑q−1
+k=0 a
+
+kbq−ik for q ∈ N+. For
+a, b ∈ [0, 1], it leads to |aq − bq| ≤ q|a− b| (see [3]). This inequality, together with (25) and (27), leads
+to:
+
+1
+q
+|αi(u)− αi(v)| .
+
+∣∣∣∑j∈Nh(Ωi)((u− v)i− (u− v)j) + ((u− v)i − (u− v)symj )∣∣∣∑
+j∈Nh(Ωi) |ui − uj |+ |ui − u
+
+sym
+j |
+
+. (28)
+
+On the other hand, the bounds
+
+|ui − uj | ≤
+∑
+
+k∈Nh(Ωi)
+
+|ui − uk| and |ui − uj | ≤
+∑
+
+k∈Nh(Ωj)
+
+|uj − uk|,
+
+(24), and (28), yield
+
+(νij(u)− νij(v))(ui − uj) .qhd−1|β|
+∑
+
+k∈N sym
+h
+
+(Ωi)
+
+|(u− v)i − (u− v)k| (29)
+
++ qhd−1|β|
+∑
+
+k∈N sym
+h
+
+(Ωj)
+
+|(u− v)j − (u− v)k|.
+
+The second term is bounded by combining (23), (29), and the fact that the number of elements
+surrounding a node is bounded above independently of h:∑
+
+i∈Nh
+
+∑
+j∈Nh(Ωi)
+
+(νij(u)− νij(v))`(i, j)ujzi . qhd−1|β||u− v|`|z|`.
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 25
+
+Next, we have to prove that the nonlinear mass matrix is also Lipschitz continuous. First, we note
+that ∑
+
+j∈Nh(Ωi)
+
+(1− αi(uh))(ϕj , ϕi)uj + αi(uh)(1, ϕi)ui
+
+=
+∑
+
+j∈Nh(Ωi)
+
+(ϕj , ϕi)uj + αi(uh)(ϕj , ϕi)(ui − uj).
+
+Thus
+〈M(u)u, z〉 − 〈M(v)v, z〉 ≤
+
+∑
+i∈Nh
+
+∑
+j∈Nh(Ωi)
+
+(ϕi, ϕj)(uj − vj)zi
+
++
+∑
+i∈Nh
+
+∑
+j∈Nh(Ωi)
+
+(ϕi, ϕj)(ui − uj)(αi(uh)− αi(vh))zi
+
++
+∑
+i∈Nh
+
+∑
+j∈Nh(Ωi)
+
+(ϕi, ϕj)((u+ v)i − (u+ v)j)αi(vh)zi.
+
+Bounds for the second and third term follow the same lines as above. For the second term, we proceed
+as in (23), getting: ∑
+
+i∈Nh
+
+∑
+j∈Nh(Ωi)
+
+(ϕi, ϕj)(ui − uj)(αi(uh)− αi(vh))zi
+
+.
+
+∣∣∣∣∣∣
+∑
+i∈Nh
+
+1
+2
+
+∑
+j∈Nh(Ωi)
+
+(ϕi, ϕj)(αi(uh)− αi(vh))2(ui − uj)2
+∣∣∣∣∣∣
+
+1
+2
+
+× ‖z‖
+
+. qh
+d
+2 |u− v|`‖z‖.
+
+where we have used the spectral equivalence of the consistent and lumped mass matrices in the last
+inequality. The first and third term are easily bounded as∑
+
+i∈Nh
+
+∑
+j∈Nh(Ωi)
+
+(ϕi, ϕj)(uj − vj)zi ≤ ‖u− v‖‖z‖,
+
+∑
+i∈Nh
+
+∑
+j∈Nh(Ωi)
+
+(ϕi, ϕj)((u+ v)i − (u+ v)j)αi(vh)zi ≤ qh
+d
+2 |u− v|`‖z‖.
+
+It proves the theorem.
+
+References
+
+[1] S. Badia and A. Hierro, On Monotonicity-Preserving Stabilized Finite Element Approxima-
+tions of Transport Problems, SIAM Journal on Scientific Computing, 36 (2014), pp. A2673–A2697.
+
+[2] G. Barrenechea, V. John, and P. Knobloch, Analysis of Algebraic Flux Correction
+Schemes, SIAM Journal on Numerical Analysis, 54 (2016), pp. 2427–2451.
+
+[3] R. G. Barrenechea, E. Burman, and F. Karakatsani, Edge-based nonlinear diffusion for
+finite element approximation of convection-diffusion equations and its relation to algebraic flux-
+correction schemes, (2016).
+
+[4] S. C. Brenner and L. R. Scott, The mathematical theory of finite element methods, vol. 15
+of Texts in Applied Mathematics, Springer, New York, third ed., 2008.
+
+[5] E. Burman, On nonlinear artificial viscosity, discrete maximum principle and hyperbolic conser-
+vation laws, BIT Numerical Mathematics, 47 (2007), pp. 715–733.
+
+[6] , A monotonicity preserving, nonlinear, finite element upwind method for the transport equa-
+tion, Applied Mathematics Letters, 49 (2015), pp. 141–146.
+
+[7] E. Burman and A. Ern, Nonlinear diffusion and discrete maximum principle for stabilized
+Galerkin approximations of the convection–diffusion-reaction equation, Computer Methods in Ap-
+plied Mechanics and Engineering, 191 (2002), pp. 3833–3855.
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 26
+
+[8] , Stabilized Galerkin approximation of convection-diffusion-reaction equations: discrete max-
+imum principle and convergence, Mathematics of Computation, 74 (2005), pp. 1637–1652.
+
+[9] B. Cockburn and C.-W. Shu, Runge–Kutta Discontinuous Galerkin Methods for Convection-
+Dominated Problems, Journal of Scientific Computing, 16 (2001), pp. 173–261.
+
+[10] J. Donea and A. Huerta, Finite Element Methods for Flow Problems, Finite Element Methods
+for Flow Problems, John Wiley & Sons, 2003.
+
+[11] S. K. Godunov, A difference method for numerical calculation of discontinuous solutions of the
+equations of hydrodynamics, Mat. Sb. (NS), 47 (1959), pp. 271–306.
+
+[12] J. Guermond, M. Nazarov, B. Popov, and Y. Yang, A Second-Order Maximum Princi-
+ple Preserving Lagrange Finite Element Technique for Nonlinear Scalar Conservation Equations,
+SIAM Journal on Numerical Analysis, 52 (2014), pp. 2163–2182.
+
+[13] J.-L. Guermond and M. Nazarov, A maximum-principle preserving C0 finite element method
+for scalar conservation equations, Computer Methods in Applied Mechanics and Engineering, 272
+(2014), pp. 198–213.
+
+[14] J.-L. Guermond and R. Pasquetti, A correction technique for the dispersive effects of mass
+lumping for transport problems, Computer Methods in Applied Mechanics and Engineering, 253
+(2013), pp. 186–198.
+
+[15] A. Hierro, S. Badia, and P. Kus, Shock capturing techniques for hp-adaptive finite elements,
+Computer Methods in Applied Mechanics and Engineering, (in press).
+
+[16] T. Hughes and A. Brooks, A multi-dimensioal upwind scheme with no crosswind diffusion.,
+in: T.J.R. Hughes ed. Finite Element Methods for Convection Dominated Flows, (ASME, New
+York), 34 (1979), pp. 19–35.
+
+[17] T. J. R. Hughes, L. P. Franca, and G. M. Hulbert, A new finite element formulation
+for computational fluid dynamics: VIII. The galerkin/least-squares method for advective-diffusive
+equations, Computer Methods in Applied Mechanics and Engineering, 73 (1989), pp. 173–189.
+
+[18] T. J. R. Hughes, M. Mallet, and M. Akira, A new finite element formulation for com-
+putational fluid dynamics: II. Beyond SUPG, Computer Methods in Applied Mechanics and
+Engineering, 54 (1986), pp. 341–355.
+
+[19] D. I. Ketcheson, C. B. Macdonald, and S. Gottlieb, Optimal implicit strong stability
+preserving Runge–Kutta methods, Applied Numerical Mathematics, 59 (2009), pp. 373–392.
+
+[20] A. Kritz and D. Keyes, Fusion Simulation Project Workshop Report, Journal of Fusion Energy,
+28 (2008), pp. 1–59.
+
+[21] S. N. Kružkov, First order quasilinear equations in several independent variables, Mathematics
+of the USSR-Sbornik, 10 (1970), pp. 217–243.
+
+[22] D. Kuzmin, Linearity-preserving flux correction and convergence acceleration for constrained
+Galerkin schemes, Journal of Computational and Applied Mathematics, 236 (2012), pp. 2317–
+2337.
+
+[23] D. Kuzmin and J. N. Shadid, A new approach to enforcing discrete maximum principles in
+continuous Galerkin methods for convection-dominated transport equations, Journal of Computa-
+tional Physics, (2015).
+
+[24] D. Kuzmin and J. N. Shadid, Gradient-based nodal limiters for artificial diffusion operators in
+finite element schemes for transport equations, (2016).
+
+[25] D. Kuzmin, M. J. Shashkov, and D. Svyatskiy, A constrained finite element method satisfy-
+ing the discrete maximum principle for anisotropic diffusion problems, Journal of Computational
+Physics, 228 (2009), pp. 3448–3463.
+
+[26] D. Kuzmin and S. Turek, Flux Correction Tools for Finite Elements, Journal of Computational
+Physics, 175 (2002), pp. 525–558.
+
+[27] R. J. LeVeque, Finite Volume Methods for Hyperbolic Problems, 1 ed., 2002.
+[28] L. R. Scott and S. Zhang, Finite Element Interpolation of Nonsmooth Functions Satisfy-
+
+ing Boundary Conditions, Mathematics of Computation, 54 (1990), pp. 483–493. ArticleType:
+research-article / Full publication date: Apr., 1990 / Copyright c© 1990 American Mathematical
+Society.
+
+
+
+MONOTONICITY-PRESERVING DIFFERENTIABLE NONLINEAR STABILIZATION 27
+
+[29] J. Xu and L. Zikatanov, A Monotone Finite Element Scheme for Convection-Diffusion Equa-
+tions, Mathematics of Computation, 68 (1999), pp. 1429–1446.
+
+
+	1. Introduction
+	2. Preliminaries
+	2.1. The continuous problem
+	2.2. Finite element spaces and meshes
+	2.3. The semi-discrete problem
+
+	3. Nonlinear stabilization
+	4. Monotonicity properties
+	5. Symmetric mass matrix stabilization
+	6. Lipschitz continuity
+	7. Differentiable stabilization
+	8. Nonlinear Solvers
+	9. Numerical Experiments
+	9.1. Steady problems
+	9.2. Transient transport problems
+	9.3. Burgers' equation
+
+	10. Conclusions
+	Appendix A. Proof of Theorem 6.1
+	References
+

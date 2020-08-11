@@ -1,0 +1,1897 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Non-linear dynamic analysis of the response of moored
+
+�oating structures
+
+José E. Gutiérrez-Romero1a, Julio García-Espinosabd, Borja Serván-Camasb,
+Blas Zamora-Parrac
+
+(a) Depart. Naval Technology, Universidad Politécnica de Cartagena (UPCT),
+http://www.upct.es/
+
+Paseo Alfonso XIII 48, 30203 Cartagena, Spain
+(b) Centre Internacional de Metodes Numerics en Enginyeria (CIMNE),
+
+http://www.cimne.upc.edu/
+Edi�ci C1, Campus Norte, UPC, Gran Capitán s/n, 08034 Barcelona, Spain
+
+(c) Depart. Thermal and Fluids Engineering, Universidad Politécnica de Cartagena
+(UPCT), http://www.upct.es/
+
+Doctor Fleming s/n, 30202 Cartagena, Spain
+(d) Universidad Politécnica de Cataluña (UPC)
+
+C. Gran Capitán s/n, Campus Nord, 08034 Barcelona, Spain
+
+Abstract
+
+The complexity of the dynamic behaviour of o�shore marine structures re-
+quires advanced simulations tools for the accurate assessment of the sea-
+keeping behaviour of these devices. The aim of this work is to present a
+time-domain model for solving the dynamics of �oating marine devices, sub-
+jected to non-linear environmental loads and paying special attention on the
+mooring dynamics. First, the formulation of the hydrodynamic approach for
+solving the wave-�oater interaction is introduced. Second, the solver of the
+mooring dynamics, based on a non-linear Finite Element Method approach,
+is presented. Third, a procedure for coupling the hydrodynamic along with
+other external loads, with the �oating structure and mooring dynamics is
+described. Fourth, some validation examples and comparisons among di�er-
+ent mooring approaches are presented. Fifth, an analysis of the OC3 �oating
+wind turbine concept is performed to study the in�uence of di�erent mooring
+models, the e�ects of non-linear waves on the platform, and the tension in
+
+1Corresponding author. Tel. no.: +34 868 071 261. Fax no.: +34 968 325 422 . E-mail
+address: jose.gutierrez@upct.es (José E. Gutiérrez-Romero)
+
+Preprint submitted to Marine Structures February 24, 2017
+
+
+
+the mooring system. The dynamic mooring model along with the second-
+order wave model produce realistic simulations of the �oating wind turbine
+performance.
+
+Keywords: FEM, Coupled Analysis, Mooring Dynamics, Second-order
+waves, Time-domain
+
+1. Introduction
+
+Research trends in Marine Renewable Energies (MRE) are mainly focused
+in o�shore wind energy due to the high expectations raised by this technology.
+The technology for marine wind turbines is currently well-developed, but
+limited for �xed installations in shallow-water areas. The next horizon is
+focused on deep-water technology [1], but di�erent challenges for Floating
+O�shore Wind Turbines (FOWT) are not solved yet [2], such as the dynamic
+stability in the presence of non-linear ambient loads [3]. In fact, an accurate
+prediction of the dynamic response of a FOWT, considering the interaction
+among the hydrodynamics, mooring, and aerodynamics of the turbine, is
+identi�ed as one of the key challenges for the simulation tools required to
+design the future FOWTs [4, 5, 6].
+
+Standard design procedures and simulation tools for marine structures
+come from the existing technology and experience of the o�shore oil and
+gas industry. For instance, the classic simulation approaches are based on
+uncoupled formulations, where the hydrodynamic response of the �oater is
+linearised and can be decoupled from the mooring [7, 8]. Recently, coupled
+simulations have been adopted to solve the seakeeping of FOWT devices,
+since the dynamic of FOWT o�ers a high complexity due to the variety
+of loads and non-linear e�ects. Anyhow, the interaction among di�erent
+components, such as the wind turbine structure, the rotor dynamics, the
+mooring arrangements and the �oating structure must be taken into account
+in a more accurate way [9, 10].
+
+The analysis of FOWT should be carried out with simulation codes capa-
+ble to include the physics governing the dynamic response of these devices.
+With regards to marine structures, Low and Langley [11] showed that the
+dynamic response of a �oating production system in a random sea can be
+split in two timescales: low frequency and wave frequency responses. More-
+over the seakeeping of the �oating device and the dynamics of the mooring
+lines are coupled. Then, the analysis should take into account the interac-
+
+2
+
+
+
+tion between them, and the time-domain analysis seems to be the right way
+to simulate this sort of coupled problems. In fact, the American Bureau of
+Shipping [32] considers that the global seakeeping analysis of a FOWT should
+take into account: the unsteady wind loads, wind turbine control systems,
+wind turbine-platform interaction, wave actions over the platform, currents,
+mooring loads, and any other types of external actions. It will be presented
+later on that the time-domain approach allows to handle these actions in a
+natural manner.
+
+The �rst works proposing coupled formulations for �oating production
+systems were developed for TLP-type platforms [12, 13, 14], where it was
+found that the sum-frequency e�ects are important. Also other authors in-
+vestigated and developed models to couple di�erent e�ects and loads in �oat-
+ing devices [15, 16, 17, 18]. More recently, Cordle and Jonkman [5] made a
+review of the state of art of the simulation tools for FOWT. Bae and Kim
+[9] recently presented a research on the e�ects of second-order wave exci-
+tation in a mono-column-TLP type FOWT comparing with the uncoupled
+simulations in time-domain. Karimirad and Moan [19] developed a simpli-
+�ed method for the coupled dynamics of a o�shore wind turbine aiming at
+saving computational time. They also analysed a spar-type FOWT, and
+compared di�erent hydro-elasticity codes [2]. In [3], the dynamic response of
+the spar-type platform subject to wave induced excitation was investigated
+numerically, including catenary mooring cables. Matha et al. [6] investigated
+a platform-tower coupled with a TLP-type FOWT. Jonkman and Sclavounos
+[20] presented a tool integrating an aeroelastic model for onshore wind tur-
+bines, and a hydrodynamic load model, together with a Quasi-Static (QS)
+catenary model for mooring lines. More sophisticated mooring models, which
+are usually based on Finite Element Methods (FEM) have been investigated;
+for instance, Kim et al. [21] presented a comparison between a linear spring
+and a non-linear FEM mooring for the analysis of the dynamic response
+when they are coupled with a �oating structure. Several coupled seakeeping
+analyses with FEM mooring line models can also be found in the literature
+[22, 23, 24, 25, 26, 27].
+
+Frequency-domain and time-domain approaches are used for seakeeping
+analyses of marine structures. However, the frequency-domain approach has
+di�culties to accurately handle non-linearities such as those arising from
+the mooring lines, and the low frequency components of the wave-body in-
+teraction, as appointed by Low [29], while the time-domain analysis can
+straightforwardly include any non-linearity within each time step in a natu-
+
+3
+
+
+
+ral manner. However, the main drawback of the time-domain is an increase of
+the computational time required for the simulations. To overcome this limi-
+tation, Low and Langley [11] and Low [29] presented a hybrid time-frequency
+domain model to simulate low and wave frequency response of coupled prob-
+lems.
+
+In this work, an extension of the time-domain method proposed by Serván-
+Camas and García-Espinosa [30, 31] is used. This method obtains a relevant
+reduction of the computational time thanks to the use of de�ation tech-
+niques and High Performance Computation based on Graphical Processor
+Units (GPU). The tool is based on the Finite Element Method (FEM) and is
+able to solve multi-body seakeeping problems on unstructured meshes includ-
+ing any type of external load. Other examples of FEM solvers for seakeeping
+analysis can be found in the literature. For instance, Hong and Nam [33],
+who presented a second-order analysis of wave forces using FEM in the time-
+domain, and investigated the interactions with multi-body devices.
+
+This work presents the development of a coupled FEM seakeeping and
+mooring models for the analysis of �oating o�shore structures. The model
+is able to take into account �rst and the second-order irregular waves, wind
+loads, and mooring loads. A novel iterative scheme for coupling the wave
+di�raction-radiation solver developed by Serván-Camas and García-Espinosa
+[28, 30, 31] with non-linear aerodynamics and mooring loads is also de-
+scribed. The paper is organized as follows. First, the governing equations
+of the body dynamics are introduced. Second, the second-order di�raction-
+radiation wave problem is described. Third, the non-linear FEM model for
+mooring lines is introduced in detailed. Fourth, the coupling between the
+dynamics of the �oater with non-linear loads, such as mooring lines forces,
+is explained. Fifth, some validations with experimental results are shown,
+as well as a comparison of the non-linear FEM model with the Quasi-Static
+catenary model. Sixth, we analyse an operational case of a spar buoy FOWT
+based on the OC3 concept and NREL 5 MW turbine. This case study aims
+at evaluating the in�uence of the type of mooring model, as well as the e�ects
+of non-linear wave on the dynamics of the platform. Finally, some relevant
+conclusions from the obtained results are presented.
+
+4
+
+
+
+2. Problem statement
+
+2.1. General dynamics of �oater
+
+The motion of a �oater subject to ambient loads can be modelled using
+the rigid body dynamics. Let OXYZ be a �xed global frame of reference,
+and let Gxyz be a local frame of reference located at the center of gravity,
+and whose axis are parallel to the axis of the global frame (see Fig. 1).
+Assuming small rotations, for each time step, the body accelerations can be
+obtained respect to the local frame from the rigid-body dynamic equations:
+
+Mb · ẍ = f (t) , (1)
+¯̄Ib · r̈b = m (t) , (2)
+
+where Mb is the mass matrix, ẍ is the linear acceleration vector ,
+¯̄Ib is the
+
+instantaneous inertia tensor, f (t) and m (t) are the external loads vector
+(hydrostatics, wave loading, mooring, wind, etc.) and the external moments
+respectively; �nally r̈b is the angular acceleration vector.
+
+xo
+
+x(t)G
+
+X
+
+Y
+
+Z
+
+O
+
+m (t)
+f (t)
+
+time: t
+time: t + ∆t
+
+Figure 1: Global and local frame of reference used in computation of �oater dynamics.
+
+5
+
+
+
+The calculation of the external forces f (t) over the body constitutes an
+essential part of the dynamics, and will be described in more detailed later
+on.
+
+2.2. Flow equation and boundary value problem
+
+Assuming incompressible and irrotational �ow in a domain Ω, being Γb the
+wetted surface of the �oating device, the wave problem governing equations
+are [28]:
+
+∆ϕ = 0 on Ω, (3)
+∂ξ
+
+∂t
++
+∂ϕ
+
+∂x
+
+∂ξ
+
+∂x
++
+∂ϕ
+
+∂y
+
+∂ξ
+
+∂y
+−
+∂ξ
+
+∂z
+= 0 on z = ζ, (4)
+
+∂ϕ
+
+∂t
++
+
+1
+
+2
+
+∣∣∇2ϕ∣∣+ gξ + Pfs
+ρ
+
+= 0 on z = ζ, (5)
+
+vϕ · n+ vb · n = 0 on Γb, (6)
+
+Pb = −ρ
+∂ϕ
+
+∂t
+−
+
+1
+
+2
+ρ
+∣∣∇2ϕ∣∣− ρgzb on Γb, (7)
+
+where ϕ is the velocity potential, ξ is the free surface elevation, g is the
+gravity acceleration, Pfs is the pressure on free surface, ρ is the �uid density,
+ξ is the wave elevation, Pb is a pressure at a point over body, vϕ is the �uid
+velocity, vb is the local velocity at a point on the wetted body surface, n is
+the vector normal to the body wetted surface (pointing upward this surface),
+and zb is the vertical coordinate of any point of the body.
+
+2.3. Second-order di�raction-radiation governing equations
+
+The governing equations for the second-order di�raction-radiation wave
+problem are obtained applying Taylor expansion on the boundary surfaces
+of a time-independent domain. This approach allows to approximate the
+free surface on z = ζ and the mean body surface Γ0b at time t. Then, a
+perturbed solutions based on Stokes expansion procedure is applied to the
+velocity potential, free surface elevation, and body motion. More details can
+be found in [28].
+
+The solution can be decomposed as
+
+ϕ = ψ + θ, (8)
+
+ξ = η + ζ, (9)
+
+6
+
+
+
+where ψ is the incident wave velocity potential, θ is the di�raction-radiation
+wave velocity potential, η is the incident wave elevation, and ζ is the di�raction-
+radiation wave elevation. Then, the wave di�raction-radiation governing
+equations up to second-order are [28]:
+
+∆θ1+2 = 0 inΩ, (10)
+∂η1+2
+
+∂t
+−
+∂θ1+2
+
+∂z
+= −
+
+∂θ1
+
+∂x
+
+∂η1
+
+∂x
+−
+∂θ1
+
+∂y
+
+∂η1
+
+∂y
+
+−
+∂θ1
+
+∂x
+
+∂ζ1
+
+∂x
+−
+∂θ1
+
+∂y
+
+∂ζ1
+
+∂y
+−
+∂ψ1
+
+∂x
+
+∂η1
+
+∂x
+−
+∂ψ1
+
+∂y
+
+∂η1
+
+∂y
+on z = 0 (11)
+
+∂θ1+2
+
+∂t
++
+
+Pfs
+ρ
+
++ gη1+2 = −η1
+∂
+
+∂z
+
+(
+∂θ1
+
+∂t
+
+)
+− ζ1
+
+∂
+
+∂z
+
+(
+∂θ1
+
+∂t
+
+)
+−η1
+
+∂
+
+∂z
+
+(
+∂ψ1
+
+∂t
+
+)
+−
+
+1
+
+2
+∇θ1 · ∇θ1 −∇ψ1 · ∇θ1 on z = 0, (12)
+
+v
+1+2
+θ · n
+
+1 = −
+(
+v
+
+1+2
+b + v
+
+1+2
+ψ + r
+
+1
+b ·
+(
+∇v1θ +∇v
+
+1
+ψ
+
+))
+· n1 onΓb, (13)
+
+P1+2b
+ρ
+
+= −gzb − gr1+2b −
+∂θ1+2
+
+∂t
+− r1b · ∇
+
+(
+∂θ1
+
+∂t
+
+)
+−
+
+1
+
+2
+∇θ1 · ∇θ1 −∇ψ1 · ∇θ1 onΓb , (14)
+
+where superscripts 1 and 1 + 2 denote the components at the �rst-order and
+up to second-order solution, and rb is the displacement vector at a point over
+body.
+
+2.4. Second-order wave loads
+
+With regards to the ambient loads applied over wetted body surface, hy-
+drodynamic wave forces and moments can be obtained directly from pressure
+integration over the wetted body surface. Thus, it can be written that
+
+F
+1+2 = F0H + F
+
+1+2
+H + F
+
+1+2
+D , (15)
+
+M
+1+2 = M0H +M
+
+1+2
+H +M
+
+1+2
+D , (16)
+
+where subscript H denotes the hydrostatic loads and D denotes the dynamic
+loads. F0 and M0 are the initial hydrostatic forces and moments over the
+body, F1+2H = F
+
+1
+H + F
+
+2
+H and M
+
+1+2
+H = M
+
+1
+H + M
+
+2
+H are the up to second-order
+
+7
+
+
+
+hydrostatic loads and moments, and F1+2D and M
+1+2
+D are the up to second-
+
+order dynamic loads and moments. Details of each component can be found
+in [28].
+
+3. Non-linear FEM model for mooring dynamics
+
+3.1. Equations for cable dynamics
+
+The dynamic equations for a mooring cable with length L with negligible
+bending and torsional sti�ness can be formulated as [34, 35]
+
+(ρwCmA0 + ρ0)
+∂2rl
+∂t2
+
+=
+∂
+
+∂l
+
+(
+EA0
+
+e
+
+e+ 1
+
+∂rl
+∂l
+
+)
++ f (t) (1 + e) , (17)
+
+where ρw is the water density, Cm is the added mass coe�cient, ρ0 is the
+mass per unit length of the unstretched cable, rl is the position vector, E
+is the Young's modulus, A0 is the cross-sectional area of the cable, e is the
+strain, f are the external loads applied on the cable, and l is the length along
+the unstretched cable.
+
+The boundary conditions are given by
+
+∂2rl
+∂t2
+
+= 0 l = 0 (at the anchor connection point) , (18)
+
+∂2rl
+∂t2
+
+= r̈fl l = L (at the fairlead connection point) , (19)
+
+where r̈fl is the second derivative of the position vector at the fairlead con-
+nection point. The external loads acting on the cable, considered in this
+work, are the self-weight of the cable, hydrostatic loads, drag forces [36], and
+seabed interaction.
+
+3.2. Seabed interaction
+
+When the cable undergoes an excitation, the part which lies between the
+anchor and the touchdown point interacts with the seabed. This interaction
+is a complex non-linear e�ect. In this work, the seabed-mooring interaction is
+modelled as a spring-damping system [37, 38], and is implemented as follows:
+
+1. The vertical forces due to the sti�ness of the seabed in each time step
+are calculated as
+
+8
+
+
+
+clw ll if GsAc
+(
+zr − zt+∆t
+
+)
+> clwll,(20)
+
+GsAc
+
+(
+zt − zr + ∆tżt + ∆t2
+
+(
+1
+
+2
+− β
+
+)
+z̈t
+)
+
+otherwise, (21)
+
+where cl > 1 is a coe�cient limiting the seabed reactions, ll is the
+portion of the cable resting on the seabed, w is the weight per unit of
+length of the line, w is the apparent weight of the cable, β is the term
+related to the numerical integration of the dynamic FEM model, z is
+the vertical coordinate of the cable, Gs is the seabed sti�ness, Ac is the
+contact area of the line, and ∆t is the time step. The term zr is de�ned
+as
+
+zr = z +
+wll
+GsD
+
+, (22)
+
+where D is the diameter of line.
+The term zr can be de�ned as a limit of the line subsidence.
+
+2. The vertical forces due to the damping system are modelled as
+
+dl
+(
+zt + (1− γ) ∆tz̈t
+
+)
+if
+(
+zt+∆t
+
+)
+< zr, (23)
+
+0 otherwise (24)
+
+being γ a term related to the numerical scheme adopted. In addition
+dl is expressed as
+
+dl = 2ςl
+
+√
+Gs
+
+(
+wll
+g
+
+)
+Dll, (25)
+
+where ςl is the seabed damping [39].
+3. Finally, the horizontal forces due to the seabed interaction are modelled
+
+as
+
+dl
+(
+xt + [1− γ]∆t ẍt
+
+)
+, (x− direction), (26)
+
+dl
+(
+yt + [1− γ]∆t ÿt
+
+)
+, (y − direction). (27)
+
+The algorithm developed to solve the mooring dynamics is described next.
+
+9
+
+
+
+3.3. Non-linear FEM algorithm solution
+
+Truss elements, with just three translational degrees of freedom per node,
+are used for modelling the mooring lines, since bending e�ects can be ne-
+glected in most of cases [7, 40]. In this work, a FEM approach combined
+with an updated Lagrange formulation is used for describing the dynamics
+of the mooring cable. Some authors showed that the corotational formulation
+can get a better performance than the updated formulation. However some
+instabilities and lack of convergence can appear. Figure 2 shows a scheme of
+the discretization adopted in this work.
+
+1 2
+
+Seabed
+
+z
+
+x
+
+Free surface
+
+Currents
+
+Node j+1
+
+Node j lj
+
+Node j-1
+
+y
+
+N
+
+Figure 2: Scheme showing the general approach adopted for the spatial discretization of
+the cable mooring.
+
+Applying the standard FEM formulation for the non-linear elastodynam-
+ics problems [41], the equations for the dynamic equilibrium of the forces on
+a cable for each time step ∆t+ t can be written as
+
+f t+∆t = Mt+∆t · ẍ+ Ct+∆t · ẋ+ P0 + Rt+∆t, (28)
+
+where f are the external loads vector, M is a consistent mass matrix of the
+line, considering inertia and added mass, P0 is the pretension vector in the
+initial con�guration, andR is the internal forces vector of the cable. Damping
+e�ects of the mooring cable are introduced through a Rayleigh proportional
+
+10
+
+
+
+damping matrix of C. The application of the non-linear FEM approach to
+the cable equation can be found in [41, 42].
+
+Considering the linearization of the current con�guration, Eq. (28) can
+be expressed as
+
+f t+∆t = Mt+∆t · ẍ+ Ct+∆t · ẋ+
+(
+Kt+∆tL + K
+
+t+∆t
+NL
+
+)
+· δx+ P0 + Rt, (29)
+
+where KL and KNL are called the material sti�ness matrix and the geomet-
+ric sti�ness matrix, respectively, in the FEM literature [41, 42]. The sum of
+both matrices is the so-called tangent sti�ness matrix. The geometric part
+of the sti�ness matrix is considered as non-linear since no material proper-
+ties appear, and it depends of the Second-Piola stress tensor of the current
+con�guration. Incremental displacement of the cable nodes is δx.
+
+An implicit Bossak-Newmark [43] time integration scheme is applied for
+the time-integration of the Eq. (29). This provides a set of algebraic equa-
+tions to be solved iteratively,
+
+[
+(1− α)Mt+∆t,i + ∆tγCt+∆t,i + ∆t2βKt+∆t,i
+
+]
+· ẍt+∆t,i+1 = (30)
+
+∆t2β
+(
+K
+t+∆t,i
+L + K
+
+t+∆t,i
+NL
+
+)
+· ẍt+∆t,i + Ft+∆t,i −P0 −Rt+∆t,i
+
+−Ct+∆t,i
+[
+ẋ
+t −∆t (γ + 1) ẍt
+
+]
+− αMt+∆t,i · ẍt,
+
+where ∆t is the time step, i denotes the ith iteration, α is a parameter
+concerned with the Bossak-Newmark implicit method, and γ and β are pa-
+rameters related to the Newmark time integration scheme.
+
+The new position and velocity of each node in each time step can be
+expressed as (see Fig. 3)
+
+x
+t+∆t = xt + ∆tẋt +
+
+∆t2
+
+2
+
+[
+(1 + 2β) ẍt + 2β ẍt+∆t
+
+]
+, (31)
+
+ẋ
+t+∆t = ẋt + ∆t
+
+[
+(1− γ) ẍt + γ ẍt+∆t
+
+]
+. (32)
+
+It can be highlighted that multi-segmented mooring systems can be solved
+with this approach, and the equilibrium between two or more mooring ca-
+bles is determined using the Newton-Raphson method. A criterion based on
+the maximum di�erence between the position reached by the nodes in two
+consecutive iterations is applied to evaluate the convergence of the algorithm.
+
+11
+
+
+
+Update:
+, , , , , , , , , ,
+
+, , , , , K , , ,
+
+NoConvergence:
+, ,
+
+No
+
+Yes
+
+Calculus: K , , ; , , , ,
+
+1
+
+1; 		 1; 		 1
+
+, ,
+
+,
+
+K , , , K
+
+1
+
+Body dynamics loop (l)
+
+Solver loop (k)
+
+Time-marching loop (n)
+
+Solve:
+M , , , ,
+
+Convergence:
+, , , ,
+
+Calculate: , , ; 	 , , 	
+
+Yes
+
+Figure 3: General approach to algorithm for solving the �oater dynamics.
+
+The iterative procedure for solving the cable dynamics can be summarized
+as
+
+1. Setting the problem statement and boundary conditions, as well as the
+initial equilibrium con�guration, of the mooring line. For instance, ini-
+tial position based on a static catenary with touchdown can be chosen.
+Then, the tension obtained in this preliminary calculation is used as
+an initial pretension of the line P0.
+
+2. Evaluation of mass, damping, and tangent sti�ness matrices. The pro-
+cedure to calculate the tangent sti�ness matrix can be found in [44].
+
+3. Estimation of forces in each node of the cable at t+∆t, including drag,
+seabed interaction, hydrostatic, and gravity loads.
+
+4. Solving the cable dynamic Eqs. (31-32) in order to obtain the new
+position of the cable nodes.
+
+12
+
+
+
+5. Iteration from the step 2 through 4 until convergence is reached for
+each element of the line. In this work an Aitken's ∆2 method is used
+to accelerate the iterative algorithm [45].
+
+4. Algorithm to solve the �oater dynamics
+
+Most of the models found in the literature to solve the coupled mooring-
+body dynamics use a frequency domain analysis of the �oater together with
+a convolution integral [46] for solving the motions of the coupled system
+[9, 20, 19]. The most common approach is based on a frequency-domain
+di�raction-radiation solver based on the Boundary Element Method (BEM)
+combined with a FEM model to solve the mooring dynamics. In this work, a
+di�erent approach based on a time-domain FEM seakeeping model recently
+presented [30, 31] is proposed. This approach allows to straightforwardly
+couple the seakeeping of the �oater with non-linear loads.
+
+z
+
+14,1421 m
+
+0,49 N/m
+
+x
+
+Figure 4: Validation of the non-linear FEM mooring model. Case 1: cable under its self
+weight.
+
+The algorithm used in this work to solve the dynamics of the coupled
+system is presented in Fig. 3. In order to accelerate the solution of the non-
+linear solver, it includes two nested loops; the external loop iterates on the
+wave di�raction-radiation problem, while the internal loop takes into account
+the remaining external forces vector acting on the body. In this �gure F0 are
+the external forces di�erent from the hydrodynamic and the mooring forces,
+
+13
+
+
+
+and KM is the matrix of the linearised mooring. The procedure to carry out
+the coupled analysis is as follows:
+
+1. For each iteration k of the solver loop, the wave di�raction-radiation
+problem is solved using the body velocities obtained previously, within
+the l iteration, in the body dynamics loop (see Fig. 4).
+
+2. On the one hand, once the velocity potential ϕ is known, hydrodynamic
+loads are computed. On the other hand, the sti�ness matrix of the
+mooring lines are obtained by means of the Jacobian matrix for the
+current position of the fairlead points. Those matrixes are used to
+estimate the mooring forces within the inner loop of the dynamic solver.
+
+3. The hydrodynamic loads and the mooring sti�ness matrix are sent to
+the body dynamic loop l.
+
+4. For each iteration l of the body dynamics loop, the body dynamic
+equations are solved.
+
+Mb
+[
+(1− α) ẍt+∆t + α ẍt
+
+]
+= f t+∆t + f t+∆tmooring, (33)
+
+where fmooring is the restoring force vector of the mooring cables.
+5. Then, the body position and velocity are sent to the solver loop and in-
+
+troduced in the boundary conditions for the wave di�raction-radiation
+problem.
+
+6. The solver loops iterate until convergence is reached.
+7. Once the solver loop converges, it is proceeded to the calculation of the
+
+next time step.
+
+4.1. Coupling between rigid body motions and non-linear FEM mooring
+
+As mentioned above, the cable dynamics is formulated in term of the
+acceleration, and this is also valid for the boundary condition of the fairlead
+connection point. A linear approximation to evaluate the end node acceler-
+ation based on the prescribed displacement is proposed in this work. Each
+time step is divided in n sub-interval, that is to say, ∆t/n. So, in the i-th
+time step, the acceleration of end node ful�lls the following compatibility
+relationship
+
+ẍ
+t+i∆t
+
+n = xt + i
+∆t
+
+n
+ẋ
+t +
+
+1
+
+2
+
+(
+i
+∆t
+
+n
+
+)2 [
+ẍ
+t + 2βci i
+
+∆t
+
+n
+
+]
+, (34)
+
+14
+
+
+
+where ci is a coe�cient to be determined in each time step. Applying an
+appropriate boundary condition, this coe�cient can be formulated as
+
+ci =
+1
+
+β∆t
+n
+
+[
+xt+i
+
+∆t
+n − xt+(i−1)
+
+∆t
+n(
+
+∆t
+n
+
+)2 − ẋt+(i−1)
+∆t
+n
+
+∆t
+n
+
+−
+ẍ
+t+(i−1) ∆t
+
+n
+
+2
+
+]
+. (35)
+
+Above formulation for the boundary condition at the fairlead point has
+shown a better stability for the dynamics solver than higher order approxi-
+mations.
+
+As it was presented in the previous section, in the �rst l iteration of the
+dynamic loop, the sti�ness matrix of the cable KM is estimated by obtaining
+the Jacobian of the reaction forces using numerical di�erentiation,
+
+KM =
+
+
+ ∂Rx/∂x ∂Rx/∂y ∂Rx/∂z∂Ry/∂x ∂Ry/∂y ∂Ry/∂z
+∂Rz/∂x ∂Rz/∂y ∂Rz/∂z
+
+
+ , (36)
+
+where R is the reaction of the mooring cable at the fairlead point. Thus,
+the cable response is linearised within each time step ∆t, by estimating the
+mooring restoring forces as
+
+fx = Rx + k11∆x+ k12∆y + k13∆z, (37)
+
+fy = Ry + k21∆x+ k22∆y + k23∆z,
+
+fz = Rz + k31∆x+ k32∆y + k33∆z,
+
+where the terms kij correspond to a linear sti�ness matrix, and ∆x, ∆y
+and ∆z are the displacements of the fairlead point from the position at the
+beginning of the current time step.
+
+5. Validation of the non-linear FEM mooring model
+
+In this section some validation examples of the non-linear FEM model
+are presented.
+
+Case 1: Cable under its self weight. The �rst case is based on that
+presented in [47]. It consists of an isolated cable, with �xed ends, subjected
+to its own weight (see Fig. 4). Initially the cable has a �at form. The
+expected deformation is a U form, and the reactions at the ends must be
+equal to the cable weight. The properties of the cable are: the sti�ness
+
+15
+
+
+
+EA = 50 N, the weight per unit length w = 0.4 N/m, and 14.1421 m of
+span length. The cable is discretized into twenty-two bar elements, and the
+time step adopted is 0.014 s. Figure 5 shows di�erent positions of the cable
+until it gets the expected U form. Note that a damping increment leads to a
+faster convergence of the stationary solution. The reactions at end points are
+3.4681, and the maximum de�ection (0.715 m) is reached at X = 7.07105 m.
+
+Figure 5: Validation of the non-linear FEM mooring model. Case 1: di�erent stages of
+time evolution of cable under its self weight.
+
+16
+
+
+
+Figure 6: Validation of the non-linear FEM mooring model. Case 2: di�erent time step
+positions of free vibration cable obtained from computed results.
+
+Excel table with values o case 1
+
+Case 2: Free vibration cable. The second case is based on that proposed
+by [48]. The experiment consists of a cable initially in a horizontal position,
+and letting one end free and leaving the cable evolve under gravitational
+loads. The computed results are compared with the experimental results
+taken from [48], as well as with the data obtained from simulation with the
+FEM structural solver RamSeries (www.compassis.com). The properties of
+the cable are: length L = 1.0 m, sti�ness EA = 50 N, weight per unit of
+length w = 0.98 N/m, and 0.881 m distance between the cable end points.
+The cable was divided into forty four bar elements, and the time step adopted
+was 0.001 s. This time step must be low enough for obtaining an accurate
+description of the cable motion. The obtained numerical results show a good
+agreement between our results, and those experimentally and numerically
+obtained by other authors. The cable position at di�erent times obtained
+from computed results can be observed in Fig. 6.
+
+17
+
+Case_1.xlsx
+
+
+Figure 7: Validation of the non-linear FEM mooring model. Case 2: comparison between
+computed results of the path of free end of the cable obtained and experimental results of
+[48] and numerical computed with RamSeries.
+
+Slight di�erences can be appreciated at the lower end in Fig. 7. This fact
+can be explained by the di�erent numerical parameters chosen to carry out
+the simulation.
+
+18
+
+
+
+Motor with load cell
+
+Chain
+
+0,0 m
+
+3,0 m
+
+3,3 m
+
+32,554 m
+
+Figure 8: Validation of the non-linear FEM mooring model. Case 3: the geometrical
+set-up of the experimental tests by [38].
+
+Case 3: Cable attached to a circular rotating plate. Now, results
+obtained by the developed FEM solver are compared for the model test pro-
+posed by Lindhal and Sjoberg [38, 39]. The experimental set up is shown in
+Fig. 8. The lower end was attached to the concrete �oor and the upper end
+was attached to a circular plate with a �xed rotation speed. The radius of
+the circular motion was 0.2 m. Two cases with di�erent rotational periods
+of Tr = 1.25 s and Tr = 3.5 s respectively, were investigated. The reaction
+forces at the top end of the cable are measured and compared with those
+computed by the proposed numerical model.
+
+19
+
+
+
+Figure 9: Validation of the non-linear FEM mooring model. Case 3: comparison between
+the experimental and numerical cable top end reaction forces. Rotational period Tr = 3.5
+s.
+
+The properties of the cable are: length L = 33 m, sti�ness EA = 104 N,
+weight per unit length w = 0.18 N/m, and diameter D = 10−3 m. In this
+validation case, the cable is discretized into 200 bar elements, and the time
+step adopted is 0.001 s. The motion of the top end is de�ned by the following
+expressions (including an initialization period to build up the spinning of the
+plate):
+
+x (t) = 0.2 · tanh
+(
+t
+
+2
+
+)(
+cos
+[
+−
+
+2π
+
+Tr
+t+ δ
+
+]
+− cosδ
+
+)
+, (38)
+
+y (t) = 0.0 , (39)
+
+z (t) = 0.2 · tanh
+(
+t
+
+2
+
+)(
+sin
+[
+−
+
+2π
+
+Tr
+t+ δ
+
+]
+− sinδ
+
+)
+. (40)
+
+The results are compared with the experimental results taken from [38]. A
+good agreement between the computed reaction forces and the experimental
+results [38] can be observed in Fig. 9 (for Tr = 3.5 s), and 10 (for Tr = 1.25 s)
+for both, the maximum values and the time evolution. Only slight di�erences
+are appreciated due to the uncertainty of the experimental data. The entire
+cable loses sti�ness at some instants in time, and the numerical oscillations
+after the slack are larger in the case of the larger excitation frequency, as it
+was observed by [39].
+
+20
+
+
+
+Figure 10: Validation of the nonl-inear FEM mooring model. Case 3: comparison between
+the experimental and numerical cable top end reaction forces. Rotational period Tr = 1.25
+s.
+
+6. Demonstration of the coupled seakeeping-mooring solver
+
+A fully coupled analysis of the OC3 spar buoy o�shore wind turbine,
+called Hywind (www.ieawind.org/task23/) is presented next. Main partic-
+ulars of the spar buoy FOWT are presented in [52, 53]. A general view of
+the buoy concept can be observed in Fig. 11. In this section, several analysis
+are made:
+
+21
+
+
+
+Figure 11: General view of the spar buoy wind turbine concept (OC3-Hywind concept).
+
+• The Response Amplitude Operator (RAO) are compared for a rigid
+wind turbine with no wind loads, with those obtained by other authors
+[49].
+
+• The analysis of a spar wind turbine subjected to di�erent monochro-
+matic waves with periods close to the pitch resonance. The e�ects
+of the linear, the quasi-static, and the dynamic mooring models are
+compared.
+
+• A simulation in real operational conditions of the spar FOWT OC3 is
+performed. First and second-order irregular waves, real wind �ow, and
+mooring loads (with three di�erent types of mooring models) are taken
+into account. The in�uence of the mooring type model, the e�ects of
+second-order wave, and mooring tensions are studied.
+
+22
+
+
+
+6.1. RAO analysis and comparison
+
+First, a RAO analysis is performed in the absence of wind. The fre-
+quency results of the seakeeping solver are obtained after applying a Fourier
+transform to the time history generated. Figure 12 shows an inter-code com-
+parison. Note that a good agreement among the di�erent solvers is found
+[49].
+
+23
+
+
+
+Figure 12: OC3-Hywind concept. Comparison between the computed result by SeaFEM
+with those taken from other authors [49] for a rigid wind turbine with no wind.
+
+24
+
+
+
+6.2. Mooring analysis around pitch resonance
+
+Below, the in�uence of three di�erent mooring models on the OC3 spar
+buoy FOWT is analysed. These models are: the linear model cable (that
+behaves as springs and is represented by a linearised mooring matrix [53]);
+the Quasi-Static model, similar to the one presented in [54]; and the dynamic
+model developed in this work. Six �rst-order monochromatic waves are used
+in the analysis. Key parameters of the mooring layout and cable properties
+can be found in Table 1. Fig. 13 compares the pitch motion for each mooring
+model.
+
+Table 1: Key parameters of pitch resonance study [53].
+Item Value Unit
+
+Wave Amplitude 1.0 m
+
+Wave Period analysed 10; 25; 20; 35; 40; 55 s
+
+Number of Mooring Lines 3
+
+Angle Between Adjacent Lines 120 deg
+
+Depth to Anchors Below SWL 320 m
+
+Depth to Fairleads Below SWL 70 m
+
+Radius to Fairleads from Platform Centerline 853.9 m
+
+Unstretched Mooring Line Length 902.2 m
+
+Mooring Line Diameter 0.9 m
+
+Mooring Line Mass Density 77.71 kg/m
+
+Mooring Line Extensional Sti�ness 3.84×108 N
+
+It can be observed that there are big di�erences in the results in those
+cases close to the pitch resonance (about Tw = 30 s), while the results are
+quite similar for the cases with Tw = 10 s and Tw = 55 s. These results
+suggest that the use of simpler mooring models can lead to big errors near
+the resonance frequency, and as a consequence to magnify safety factors,
+contributing to increase the cost of the FOWT.
+
+6.3. Simulation in operational conditions
+
+Finally, four analyses of the OC3 spar buoy in operational conditions are
+presented. The di�erent analyses are carried out in similar environmental
+conditions, but using �rst and second-order irregular waves. Furthermore,
+additional studies including Quasi-Static and dynamic mooring models are
+
+25
+
+
+
+performed. The goal of these analyses is to evaluate the e�ects of the mooring
+model and the wave order on the dynamics of the system, as well as to esti-
+mate the tension in the mooring lines. On the one hand, the wind turbine
+system is assumed to be operating at an average wind speed of 11.4 m/s,
+which generates the maximum thrust and torque. FASTLognoter [50, 51]
+has been used to linearise with FAST [50] the behaviour of the wind turbine
+around the operating wind speed. Restoration and damping matrices result-
+ing from the linearisation of the wind turbine system are included into the
+global dynamics. It should be remarked that the rotational and periodicity
+e�ects are considered in the calculation of the steady state matrix. On the
+other hand, the wind loads are estimated considering non-uniform wind �ow,
+with an average wind speed of 11.4 m/s. The wind �ow pro�le is obtained
+using Turbsim [55], and the wind loads on the wind turbine are obtained
+from FAST/AeroDyn [50].
+
+Table 2: Key parameters of fully coupled simulations for OC3-Hywind �oating o�shore
+wind turbine.
+
+Case 1 Case 2 Case 3 Case 4
+
+Average Wind velocity Wrel (m/s) 11.4 11.4 11.4 11.4
+Wind direction θrel (deg) 0.0 0.0 0.0 0.0
+Wave Spectrum (-) JONSWAP 1st JONSWAP 1st JONSWAP 2nd JONSWAP 2nd
+
+Signi�cant wave height Hs (m) 6.0 6.0 6.0 6.0
+Peak period Tp (s) 12.0 12.0 12.0 12.0
+Mean wave direction θw (deg) 0 0 0 0
+Mooring model (-) Quasi-static Nonlinear Quasi-static Nonlinear
+Number of mooring lines (-) 3 3 3 3
+Mooring lines elements (-) 200 200 50 200
+
+A JONSWAP spectrum with a mean wave period Tm= 12.0 s, and sig-
+ni�cant wave height Hs= 6.0 m, is simulated. The key parameters of the
+di�erent case studies are presented in Table 2. As stated above, two di�erent
+types of mooring models are analysed; one based on the Quasi-Static cate-
+nary model [54], and the other based on the dynamic (NFEM) cable model,
+presented in this work. For the dynamic cable analysis each mooring line is
+divided into 200 bar elements.
+
+Figures 14, 15 and 16 show the computed heave, roll and pitch motions
+from 600 s to 900 s of simulation time. Noticeable di�erences are found
+between the �rst and the second-order movements, while the QS and NFEM
+mooring models o�er quite similar results.
+
+26
+
+
+
+Tw = 10 s Tw = 25 s
+
+Tw = 30 s Tw = 35 s
+
+Tw = 40 s Tw = 55 s
+
+Figure 13: Results obtained for mooring analysis around pitch resonance of OC3-Hywind.
+
+Table 3 shows the mean and RMS values, as well as the motion amplitude
+for the �rst and second-order movements. When comparing the QS and the
+
+27
+
+
+
+NFEMmodels, only slight di�erences are observed. In particular, the second-
+order pitch motion is higher when using the NFEM model, compared to the
+QS model, while the other values remain with similar trends for both models.
+
+Table 3: Comparison between mean, amplitude and RMS values of FOWT motions for
+�rst and second-order wave environment.
+
+Case 1
+
+Surge (m) Sway (m) Heave (m) Roll (deg) Pitch (deg) Yaw (deg)
+Mean 1st 0.04 0.00 0.00 0.29 0.41 0.21
+Mean 1st 0.04 0.00 0.00 0.29 0.41 0.21
+Amplitude 1st 14.96 1.34 2.75 1.91 6.12 10.38
+Amplitude 2nd 14.96 1.34 2.75 1.91 6.12 10.38
+RMS 1st 2.76 0.21 0.53 0.52 1.09 1.92
+RMS 2nd 2.73 0.24 0.45 0.48 1.22 1.91
+
+Case 2
+
+Surge (m) Sway (m) Heave (m) Roll (deg) Pitch (deg) Yaw (deg)
+Mean 1st 0.00 0.00 -0.01 0.29 0.40 0.21
+Mean 1st 0.10 0.00 -0.03 0.30 0.42 0.28
+Amplitude 1st 13.82 1.12 2.61 1.92 6.03 10.31
+Amplitude 2nd 15.19 1.55 2.59 2.02 8.00 10.83
+RMS 1st 2.54 0.18 0.50 0.52 1.09 1.92
+RMS 2nd 2.73 0.24 0.45 0.48 1.22 1.91
+
+Figure 17 shows the tension for each mooring line at the fairlead point.
+The NFEM model recorded larger amplitude oscillations (in the range of 5
+s to 10 s period) compared with QS model. The di�erences observed in Fig.
+17 in the tension amplitude reach up to 24 %. This fact suggests that using
+a QS model for fatigue assessment of the mooring lines could overestimate
+their fatigue life.
+
+28
+
+
+
+Figure 14: Comparison between heave motion for �rst and second-order wave environment
+for Case 1-4 (described in Table 2).
+
+29
+
+
+
+Figure 15: Comparison between roll motion for �rst and second-order wave environment
+for Case 1-4 (described in Table 2).
+
+30
+
+
+
+Figure 16: Comparison between pitch motion for �rst and second-order wave environment
+for Case 1-4 (described in Table 2).
+
+Figure 17: Comparison of fairlead tension of each mooring line for Case 3, and 4.
+
+31
+
+
+
+Table 4 compares the maximum, minimum, average, and RMS tension
+values at the fairlead points, obtaining similar values for both mooring mod-
+els. Furthermore, based on Figure 17, the second-order simulation provided
+larger tension values than the �rst-order. This result suggests that a �rst-
+order approximation can underestimate the fatigue loads and might lead to
+a wrong mooring design.
+
+Table 4: Comparison between maximum, minimum, mean, and RMS values of fairlead
+tension for Quasi-static and Dynamic mooring models.
+
+Line Case Max. (N) Min. (N) Mean (N) RMS (N)
+Line 1 1 1.435×106 1.073×106 1.250×106 1.252×106
+Line 2 1 1.446×106 1.072×106 1.240×106 1.242×106
+Line 3 1 7.411×105 5.209×105 5.991×105 6.003×105
+Line 1 2 1.457×106 1.052×106 1.246×105 1.248×106
+Line 2 2 1.471×106 1.040×106 1.236×106 1.238×106
+Line 3 2 7.421×105 4.510×105 5.923×105 5.936×105
+
+It is emphasized that the NFEM mooring model allows to consider non-
+linear dynamic e�ects which cannot be taken into account by QS models.
+However, in deep water, the dynamics of catenary mooring lines are negligible
+as reported in [11].
+
+7. Conclusions
+
+A FEM coupled seakeeping and mooring model for the analysis of �oating
+wind turbines is presented. Based on the results obtained in this work, the
+following conclusions are made:
+
+• A second-order time-domain seakeeping model based on FEM and ca-
+pable of using unstructured meshes [28, 30, 31] is successfully applied
+to simulate �oating wind turbines.
+
+• A dynamic cable model based on Non-linear FEM is presented. A
+Lagrangian formulation is used to describe the dynamics of the moor-
+ing line. Several non-linear e�ects are considered, such as seabed in-
+teraction and drag forces. In order to accelerate the body dynamics
+convergence, the restoring mooring forces on the �oating structure are
+linearised for each iteration within each time step. Therefore, a sti�ness
+matrix has to be evaluated for each iteration.
+
+32
+
+
+
+• An algorithm is developed to couple the non-linear cable dynamics with
+the body dynamics solver within the time-domain seakeeping solver
+[28].
+
+• The dynamic cable model presented in this work is validated against
+several experimental results, obtaining a good agreement between the
+numerical and experimental ones.
+
+• Di�erent analyses of a FOWT based on the Hywind concept [52, 53]
+are performed. RAO curves are compared with those obtained by other
+authors, showing a good agreement. Moreover, a comparison among
+the linear, the QS, and the NFEM models are carried out for frequen-
+cies around pitch resonance, obtaining large di�erences among mooring
+models.
+
+• The Hywind FOWT is analysed under a realistic operational condi-
+tion. Second-order coupled simulations are carried out considering a
+real wind pro�le, and with two types of mooring models; the QS and
+the NFEM. Results from both cases are compared. The NFEM moor-
+ing model combined with second-order waves and real wind provides
+a realistic simulation of the performance of the �oating wind turbine.
+The comparison suggests that using a QS model for fatigue assessment
+of the mooring lines could overestimate their fatigue life. Further-
+more, �rst-order approximation can underestimate tension values on
+the mooring systems.
+
+References
+
+[1] Breton SP, Moe H. Status, plans and technologies for o�shore wind
+turbines in Europe and North America. Renew Energy. 2009;34:646−54.
+
+[2] Karimirad M, Meissonnier Q, Gao Z, Moan T. Hydroelastic code-to-code
+comparison for a tension leg spar-type �oating wind turbine. Marine
+Struct. 2010;24:412−435.
+
+[3] Jeon SH, Cho YU, Seo MW, Cho JR, Jeong WB. Dynamic response of
+�oating substructure of spar-type o�shore wind turbine with catenary
+mooring cables. Ocean Eng. 2013;72:356−364.
+
+33
+
+
+
+[4] Sclavounos P, Butter�eld S, Musial W, Jonkman JM. Engineering chal-
+lenges for �oating o�shore wind turbines. In Proc: Copenhagen O�shore
+Wind Conference, 2005.
+
+[5] Cordle A, Jonkman JM. State of the art in �oating wind turbine de-
+sign tools. In Proc: 21st International O�shore and Polar Engineering
+Conference (ISOPE 2011). 2011.
+
+[6] Matha D, Schlif M, Cordle A, Pereira R, Jonkman JM. Challenges in
+simulation of aerodynamics, hydrodynamics, and mooring-line dynamics
+of �oating o�shore wind turbines. In Proc: 21st International O�shore
+and Polar Engineering Conference (ISOPE 2011), 2011.
+
+[7] Jacob PB, Bahiense RA, Correa FN, Jacovazzo BM. Parallel implemen-
+tations of coupled formulations for the analysis of �oating production
+systems, part I: Coupling formulations. Ocean Eng. 2012;55:206−218.
+
+[8] Jacob PB, Franco LD, Rodrigues MV, Correa FN, Jacovazzo BM. Paral-
+lel implementations of coupled formulations for the analysis of �oating
+production systems, part II: Domain decomposition strategies. Ocean
+Eng. 2012;55:219−234.
+
+[9] Bae YH, Kim MH. Rotor-�oater-theter coupled dynamics includ-
+ing second-order sum-frequency wave loads for a mono-column-
+TLP-type FOWT (Floating O�shore Wind Turbine). Ocean Eng.
+2013;61:109−122.
+
+[10] Bachinsky EE, Moan T. Design considerations for tension leg platform
+wind turbines. Marine Struc. 2012;29:89−114.
+
+[11] Low YM, Langley RS. Time and frequency domain coupled anal-
+ysis of deep-water �oating production systems. Appl. Ocean Res.
+2006;28:371−385.
+
+[12] Paulling JR, Webster WC. Large-amplitude analysis of the coupled re-
+sponse of a TLP and tendon system. In Proc: International Conference
+on Ocean, O�shore and Arctic Engineering (OMAE'86). 1986, p. 86.
+
+[13] Sircar S, Kleinhans JW, Prasad J.Impact of coupled analysis on global
+performance of deep-water TLP's. In Proc: O�shore Technology Con-
+ference (OTC 1993), 1993. Paper No. 7145.
+
+34
+
+
+
+[14] Schott WE, Rodenbusch G, Mercier RS, Webb CM. Global Design and
+Analysis of the Auger Tension Leg Platform. In Proc: of the O�shore
+Technology Conference (OTC 1994), Paper No. 7621, 1994. p. 541−552.
+
+[15] Hong SY, Hong S. Motion simulation of a �oating structure coupled
+with mooring lines. ISOPE 1996. In Proc: Sixth International O�shore
+and Polar Engineering Conference (ISOPE 1996). 1996.
+
+[16] Jacob BP, Masetti IQ. PROSIM Program:Coupled Numerical Sim-
+ulation of the Behavior of Moored Floating Units (in Portuguese).
+LAMCSO/COPPE-Petrobras Internal Report. 1998.
+
+[17] Kim S, Sclavounos P. Fully coupled response simulations of theme o�-
+shore structures in water depths to up to 10,000 feet. In Proc: 11th In-
+ternational O�shore and Polar Engineering Conference (ISOPE 2001).
+2001.
+
+[18] Senra SF, Correa FN, Jacob BP, Mourelle MM, Masetti IQ. Towards the
+integration of analysis and design of mooring systems and risers, part I:
+studies on a semisubmersible platform. In Proc: 21st International Con-
+ference on O�shore Mechanics and Arctic Engineering (OMAE 2002).
+2002.
+
+[19] Karimirad M, Moan T. A simpli�ed method for coupled analysis of
+�oating o�shore wind turbines. Marine Struc. 2012;27:45−63.
+
+[20] Jonkman JM, Sclavounos P. Development a fully coupled aeroelastic
+and hydrodynamic models for o�shore wind turbines. ASME 2006 Wind
+Engineering Symposium. 2006.
+
+[21] Kim BW, Sung G, Kim JA, Hong SY. Comparison of linear spring and
+nonlinear FEM methods in dynamic coupled analysis of �oating struc-
+ture and mooring system. J. Fluid Struct. 2013;42:205−227.
+
+[22] Tahar A, Kim MH. Coupled-dynamic analysis of �oating structures with
+polyester mooring lines. Ocean Eng. 2008;35:1676−1685.
+
+[23] Kim BW, Sung HG, Hong SY, Jung HJ. Finite element non linear analy-
+sis for catenary structure considering elastic deformation. Comput. Mod-
+eling Eng. Sci. 2010;63:29−45.
+
+35
+
+
+
+[24] Yang M, Teg B, Ning D, Shi Z. Coupled dynamic analysis for wave
+interaction with a truss spar and its mooring line/riser system in time
+domain. Ocean Eng. 2012;39:72−87.
+
+[25] Cun� CL, Heurtier J-M, Piriou L, Berhault C, Perdrizet T, Teixeira D,
+Ferrer G, Gilloteaux J-C. Fully coupled �oating wind turbine simulator
+based on nonlinear �nite element method: Part I - Methodology. In
+Proc: ASME 32th International Conference on Ocean, O�shore and
+Arctic Engineering. 2013.
+
+[26] Perdrizet T, Gilloteaux J-C, Teixeira D, Ferrer G, Piriou L, Cadiou
+D, Heurtier J-M, Cun� CL. Coupled �oating wind turbine simulator
+based on nonlinear �nite element method: Part II - Validation results.
+In Proc: ASME 32th International Conference on Ocean, O�shore and
+Arctic Engineering. 2013.
+
+[27] Kvittem MI, Moan T. Time domain analysis procedures for fa-
+tigue assessment of a semi-submersible wind turbine. Marine Struc.
+2015:40;38−59.
+
+[28] Compassis. SeaFEM Theory Manual. Retrieved from
+www.compassis.com/soporte. 2014.
+
+[29] Low YM. Prediction of extreme responses of �oating structures using a
+hybrid time/frequency domain coupled analysis approach. Ocean Eng.
+2008;35:1416−1428.
+
+[30] Serván B, García-Espinosa J. Accelerated 3D multi-body seakeep-
+ing simulations using unstructured �nite elements. J. Compu. Phys.
+2013;252:382−403.
+
+[31] García-Espinosa J, Di-Capua D, Ubach, PA, OÃ±ate E. A FEM �uid-
+structure interaction algorithm for analysis of the seal dynamics of a
+Surface-E�ect Ship. Accepted for publication in Comp. Meth. in App.
+Mech. and Eng.2015.
+
+[32] ABS. Floating Wind Turbines. American Bureau of Shipping. Bu-
+reau of Safety and Environmental Enforcement. Retrieved from
+http://www.offshorewindhub.org/. 2012.
+
+36
+
+
+
+[33] Hong SY, Nam B-W. Analysis of second-order wave force of �oating
+bodies using FEM in time-domain. In Proc: 21th International O�shore
+and Polar Engineering Conference (ISOPE 2010). 2010.
+
+[34] Aamo OM, Fossen TI. Finite element modelling of mooring lines. Math.
+Comput. Simul. 2000;53:415−422.
+
+[35] Gobat J, Grosenbaugh M. 2006. Time-domain numerical simulation of
+ocean cable structures. Ocean Eng. 2006;33:1373−1400.
+
+[36] Morison JR, O'Brien MP, Johnson JW, Schaaf SA. The force ex-
+erted by surface wave on piles. Journal of Petroleum Transaction
+1950;189:149−54.
+
+[37] Orcina Ltd. Orca�ex manual-version 9.8a. Retrieved from
+www.orcina.com. 2014.
+
+[38] Lindahl L, Sjoberg A. Dynamic analysis of mooring cables. In Proc: 2nd
+International symposium on ocean engineering and ship handling. 1983.
+pp. 281−319.
+
+[39] Palm J, Paredes GM, Eskilsson C, Pinto FT, Bergahl L. Simulation
+of mooring cable dynamics using a discontinuous Galerkin Method. In
+Proc: of the V International Conference on Computational Methods in
+Marine Engineering (MARINE 2013). 2013.
+
+[40] Rodrigues MV, Correa FN, Jacob PB. Implicit domain decomposition
+methods for coupled analysis of o�shore platforms. Commun. Numer.
+Meth. Engng. 2007;23:599−621.
+
+[41] Felippa CA. Nonlinear Finite Element Method, Department of
+Aerospace Engineering Sciences. University of Colorado at Boulder.
+2014.
+
+[42] Bathe KH. Finite element procedures. Prentice Hall. 1996.
+
+[43] WoodW, Bossak M, Zienkiewicz O. An alpha modi�cation of Newmark's
+method. Int. J. Num. Meth. Engng. 1980;1:1562−1566.
+
+[44] Thai H, Kim SE. Nonlinear static and dynamic analysis of cable struc-
+tures. Fin. Elem. Analysis Design. 2011;47:237−246.
+
+37
+
+
+
+[45] Irons BM, Tuck RC. A version of the Aitken accelerator for computer
+iteration. International J. Num. Meth. Engng. 1969;1:275−277.
+
+[46] Cummins W. The impulse response function and ship motions. Sympo-
+sium on Ship Theory 1962. Institut fur Schi�bauder Universitat. 1962.
+
+[47] Ortigosa I, Development of a decision support system for the design and
+adjustment of sailboat rigging. PhD Thesis, Universitat Politécnica de
+Catalunya, Spain. 2011.
+
+[48] Lazzari M, Saetta AV, Vitaliani RV. Nonlinear dynamic analysis of
+cable-suspended structures subjected to wind actions. Comput. Struct.
+2001;79:953−969.
+
+[49] Ramanchandran GCV, Robertson A, Jonkman JM, Masciola MD. Inves-
+tigation of Response Amplitude Operators for Floating O�shore Wind
+Turbines. In Proc: 23rd International Ocean, O�shore and Polar Engi-
+neering Conference (ISOPE 2013). 2013.
+
+[50] Jonkman JM, Buhl Jr ML. FAST's Users Guide. Technical Re-
+port NREL/EL-500-38230. National Renewable Energy Laboratory,
+www.nrel.gov, Colorado (USA). 2005.
+
+[51] Gutiérrez-Romero JE, Zamora B, García−Espinosa J. Peyrau R. Tool
+development based on FAST for performing design optimization of o�-
+shore wind turbines: FASTLognoter. Renew. Energy. 2013;55:69−78.
+
+[52] Jonkman JM, Butter�eld S, Musial W, Scott G. De�nition of a 5-
+MW reference wind turbine for o�shore system development. Technical
+Report NREL/TP-500-38060. National Renewable Energy Laboratory,
+www.nrel.gov, Colorado (USA). 2009.
+
+[53] Jonkman JM. De�nition of the �oating system for Phase IV of OC3.
+Technical Report NREL/TP-500-47535. National Renewable Energy
+Laboratory, www.nrel.gov, Colorado (USA). 2010.
+
+[54] Jonkman JM. Dynamics Modeling and Loads Analysis of an O�shore
+Floating Wind Turbine. Technical Report NREL/TP-500-41958. Na-
+tional Renewable Energy Laboratory, www.nrel.gov, Colorado (USA).
+2007.
+
+38
+
+
+
+[55] Jonkman BJ, Kilcher, L.Turbsim User's Guide. Version 1.06.00. Techni-
+cal Report NREL/TP-xxx-xxxxx. National Renewable Energy Labora-
+tory, www.nrel.gov, Colorado (USA). 2012.
+
+39
+
+
+	Introduction
+	Problem statement
+	General dynamics of floater
+	Flow equation and boundary value problem
+	Second-order diffraction-radiation governing equations
+	Second-order wave loads
+
+	Non-linear FEM model for mooring dynamics
+	Equations for cable dynamics
+	Seabed interaction
+	Non-linear FEM algorithm solution
+
+	Algorithm to solve the floater dynamics
+	Coupling between rigid body motions and non-linear FEM mooring
+
+	Validation of the non-linear FEM mooring model
+	Demonstration of the coupled seakeeping-mooring solver
+	RAO analysis and comparison
+	Mooring analysis around pitch resonance
+	Simulation in operational conditions
+
+	Conclusions
+

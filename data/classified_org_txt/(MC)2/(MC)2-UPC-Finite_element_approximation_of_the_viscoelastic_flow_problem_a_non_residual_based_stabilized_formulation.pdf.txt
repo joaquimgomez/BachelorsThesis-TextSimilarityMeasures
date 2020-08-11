@@ -1,0 +1,1413 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Finite Element Approximation of the Viscoelastic Flow Problem: A
+non-Residual Based Stabilized Formulation
+
+E. Castilloa,b and R. Codinab,c
+
+aUniversitat Politècnica de Catalunya, Jordi Girona 1-3, Edifici C1, 08034 Barcelona, Spain
+
+bUniversidad de Santiago de Chile (USACH), Depto. de Ingeniería Mecánica, Av. Bdo. O’Higgins 3363, Santiago, Chile
+
+cCIMNE International Center for Numerical Methods in Engineering, Gran Capità S/N, 08034 Barcelona, Spain
+
+Abstract
+
+In this paper, a three-field finite element stabilized formulation for the incompressible viscoelastic fluid
+
+flow problem is tested numerically. Starting from a residual based formulation, a non-residual based one is
+
+designed, the benefits of which are highlighted in this work. Both formulations allow one to deal with the
+
+convective nature of the problem and to use equal interpolation for the problem unknowns σ-u-p (deviatoric
+
+stress, velocity and pressure). Additionally, some results from the numerical analysis of the formulation are
+
+stated. Numerical examples are presented to show the robustness of the method, which include the classical
+
+4 : 1 planar contraction problem and the flow over a confined cylinder case, as well as a two-fluid formulation
+
+for the planar jet buckling problem.
+
+Keywords:
+
+Viscoelastic fluids, Oldroyd-B fluids, Stabilized finite element methods, Variational Multiscale.
+
+1. Introduction
+
+The finite element approximation of the flow of viscoelastic fluids presents several numerical difficulties,
+
+particularly for the spatial approximation. On the one hand, the finite element approximation used must
+
+satisfy two compatibility or inf-sup conditions, the first between velocity-pressure and the second associated
+
+to the interpolation of velocity and stress [1, 2]. On the other hand, the convective nature presented both in
+
+the momentum and constitutive equation may lead to numerical instabilities.
+
+The advective nature of the constitutive equation makes it necessary to use a stabilized formulation to
+
+avoid global oscillations. In the context of the finite element method, many algorithms have been developed
+
+to solve this problem: the classical SUPG method and its non-consistent counterpart, the SU method [3],
+
+the GLS method [4, 5], and the stabilization based on the discontinuous Galerkin method [6]. In the present
+
+work, we apply two stabilized formulations based on the Variational Multiscale (VMS) framework introduced
+
+Email address: ernesto.castillode@usach.cl and ramon.codina@upc.edu (E. Castilloa,b and R. Codinab,c)
+
+Preprint submitted to Elsevier November 10, 2016
+
+
+
+by Hughes et al. [7] for the scalar convection-diffusion-reaction problem, and extended later to the vectorial
+
+Stokes problem in [8], where the space of the sub-grid scales is taken orthogonal to the finite element space.
+
+As we shall see, this is an important ingredient in the design of our formulations.
+
+The starting point of a VMS approach is to split the unknowns of the problem into two components,
+
+namely, the component that can be approximated by the finite element mesh and the unresolvable one, called
+
+sub-grid scale or simply sub-scale in what follows. The latter needs to be approximated in a simple manner
+
+in terms of the former, so as to capture its main effect and yield a stable formulation for the finite element
+
+unknown. There are different ways to approximate the sub-scale and, in particular, to choose the space
+
+where it is taken. We will describe two formulations which precisely differ in this choice. Both formulations
+
+will allow one to deal with the instabilities of the three-field viscoelastic formulation described earlier. There
+
+will be no need to meet the inf-sup conditions for the interpolation spaces and it will be possible to solve
+
+convection dominated problems both in the momentum and in the constitutive equation. For the latter, these
+
+methods have been found to work well. However, for the momentum equation we have observed that they
+
+are not robust in the presence of high gradients of the unknowns, and therefore we have had to modify them.
+
+The modification consists in designing a sort of term-by-term stabilization based on the choice of subscales
+
+orthogonal to the finite element space. We will describe in detail this method and the need for it.
+
+The work is organized as follows. Section 2 contains the presentation of the problem. Section 3 presents
+
+our stabilized finite element approach. Section 4 is devoted to the numerical analysis results and Section
+
+5 contains typical numerical examples used for this kind of fluids. Finally, in Section 6 conclusions are
+
+summarized.
+
+2. The viscoelastic flow problem
+
+2.1. Boundary value problem
+
+To simulate the transitory incompressible and isothermal flow of viscoelastic fluids, one needs solve the
+
+momentum balance equation, the continuity equation and a constitutive equation that defines the viscoelastic
+
+contribution of the fluid.
+
+The conservation equations for momentum and mass may be expressed as:
+
+ρ
+∂u
+
+∂t
++ ρu · ∇u−∇ · T +∇p = f in Ω, t ∈]0, tf [, (1)
+
+∇ · u = 0 in Ω, t ∈]0, tf [ (2)
+
+where Ω is the computational domain of Rd occupied by the fluid, ]0, tf [ is the time interval where the
+
+problem is solved, ρ denotes the constant density, p : Ω → R the pressure, u : Ω → Rd the velocity vector,
+
+f : Ω→ Rd the force vector and T : Ω→ Rd ⊗Rd the deviatoric extra stress tensor which can be defined in
+
+2
+
+
+
+terms of a viscous and a viscoelastic or elastic contribution as:
+
+T = 2βη0∇su+ σ (3)
+
+where β ∈ [0, 1] is a real parameter (ratio) to define the amount of viscous or solvent viscosity βη0 and elastic
+
+or polymeric viscosity (1− β) η0 in the fluid. For viscoelastic fluids, the problem is incomplete without
+
+the definition of a constitutive equation for the elastic part of the extra stress tensor (σ). A large variety
+
+of approaches exist to define it (see [9, 10] for a complete description). In this work, only the differential
+
+Oldroyd-B model is considered. It reads:
+
+λ
+
+2η0
+
+∂σ
+
+∂t
++
+
+1
+
+2η0
+σ − (1− β)∇su+
+
+λ
+
+2η0
+
+(
+u · ∇σ − σ · ∇u− (∇u)T · σ
+
+)
+= 0 in Ω, t ∈]0, tf [ (4)
+
+where λ is the relaxation time.
+
+Calling U = [u,σ, p], F = [f , 0, 0] and defining
+
+L(û,U) :=
+
+
+
+
+ρû · ∇u− 2βη0∇ · (∇su)−∇ · σ +∇p
+
+∇ · u
+λ
+
+2η0
+∂σ
+∂t
+
++ 1
+2η0
+σ − (1− β)∇su+ λ
+
+2η0
+
+(
+û · ∇σ − σ · ∇û− (∇û)T · σ
+
+)
+
+ (5)
+
+and
+
+T (U) :=
+
+
+
+
+ρ∂u
+∂t
+
+0
+
+λ
+2η0
+
+∂σ
+∂t
+
+
+ (6)
+
+we may write (1), (2) and (4) using the definition (3) as T (U) + L(û,U) = F .
+
+Initial and boundary conditions have to be appended to problem (1)-(4). For simplicity in the exposition,
+
+we will consider the simplest boundary condition u = 0 on ∂Ω, and no boundary conditions for σ. However,
+
+due to the hyperbolic nature of the constitutive equation, in some examples the elastic stresses are fixed on
+
+the inflow part of the boundary. For a complete description of the mathematical structure of the problem we
+
+refer to [11].
+
+2.2. The variational form
+
+We introduce some notation in order to write the weak form of the problem. The space of square integrable
+
+functions in a domain ω is denoted by L2 (ω), and the space of functions whose distributional derivatives of
+
+order up to m ≥ 0 (integer) belong to L2 (ω) by Hm (ω). The space Hm0 (ω) consists of functions in H1 (ω)
+
+vanishing on ∂ω. The topological dual of H10 (Ω) is denoted by H
+−1 (Ω), the duality pairing by 〈·, ·〉, and the
+
+L2 inner product in ω (for scalar, vectors and tensors) is denoted by (·, ·). The norm in a functional space X
+
+3
+
+
+
+will be denoted by ‖ · ‖X , except when X = L2(Ω), case in which the subscript will be omitted.
+
+Using this notation, the stress, velocity and pressure functional spaces for the continuous problem are
+
+Υ0 = L
+2
+(
+0, tf ; (H
+
+1
+0 (Ω))
+
+d×d
+sym
+
+)
+(the subscript sym standing for symmetric tensors), V0 = L2
+
+(
+0, tf ; (H
+
+1
+0 (Ω))
+
+d
+)
+
+and Q = D
+(
+0, tf ; (L
+
+2(Ω)/R)
+)
+(D standing for distributions), respectively. The weak form of the problem
+
+consists in finding U = [u, p,σ] ∈ X = V0 ×Q×Υ0, such that:
+
+(
+ρ
+∂u
+
+∂t
+,v
+
+)
++ 2 (βη0∇su,∇sv) + 〈ρu · ∇u,v〉+ (σ,∇sv)− (p,∇ · v) = 〈f ,v〉 (7)
+
+(q,∇ · u) = 0 (8)(
+λ
+
+2η0
+
+∂σ
+
+∂t
+, τ
+
+)
++
+
+(
+1
+
+2η0
+σ, τ
+
+)
+− ((1− β)∇su, τ ) +
+
+λ
+
+2η0
+
+(
+u · ∇σ − σ · ∇u− (∇u)T · σ, τ
+
+)
+= 0 (9)
+
+for all V = [v, q, τ ] ∈ X̂ (the time independent counterpart of X ), where f ∈
+(
+0, tf ; (H
+
+−1(Ω))
+)
+.
+
+In a compact form, the problem (7)-(9) can be written as:
+
+(
+ρ
+∂u
+
+∂t
+,v
+
+)
++
+
+(
+λ
+
+2η0
+
+∂σ
+
+∂t
+, τ
+
+)
++B (u;U ,V ) = 〈f ,v〉
+
+for all V ∈ X̂ , where
+
+B (û;U ,V ) = 2 (βη0∇su,∇sv) + 〈ρû · ∇u,v〉+ (σ,∇sv)− (p,∇ · v) + (q,∇ · u)
+
++
+
+(
+1
+
+2η0
+σ, τ
+
+)
+− ((1− β)∇su, τ ) +
+
+λ
+
+2η0
+
+(
+û · ∇σ − σ · ∇û− (∇û)T · σ, τ
+
+)
+(10)
+
+3. Numerical approximation
+
+3.1. Galerkin finite element discretization
+
+The standard Galerkin approximation for the variational problem can be performed by considering a finite
+
+element partition Th of the domain Ω. The diameter of an element domain K ∈ Th is denoted by hK and the
+
+diameter of the element partition is defined by h = max {hK | K ∈ Th}. Under the above considerations, we
+
+can construct conforming finite elements spaces, Vh,0 ⊂ V0, Qh ⊂ Q and Υh,0 ⊂ Υ0 in the usual manner. If
+
+X h = Vh,0×Qh×Υh,0, and Uh = [uh, ph,σh], the Galerkin finite element approximation consist in finding
+
+Uh ∈ X h, such that:
+
+(
+ρ
+∂uh
+∂t
+
+,vh
+
+)
++
+
+(
+λ
+
+2η0
+
+∂σh
+∂t
+
+, τh
+
+)
++B (uh;Uh,V h) = 〈f ,vh〉 (11)
+
+for all V h = [vh, qh, τh] ∈ X̂ h.
+
+In principle, we have posed no restrictions on the choice of the finite element spaces. However, there
+
+are restrictions that must be satisfied explicitly in the discrete formulation used. These are the same as for
+
+4
+
+
+
+the three-field formulation of the Stokes problem [12, 1, 13]. A possible remedy to this situation is to use
+
+inf-sup stable elements (see [3] for the 2D case and [14] for the 3D case). The other possibility is to use a
+
+stabilized formulation permitting any interpolation between the variables, which is the approach used in this
+
+work. In general, a stabilized formulation consists of replacing B by another bilinear form Bh, possibly mesh
+
+dependent, with better stabilities properties.
+
+3.2. Stabilized finite element approximation
+
+In the following we present two stabilized finite element formulations for computing viscoelastic flows
+
+using the Oldroyd-B constitutive model. They are based on the variational multi-scale approach, where the
+
+unknown can be split as U = Uh + Ũ , where Uh is the finite element part and Ũ represents the remainder
+
+non-captured part, called the sub-grid scale. A similar split can be considered for the test functions. The
+
+first method to be discussed is a residual based stabilized formulation, whereas the second is a non-residual
+
+one which turns out to have a better performance in situations in which the solution is not smooth.
+
+3.2.1. Residual based stabilized finite element formulation
+
+After some approximations (see [15]), the residual based method we consider consists in finding Uh ∈ X h
+such that
+
+(
+ρ
+∂uh
+∂t
+
+,vh
+
+)
++
+
+(
+λ
+
+2η0
+
+∂σh
+∂t
+
+, τh
+
+)
++B (uh;Uh,V h) +
+
+∑
+K
+
+〈
+Ũ ,L∗ (uh;V h)
+
+〉
+K
+
+= 〈f ,vh〉 (12)
+
+for all V h ∈ X̂ h, where L∗ (û,V h) is the formal adjoint of the operator in (5) without considering boundary
+
+conditions, and Ũ is the subgrid scale, which needs to be approximated. If P̃ is the L2 projection onto the
+
+space of sub-grid scales, the approximation we consider within each element is
+
+Ũ = αP̃ [Rh] = αP̃ [F − L (uh;Uh)]
+
+where Rh is the finite element residual and α is a matrix computed within each element, which we take as
+
+α = diag (α1Id, α2, α3Id×d)
+
+with Id the identity on vectors of Rd, Id×d the identity on second order tensors and the parameters αi,
+
+i = 1, 2, 3, are computed as
+
+α1 =
+
+[
+c1
+η0
+h2
+
++ c2
+ρ |uh|
+h
+
+]−1
+, α2 =
+
+h2
+
+c1α1
+, α3 =
+
+[
+c1
+
+1
+
+2η0
++ c3
+
+λ
+
+η0
+
+(
+|uh|
+2h
+
++ |∇uh|
+)]−1
+
+where the c1, c2 and c3 are algorithmic constants.
+
+5
+
+
+
+Independently of the choice of the projection P̃ , the method defined by (12) is consistent, since the terms
+
+added to the Galerkin ones are proportional to the finite element residual Rh. Thus, they vanish if the finite
+
+element solution is replaced by the continuous solution U . It is in this sense that we call (12) a residual based
+
+method.
+
+3.2.2. Non-Residual based stabilized finite element formulation
+
+For smooth solution, method (12) is stable and displays optimal order of convergence. Considering
+
+P̃ = P⊥h , from (12) we can design a simplified method, which consist in neglecting the cross local inner-
+
+product terms, as well as some other terms that do not contribute to stability. In particular, from the
+
+momentum equation we can obtain the following stabilization term
+
+S⊥1 (ûh;Uh,V h) =
+∑
+K
+
+α1
+〈
+P⊥h [ρûh · ∇uh] , ρûh · ∇vh
+
+〉
+K
+
++
+∑
+K
+
+α1
+〈
+P⊥h [∇ph] ,∇qh
+
+〉
+K
+
+(13)
+
++ (1− β)
+∑
+K
+
+α1
+〈
+P⊥h [∇ · σh] ,∇ · τh
+
+〉
+K
+
+instead of the following two terms derived from the residual based method:
+
+S̃1 (ûh;Uh,V h) =
+∑
+K
+
+α1
+
+〈
+P̃ [−∇ · σh − 2βη0∇ · (∇suh) + ρûh · ∇uh +∇ph] , (14)
+
+− (1− β)∇ · τh + 2βη0∇ · (∇svh) + ρûh · ∇vh +∇qh
+〉
+K
+
+that would contribute to the left-hand-side of the discrete problem and
+
+R̃1 (ûh;V h) =
+∑
+K
+
+α1
+
+〈
+P̃ [f ],− (1− β)∇ · τh + 2βη0∇ · (∇svh) + ρûh · ∇vh +∇qh
+
+〉
+K
+
+(15)
+
+that would appear in the right-hand-side of the discrete problem.
+
+Note that the use of (13) intead of (14) and (15) is not just a simplification. For smooth solutions,
+
+both methods have optimal convergence rate in h. However, in problems where the solution has strong
+
+gradients, we found (13) more robust. When using (13), the terms that have identified as “problematic” are
+
+the cross-terms α1 〈∇ph,− (1− β)∇ · τh〉K and α1 〈−∇ · σh,∇qh〉K . In the presence of high derivatives of
+
+pressure and stress, such as in the corner 4:1 contraction example, they lead to convergence difficulties for
+
+high Weissenberg numbers and to inaccurate localization of pressure and stress peaks. This is a fact that we
+
+have confirmed from several numerical experiments.
+
+For the stabilization terms of the constitutive equation and the continuity equation we may still use
+
+the residual based form, which has proven to be a very robust combination with the additional advantage
+
+of a smaller number of finite element projections needed to construct the method. For the continuity and
+
+6
+
+
+
+constitutive equation the stabilization terms are defined respectively as:
+
+S̃2 (Uh,V h) =
+∑
+K
+
+α3
+
+〈
+P̃ [∇ · uh] ,∇ · vh
+
+〉
+K
+, (16)
+
+S̃3 (ûh;Uh,V h) =
+∑
+K
+
+α3
+
+〈
+P̃
+
+[
+1
+
+2η0
+σh − (1− β)∇suh +
+
+λ
+
+2η0
+
+(
+ûh · ∇σh − σh · ∇ûh − (∇ûh)
+
+T · σh
+)]
+,
+
+−
+1
+
+2η0
+τh −∇svh +
+
+λ
+
+2η0
+
+(
+ûh · ∇τh + τh · (∇ûh)
+
+T
++∇ûh · τh
+
+)〉
+K
+
+(17)
+
+Finally, the proposed method can be defined as follows: find Uh ∈ X h such that
+
+(
+ρ
+∂uh
+∂t
+
+,vh
+
+)
++
+
+(
+λ
+
+2η0
+
+∂σh
+∂t
+
+, τh
+
+)
++B (u;Uh,V h)
+
++ S⊥1 (ûh;Uh,V h) + S̃2 (Uh,V h) + S̃3 (ûh;Uh,V h) = 〈f ,vh〉 (18)
+
+for all V h ∈ X̂ h. This replaces the residual formulation defined in (12). In the numerical examples and for
+
+the following analysis results, we use P̃ = P⊥h in the terms S̃2 and S̃3.
+
+Both methods, the residual and the non-residual, are optimally convergent in space. The temporal order
+
+accuracy in the monolithic case is determined by the time integration scheme used. In the case of a fractional
+
+step approach, different algorithms could be designed. See [16], where first, second third order schemes in
+
+time were designed for the three-field viscoelastic case.
+
+4. Numerical Analysis Results
+
+We have performed a complete numerical analysis of the stationary and linearized problem, proving
+
+stability and convergence in the mesh dependent norm associated to the problem and in natural norms. We
+
+present here the results of this analysis without proof, which can be found in [17].
+
+The problem we consider is the following: find Uh ∈ X h (now a space of time independent functions)
+
+such that
+
+Bstab(Uh,V h) := B(ah;Uh,V h) +
+∑
+K
+
+〈
+Ũ ,L∗ (ah;V h)
+
+〉
+K
+
+= 〈f ,vh〉 (19)
+
+for all V h ∈ X h, with the adequate approximation for Ũ . Here, ah is a given advection velocity, which in a
+
+fixed-point like iterative algorithm can be understood as the velocity field obtained in a previous iteration.
+
+To guarantee the well-posedness in the solution of the problem (19), the advection velocity must satisfy the
+
+following assumption (see e.g. [11]):
+
+ah ∈ V0, ∇ · ah = 0, ‖ah‖∞ ≤Ma, ‖∇ah‖∞ ≤Mg for some constants Ma,Mg <∞ (20)
+
+7
+
+
+
+Let us assume for simplicity that the stabilization parameters are constant. The norm associated to the
+
+stabilized bilinear form Bstab, in which the results will be first presented, is given by
+
+‖V h‖
+2
+W = 2βµ (1− β) ‖∇
+
+svh‖
+2
+
++
+1
+
+2µ
+‖τh‖
+
+2
++ α1 ‖ρah · ∇vh +∇qh −∇ · τh‖
+
+2
+
++ α1
+∥∥P⊥u (ρah · ∇vh)∥∥2 + α1 (1− β)∑
+
+K
+
+∥∥P⊥u (∇ · τh)∥∥2 + α1∑
+K
+
+∥∥P⊥u (∇qh)∥∥2
++ α2 ‖∇ · vh‖
+
+2
++ α3
+
+∥∥∥∥− (1− β)∇svh + λ2µ (ah · ∇τh + τ̇ ∗∗h )
+∥∥∥∥2 (21)
+
+where τ̇ ∗∗h = τh · ∇asah−∇asah ·σh and ∇as stands for the skew-symmetric part of the gradient of a vector
+
+field.
+
+The stability result we have is the following:
+
+Theorem 1 (stability). There is a constant C > 0, such that
+
+inf
+Uh∈Xh
+
+sup
+Uh∈Xh
+
+Bstab (Uh,V h)
+
+‖Uh‖W ‖V h‖W
+≥ C
+
+Here and bellow, C denotes a generic positive constant.
+
+After having stability, we may proceed to prove convergence. The first ingredient is consistency. The
+
+method we have presented is not exactly consistent, but has an optimal consistency error. To state it, we need
+
+some additional notation. Let Wh be a finite element space of degree kv. For any function v ∈ Hk
+′
+v+1 (Ω)
+
+and for i = 0, 1, we define the interpolation errors εi (v) from the interpolation estimates
+
+inf
+vh∈Wh
+
+∑
+K
+
+‖v − vh‖Hi(K) ≤ Ch
+k′′v +1−i
+
+∑
+K
+
+‖v‖
+Hk
+′′
+v +1(K)
+
+=: εi (v)
+
+where k′′v = min (kv, k
+′
+v). We will denote by ṽh the best approximation of v in Wh. Clearly, we have that
+
+ε0 (v) = hε1 (v). This notation will allow us to prove that the error function of the method is
+
+E (h) :=
+√
+µε1 (u) +
+
+√
+µ
+
+√(
+ρ ‖ah‖h
+
+µ
+
+)
+ε1 (u) +
+
+1
+√
+µ
+ε0 (σ) +
+
+1
+√
+µ
+
+(
+λ ‖ah‖
+h
+
+)
+ε0 (σ) +
+
+1
+√
+µ
+Cε0 (p)
+
+Note that this error function is defined in terms of the local Reynolds number and the local Weissenberg
+
+number.
+
+Lemma 1 (consistency). Let U ∈ X be the solution of the continuous problem and Uh ∈ X h the finite
+
+element solution. If f ∈ Vh and U is regular enough, so that Bstab (U ,V h) is well defined, then
+
+Bstab (U −Uh,V h) ≤ CE (h) ‖V h‖W
+
+8
+
+
+
+for all V h ∈ X h.
+
+That E(h) is the error function of the formulation is determined by the following result:
+
+Lemma 2 (interpolation error). Let U ∈ X be the solution of the continuous problem, assumed to be
+
+regular enough, and Ũh ∈ X h its best finite element approximation. Then, the following inequalities hold:
+
+Bstab(U − Ũh,V h) ≤ CE (h) ‖V h‖W , ‖U − Ũh‖W ≤ CE (h)
+
+for all V h ∈ X h.
+
+Finally, we can state the main convergence result, which in view of the definition of the error function
+
+E(h) turns out to be optimal:
+
+Theorem 2 (convergence). Let U = (u, p,σ) ∈ X be the solution of the continuous problem. Then there
+
+exist a constant C > 0 such that
+
+‖U −Uh‖W ≤ CE (h)
+
+The results stated in terms of the norm ‖·‖W are fully meaningful. However, in the case in which viscosity
+
+is high and elasticity is small, we can prove stability and convergence in the norms of the spaces where the
+
+solution belongs. This is what the following theorem states:
+
+Theorem 3 (stability and convergence in natural norms). The solution of the discrete problem Uh =
+
+(uh, ph,σh) ∈ X h can be bounded as (for the viscous dominated case and for the low Weissenberg number
+
+case):
+√
+µ ‖uh‖H1(Ω) +
+
+1
+√
+µ
+‖σh‖+
+
+1
+√
+µ
+‖ph‖ ≤
+
+C
+√
+µ
+‖f‖H−1(Ω)
+
+Moreover, if the solution of the continuous problem U = (u, p,σ) ∈ X is regular enough, the following error
+
+estimate holds:
+√
+µ ‖u− uh‖H1(Ω) +
+
+1
+√
+µ
+‖σ − σh‖+
+
+1
+√
+µ
+‖p− ph‖ ≤ CE (h)
+
+Finally, under the classical assumption of elliptic regularity we can prove L2 estimates for the velocity:
+
+Theorem 4 (L2-error estimate for the velocity). Suppose that the Reynolds number and the Weissenberg
+
+numbers are small, and that the continuous problem satisfies the elliptic regularity condition
+
+√
+µ ‖u‖H2(Ω) +
+
+1
+√
+µ
+‖σ‖H1(Ω) +
+
+1
+√
+µ
+‖p‖H1(Ω) ≤
+
+C
+√
+µ
+‖f‖
+
+Then, there holds:
+
+√
+µ ‖u− uh‖ ≤ Ch
+
+(
+√
+µ ‖u− uh‖H1(Ω) +
+
+1
+√
+µ
+‖σ − σh‖+
+
+1
+√
+µ
+‖p− ph‖
+
+)
+
+9
+
+
+
+4 : 1 contraction
+n◦ elements n◦ nodes ∆xmin = ∆ymin
+
+M1 27258 27667 0.05
+M2 39894 40501 0.025
+M3 105816 106671 0.01
+Flow over a cylinder
+
+n◦ elements n◦ nodes ∆xmin = ∆ymin
+M1 41514 21330 0.025
+M2 56905 29152 0.015
+M3 67856 35167 0.005
+
+Table 1: Mesh convergence details.
+
+5. Numerical results
+
+In this section, some tests are conducted to show the numerical performance of the proposed formulation,
+
+emphasizing the robustness of the non-residual one.
+
+The first example corresponds to the 4 : 1 contraction problem, then we show some results of the classical
+
+flow over a confined cylinder problem, defined by a pipe of diameter equal to 2 and a cylinder of diameter 1,
+
+and finally, a tridimensional jet-buckling case of a high elastic flow using a two-fluid formulation. In all the
+
+cases, the Oldroyd-B constitutive model is used.
+
+In Fig. 1 the spatial discretization is shown for the 4:1 contraction problem and for the cylinder case. In
+
+this figure ne represents the number of elements, nn the number of nodes and ∆xmin represents the minimum
+
+element size used in both cases. These mesh sizes were chosen after evaluating the convergence of the results
+
+using different meshes for each example. The details of the meshes used to do this are detailed in Table 1.
+
+Note that in both cases, the presented results are associated to the M3 mesh but are practically identical to
+
+the results of mesh M2.
+
+Figure 1: Meshes used: 4:1 contraction (left) and flow over a cylinder (right).
+
+The motivation for the design of the non-residual based formulation is due to the fact that the residual
+
+formulation is not robust in the presence of high gradients of the unknowns. Fig. 2 shows the pressure
+
+variation along a line near to the corner. The corner is situated in x = 20. In this figure, the non-residual
+
+based and the residual based solutions are shown for a Weissenberg number We = 2.0 and a Reynolds number
+
+10
+
+
+
+Re = 1.0. The non-residual formulation captures the peak accurately but the residual one generates a non-
+
+physical secondary peak, that cannot be removed using mesh refinement. From the numerical analysis, the
+
+term-by-term formulation permits an orthogonal term-by-term control for the pressure gradient and for the
+
+divergence of the elastic stresses, that the residual formulation cannot control, a possible answer for this
+
+situation. In any case, it has to be remarked that for smooth solutions, both formulations are stable and
+
+display an optimal order of convergence. We have observed that only in cases in which the solution has very
+
+high concentrated gradients the non-residual based formulation is more robust, as shown in this example.
+
+Figure 2: Pressure variation along a line in 4:1 contraction problem (We = 2.0 and Re = 1.0): non-residual based (left) and
+residual based (right).
+
+Additionally to a better capability in the resolution of high gradient problems, the non-residual formulation
+
+permits the calculation of more elastic flows. In Fig. 3 the streamlines of two cases are shown. Using the
+
+residual based formulation, the more elastic case that we have been able to compute is approximately We =
+
+2.0; for more elastic cases the calculations failed to converge. However, the non-residual based formulation
+
+is capable to solve the same problem up to We = 5.0 (see more results in [15], where the formulation was
+
+presented).
+
+In the case of the confined cylinder, where the solution is smooth, the behavior of the non-residual based
+
+formulation compared to the residual based one is very similar. In Fig. 4, the drag coefficient obtained
+
+with both formulation is compared with published results. Note that in some curves of the graph the word
+
+“log” is added, which is associated to the use of the log-conformation approach. In general, what can be
+
+found in the literature is that standard formulations can solve the problem for We up to a value between
+
+0.7 and 1.0 depending on the reference [18, 19, 5], whereas the log-conformation formulation allows one to
+
+obtain solutions for We up to a value between 2.0 and 2.5, depending on the source [20, 21, 22]. Using our
+
+formulations, we have been able to solve the problem up to We = 1.4. In this graph, we can see that the
+
+agreement is good up to We = 1.1, with differences lower than 1% with respect to the accepted values of
+
+11
+
+
+
+Figure 3: Streamlines in 4:1 the contraction problem: We = 2.0, Re = 1.0 (left) and We = 5.0, Re = 1.0 (right), both using the
+non-residual based formulation.
+
+references; for higher values the differences with respect to the log-conformation approach begin to increase,
+
+which is possibly associated to the high Weissenberg number problem (HWNP). The term HWNP refers to
+
+the empirical observation that all numerical methods break down when the Weissenberg number exceeds a
+
+critical value, due to the exponential grown of the stresses.
+
+Figure 4: Drag coefficient flow over a cylinder: residual based and non-residual based formulations.
+
+The final numerical example (Fig. 5) is presented to show the robustness of the non-residual based
+
+formulation for the three-dimensional case of a jet-buckling flow problem. More details of this example and
+
+the two-fluids approach used can be found in [23], from where the example was taken. The only objective to
+
+include these results here is to show that the formulation presented is also accurate and robust in situations
+
+other than those considered in this paper.
+
+12
+
+
+
+Figure 5: Jet buckling is a 3D prismatic cavity for: We = 100 and Re = 0.25.
+
+13
+
+
+
+6. Conclusions
+
+In this paper we have presented a stabilized finite element method to approximate the incompressible
+
+viscoelastic flow problem. On the one hand, we have summarized the formulation, stated some results of the
+
+numerical analysis of the linearized problem and presented some numerical results. On the other hand, we
+
+have explained why the residual based formulation fails in situations in which the stresses have high localized
+
+peaks, and how the term-by-term stabilization based on local projections solves the problem. This work can
+
+thus be understood as a summary of previous (recent) work and an explanation of the phenomenon described.
+
+The formulation used still suffers from the high Weissenberg number problem. This can also be under-
+
+stood in the light of the estimates presented for the linearized stationary problem, where it is seen that the
+
+deteriorate as the Weissenber number (or the Reynolds number) increases. Nevertheless, the present method
+
+could also be applied to log-conformation formulations.
+
+Numerical results show the robustness of the method. Once localized oscillations present in residual based
+
+formulations have been removed by the term-by-term stabilized method, results obtained are smooth, even
+
+for the highest Weissenberg numbers for which results can be found in the literature.
+
+Acknowledgments
+
+E. Castillo gratefully acknowledges the support received from CONICYT (Programa de Formaciï¿œn de
+
+Capital o Humano Avanzado/Becas-Chile Folio 72120080), and from the Universidad de Santiago de Chile.
+
+R. Codina gratefully acknowledges the support received from the Catalan Government through the ICREA
+
+Acadèmia Research Program.
+
+References
+
+[1] R. Codina, Finite element approximation of the three-field formulation of the Stokes problem using
+
+arbitrary interpolations, SIAM Journal on Numerical Analysis 47 (1) (2009) 699–718.
+
+[2] K. Wang, A new discrete EVSS method for the viscoelastic flows, Computers & Mathematics with
+
+Applications 65 (4) (2013) 609–615.
+
+[3] J. Marchal, M. Crochet, A new mixed finite element for calculating viscoelastic flow, Journal of Non-
+
+Newtonian Fluid Mechanics 26 (1) (1987) 77–114.
+
+[4] Y. Fan, R. Tanner, N. Phan-Thien, Galerkin/least-square finite-element methods for steady viscoelastic
+
+flows, Journal of Non-Newtonian Fluid Mechanics 84 (2-3) (1999) 233–256.
+
+[5] O. M. Coronado, D. Arora, M. Behr, M. Pasquali, Four-field Galerkin/least-squares formulation for
+
+viscoelastic fluids, Journal of Non-Newtonian Fluid Mechanics 140 (1-3) (2006) 132–144.
+
+14
+
+
+
+[6] F. P. Baaijens, Application of low-order Discontinuous Galerkin methods to the analysis of viscoelastic
+
+flows, Journal of Non-Newtonian Fluid Mechanics 52 (1) (1994) 37–57.
+
+[7] T. J. Hughes, G. R. Feijóo, L. Mazzei, J.-B. Quincy, The variational multiscale method-a paradigm for
+
+computational mechanics, Computer Methods in Applied Mechanics and Engineering 166 (1-2) (1998)
+
+3–24, advances in Stabilized Methods in Computational Mechanics.
+
+[8] R. Codina, Stabilization of incompressibility and convection through orthogonal sub-scales in finite
+
+element methods, Computer Methods in Applied Mechanics and Engineering 190 (13-14) (2000) 1579–
+
+1599.
+
+[9] R. B. Bird, R. C. Amstrong, O. Hassager, in: Dynamics of Polymeric Liquids, vol.1: Fluid Mechanics,
+
+2nd Edition, Wiley, New York, 1987.
+
+[10] R. B. Bird, C. F. Curtiss, R. C. Amstrong, O. Hassager, in: Dynamics of Polymeric Liquids, vol.2:
+
+Kinetic Theory, 2nd Edition, Wiley, New York, 1987.
+
+[11] E. Fernández-Cara, F. Guillén, R. Ortega, Mathematical modeling and analysis of viscoelastic fluids of
+
+the Oldroyd kind, in Handbook of Numerical Analysis, VIII, North-Holland, 2002.
+
+[12] J. Bonvin, M. Picasso, R. Stenberg, GLS and EVSS methods for a three-field Stokes problem arising
+
+from viscoelastic flows, Computer Methods in Applied Mechanics and Engineering 190 (29-30) (2001)
+
+3893–3914.
+
+[13] E. Castillo, R. Codina, Stabilized stress-velocity-pressure finite element formulations of the Navier-Stokes
+
+problem for fluids with non-linear viscosity, Computer Methods in Applied Mechanics and Engineering
+
+279 (0) (2014) 554–578.
+
+[14] A. C. Bogaerds, W. M. Verbeeten, G. W. Peters, F. P. Baaijens, 3d viscoelastic analysis of a polymer
+
+solution in a complex flow, Computer Methods in Applied Mechanics and Engineering 180 (3-4) (1999)
+
+413–430.
+
+[15] E. Castillo, R. Codina, Variational multi-scale stabilized formulations for the stationary three-field
+
+incompressible viscoelastic flow problem, Computer Methods in Applied Mechanics and Engineering
+
+279 (0) (2014) 579–605.
+
+[16] E. Castillo, R. Codina, First, second and third order fractional step methods for the three-field viscoelas-
+
+tic flow problem, Journal of Computational Physics 296 (2015) 113–137.
+
+[17] E. Castillo, R. Codina, Numerical analysis of a stabilized finite element approximation for the three-field
+
+linearized viscoelastic fluid problem using arbitrary interpolations, Submitted.
+
+15
+
+
+
+[18] M. Alves, F. Pinho, P. Oliveira, The flow of viscoelastic fluids past a cylinder: finite-volume high-
+
+resolution methods, Journal of Non-Newtonian Fluid Mechanics 97 (2-3) (2001) 207–232.
+
+[19] J. Kwack, A. Masud, A three-field formulation for incompressible viscoelastic fluids, International Journal
+
+of Engineering Science 48 (11) (2010) 1413–1432, special Issue in Honor of K.R. Rajagopal.
+
+[20] M. A. Hulsen, R. Fattal, R. Kupferman, Flow of viscoelastic fluids past a cylinder at high Weissenberg
+
+number: Stabilized simulations using matrix logarithms, Journal of Non-Newtonian Fluid Mechanics
+
+127 (1) (2005) 27–39.
+
+[21] H. Damanik, J. Hron, A. Ouazzi, S. Turek, A monolithic FEM approach for the log-conformation
+
+reformulation LCR of viscoelastic flow problems, Journal of Non-Newtonian Fluid Mechanics 165 (19-
+
+20) (2010) 1105–1113.
+
+[22] A. Afonso, P. Oliveira, F. Pinho, M. Alves, The log-conformation tensor approach in the finite-volume
+
+method framework, Journal of Non-Newtonian Fluid Mechanics 157 (1-2) (2009) 55–65.
+
+[23] E. Castillo, J. Baiges, R. Codina, Approximation of the two-fluid flow problem for viscoelastic fluids using
+
+the level set method and pressure enriched finite element shape functions, Journal of Non-Newtonian
+
+Fluid Mechanics 225 (2015) 37–53.
+
+16
+
+

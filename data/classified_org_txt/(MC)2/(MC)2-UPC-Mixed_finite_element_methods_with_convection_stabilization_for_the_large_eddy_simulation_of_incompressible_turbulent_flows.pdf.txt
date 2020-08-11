@@ -1,0 +1,3390 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mixed finite element methods with convection stabilization for the large
+eddy simulation of incompressible turbulent flows
+
+Oriol Colomésa, Santiago Badiaa,b, Javier Principea,b
+
+aCentre Internacional de Mètodes Numèrics a l’Enginyeria (CIMNE), Parc Mediterrani de la Tecnologia, UPC, Esteve
+Terradas 5, 08860 Castelldefels, Spain ({ocolomes,sbadia,principe}@cimne.upc.edu).
+
+bUniversitat Politècnica de Catalunya, Jordi Girona 1-3, Edifici C1, 08034 Barcelona, Spain.
+
+Abstract
+
+The variational multiscale method thought as an implicit large eddy simulation model for turbulent
+flows has been shown to be an alternative to the widely used physical-based models. This method is
+traditionally combined with equal-order velocity-pressure pairs, since it provides pressure stabilization.
+In this work, we consider a different approach, based on inf-sup stable elements and convection-only
+stabilization. In order to do so, we consider a symmetric projection stabilization of the convective term
+using a orthogonal subscale decomposition. The accuracy and efficiency of this method compared with
+residual-based algebraic subgrid scales and orthogonal subscales methods for equal-order interpolation
+is assessed in this paper. Moreover, when inf-sup stable elements are used, the grad-div stabilization
+term has been shown to be essential to guarantee accurate solutions. Hence, a study of the influence of
+such term in the large eddy simulation of turbulent incompressible flows is also performed. Furthermore,
+a recursive block preconditioning strategy has been considered for the resolution of the problem with
+an implicit treatment of the projection terms. Two different benchmark tests have been solved: the
+Taylor-Green Vortex flow with Re = 1600, and the Turbulent Channel Flow at Reτ = 395.
+
+Keywords: Large eddy simulation, turbulence, variational multiscale, block recursive preconditioning,
+grad-div stabilization
+
+1. Introduction
+
+The simulation of incompressible turbulent flows is needed to solve many problems in science and en-
+gineering, e.g., flows around aircrafts, wind turbines, cars, bridges, etc. The computational fluid dynamics
+field is constantly evolving and searching the best way to achieve faster and cheaper flow simulations,
+taking advantage of the increasing computational power of supercomputers.
+
+Turbulent flows are characterized by having multiple scales, both in space and time, that make their
+simulation a really challenging task. Direct Numerical Simulations (DNS) of turbulent flows are used to
+capture the physical phenomena at all scales, even the smallest ones, but they consume a large amount
+of computational resources. A technique that is increasingly used and that saves a lot of computational
+cost is the Large Eddy Simulation (LES), which basically consists in separating the flow in a coarse
+scale and a fine one, simulating the coarser and modelling the finer [1]. The model of the fine scales
+in a LES method can be developed by a physical approach, which is defined taking into account the
+physical phenomena that take place on the smallest scales, or by a purely numerical approach that does
+not introduce any modification to the governing equations at the continuous level. This last numerical
+approach is commonly denoted as Implicit LES (ILES), see for instance [2].
+
+The Variational MultiScale (VMS) method introduced by Hughes in [3, 4] is a framework to develop
+stable and accurate numerical approximations of partial differential equations, preventing numerical
+instabilities that arise when the standard Galerkin Finite Element (FE) method is used. In the context
+of the incompressible Navier-Stokes equations there are two well known instabilities. First, there is the
+need to satisfy a compatibility between velocity and pressure approximation spaces, i.e., the inf-sup
+condition, which is not satisfied when equal order interpolation is used. Second, we have the instabilities
+that appear when convective dominated flows are simulated, which can be solved by adding some kind
+of extra dissipation to the problem, as in, e.g., [5]. There is also a much less known loss of accuracy in
+
+Preprint submitted to Computer Methods in Applied Mechanics and Engineering October 30, 2015
+
+
+
+the discrete velocity due to poor mass conservation [6] which can be linked to a poor resolution of the
+pressure typical of mixed interpolations that satisfy the inf-sup condition [7].
+
+The VMS method was firstly thought as an ILES method in [8, 9, 10] and, since then, several VMS
+methods have been developed and used as ILES. We can distinguish between those that introduce a
+three scale decomposition into resolved large and small scales and unresolved scales [11, 12, 13, 14], with
+a Smagorinsky type model for the influence of unresolved scales onto the small resolved ones, and those
+that introduce a two scale decomposition into resolved and unresolved ones [15, 16] using a residual
+based or projection based model of the unresolved scales to account for their influence into the resolved
+ones.
+
+In [17], a two scale VMS approach through Orthogonal SubScales (OSS) was firstly introduced. The
+main idea of the OSS method is to select the space of small scales orthogonal to the FE space, in contrast
+to the traditional choice of taking the subscales proportional to the residual, which is called Algebraic
+SubGrid Scale (ASGS) in [17]. Apart from the choice of the space of subscales, their time dependency
+and the VMS splitting of nonlinear terms was studied in [18]. Several combinations of these modelling
+possibilities where exhaustively assessed for homogeneous and wall bounded turbulent flows in [16]. In
+that work, an explicit algorithm to compute the orthogonal projections was used and the projection of
+the whole residual was considered.
+
+An alternative definition of the OSS method was proposed in [19] using a term-by-term stabilization
+that does not involve the full residual. A similar term-by-term stabilization approach was followed in
+[20], where the Local Projection Stabilization (LPS) method was introduced. This type of techniques are
+also known as symmetric projection stabilization, and the key ingredient that leads to different schemes
+is the definition of such projection [20, 21]. One of the main interests of a term-by-term stabilization
+is that one can avoid the addition of the pressure gradient stabilization term when using inf-sup stable
+(ISS) velocity-pressure pairs. Another advantage of the term-by-term stabilization methods is that the
+projection can be easily treated as implicit, without having all the residual terms coupled. The use of
+equal-order or ISS pairs with the LPS method was assessed for laminar flows in [22], concluding that
+the grad-div stabilization term is more relevant than the convective stabilization term when ISS FEs
+are used. The same conclusion was pointed out in [13], where the turbulent channel flow is studied
+using a projection-based and a bubble-based FE VMS method introducing a Smagorinsky type model
+to stabilize convection.
+
+The main goal of this paper is to assess for the first time the accuracy and efficiency of convection-
+stabilized ISS schemes as ILES methods, where symmetric projection stabilization is used. In particular,
+we analyze the term-by-term OSS method with implicit treatment of the projection for turbulent flows.
+We also analyse the influence of the grad-div stabilization on the accuracy of the method. For ISS
+discretizations, the influence of this term on the mass conservation is well known [6] but it also influences
+the computational cost of the linear solvers [23, 24]. In this respect, we present a block preconditioning
+strategy that makes use of recursive block factorizations [25] to deal with the implicit projections and
+with the saddle point structure of the velocity-pressure coupling, which can also be applied to equal
+order interpolation with pressure stabilization. The comparison of the results is made with respect those
+obtained using the residual-based ASGS for which we also use a block preconditioning strategy.
+
+This work is organized as follows. The Navier-Stokes equations together with some notation used in
+the paper are stated in Sect. 2. The VMS framework is introduced in Sect. 3, which includes the final
+discrete formulation of the ASGS method, given in Sect. 3.1, the term-by-term OSS given in Sect. 3.2, the
+term-by-term OSS with ISS elements given in Sect. 3.3 and also a brief discussion of known properties
+of the grad-div stabilization given in Sect. 3.4. The recursive block iterative strategy proposed to solve
+the linear system of the monolithic problem is presented in Sect. 4. The numerical results are shown in
+Sect. 5, where two different turbulent tests are analysed: the Taylor-Green Vortex flow in Sect. 5.2 and
+the Turbulent Channel Flow in Sect. 5.3. Finally, some conclusions are pointed out in Sect. 6.
+
+2. Problem statement
+
+Let Ω be a bounded domain of Rd, where d = 2, 3 is the number of space dimensions, Γ = ∂Ω its
+boundary and (0, T ] the time interval. The strong form of the steady Navier-Stokes problem consists in
+
+2
+
+
+
+finding the velocity field u and the pressure field p such that
+
+∂tu− ν∆u + u · ∇u +∇p = f in Ω× (0, T ], (1)
+∇ · u = 0 in Ω× (0, T ], (2)
+
+with f the force vector and ν the kinematic viscosity. Hereafter bold characters will denote vectors and
+tensors.
+
+Equations (1) and (2) need to be supplied with appropriate boundary and initial conditions. The
+boundary Γ is divided into the Dirichlet (ΓD) and the Neumann (ΓN ) parts such that ΓD ∪ ΓN = Γ
+and ΓD ∩ ΓN = ‰. Then, the boundary and initial conditions can be written as
+
+u = ug on ΓD × (0, T ], (3)
+(−p · I + ν(∇u +∇uT )) · n = tN on ΓN × (0, T ], (4)
+
+u(x, 0) = u0(x) in Ω× {0}, (5)
+
+n being the unit outward vector normal to Γ.
+Some notation need to be stated in order to derive the weak form of the problem (1)-(5). We denote
+
+by Lp(Ω), 1 ≤ p < ∞, the spaces of functions such that their p-th power is absolutely integrable in Ω.
+In particular, for the case in which p = 2, we have a Hilbert space with scalar product
+
+(u, v)Ω ≡ (u, v) :=
+∫
+
+Ω
+u(x) v(x)dΩ (6)
+
+and induced norm ‖u‖L2(Ω) ≡ ‖u‖ = (u, u)1/2. The space of functions whose distributional derivatives
+up to order m are in L2(Ω) are denoted by Hm(Ω). We will focus on the case of m = 1, which is also
+a Hilbert space. H10 (Ω) is the set of functions in H1(Ω) that have zero trace on Γ and H1g (Ω) is the
+set of functions in H1(Ω) whose traces satisfy (3). Furthermore, we denote by H−1(Ω) the topological
+dual of H10 (Ω) and by 〈·, ·〉 the duality pairing between H−1(Ω) and H10 (Ω). Given a Banach space X,
+Lp(0, T ;X) is the space of time-dependent functions such that their X-norm is in Lp(0, T ). Bold letters
+are used for spaces of vector functions.
+
+Then, from equations (1)-(5) one can derive the weak form of the problem, which consists in finding
+[u, p] ∈ L2(0, T ;Vg)× L1(0, T ;Q0) such that
+
+(∂tu,v) +B(u, (u, p), (v, q)) = 〈f ,v〉 ∀v ∈ V0, ∀q ∈ Q0, (7)
+
+satisfying the initial condition (5) in a weak sense. Here V0 := H10(Ω), Vg := H1g(Ω) and Q0 := L2(Ω)/R
+and the form B(u, (u, p), (v, q)) is defined as
+
+B(u, (u, p), (v, q)) := ν(∇u,∇v) + b(u,u,v)− (p,∇ · v) + (q,∇ · u) (8)
+
+with the trilinear form of the convective term b(u,v,w) defined in its skew symmetric version
+
+b(u,v,w) =
+1
+2
+
+(u · ∇v,w)−
+1
+2
+
+(v,u · ∇w) +
+1
+2
+
+(v, (u · n)w)ΓN . (9)
+
+3. VMS methods
+
+Let us consider a FE partition Th of the domain Ω from which we can construct conforming finite
+dimensional spaces for the velocity V0,h ⊂ V0, Vg,h ⊂ Vg, and for the pressure Q0,h ⊂ Q0. The Galerkin
+FE approximation of the problem (7) consists in finding [uh, ph] ∈ L2(0, T ;Vg,h) × L1(0, T ;Q0,h) such
+that
+
+(∂tuh,vh) +B(uh, (uh, ph), (vh, qh)) = 〈f ,vh〉 ∀vh ∈ V0,h,∀qh ∈ Q0,h. (10)
+
+In order to overcome the numerical instabilities and, eventually, to bypass the inf-sup condition that
+arises when problem (10) is solved, we use the VMS approach [3, 4] which consists in a two-scale
+decomposition of spaces V0, Vg and Q0 as V0 = V0,h⊕Ṽ0, Vg = Vg,h⊕Ṽg and Q = Q0,h⊕Q̃0, where Ṽ0,
+Ṽg and Q̃0 are infinite-dimensional spaces that complete the FE spaces in V0, Vg and Q0, respectively.
+
+3
+
+
+
+Hereinafter the subscript (·)h will denote the FE component and the tilde (̃·) the subgrid component.
+Applying the two-scale decomposition to (7) we obtain
+
+(∂tuh,vh)+(∂tũ,vh)+B(u; [uh, ph], [vh, qh])−(ũ, ν∆vh + a · ∇vh +∇qh)h−(p̃,∇ · vh) = 〈f ,vh〉 , (11)
+
+where (·, ·)h =
+∑
+K∈Th(·, ·)K is the sum of scalar products (6) over each element K of the partition
+
+Th. The terms involving the subscales come from an element-wise integration by parts, in which the
+boundary terms (vh, νn · ∇ũ)∂h and (qh,n · ũ)∂h have been neglected (the subscript ∂h is used to
+denote the sum over all elements of the integral on the boundary of each element). It also involves
+the approximation b(a, ũ,uh) ≈ −(ũ,a · ∇vh) which implies neglecting (vh,n · aũ)∂h and (ũ,∇ · a vh).
+These approximations are discussed in [18] together with the choice of a which defines the type of scale
+splitting (linear or nonlinear), see also [16].
+
+Problem (11) depends on ũ ∈ Ṽ0 and on p̃ ∈ Q̃0, Ṽ0 and Q̃0 being infinite-dimensional. Therefore,
+the equations for ũ and p̃ obtained after applying the two-scale decomposition cannot be directly solved,
+but some modelling steps are needed to obtain a feasible method. In this work we consider the velocity
+subscale as linear (a = uh) and quasi-static, while the pressure subscale is neglected when equal order
+interpolation is used. Different approaches could be used for the definition of the subscales, see [16] for a
+deep explanation of the different choices and their numerical evaluation with equal order approximation.
+Approximating the Navier-Stokes operators by the stabilization parameters τ−1m and τ−1c (see for example
+[18]), the fine scale problem can be written as
+
+τ−1m ũ = PṼ(Ru), (12)
+τ−1c p̃ = PQ̃(Rp). (13)
+
+In (12)-(13) P∗ denotes the projection onto the space of subscales, which is discussed below. In turn,
+the vector Ru is the residual of the Navier-Stokes momentum equation (1) and Rp the residual of the
+incompressibility constraint (2), defined as
+
+Ru = f − ∂tuh + ν∆vh − uh · ∇vh −∇qh, (14)
+Rp = −∇ · uh. (15)
+
+Finally, the expressions of the stabilization parameters τm and τc are
+
+τm =
+(
+c1ν
+
+h2
++
+c2|uh|
+h
+
+)−1
+, (16)
+
+τc =
+h2
+
+c1τm
+. (17)
+
+where h is the mesh size and c1 and c2 are algorithmic constants. The choice of the value for c1 and
+c2 make a significant difference on the VMS method, specially for turbulent flows, where the energy
+dissipation introduced by the stabilization method takes an important role in the final solution. In this
+work, we select c1 = 12 and c2 = 2, following [16]. Introducing ũ and p̃ into (11) we get the final discrete
+problem
+
+(∂tuh,vh) +Bh(uh, (uh, ph), (vh, qh)) = Lh(vh, qh) ∀vh ∈ V0,h,∀qh ∈ Q0,h, (18)
+
+The bilinear form Bh and the linear form Lh depend on the particular VMS method as discussed below.
+
+3.1. Residual-based ASGS
+The space for the subscales Ṽ0 is determined by the definition of the projection P appearing in
+
+the right-hand side of (12)-(13). The ASGS method is obtained taking the subscales in the space of
+the residuals, that is, PṼ := I and PQ̃ := I. The final discrete is given by (18) with Bh = Basgs and
+Lh = Lasgs given by
+
+Basgs(uh, (uh, ph), (vh, qh)) := B(uh, (uh, ph), (vh, qh)) (19)
++ (τm(∂tuh − ν∆uh + uh · ∇uh +∇ph), ν∆vh + uh · ∇vh +∇qh),
+
+Lasgs(vh, qh) := 〈f ,vh〉+ (τmf , ν∆vh + uh · ∇vh +∇qh). (20)
+
+4
+
+
+
+Note that the pressure subscale term has been neglected in (19), that is we have taken τc = 0. We have
+observed in [16] (using equal order interpolation) that this term introduces extra dissipation and does
+not in general improve the solution significantly.
+
+3.2. Term by term OSS
+Another possibility introduced in [17] is to consider the space of the subscales orthogonal to the
+
+FE space. The main motivation of the method is that a stability estimate for the projection onto the
+FE space of the pressure and the convective terms can already be obtained in the standard Galerkin
+method and therefore the only “missing” part is the orthogonal one. The Orthogonal Subscales (OSS)
+method is then obtained taking PṼ := Π
+
+⊥
+h = I−Πh where Πh is a projection onto the FE space. The L
+
+2
+
+orthogonality between the FE and subscale spaces is guaranteed considering the τm-weighted projection
+
+(τmΠh(w),vh) = (τmw,vh) ∀vh ∈ V0,h. (21)
+
+which requires the solution of a linear system defined by a τm-weighted mass matrix. Note that for this
+choice, the residual of the momentum equation does not depend on ∂tuh. Likewise, P(f) in this case
+is only well defined for f ∈ L2(Ω)d. In the case of minimum regularity, f ∈ H−1(Ω)d, this term can be
+simply neglected without upsetting the accuracy of the method.
+
+Remark 3.1. Alternatively we can consider the standard L2 projection
+
+(Πh(w),vh) = (w,vh) ∀vh ∈ V0,h, (22)
+
+modifying the model of the subscales as
+
+ũ = PṼ(τmRu), (23)
+p̃ = PQ̃(τcRp). (24)
+
+With this modification the orthogonality between the FE and subscale spaces is guaranteed (and thus
+(∂tuh, ũ) = 0) and standard mass matrices are used. This is an advantage from which we can take profit
+to build more efficient solvers. In the numerical tests we will favour this alternative.
+
+Neglecting the pressure subscales the OSS method is given by (18) with B = Boss and Lh(vh, qh) =
+〈f ,vh〉 where
+
+Boss(uh, (uh, ph), (vh, qh)) = B(uh, (uh, ph), (vh, qh)) (25)
++ (τm(−ν∆uh + uh · ∇uh +∇ph), ν∆vh + uh · ∇vh +∇qh)
+− (τmηh, ν∆vh + uh · ∇vh +∇qh).
+
+where ηh := Πh(Ru) is computed solving
+
+(τmηh,κh) + (τm(−ν∆uh + uh · ∇uh +∇ph),κh) = (τmf ,κh) ∀κh ∈ Vh,0, (26)
+
+An implicit implementation of this method would require the introduction of an extra variable (the
+projection ηh) and, more importantly, this variable would be coupled with both velocity and pressure.
+Due to the Laplacian terms in the formulation, the velocity-projection coupling is non-symmetric, as it
+can be seen in (25) and (26).
+
+In order to reduce the coupling between variables we consider the term by term OSS method proposed
+in [19]. The main goal of this alternative is to stabilize separately the convective term and the pressure
+gradient term by two uncoupled orthogonal projections. As noted in [19] the term by term OSS has better
+stability properties than the classical one. Considering quasi-static and linear subscales the discrete
+problem is given by (18) with B = Btbt_oss and Lh(vh, qh) = 〈f ,vh〉 where
+
+Btbt_oss(uh, (uh, ph), (vh, qh)) = B(uh, (uh, ph), (vh, qh)) (27)
++ (τmuh · ∇uh,uh · ∇vh) + (τm∇ph,∇qh)
+− (τmηh,uh · ∇vh)− (τmξh,∇qh).
+
+5
+
+
+
+and ηh := Πh(uh · ∇uh) and ξh := Πh(∇ph) are computed solving
+
+(τmηh,κh) = (τmuh · ∇uh,κh) ∀κh ∈ Vh,0, (28)
+(τmξh, ζh) = (τm∇ph, ζh) ∀ζh ∈ Vh,0. (29)
+
+Note that with the term by term OSS method with implicit FE projections, there are 3d+1 unknowns
+per node, while for ASGS the number of unknowns is d+1 per node. A priori it seems that such increase
+of unknowns make the former method not appealing in front of ASGS, but we will see later that the
+increase of computational cost is not linear with the increase of unknowns in this case. Furthermore,
+an optimal block preconditioning technique can be used to solve problem (18)-(27)-(28)-(29) taking
+advantage of its block structure. This point is further discussed in Sect. 4.
+
+3.3. Term by term OSS with ISS elements
+For equal order interpolation the pressure stabilization is mandatory but for ISS FE spaces pressure
+
+stability is guaranteed. Then, we could define a term by term OSS method for ISS FE that only sta-
+bilizes the convective term by an orthogonal FE projection. This approach would reduce the number
+of unknowns per node, keeping stability properties and the better conditioned matrix than ASGS. The
+definition of the term by term OSS-ISS method can be given by equation (18) with B = Btbt_oss_iss
+and Lh(vh, qh) = 〈f ,vh〉 where
+
+Btbt_oss_iss(uh, (uh, ph), (vh, qh)) = B(uh, (uh, ph), (vh, qh)) (30)
++ (τmuh · ∇uh,uh · ∇vh)− (τmηh,uh · ∇vh)
++ (τc∇ · uh,∇ · vh),
+
+complemented by the FE projection of the convective term defined in (28). Note that in this case we
+include the effect of the pressure subscales, that is, the grad-div stabilization. However (for constant
+stabilization parameters) the projection of the divergence required to implement (13) needs not to be
+computed because it vanishes, which is implied by the discrete mass conservation equation. This is not
+the case when pressure stabilization is used. When τm is variable we neglect this projection to reduce the
+computational cost. Note, however, that this approximation does not introduce any consistency error.
+
+3.4. The grad-div stabilization
+It is important to highlight here the presence of the pressure subscale term, τc(∇·uh,∇·vh) in (30),
+
+first introduced in [26]. Even though it is usually included in VMS formulations it is sometimes neglected
+in practice, particularly when equal order interpolations with pressure stabilization are considered [16].
+As it is shown in [22], using the grad-div stabilization in the simulation of laminar flows produces a
+small improvement of the results obtained with equal order interpolation but a clear improvement of
+the results obtained with ISS elements.
+
+In the VMS decomposition, this term comes from the residual of the incompressibility constraint
+and its addition improves the conservation of mass as well as the effect that the error on the pressure
+field produces on the velocity field. In [7, 27] the authors assessed the use of ISS elements for the
+incompressible Navier-Stokes equations in the laminar regime, highlighting the importance of this term.
+The optimal choice of the parameter τc, discussed in [28], depends on the relative norms of the velocity
+and pressure (is therefore problem dependent) and can be of order one but also much bigger. On the
+other hand, in [29] it is proved that on a regular mesh, the Taylor-Hood approximations converge to a
+point-wise divergence-free solution, the one obtained using Scott-Vogelius (SV) elements [30], as τc →∞.
+Then, it is seen that the optimal value of τc is an open question and, as stated in [7], we may consider
+the search of optimal parameters as a trade-off between mass and momentum balance in the FE system.
+In this work we will try to evaluate the importance of such term for turbulent incompressible flows
+when ISS elements are used. Thus, a detailed discussion of which are the values that should take τc is
+considered for each numerical test in further sections.
+
+Apart from its influence on mass conservation, this term is also known to introduce numerical
+dissipation both when equal order [16] or ISS elements are used [7]. An energy balance of the term-by-
+term OSS is obtained taking vh = uh and qh = ph in (18) and using (30)
+
+1
+2
+d
+
+dt
+‖uh‖2 + ν‖∇uh‖2 + ‖τ1/2m (uh · ∇uh − ηh)‖
+
+2 + ‖τ1/2c ∇ · uh‖
+2 = 〈f ,uh〉 . (31)
+
+6
+
+
+
+Apart from the viscous dissipation coming from the Galerkin method, which is negligible in turbulent
+flows, we get extra dissipation that comes from the control of the orthogonal projection of the convective
+term and the dissipation that comes from the grad-div stabilization. When equal order interpolations
+are used this extra dissipation is not necessary and very good results are obtained taking τc = 0 [16].
+As discussed above, for ISS discretizations, the numerical dissipation introduced by the grad-div term is
+crucial to obtain accurate solutions. For instance, given a velocity space, the Taylor-Hood element has one
+order less pressure space than the stabilized equal order counterpart, leading to a poorer approximation
+of the mass conservation equation. Note that when τc goes to zero no dissipation is introduced but the
+accuracy in the satisfaction of mass conservation is poor. On the other hand taking τc large results in
+a strong imposition of the mass conservation (it acts as a penalty term) giving, for the Taylor-Hood
+pair on regular meshes, exact (point-wise) zero divergence in the limit [29]. In this case it turns out
+that the extra dissipation also vanishes as ‖τ1/2c ∇ · uh‖2 −→ 0 in the limit of τc −→ ∞ as τ
+
+−1/2
+c [31].
+
+In any case it is important to keep in mind that when τc is changed the velocity field changes and the
+other dissipative terms in (31) also change. We cannot therefore conclude whether the method is more
+or less dissipative looking only at ‖τ1/2c ∇ · uh‖2. It is possible to arrive to such a conclusion when this
+parameter does not influences very much the solution, as in the case of equal order interpolation. This
+point is discussed in detail when presenting the numerical results in Sect. 5.
+
+Finally, the grad-div term also has a strong influence on the conditioning of the linear system and
+therefore on the convergence of iterative solvers. When the monolithic system is considered, this term
+acts as an augmented Lagrangian term improving the convergence of block iterative schemes but it is
+also known that it introduces stiffness in the velocity block [23, 24].
+
+An alternative to the parameter tuning needed for, e.g., Taylor Hood elements, is the use of
+divergence-free FEs that also satisfy the inf-sup condition (obviously, for these elements the grad-div
+stabilization vanishes). One of this group of elements is the Scott-Vogelius pair [30] which is given
+by the triangular/tetrahedral elements Pk/P disck−1 . This element is similar to the Taylor-Hood element
+except that the pressure space is discontinuous, which implies the property of point-wise divergence-
+free (taking the pressure test function as the divergence of the velocity). The Scott-Vogelius element
+is ISS under mild assumptions on the mesh, e.g., the order of the interpolation k ≥ d and the mesh
+is a barycentre-refinement of a regular mesh [31]. For quadrilateral meshes, Zhang introduced a new
+divergence-free ISS element in [32]. This work proposed a new family of quadrilateral elements that
+have a different interpolation space for each velocity component, which for the 3D case can be stated as
+Qk+1,k,k ×Qk,k+1,k ×Qk,k,k+1/Qdisck . In this case, the pressure field is also discontinuous with spurious
+modes filtered. We do not consider these approaches here.
+
+4. Block preconditioning for the monolithic problem
+
+A common approach when the OSS method is used is to treat the projection explicitly. That means
+to compute its value after the resolution of the velocity-pressure system and iterating until the solution
+converges. Although the resulting matrix has a better condition number than the ASGS method, the
+increase of nonlinear iterations due to the explicit treatment of the orthogonal projection may cause a
+lose of efficiency of this method in many cases. In [16] there is a computational cost analysis of these
+methods for turbulent incompressible flows where this effect can be shown.
+
+Alternatively, the implicit approach of the OSS method increases the number of unknowns of the
+problem, not only having the usual velocity and pressure unknowns, but also the FE projection. Treating
+the FE projection as a new unknown, the system of equations to be solved is increased with equation
+(21) or (22). This projection unknown is coupled with both the velocity and the pressure and these
+blocks are non-symmetric which makes the application of the block preconditioning technique more
+difficult. As mentioned, this is not the case when the term by term OSS or the term by term OSS with
+ISS elements are considered.
+
+In order to present our recursive block-preconditioning technique, let us assume that we solve the
+Navier-Stokes problem using (to fix ideas) a backward Euler time integration with a monolithic approach,
+i.e., without any velocity-pressure segregation algorithm. We consider the implicit term-by-term OSS
+stabilization given by the bilinear form (27) as this is the more general case when talking about number
+of unknowns that appear in the system, since there are the velocity, pressure and two projections. The
+
+7
+
+
+
+case of the term by term OSS with ISS elements and the ASGS are obtained just eliminating rows and
+columns of this system.
+
+Assuming that uh, ph, ηh and ξh are defined by a FE interpolation from the nodal values
+{Ua}a=1,...,Nu , {P b}b=1,...,Np , {Υ
+
+l}l=1,...,Nη and {Ξ
+m}m=1,...,Nξ , the FE approximation of the veloc-
+
+ity, pressure and projection fields can be written as
+
+uh(x) =
+Nu∑
+a=1
+
+φa(x)U
+a, ph(x) =
+
+Np∑
+b=1
+
+ψb(x)P b, ηh(x) =
+Nη∑
+l=1
+
+φη(x)Υ
+l, ξh(x) =
+
+Nξ∑
+m=1
+
+φξ(x)Ξ
+m,
+
+where {φa,i}a=1,...,Nu;i=1,...,d, {ψb}b=1,...,Np , {φl,i}l=1,...,Nη ;i=1,...,d and {φm,i}m=1,...,Nξ;i=1,...,d are the
+Lagrangian basis associated to Vh and Qh. Nu, Np, Nη and Nξ are the total amount of nodes for the
+velocity, pressure and projection fields.
+
+The matrix form of the problem (18) with the bilinear form (27) and, the projections (28)-(29) can
+be written as 
+
+
+1
+δt
+M + K + C + Aτ G Bη,τ 0
+
+D Lτ 0 Bξ,τ
+BTη,τ 0 Mη,τ 0
+
+0 BTξ,τ 0 Mξ,τ
+
+
+
+
+
+
+U
+P
+Υ
+Ξ
+
+
+ =
+
+
+
+
+Fu
+0
+0
+0
+
+
+ , (32)
+
+where M, K, C, D and G are the matrices that arise from the Galerkin integration of the mass, diffusive,
+convective, velocity divergence and pressure gradient terms, respectively. The definition of the remaining
+terms are given by
+
+Aabτ := (τmu · ∇φa,u · ∇φb) + (τc∇ · φa,∇ · φb), a, b = 1, ..., Nu,
+Labτ := (τm∇ψa,∇ψb), a, b = 1, ..., Np,
+Babη,τ := −(τmu · ∇φa,φb), a = 1, ..., Nu, b = 1, ..., Nη,
+BT,abη,τ := (τmφa,u · ∇φb), a = 1, ..., Nη, b = 1, ..., Nu,
+Mabη,τ := −(τmφa,φb), a, b = 1, ..., Nη,
+Babξ,τ := −(τm∇ψa,φb), a = 1, ..., Np, b = 1, ..., Nξ,
+
+BT,abξ,τ := (τmφa,∇ψb), a = 1, ..., Nξ, b = 1, ..., Np,
+
+Mabξ,τ := −(τmφa,φb), a, b = 1, ..., Nξ,
+
+being a and b the node identification. Note that D = −GT , when Dirichlet boundary conditions are
+considered. In general, Nξ = Nη, then, Mξ,τ = Mη,τ .
+
+For the ASGS method, only the first two rows and columns of the matricial system (32) are present,
+with different definitions of Aτ and Lτ that are straight forward from the bilinear form (19). In the
+case of OSS-ISS method, only the last row and column disappear, keeping the same definition for the
+remaining terms.
+
+To solve the system (32) we use a recursive block-preconditioning technique. This methodology was
+used in [25] for a multiphysics problem like the thermally coupled inductionless MHD. The idea is to
+construct recursively block preconditioners of size 2 × 2 from an incomplete block factorization of the
+original 2× 2 block matrices.
+
+Let us consider a block system equivalent to (32) defined as[
+M̃τ B̃Tτ
+B̃τ K̃τ
+
+] [
+Ξ̃
+Ũ
+
+]
+=
+[
+
+0
+F̃u
+
+]
+, (33)
+
+with K̃τ :=
+[ 1
+
+δt
+M + K + C + Aτ G
+
+D Lτ
+
+]
+, B̃τ :=
+
+[
+Bη,τ 0
+
+0 Bξ,τ
+
+]
+, B̃Tτ :=
+
+[
+BTη,τ 0
+
+0 BTξ,τ
+
+]
+, M̃τ :=[
+
+Mη,τ 0
+0 Mξ,τ
+
+]
+, Ξ̃ :=
+
+[
+Υ
+Ξ
+
+]
+, Ũ :=
+
+[
+U
+P
+
+]
+and F̃u :=
+
+[
+Fu
+0
+
+]
+.
+
+8
+
+
+
+The matrix that appear in the system of equations (33) can be factorized into an exact LU matrix
+product as follows
+
+Ã :=
+[
+
+M̃τ B̃Tτ
+B̃τ K̃τ
+
+]
+=
+[
+
+M̃τ 0
+B̃τ S̃
+
+] [
+I M̃−1τ B̃
+
+T
+τ
+
+0 I
+
+]
+(34)
+
+=
+[
+
+I 0
+B̃τM̃−1τ I
+
+] [
+M̃τ B̃Tτ
+0 S̃
+
+]
+,
+
+being S̃ := K̃τ − B̃Tτ M̃−1τ B̃τ the Schur complement with respect to U. In order to construct a precon-
+ditioner to the system (33) we build an inexact factorization of Ã such that each diagonal block is
+recursively preconditioned by another block preconditioner. We consider three different preconditioners
+of Ã, which try to approximate the LU decompositions (34)
+
+Diagonal preconditioner (D): PD(Ã) =
+[
+
+M̃τ 0
+0 S̃
+
+]−1
+=
+[
+
+M̃−1τ 0
+0 S̃−1
+
+]
+, (35)
+
+Upper preconditioner (U): PU (Ã) =
+[
+
+M̃τ B̃Tτ
+0 S̃
+
+]−1
+=
+[
+
+M̃−1τ −M̃−1τ B̃Tτ S̃−1
+0 S̃−1
+
+]
+, (36)
+
+Lower preconditioner (U): PL(Ã) =
+[
+
+M̃τ 0
+B̃τ S̃
+
+]−1
+=
+[
+
+M̃−1τ 0
+−S̃−1B̃τM̃−1τ S̃−1
+
+]
+. (37)
+
+To apply (35)-(37) we need to compute the action of M̃−1τ and S̃−1. In the first case, M̃−1τ is block diagonal
+thus requiring the inverse of each projection mass matrix, M−1η,τ and M
+
+−1
+ξ,τ . In a serial computation,
+
+they are applied by a direct method whereas in a parallel computation they are approximated by one
+application of a diagonal DD preconditioner constructed with the values of the diagonal of Mη,τ and
+Mξ,τ , respectively. In the second case we approximate the Schur complement inverse as S̃ ≈ K̃τ , that is,
+we neglect the contribution form the projections −B̃Tτ M̃−1τ B̃τ in the preconditioner. This approximation
+corresponds to use the solution of a system arising from a non-consistent formulation in which artificial
+pressure and streamline diffusion are added. Stability of the preconditioner is therefore guaranteed.
+
+For the application of K̃−1τ we consider other three preconditioners equivalent to (35)-(37). Using
+the notation Kτ := 1δtM + K + C + Aτ for the velocity block matrix and S : Lτ −DK
+
+−1
+τ G for the Schur
+
+complement associated to the pressure field, we have the following block preconditioners
+
+Diagonal preconditioner (D): PD(K̃τ ) =
+[
+
+Kτ 0
+0 S
+
+]−1
+=
+[
+
+K−1τ 0
+0 S−1
+
+]
+, (38)
+
+Upper preconditioner (U): PU (K̃τ ) =
+[
+
+Kτ G
+0 S
+
+]−1
+=
+[
+
+K−1τ −K−1τ GS−1
+0 S−1
+
+]
+, (39)
+
+Lower preconditioner (U): PL(K̃τ ) =
+[
+
+Kτ 0
+D S
+
+]−1
+=
+[
+
+K−1τ 0
+−S−1DK−1τ S−1
+
+]
+. (40)
+
+As usual, the inverse of the Schur complement is approximated by a pressure Laplacian matrix,
+S−1 ∼ δtL−1p . In regimes where the viscous term becomes dominant, one can use the Cahouet-Chabard
+preconditioner to approximate the inverse of the Schur complement, i.e., S−1 ∼ (ν+ τc)Mp+ δtL−1p . For
+the serial case, the Laplacian matrix is inverted using a direct method, but in a parallel context we ap-
+proximate the inverse of Lp by one application of a BDDC preconditioner over such matrix. Something
+similar is done for the inverse of the velocity block matrix Kτ . Here we use a direct method for the serial
+case and one application of BDDC preconditioner when parallel solvers are treated. We refer to [33] for
+the application of the BDDC preconditioner to nonsymmetric problems. For a more detailed description
+of the implementation and algorithms used for the recursive block-preconditioning technique we refer to
+[25]. Besides monolithic approaches, splitting velocity-pressure techniques are commonly used for high
+Reynolds turbulent flows, which can be interpreted as one application of a block-preconditioner [34, 35].
+High order time integration schemes that segregate velocity and pressure computation have recently
+been proposed in [36]. The use of the stabilized inf-sup stable FEs proposed herein are particularly
+well-suited for this type of schemes, because it keeps the index-2 differential-algebraic nature of the
+problem.
+
+9
+
+
+
+5. Numerical tests
+
+In this section we provide some numerical results for turbulent incompressible flow simulations using
+all the methods stated above. First, we do a comparative analysis between the three stabilization methods
+developed in Sect. 3. The parameter election for the pressure subscale term is assessed in all numerical
+tests performed in this section. But, first of all, we show some results about the computational cost of
+the VMS methods considered in this work. To check the efficiency of each method we solve a simple 2D
+steady problem with analytical solution.
+
+5.1. Analytical colliding flow
+In this section we solve a problem with analytical solution that models a colliding flow. This test
+
+have been used in [34] to discuss error estimates for the Stokes and Navier-Stokes problems using ISS
+FE velocity-pressure pairs. It has an analytical solution with the expression:
+
+u(x, y, t) =
+[
+
+20xy3
+5x4 − 5y4
+
+]
+, (41)
+
+p(x, y) = 60x2y − 20y3 + 40. (42)
+
+The problem is solved in the square domain [−1, 1]× [−1, 1] with a Reynolds number Re = 25. Here we
+analyse the solver iterations convergence in h for each preconditioner defined in Sect. 4 as well as the
+elapsed CPU time and the error on the velocity and pressure fields. Due to the simplicity of the test,
+we will solve the problem in serial using Q1/Q1 elements meshes for the ASGS and term-by-term OSS,
+and Q2/Q1 elements mesh for the OSS-ISS method.
+
+We only show the results when using the lower-triangular preconditioner for the global matrix PL(Ã),
+defined in (37). The diagonal version PD(Ã) defined in (35) give poorer performance and same results
+are obtained with the upper-triangular version PU (Ã) (36). For the velocity-pressure block, all precon-
+ditioners defined in (38)-(40) are considered.
+
+In Fig. 1 we depict the solver iterations needed to solve the problem as well the total elapsed CPU
+time for different meshes composed by 4, 8, 16, 32 or 64 elements per direction. When the OSS-ISS
+method is considered, as we use Q2/Q1 elements, the number of elements per direction is divided by
+two. The amount of solver iterations shown in Fig. 1(a) is computed adding all solver iterations needed
+for all nonlinear iterations. We see in this figure that the OSS-ISS method has an increase of solver
+iterations for the coarser mesh, compared with the other two methods. This behaviour is produced by
+the fact that for this case the mesh is too coarse, 2 × 2 Q2/Q1 elements, and the nonlinear iterations
+suffer a drastic increase. For finer meshes, the OSS-ISS method needs less solver iterations than the
+other two. We see that for the diagonal preconditioner PD(Kτ ) the OSS-ISS is the only that scales when
+we refine the mesh. The upper and lower preconditioners, PU (Kτ ) and PL(Kτ ), have similar results with
+a slightly better performance of the upper version for all methods. The ASGS and OSS methods also
+need a similar number of iterations to solve the problem, being the OSS method a little bit over the
+ASGS.
+
+Looking at the elapsed computational time, Fig. 1(b), we see that the OSS method is clearly more
+expensive, in terms of consumed time, than the other two methods. The ASGS method is slightly faster
+than the OSS-ISS, but the differences are almost negligible for the PU (Kτ ) preconditioner. The fact
+that the most expensive method is the OSS method is justified by the number of Degrees Of Freedom
+(DOFs) that appear in the system of equations. As stated in Sect. 4, the OSS method has two vectorial
+unknowns more than ASGS method. On the other hand, the OSS-ISS method also has an additional
+vectorial unknown than ASGS, but the pressure field is approximated with half nodes. Without taking
+into account the boundary conditions, for the 4×4 elements mesh (2×2 for the OSS-ISS case), we would
+have 175 DOFs for the OSS method, 75 DOFs for the ASGS method and 109 DOFs for the OSS-ISS
+method. Then, we see that, although it has more DOFs, the OSS-ISS method is comparable in terms of
+computational time with the ASGS. Further, the number of DOFs is a wrong measure of the CPU cost.
+The most expensive problem in such simulations is the pressure Poisson equation, which in this case is
+smaller (one order less) for ISS elements. Further, the projection DOFs are almost for free, since they
+just involve a mass matrix solve. Further, the ISS method exhibit a clearly lower number of iterations.
+
+10
+
+
+
+ 0
+
+ 500
+
+ 1000
+
+ 1500
+
+ 2000
+
+ 2500
+
+ 3000
+
+ 3500
+
+ 4000
+
+ 4500
+
+4 8 16 32 64
+
+#
+ I
+te
+
+ra
+ti
+
+o
+n
+s
+
+# Elements per direction
+
+Acumulated solver iterations
+
+ASGS - D
+ASGS - U
+ASGS - L
+
+OSS - D
+OSS - U
+OSS - L
+
+OSS_ISS - D
+OSS_ISS - U
+OSS_ISS - L
+
+(a) Solver iterations
+
+ 0
+
+ 50
+
+ 100
+
+ 150
+
+ 200
+
+ 250
+
+4 8 16 32 64
+
+T
+im
+
+e
+
+# Elements per direction
+
+CPU time
+
+ASGS - D
+ASGS - U
+ASGS - L
+
+OSS - D
+OSS - U
+OSS - L
+
+OSS_ISS - D
+OSS_ISS - U
+OSS_ISS - L
+
+(b) Elapsed CPU time
+
+Figure 1: Colliding flow solver iterations and elapsed CPU time using PU (Ã) for the global matrix.
+
+Let us now focus on the error in the velocity and pressure fields. Since we are solving a problem
+with analytical solution, we can evaluate exactly the error of the FE approximation, eu := ‖uh − u‖
+and ep := ‖ph − p‖. Fig. 2 depicts the convergence of both errors when refining the mesh. In Fig.
+2(a) we see that the velocity error converges as expected, with a 2nd order rate for the ASGS and
+OSS methods, which are approximated by Q1/Q1 elements, and with a 3rd order rate for the OSS-ISS
+method, which is approximated by a Q2/Q1 element. Looking at Fig. 2(b), it is seen that the pressure
+
+ 0.0001
+
+ 0.001
+
+ 0.01
+
+ 0.1
+
+ 1
+
+ 10
+
+4 8 16 32 64
+
+E
+rr
+
+o
+r
+
+# Elements per direction
+
+Velocity error norm
+
+ASGS - D
+ASGS - U
+ASGS - L
+
+OSS - D
+OSS - U
+OSS - L
+
+OSS_ISS - D
+OSS_ISS - U
+OSS_ISS - L
+
+2nd order
+3rd order
+
+(a) Velocity error
+
+ 0.01
+
+ 0.1
+
+ 1
+
+ 10
+
+ 100
+
+ 1000
+
+4 8 16 32 64
+
+E
+rr
+
+o
+r
+
+# Elements per direction
+
+Pressure error norm
+
+ASGS - D
+ASGS - U
+ASGS - L
+
+OSS - D
+OSS - U
+OSS - L
+
+OSS_ISS - D
+OSS_ISS - U
+OSS_ISS - L
+
+2nd order
+
+(b) Pressure error
+
+Figure 2: Colliding flow error convergence using PU (Ã) for the global matrix.
+
+error norm converges with a 2nd order rate for all the methods, as expected. Note that there is no
+difference between the results changing the preconditioner, since the solution is the same for all cases
+because we are not modifying the system that is solved.
+
+In order to check the efficiency of each method we compare the error norm with the elapsed com-
+putational time. In this way we have an idea of the time needed for a given method to achieve certain
+solution accuracy. Fig. 3 shows this comparison for velocity (Fig. 3(a)) and pressure (Fig. 3(b)) fields,
+where we see that, excluding the coarser mesh, the OSS-ISS method is much more efficient than the
+other two. Furthermore, the most efficient preconditioner is the upper version PU (Kτ ).
+
+5.2. Taylor Green Vortex flow
+It has been shown by many authors that VMS stabilization terms can act as a LES model for
+
+turbulent flows, introducing the appropriate dissipation of the small scales that are not captured by
+the coarse solution. In particular, ASGS and OSS methods were assessed in [16], showing that these
+methods are capable to perform a good LES simulation of different turbulent benchmark problems.
+In order to check the performance of the convection-only OSS stabilization of ISS elements for a LES
+
+11
+
+
+
+ 0.0001
+
+ 0.001
+
+ 0.01
+
+ 0.1
+
+ 1
+
+ 10
+
+ 0.01  0.1  1  10  100  1000
+
+E
+rr
+
+o
+r
+
+CPU time
+
+Velocity error norm vs. CPU time
+
+ASGS - D
+ASGS - U
+ASGS - L
+
+OSS - D
+OSS - U
+OSS - L
+
+OSS_ISS - D
+OSS_ISS - U
+OSS_ISS - L
+
+(a) Velocity error vs. CPU time
+
+ 0.01
+
+ 0.1
+
+ 1
+
+ 10
+
+ 100
+
+ 1000
+
+ 0.01  0.1  1  10  100  1000
+
+E
+rr
+
+o
+r
+
+CPU time
+
+Velocity error norm vs. CPU time
+
+ASGS - D
+ASGS - U
+ASGS - L
+
+OSS - D
+OSS - U
+OSS - L
+
+OSS_ISS - D
+OSS_ISS - U
+OSS_ISS - L
+
+(b) Pressure error vs. CPU time
+
+Figure 3: Colliding flow error vs. CPU time using PU (Ã) for the global matrix.
+
+simulation, we analyse its behaviour in the Taylor Green Vortex (TGV) flow. This problem is widely
+used for benchmarking turbulent numerical simulations.
+
+5.2.1. Test setting
+The computational domain is the cube (0, 2π)3 with periodical boundary conditions and the initial
+
+condition is given by an analytical field (see, e.g., [37])
+
+u(x, y, z, 0) =
+
+
+ uxuy
+
+uz
+
+
+ =
+
+
+ u0 cos(x) sin(y) sin(z)−u0 sin(x) cos(y) sin(z)
+
+0
+
+
+ (43)
+
+p(x, y, z, 0) = p0 +
+1
+16
+
+(cos(2x) + cos(2y)) (cos(2z) + 2) ,
+
+with
+u0 =
+
+2
+√
+
+3
+sin
+(
+γ +
+
+2π
+3
+
+)
+.
+
+We choose γ = 0, which gives the mean initial velocity u0 = 1. We solve the TGV problem using a
+Reynolds number Re = 1600.
+
+5.2.2. Comparison between different VMS methods
+The problem is solved from t = 0.0 to T = 10.0 with a fixed time step size of δt = 5.0 · 10−2 using
+
+a Crank-Nicolson time integration scheme, and the results are compared against a DNS by Brachet
+et al. [37]. We discretize the domain using different choices of the number of elements and the order
+of approximation, having two differentiated group of discretizations; one with 323 velocity DOFs and
+another with 643 velocity DOFs. The former will be composed by the following meshes: 323 Q1/Q1, 163
+Q2/Q2 elements or 163 Q2/Q1 elements when we use ISS discretization. The second group of meshes is
+made by: 643 Q1/Q1, 323 Q2/Q2 or 323 Q2/Q1 elements. For the stabilized formulations, ASGS and
+OSS, the algorithmic constants are c1 = 12 c2 = 2 and cc = 0.0, and for the OSS-ISS method the same
+c1 and c2 algorithmic constants are used, but cc = 4.0 unless noted otherwise. This choice of cc for the
+OSS-ISS method is assessed in a following subsection.
+
+In Fig. 4 we show the energy evolution and the energy dissipation rate for the ASGS, the OSS, and
+the OSS-ISS methods. A first thing that we have to state at this point is that the ASGS method with
+323 Q1/Q1 has failed to converge at early stages of the problem, a behaviour also observed in [16].
+Looking at Fig. 4(a) it is clear that the degree of interpolation makes a great difference on the solution,
+even with the same number of DOFs, the solution is more accurate when a higher order of interpolation
+is used. In the same figure we see that the loose of precision in the pressure for the ISS elements Q2/Q1
+does affect the solution, giving a result between the Q1/Q1 and Q2/Q2 solutions. At Fig. 4(b) we see
+that the OSS-ISS method is more dissipative than the others. This behaviour is caused by the lack of
+
+12
+
+
+
+ 0.05
+
+ 0.06
+
+ 0.07
+
+ 0.08
+
+ 0.09
+
+ 0.1
+
+ 0.11
+
+ 0.12
+
+ 0.13
+
+ 0  2  4  6  8  10
+
+E
+n
+e
+rg
+
+y
+
+Time
+
+Energy evolution
+
+ASGS_32_Q1/Q1
+OSS_32_Q1/Q1
+
+OSS_ISS_16_Q2/Q1
+ASGS_16_Q2/Q2
+
+OSS_16_Q2/Q2
+DNS
+
+(a) Energy evolution
+
+ 0
+
+ 0.002
+
+ 0.004
+
+ 0.006
+
+ 0.008
+
+ 0.01
+
+ 0.012
+
+ 0.014
+
+ 0  2  4  6  8  10
+
+D
+is
+
+s
+ip
+
+a
+ti
+o
+n
+ r
+
+a
+te
+
+Time
+
+Energy dissipation rate (total)
+
+ASGS_32_Q1/Q1
+OSS_32_Q1/Q1
+
+OSS_ISS_16_Q2/Q1
+ASGS_16_Q2/Q2
+
+OSS_16_Q2/Q2
+DNS
+
+(b) Total energy dissipation rate
+
+Figure 4: Energy and Total energy dissipation rate evolution with 323 velocity DOFs
+
+accuracy in the pressure field, which in turn affects the conservation of mass of the problem. A more
+exhaustive analysis of the effect of this term is done below.
+
+Although an important improvement of the solution is achieved by increasing the order of interpola-
+tion, 323 velocity DOFs is still a very coarse mesh and the results shown in Fig. 4 are far from the DNS
+ones. Then, the same problem is solved in a finer mesh, with the double of velocity DOFs per direction,
+with the results shown in Fig. 5. In this case, all methods converge at all time steps. Fig. 5(a) depicts
+the energy evolution and it is also seen that the increase on the degree of interpolation results in a more
+accurate solution. Both ASGS and OSS methods with 323 Q2/Q2 elements have very accurate results,
+providing a solution almost on top of the DNS. There are very little differences between stabilization
+methods when the same discretization is used. Furthermore, the results of the OSS-ISS method are
+closer to the Q1/Q1 discretization than to the Q2/Q2 one. The total energy dissipation rate shown
+in Fig. 5(b) denote a very good agreement of the Q2/Q2 solution with the DNS, while the Q1/Q1
+discretization for both ASGS and OSS methods are still more diffusive. Note that the OSS-ISS method
+for this discretization has more or less the same energy dissipation than the Q1/Q1 discretizations.
+
+ 0.05
+
+ 0.06
+
+ 0.07
+
+ 0.08
+
+ 0.09
+
+ 0.1
+
+ 0.11
+
+ 0.12
+
+ 0.13
+
+ 0  2  4  6  8  10
+
+E
+n
+e
+rg
+
+y
+
+Time
+
+Energy evolution
+
+ASGS_64_Q1/Q1
+OSS_64_Q1/Q1
+
+OSS_ISS_32_Q2/Q1
+ASGS_32_Q2/Q2
+
+OSS_32_Q2/Q2
+DNS
+
+(a) Energy evolution
+
+ 0
+
+ 0.002
+
+ 0.004
+
+ 0.006
+
+ 0.008
+
+ 0.01
+
+ 0.012
+
+ 0.014
+
+ 0.016
+
+ 0  2  4  6  8  10
+
+D
+is
+
+s
+ip
+
+a
+ti
+o
+n
+ r
+
+a
+te
+
+Time
+
+Energy dissipation rate (total)
+
+ASGS_64_Q1/Q1
+OSS_64_Q1/Q1
+
+OSS_ISS_32_Q2/Q1
+ASGS_32_Q2/Q2
+
+OSS_32_Q2/Q2
+DNS
+
+(b) Total energy dissipation rate
+
+Figure 5: Energy and Total energy dissipation rate evolution with 643 velocity DOFs
+
+When analysing the suitability of a LES model, a very important turbulent quantity to take into
+account is the energy spectra. It gives us information about how the energy is distributed among the
+scales of the problem. In order to assess the behaviour of the proposed methods in that aspect, we
+compare our results by the DNS by Gassner et al. [38]. In Fig. 6 the energy spectra at t = 9.0 is
+
+13
+
+
+
+depicted for both discretization groups. The coarser cases shown in Fig. 6(a) are all far from the DNS
+result, but follow the same pattern, with most of the energy on the greatest scales and little energy
+on the small scales, without any pileup of energy on the small scales. When the mesh is refined, see
+Fig. 6(b), the computed energy spectra tends to the DNS one. Note that also in this plot, Q2/Q2
+discretization have better agreement with the DNS, specially on the small scales, where the influence of
+the enrichment of the interpolation space is patent.
+
+ 0.001
+
+ 0.01
+
+ 10
+
+lo
+g
+(E
+
+)
+
+log(Time)
+
+Energy spectra
+
+OSS_32_Q1/Q1
+OSS_ISS_16_Q2/Q1
+
+ASGS_16_Q2/Q2
+OSS_16_Q2/Q2
+
+DNS
+
+(a) 323 velocity DOFs
+
+ 0.001
+
+ 0.01
+
+ 10
+
+lo
+g
+(E
+
+)
+
+log(Time)
+
+Energy spectra
+
+ASGS_64_Q1/Q1
+OSS_64_Q1/Q1
+
+OSS_ISS_32_Q2/Q1
+ASGS_32_Q2/Q2
+
+OSS_32_Q2/Q2
+DNS
+
+(b) 643 velocity DOFs
+
+Figure 6: Energy spectra at t = 9.0
+
+5.2.3. Computational cost
+It is clear that a good LES model has to reproduce as accurately as possible all the turbulent
+
+quantities, even for coarse meshes. The results presented until now show that ASGS and OSS methods
+perform better than the OSS-ISS when Q2/Q2 elements are used. Additionally, it has been seen that all
+methods converge to the DNS results when the mesh is refined. But a crucial point that has to be always
+taken into account when we talk about numerical simulations is the computational cost. At the end, we
+are looking for the cheapest method that allow us to reproduce accurately the physical phenomena that
+takes place in a turbulent flow. So in this subsection we will discuss the computational cost associated
+to each method and their efficiency when solving this kind of flows.
+
+To check the computational cost we look at the number of solver iterations needed for each method,
+shown in Fig. 7. In particular, Fig. 7(a) depicts the total amount of solver iterations at each time step,
+adding up all nonlinear iterations. Note that the change of the nonlinear iterations along the time can
+be clearly noticed by the jumps on the curves. We see that the cheapest method is the OSS-ISS for
+both discretizations, 323 and 643 velocity DOFs, with much less solver iterations per time step than
+the other methods. It is also seen that ASGS is a little bit cheaper than the OSS method, which can
+be caused by the size of the system, much bigger for the OSS case due to the implicit treatment of
+the projections. An interesting result also seen in 7(a) is the improvement on the computational cost
+when we go from Q1/Q1 to Q2/Q2 discretization, keeping constant the number of DOFs. Looking at
+7(b) we realize that at the end of the computation, the total amount of solver iterations needed by
+OSS-ISS method is around 1.5 times less than the ASGS method, for the finer mesh, and half of them
+for the coarse mesh. This result indicates that the OSS-ISS is a very good approach as a LES model
+for turbulent problems since, although it has been seen that is not the most accurate when looking to
+the turbulent quantities, it is much cheaper and we can refine the mesh in order to get better results
+remaining competitive with the other methods. Further, let us remark that the pressure Poisson solvers
+are the most computationally intensive, and ISS methods involve Q1 pressure spaces for Q2 ones for
+stabilized methods.
+
+5.2.4. Influence of the pressure subscale term
+As said above and also stated in Sect. 3.4, the pressure subscale τc(∇ · uh,∇ · vh) term has an
+
+important role when using ISS elements. In this subsection we are going to analyse the effect of this
+
+14
+
+
+
+ 0
+
+ 50
+
+ 100
+
+ 150
+
+ 200
+
+ 0  2  4  6  8  10
+
+#
+ I
+te
+
+ra
+ti
+o
+n
+s
+
+Time
+
+Solver iterations
+
+ASGS_32_Q1/Q1
+ASGS_64_Q1/Q1
+
+OSS_32_Q1/Q1
+OSS_64_Q1/Q1
+
+OSS_ISS_16_Q2/Q1
+OSS_ISS_32_Q2/Q1
+
+ASGS_16_Q2/Q2
+ASGS_32_Q2/Q2
+
+OSS_16_Q2/Q2
+OSS_32_Q2/Q2
+
+(a) Solver iterations per time step
+
+ 0
+
+ 5000
+
+ 10000
+
+ 15000
+
+ 20000
+
+ 25000
+
+ 30000
+
+ 0  2  4  6  8  10
+
+#
+ I
+te
+
+ra
+ti
+o
+n
+s
+
+Time
+
+Acumulated solver iterations
+
+ASGS_32_Q1/Q1
+ASGS_64_Q1/Q1
+
+OSS_32_Q1/Q1
+OSS_64_Q1/Q1
+
+OSS_ISS_16_Q2/Q1
+OSS_ISS_32_Q2/Q1
+
+ASGS_16_Q2/Q2
+ASGS_32_Q2/Q2
+
+OSS_16_Q2/Q2
+OSS_32_Q2/Q2
+
+(b) Acumulated solver iterations
+
+Figure 7: Computational cost
+
+term on the results when simulating the TGV problem. Hence, we redefine the τc definition in (17) by
+
+τc = cc
+(
+ν +
+
+c2
+c1
+h|uh|
+
+)
+, (44)
+
+which is equivalent to (17) when cc = 1.0. We keep the algorithmic parameters c1 = 12.0 and c2 = 2.0
+constant, so considering different values of cc we can evaluate the influence of the pressure subscale
+term on the solution. In this case we choose six different configurations cc = {0.0, 0.25, 0.5, 1.0, 2.0, 4.0}
+and solve the problem with the 163 Q2/Q1 elements mesh. We compare the solution against the one
+obtained with the OSS method with 163 Q2/Q2 elements discretization.
+
+In Fig. 8(a) the energy dissipation rate of the FE counterpart is shown. That is the viscous term
+ν‖∇uh‖2 that appears in equation (31). We see that when we reduce cc the method becomes more
+dissipative and it may seem a good idea to keep this term as small as possible in order to get closer to
+the DNS curve. But if we look at the energy spectra shown in Fig. 8(b), we see that this is not a good
+choice. What is actually happening when cc goes to zero is that the dissipation is taking place in the
+largest scales of the problem, while the smallest ones keep the energy, resulting in an energy pileup at
+the tail of the spectra. This means that the energy is not dissipating in the correct way and the small
+scales, which are the ones that have more influence on the viscous dissipation term, have more energy
+than the desired one. Therefore, a good selection is to choose cc = 4.0, which results are closer to the
+OSS method and has a better energy spectra shape. A higher value of cc eventually lead to unstable
+solutions, for instance, with cc = 8.0 and δt = 5.0 · 10−2 the solution fails to converge at t = 0.4.
+
+As stated in Sect. 3.4, the pressure subscale term is essential to enforce the incompressibility constrain
+at the discrete level. In Fig. 9 the total energy dissipation rate (Fig. 9(a)) is depicted together with the
+velocity divergence L2-norm ‖∇·uh‖ (Fig. 9(b)). We see that, effectively, ‖∇·uh‖ is reduced when τc is
+increased. The case of cc = 0.0 give especially bad results in terms of mass conservation, affecting also to
+the energy dissipation rate. In this case, as seen in Fig. 8(b), the over-dissipation on the large scales and
+the under-dissipation on the smallest ones makes the spatial derivatives too relevant on the fluid flow,
+increasing the ‖∇ · uh‖ term. The introduction of τc‖∇ · uh‖ into the energy dissipation equation (31)
+changes the way in which the flow dissipates its energy among the different scales, decreasing the energy
+of the small scales and, then, reducing the importance of the spatial derivatives, which is reflected in a
+lower value of ‖∇ · uh‖ but also in a lower dissipation rate, as seen in Fig. 9(a), even if a positive term
+has been added to (31).
+
+5.2.5. Refinement analysis for the OSS-ISS method
+In the computational cost analysis shown above we have seen that OSS-ISS has a great potential as
+
+a LES model, especially when we the computational cost is taken into account. This subsection aims
+
+15
+
+
+
+ 0
+
+ 0.002
+
+ 0.004
+
+ 0.006
+
+ 0.008
+
+ 0.01
+
+ 0.012
+
+ 0.014
+
+ 0  2  4  6  8  10
+
+D
+is
+
+s
+ip
+
+a
+ti
+o
+n
+ r
+
+a
+te
+
+Time
+
+Energy dissipation rate (FE counterpart)
+
+0.0
+0.25
+0.5
+1.0
+2.0
+4.0
+
+DNS
+OSS_16_Q2/Q2
+
+(a) Viscous energy dissipation rate
+
+ 0.001
+
+ 0.01
+
+ 10
+
+lo
+g
+(E
+
+)
+
+log(Time)
+
+Energy spectra
+
+0.0
+0.25
+0.5
+1.0
+2.0
+4.0
+
+DNS
+
+(b) Energy spectra
+
+Figure 8: Comparison for different cc choices for OSS-ISS with 323 velocity DOFs
+
+ 0
+
+ 0.005
+
+ 0.01
+
+ 0.015
+
+ 0.02
+
+ 0.025
+
+ 0.03
+
+ 0  2  4  6  8  10
+
+D
+is
+
+si
+p
+a
+ti
+
+o
+n
+  
+
+ra
+te
+
+Time
+
+Total energy dissipation rate
+
+      c_c =0.0
+      c_c =0.25
+
+      c_c =0.5
+      c_c =1.0
+      c_c =2.0
+      c_c =4.0
+
+DNS
+
+(a) Total energy dissipation rate
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 1.2
+
+ 1.4
+
+ 1.6
+
+ 1.8
+
+ 0  2  4  6  8  10
+
+L
+2
+
+-N
+o
+rm
+
+Time
+
+Velocity divergence norm
+
+      c_c =0.0
+      c_c =0.25
+
+      c_c =0.5
+      c_c =1.0
+      c_c =2.0
+      c_c =4.0
+
+(b) ‖∇ · uh‖
+
+Figure 9: Total energy dissipation and velocity divergence L2-norm for different cc choices for OSS-ISS with 323 velocity
+DOFs
+
+to check the performance of this method when we refine the mesh both reducing the element size and
+increasing the interpolation order.
+
+Once determined that the best algorithmic constant for the pressure subscale term is cc = 4.0 when
+ISS FEs are used, we keep this value constant and change the discretization. A refinement analysis can
+be done to determine if the LES approach presented in this work effectively converge to the DNS solution
+when we refine the mesh. In section 5.2 the TGV problem has been solved using different discretizations
+with 323 and 643 velocity DOFs. Now we go further and also solve the problem with 963 velocity DOFs,
+that is a 483 Q2/Q1 elements mesh. Furthermore, here we also use Q3/Q2 FEs. In particular, a 213
+and 323 Q3/Q2 elements meshes are used, corresponding to the group of 643 and 963 velocity DOFs,
+respectively. We also decrease the time step to δt = 2.5 · 10−2 for the discretizations with 643 velocity
+DOFs and δt = 1.5 · 10−2 for the discretizations with 963 velocity DOFs.
+
+In Fig. 10 we depict the kinetic energy and the total energy dissipation rate evolution for the different
+discretizations considered in this refinement analysis. Looking at the energy evolution in Fig. 10(a) it
+is clearly seen that the solution converge to the DNS results, giving the 323 Q3/Q2 elements mesh a
+very accurate solution, which is also evident in Fig. 10(b) where the total energy dissipation rate of
+this discretization is on top of the DNS solution. We also see in Fig. 10 the relevance of the degree of
+interpolation, giving much better results the discretization of higher order for a given number of DOFs.
+
+Now, we ask ourselves how the tuning of the parameter τc affects when finer meshes are used. In
+particular, we want to know how important the cc parameter becomes when higher order FEs are used.
+
+16
+
+
+
+ 0.05
+
+ 0.06
+
+ 0.07
+
+ 0.08
+
+ 0.09
+
+ 0.1
+
+ 0.11
+
+ 0.12
+
+ 0.13
+
+ 0  2  4  6  8  10
+
+E
+n
+e
+rg
+
+y
+
+Time
+
+Energy evolution
+
+  16-Q2/Q1 (32 vel. DOFs)
+  32-Q2/Q1 (64 vel. DOFs)
+  21-Q3/Q2 (63 vel. DOFs)
+  48-Q2/Q1 (96 vel. DOFs)
+  32-Q3/Q2 (96 vel. DOFs)
+
+DNS
+
+(a) Energy evolution
+
+ 0
+
+ 0.002
+
+ 0.004
+
+ 0.006
+
+ 0.008
+
+ 0.01
+
+ 0.012
+
+ 0.014
+
+ 0.016
+
+ 0  2  4  6  8  10
+
+D
+is
+
+si
+p
+a
+ti
+
+o
+n
+  
+ra
+
+te
+
+Time
+
+Total energy dissipation rate
+
+  16-Q2/Q1 (32 vel. DOFs)
+  32-Q2/Q1 (64 vel. DOFs)
+  21-Q3/Q2 (63 vel. DOFs)
+  48-Q2/Q1 (96 vel. DOFs)
+  32-Q3/Q2 (96 vel. DOFs)
+
+DNS
+
+(b) Total energy dissipation rate
+
+Figure 10: Energy and Total energy dissipation rate evolution refining the mesh with cc = 4.0.
+
+To answer this question we solve the TGV problem for two different discretizations: 323 Q2/Q1 and 213
+Q3/Q2 elements meshes, and three different values of cc: 0.0, 1.0 and 4.0.
+
+ 0
+
+ 0.005
+
+ 0.01
+
+ 0.015
+
+ 0.02
+
+ 0.025
+
+ 0  2  4  6  8  10
+
+D
+is
+
+si
+p
+
+a
+ti
+
+o
+n
+  
+ra
+
+te
+
+Time
+
+Total energy dissipation rate
+
+  32-Q2/Q1, c_c =0.0
+  32-Q2/Q1, c_c =1.0
+  32-Q2/Q1, c_c =4.0
+  21-Q3/Q2, c_c =0.0
+  21-Q3/Q2, c_c =1.0
+  21-Q3/Q2, c_c =4.0
+
+DNS
+
+(a) Total energy dissipation rate
+
+ 0
+
+ 0.5
+
+ 1
+
+ 1.5
+
+ 2
+
+ 2.5
+
+ 0  2  4  6  8  10
+
+L
+2
+
+-n
+o
+rm
+
+Time
+
+Velocity divergence norm
+
+  32-Q2/Q1, c_c =0.0
+  32-Q2/Q1, c_c =1.0
+  32-Q2/Q1, c_c =4.0
+  21-Q3/Q2, c_c =0.0
+  21-Q3/Q2, c_c =1.0
+  21-Q3/Q2, c_c =4.0
+
+(b) ‖∇ · uh‖
+
+Figure 11: Total energy dissipation and velocity divergence L2-norm for different cc choices for OSS-ISS with 643 velocity
+DOFs
+
+Fig. 11 depicts the total energy dissipation rate (Fig. 11(a)) and the velocity divergence L2-norm
+(Fig. 11(b)) for the two discretizations considered and for different choices of cc. We still see a dependence
+on cc, but differences reduce when higher order of interpolation is used, as expected. It is also seen that
+when increasing cc, the differences between the two discretizations are reduced (for a fixed cc). This
+behaviour is particularly significant when we look at the velocity divergence norm in Fig. 11(b), where
+we see that for cc = 0 the two discretizations give a completely different evolution of ‖∇ · uh‖, while
+for cc = 4.0 the results are almost the same. In the same figure, we can see that the largest value of
+‖∇ · uh‖ for cc is larger than the largest one depicted in Fig. 9(b), which is a result of a 163 Q2/Q1
+elements mesh.
+
+Going further we also do the same test for the 483 Q2/Q1 and 323 Q3/Q2 elements mesh (Fig. 12).
+In this figure we see that the differences between the three cc cases are reduced. Looking at Fig. 12(a)
+it is seen that for cc = 0 and Q2/Q1 elements, although the result is far from the DNS, the maximum
+value of the dissipation rate is much lower than the given in Fig. 11(a). When using Q3/Q2 elements, the
+changes on cc produce lower differences compared against the Q2/Q1 approximation. The divergence
+norm depicted in Fig. 12 also show improvements with respect to Fig. 11. In this case, the maximum
+value of the divergence for cc for Q2/Q1 elements is lower than the case of 643 velocity DOFs and also
+for the case of 323 velocity DOFs.
+
+To summarize, we have checked that refining the mesh we converge to the DNS results and, for a
+given number of DOFs, the results improve when higher order interpolation is used. On the hand, we
+
+17
+
+
+
+ 0
+
+ 0.002
+
+ 0.004
+
+ 0.006
+
+ 0.008
+
+ 0.01
+
+ 0.012
+
+ 0.014
+
+ 0.016
+
+ 0  2  4  6  8  10
+
+D
+is
+
+si
+p
+a
+ti
+
+o
+n
+  
+ra
+
+te
+
+Time
+
+Total energy dissipation rate
+
+  48-Q2/Q1, c_c =0.0
+  48-Q2/Q1, c_c =1.0
+  48-Q2/Q1, c_c =4.0
+  32-Q3/Q2, c_c =0.0
+  32-Q3/Q2, c_c =1.0
+  32-Q3/Q2, c_c =4.0
+
+DNS
+
+(a) Total energy dissipation rate
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 1.2
+
+ 1.4
+
+ 1.6
+
+ 1.8
+
+ 0  2  4  6  8  10
+
+L
+2
+
+-n
+o
+rm
+
+Time
+
+Velocity divergence norm
+
+  48-Q2/Q1, c_c =0.0
+  48-Q2/Q1, c_c =1.0
+  48-Q2/Q1, c_c =4.0
+  32-Q3/Q2, c_c =0.0
+  32-Q3/Q2, c_c =1.0
+  32-Q3/Q2, c_c =4.0
+
+(b) ‖∇ · uh‖
+
+Figure 12: Total energy dissipation and velocity divergence L2-norm for different cc choices for OSS-ISS with 963 velocity
+DOFs
+
+have seen that increasing cc we reduce ‖∇ · u‖, and consequently the accuracy of the solution.
+
+5.3. Turbulent channel flow at Reτ = 395
+In Sect. 5.2 we have tested an homogeneous turbulent flow. Now, we want to check the behaviour
+
+of the proposed OSS-ISS stabilization method for a wall bounded turbulent test. To do so, we use the
+Turbulent Channel Flow (TCF) test with a Reynolds number based on the wall friction (Reτ ) equal to
+395. This test was exhaustively tested using a VMS method with OSS in [16].
+
+5.3.1. Test setting
+The domain of the TCF problem for Reτ = 395 is given by a box of length (2πδ × 2δ × 2/3πδ).
+
+The x-direction is the flow direction, also called stream-wise direction, the y-direction is the wall-normal
+direction, and the z-direction is the span-wise direction. Homogeneous Dirichlet boundary conditions
+for the velocity DOFs are imposed on wall-normal direction boundaries (y = −δ and y = δ), while
+periodic boundary conditions are defined on the stream-wise and span-wise directions. Fig. 13 depicts
+schematically the geometry of the computational domain for this test.
+
+Figure 13: Channel computational domain.
+
+The problem is solved using two different meshes, with 323 Q2−Q1 and 213 Q3/Q2 elements mesh.
+Both meshes have refined elements near the wall in the wall-normal direction, like the one used in
+[16]. The algorithmic constants that appear in the OSS-ISS method will be discussed in the following
+subsections.
+
+The obtained results are compared against a DNS computed in [39, 40] (MKM-DNS), then, the
+parameter election will be according to the ones defined in the cited paper. The bulk mean velocity
+and the half channel height are taken equal to one, Ū = 1 and δ = 1. Knowing the estimated Reynolds
+number based on the bulk mean velocity, Re = Ū2δ/ν ≈ 13, 750 (see [41]), one can obtain the value
+
+18
+
+
+
+of the viscosity, ν = 1.4545 · 10−4. From the Reynolds number based on the friction velocity, we can
+determine the friction velocity magnitude: uτ = Reτν/δ = 5.745 ·10−2. Thus, the wall shear stress reads
+τw = u2τ = 3.3010 · 10−3. A force equivalent to a pressure gradient is imposed to drive the movement of
+the flow in the stream-wise direction, fx = τw/δ.
+
+In order to achieve the statistically steady state solution, an initial solution is provided following
+[42]. This initial solution consists in a unidirectional velocity profile over which is added a fluctuation:
+
+ux = C
+(
+1− y8
+
+)
++ �
+
+Lx
+2
+
+sin(πy) cos
+(
+
+4πx
+Lx
+
+)
+sin
+(
+
+2πz
+Lz
+
+)
+, (45)
+
+uy = −�(1 + cos(πy)) sin(πy) sin
+(
+
+4πx
+Lx
+
+)
+sin
+(
+
+2πz
+Lz
+
+)
+,
+
+uz = −�
+Lz
+2
+
+sin
+(
+
+4πx
+Lx
+
+)
+sin(πy) cos
+
+(
+2πz
+Lz
+
+)
+.
+
+The constant C is chosen in a such way that the field without fluctuations would have a bulk mean
+velocity Ū = 1.0. The fluctuation constant � is 10% of the bulk mean velocity.
+
+5.3.2. Effect of the pressure subscale term on the conservation of mass
+As it has been said in Sect. 3.4, the pressure subscale term has a noticeable effect on the solution
+
+when ISS elements are used. The effect of this term has also been analysed in a previous test, see Sect.
+5.2. Here we will also assess the effect of this term on a wall-bounded flow.
+
+First we will focus on the effect of the second term in (44), looking how the c2/c1 ratio affects the
+solution keeping cc = 1.0. As we are in a turbulent regime, we do not expect that the viscous counterpart
+in 16 will have relevance on the solution, but we do expect it for the convective counterpart. Then, we
+will keep c1 = 12.0 and we will increase c2 from 1.0 to 16.0. The variations on c2 not only have an effect
+on τc but also on τm. We solve the problem from t = 0 to t = 20π (time needed to cross the channel
+10 times, based on the initial mean bulk velocity Ū) starting from the initial solution (45) using the
+implicit version of (3-3) SRK scheme. The energy and ‖∇ · uh‖ evolution are plotted in Fig. 14.
+
+ 0.1
+
+ 0.15
+
+ 0.2
+
+ 0.25
+
+ 0.3
+
+ 0.35
+
+ 0.4
+
+ 0.45
+
+ 0.5
+
+ 0.55
+
+ 0.6
+
+ 0  10  20  30  40  50  60  70
+
+E
+n
+e
+rg
+
+y
+
+Time
+
+Energy evolution
+
+c2 = 1.0
+c2 = 2.0
+c2 = 4.0
+c2 = 8.0
+
+c2 = 16.0
+
+(a) Energy evolution
+
+ 0
+
+ 0.5
+
+ 1
+
+ 1.5
+
+ 2
+
+ 2.5
+
+ 0  10  20  30  40  50  60  70
+
+N
+o
+rm
+
+Time
+
+Velocity divergence norm
+
+c2 = 1.0
+c2 = 2.0
+c2 = 4.0
+c2 = 8.0
+
+c2 = 16.0
+
+(b) ‖∇ · uh‖
+
+Figure 14: Energy evolution and velocity divergence norm for different values of c2, keeping c1 = 12.0 and cc = 1.0
+
+It is clearly seen in Fig. 14 that the modification of c2 has an effect on the solution. We see in Fig.
+14(a) that the energy drops faster when lower values of c2 are used. Looking at Fig. 14(b) we see that
+the velocity divergence L2-norm is higher when lower values of c2 are taken. The evolution of ‖∇ · uh‖
+gives us information about how the flow is evolving. From an initial and structured condition, the flow
+starts becoming chaotic around t = 10, depending on the case, when the turbulent structures increase
+the rotation of the flow particles, growing the spatial derivatives. At this stage, the energy dissipates
+until the equilibrium between the internal energy and the external forces is reached. These stages can
+be seen in Fig. 15, where we depict the vorticity isosurfaces for |ω| = 5.0 coloured with the velocity field
+module at t = 0.15 (Fig. 15(a)), at t = 12.0 (Fig. 15(b)) and at t = 70.0 (Fig. 15(d)) setting c2 = 1.0
+and cc = 32.0, and using a 323 Q2/Q1 elements mesh.
+
+19
+
+
+
+(a) t = 0.15 (b) t = 12.0 (c) t = 70.0
+
+Figure 15: Velocity module at different times with c1 = 12.0, c2 = 1.0 and cc = 32.0 using a 323 Q2/Q1 elements mesh.
+
+When increasing c2 we are decreasing the value of τm, but increasing τc. This means that in the
+energy dissipation equation (31), the dissipation through the convective term ‖τ1/2m (uh · ∇uh − ηh)‖2
+
+becomes less relevant in front of the ‖τ1/2c ∇ · uh‖2.
+Now, knowing the influence of c2, and with the aim to distinguish the effect of modifying τm or τc,
+
+we keep this constant fixed with a value c2 = 8.0 and we analyse the influence of τc on the solution,
+by changing cc. In this situation, τm will remain constant for all cases and we will see the effect of the
+pressure subscale term. For this test, we solve the problem until t = 300, where the energy evolution
+stabilizes for all cc choices. In Fig. 16 we see that the energy evolution (Fig. 16(a)) and the divergence
+
+ 0.2
+
+ 0.3
+
+ 0.4
+
+ 0.5
+
+ 0.6
+
+ 0.7
+
+ 0  50  100  150  200  250  300
+
+E
+n
+e
+rg
+
+y
+
+Time
+
+Energy evolution
+
+cc = 1.0
+cc = 4.0
+cc = 8.0
+
+cc = 16.0
+cc = 32.0
+cc = 64.0
+
+(a) Energy evolution
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 1.2
+
+ 1.4
+
+ 0  50  100  150  200  250  300
+
+L
+2
+
+-n
+o
+rm
+
+Time
+
+Velocity divergence norm
+
+cc = 1.0
+cc = 4.0
+cc = 8.0
+
+cc = 16.0
+cc = 32.0
+cc = 64.0
+
+(b) ‖∇ · uh‖
+
+Figure 16: Energy evolution and velocity divergence norm for different values of cc, keeping c1 = 12.0 and c2 = 8.0
+
+norm evolution (Fig. 16(b)) follow the same pattern observed in Fig. 14. In this case we see that the
+improvement on the mass conservation is more pronounced when increasing cc than when increasing c2.
+We also see in Fig. 16(a) that there is a certain threshold after which the result is improving very little.
+In this case, the results for cc = 32.0 and cc = 64.0 are almost the same.
+
+We can compare our results with the MKM-DNS, contrasting the mean velocity and its fluctuations
+in Fig. 17. To obtain these results we have solved the problem from t = 300 to t = 330 with a time
+step size of δt = 0.03, collecting 1000 samples to obtain the mean quantities. The mean quantities
+are computed integrating the desired quantity within each element and adding up all elemental results
+belonging to the same y-orthogonal plane. Thus, since we are using high-order elements, the number of
+points that will appear in the graphics will be smaller than the number of DOFs. This procedure was
+also followed in [43] noting that the integral averaging procedure takes into account information from
+the secondary nodes that the widely used point-wise averaging does not contemplate.
+
+Fig. 17(a) depicts the mean stream-wise velocity normalized by the prescribed wall-shear velocity,
+uτ . In this picture we see the difference when changing cc, where the dissipation of energy shown in Fig.
+16(a) becomes clear looking at the velocity magnitude. The increase of ‖∇ · uh‖, and its consequent
+loose of mass conservation, results in a mean velocity profile much lower than the DNS. We see that for
+cc = 32.0 and cc = 64.0 the mean velocity profile is on top the DNS result, even for the coarse mesh
+in which we are solving the problem. Looking at the stream-wise velocity fluctuation (Fig. 17(b)) we
+
+20
+
+
+
+ 0
+
+ 2
+
+ 4
+
+ 6
+
+ 8
+
+ 10
+
+ 12
+
+ 14
+
+ 16
+
+ 18
+
+ 20
+
+ 22
+
+ 1  10  100
+
+U
++
+
+y+
+
+Mean stream-wise velocity
+
+cc = 1.0
+cc = 4.0
+cc = 8.0
+
+cc = 16.0
+cc = 32.0
+cc = 64.0
+MKM-DNS
+
+(a) Mean streamwise velocity
+
+ 0
+
+ 0.5
+
+ 1
+
+ 1.5
+
+ 2
+
+ 2.5
+
+ 3
+
+ 3.5
+
+ 0  50  100  150  200  250  300  350
+
+u
+'
+
+y+
+
+Stream-wise velocity fluctuation
+
+cc = 1.0
+cc = 4.0
+cc = 8.0
+
+cc = 16.0
+cc = 32.0
+cc = 64.0
+MKM-DNS
+
+(b) Rms streamwise velocity fluctuation
+
+ 0
+
+ 0.1
+
+ 0.2
+
+ 0.3
+
+ 0.4
+
+ 0.5
+
+ 0.6
+
+ 0.7
+
+ 0.8
+
+ 0.9
+
+ 1
+
+ 0  50  100  150  200  250  300  350
+
+v
+'
+
+y^+
+
+Wall-normal velocity fluctuation
+
+cc = 1.0
+cc = 4.0
+cc = 8.0
+
+cc = 16.0
+cc = 32.0
+cc = 64.0
+MKM-DNS
+
+(c) Rms wall-normal velocity fluctuation
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 1.2
+
+ 1.4
+
+ 1.6
+
+ 0  50  100  150  200  250  300  350
+
+w
+'
+
+y^+
+
+Span-wise velocity fluctuation
+
+cc = 1.0
+cc = 4.0
+cc = 8.0
+
+cc = 16.0
+cc = 32.0
+cc = 64.0
+MKM-DNS
+
+(d) Rms spanwise velocity fluctuation
+
+Figure 17: Mean stream-wise velocity and rms velocity fluctuations using a 163 Q2/Q1 mesh for different choices of cc.
+
+see that it increases as we increase cc. This behaviour is justified by the fact that for low cc values we
+have less energy in the system, and then, the fluctuating magnitude is also lower. The wall-normal and
+span-wise velocity fluctuations also give the smallest fluctuation magnitude for the smallest cc value,
+but increasing cc the fluctuation grows until certain point and then it decreases, becoming closer to the
+DNS curve.
+
+From Fig. 17 we clearly see that increasing cc the results improve, but this procedure may have
+some drawbacks. On of them is the ill-conditioning of the system of equations when cc → ∞. Table
+1 summarizes the total accumulated solver iterations as well as the elapsed time needed to solve the
+problem for the different choices of cc. As we see in Table 1, to solve the TCF problem with cc = 64.0
+
+Table 1: Solver iterations and elapsed time to solve the TCF problem from t = 300 to t = 330 for different cc values.
+
+cc Solver iterations Elapsed time (s) Increment in time (%)
+1.0 397899 19238 0.0
+4.0 402490 19674 2.27
+8.0 422217 19987 3.89
+16.0 466687 20803 8.13
+32.0 539879 22794 18.48
+64.0 626487 24817 29.00
+
+is a 29.0% more expensive than solving it with cc = 1.0. Thus, it is clear that at some point it could be
+preferable to refine the mesh rather than increase the cc value if we want more accurate results.
+
+Provided that in all results shown until now, the case cc = 32.0 gives almost the same solution than
+the cc = 64.0 case, hereinafter we will only consider the case in which the parametric constants are
+c1 = 12.0, c2 = 8.0 and cc = 32.0.
+
+21
+
+
+
+5.3.3. Refinement for a given cc
+Let us now explore what happens when the mesh is refined in the TCF test. Here we consider four
+
+different discretizations changing both the element size and the order of interpolation: 163 Q2/Q1, 243
+Q2/Q1, 163 Q3/Q2 and 323 Q2/Q1. These discretizations have 323, 483, 483 and 643 velocity DOFs,
+respectively.
+
+Looking at the energy evolution (Fig. 18(a)) and the velocity divergence L2-norm (Fig. 18(b)) de-
+picted in Fig. 18 we see that there are very little differences between the cases considered in this section.
+This means that given the appropriate parametric constants, the energy evolves in a similar way for all
+discretizations, with a similar evolution of the mass conservation.
+
+ 0.4
+
+ 0.42
+
+ 0.44
+
+ 0.46
+
+ 0.48
+
+ 0.5
+
+ 0.52
+
+ 0.54
+
+ 0.56
+
+ 0.58
+
+ 0.6
+
+ 0  50  100  150  200  250  300
+
+E
+n
+e
+rg
+
+y
+
+Time
+
+Energy evolution
+
+  16-Q2/Q1
+  24-Q2/Q1
+  16-Q3/Q2
+  32-Q2/Q1
+
+(a) Energy evolution
+
+ 0
+
+ 0.005
+
+ 0.01
+
+ 0.015
+
+ 0.02
+
+ 0.025
+
+ 0.03
+
+ 0  50  100  150  200  250  300
+
+L
+2
+
+-n
+o
+rm
+
+Time
+
+Velocity divergence norm
+
+  16-Q2/Q1
+  24-Q2/Q1
+  16-Q3/Q2
+  32-Q2/Q1
+
+(b) ‖∇ · uh‖
+
+Figure 18: Energy evolution and velocity divergence norm refining the mesh, keeping c1 = 12.0, c2 = 8.0 and cc = 32.0
+
+If we focus on the averaged turbulent quantities shown in Fig. 19, we also see similar results between
+the different cases. In Fig. 19(a) the mean stream-wise velocity is plotted, and it is seen that all methods
+are almost on top of the DNS curve. The 163 Q3/Q2 discretization gives a mean velocity profile slightly
+lower than the other discretizations, which is also reflected on the energy evolution shown in Fig. 18(a).
+If we look at the velocity fluctuations in span-wise, wall-normal, and span-wise directions depicted in
+Fig. 19(b), Fig. 19(c) and Fig. 19(d), respectively, the convergence to the DNS solution is clear.
+
+6. Conclusions
+
+In this article we have considered the numerical simulation of turbulent incompressible flows using
+the term-by-term OSS method for convection-stabilization applied to ISS elements. We have considered
+an implicit treatment of the projection. For the solution of the monolithic linear systems a block pre-
+conditioning strategy that makes use of recursive block factorizations has been proposed. Among the
+three variants we proposed, namely diagonal, lower and upper triangular, the last two are much faster
+than the first one, as expected, the upper triangular being slightly faster for the problems considered.
+
+Using this strategy, the comparison of the three methods, ASGS, term-by-term OSS, and convection-
+only OSS with ISS elements reveals that the accuracy is similar for the same order of interpolation of the
+velocity, the OSS-ISS being slightly inferior in this respect. But on the other hand, when computational
+cost is analysed the OSS-ISS is clearly the cheapest one so a finer discretization can be used. Another
+advantage of the OSS-ISS method is that it does not change the nature in time of the problem, i.e., the
+discrete system is an index-2 differential-algebraic equation. Thus, it allow us, e.g., to use Segregated
+Runge-Kutta (SRK) time integration schemes that cannot be applied to the ASGS or OSS methods.
+This issue will be discussed in further works, but we can say that SRK schemes are well suited to perform
+high-order time integration as well as the use of an adaptive time-stepping technique. This method was
+firstly introduced and tested for laminar incompressible flows in [36].
+
+Finally, we have also analysed the influence of the grad-div stabilization on the results when ISS
+discretizations are considered. It has been clearly shown that this term affects the solution. Increasing
+the value of cc results in a better mass conservation and better results but this saturates at some point.
+
+22
+
+
+
+ 0
+
+ 2
+
+ 4
+
+ 6
+
+ 8
+
+ 10
+
+ 12
+
+ 14
+
+ 16
+
+ 18
+
+ 20
+
+ 22
+
+ 1  10  100
+
+U
++
+
+y+
+
+Mean stream-wise velocity
+
+  16-Q2/Q1
+  24-Q2/Q1
+  16-Q3/Q2
+  32-Q2/Q1
+MKM-DNS
+
+(a) Mean streamwise velocity
+
+ 0
+
+ 0.5
+
+ 1
+
+ 1.5
+
+ 2
+
+ 2.5
+
+ 3
+
+ 3.5
+
+ 0  50  100  150  200  250  300  350
+
+u
+'
+
+y+
+
+Stream-wise velocity fluctuation
+
+  16-Q2/Q1
+  24-Q2/Q1
+  16-Q3/Q2
+  32-Q2/Q1
+MKM-DNS
+
+(b) Rms streamwise velocity fluctuation
+
+ 0
+
+ 0.1
+
+ 0.2
+
+ 0.3
+
+ 0.4
+
+ 0.5
+
+ 0.6
+
+ 0.7
+
+ 0.8
+
+ 0.9
+
+ 1
+
+ 0  50  100  150  200  250  300  350
+
+D
+is
+
+si
+p
+
+a
+ti
+
+o
+n
+  
+ra
+
+te
+
+y^+
+
+Wall-normal velocity fluctuation
+
+  16-Q2/Q1
+  24-Q2/Q1
+  16-Q3/Q2
+  32-Q2/Q1
+MKM-DNS
+
+(c) Rms wall-normal velocity fluctuation
+
+ 0
+
+ 0.2
+
+ 0.4
+
+ 0.6
+
+ 0.8
+
+ 1
+
+ 1.2
+
+ 1.4
+
+ 0  50  100  150  200  250  300  350
+
+D
+is
+
+si
+p
+
+a
+ti
+
+o
+n
+  
+ra
+
+te
+
+y^+
+
+Span-wise velocity fluctuation
+
+  16-Q2/Q1
+  24-Q2/Q1
+  16-Q3/Q2
+  32-Q2/Q1
+MKM-DNS
+
+(d) Rms spanwise velocity fluctuation
+
+Figure 19: Mean stream-wise velocity and rms velocity fluctuations for using different discretizations.
+
+Moreover, this effect is smaller when the mesh is refined and also when higher order interpolations are
+used.
+
+Acknowledgements
+
+This work has been partially funded by the European Research Council under the FP7 Programme
+Ideas through the Starting Grant No. 258443 - COMFUS: Computational Methods for Fusion Technol-
+ogy. O. Colomés gratefully acknowledges the support received from the Catalan Government through a
+FI fellowship.
+
+References
+
+[1] P. Sagaut, Large Eddy Simulations for Incompressible Flows, Vol. 3, Springer Berlin, 2000.
+
+[2] J. P. Boris, F. F. Grinstein, E. S. Oran, R. L. Kolbe, New insights into large eddy simulation, Fluid
+Dynamics Research 10 (4-6) (1992) 199.
+
+[3] T. J. Hughes, Multiscale phenomena: Green’s functions, the Dirichlet-to-Neumann formulation,
+subgrid scale models, bubbles and the origins of stabilized methods, Computer Methods in Applied
+Mechanics and Engineering 127 (1-4) (1995) 387–401.
+
+[4] T. J. Hughes, G. R. Feijóo, L. Mazzei, J.-B. Quincy, The variational multiscale method–a paradigm
+for computational mechanics, Computer Methods in Applied Mechanics and Engineering 166 (1-2)
+(1998) 3–24.
+
+23
+
+http://www.ulb.tu-darmstadt.de/tocs/133724328.pdf
+http://iopscience.iop.org/1873-7005/10/4-6/A01
+http://www.sciencedirect.com/science/article/pii/0045782595008449
+http://www.sciencedirect.com/science/article/pii/0045782595008449
+http://www.sciencedirect.com/science/article/pii/S0045782598000796
+http://www.sciencedirect.com/science/article/pii/S0045782598000796
+
+
+[5] A. N. Brooks, T. J. Hughes, Streamline upwind/Petrov-Galerkin formulations for convection dom-
+inated flows with particular emphasis on the incompressible Navier-Stokes equations, Computer
+Methods in Applied Mechanics and Engineering 32 (1-3) (1982) 199–259.
+
+[6] A. Linke, Collision in a cross-shaped domain - A steady 2d Navier-Stokes example demonstrat-
+ing the importance of mass conservation in CFD, Computer Methods in Applied Mechanics and
+Engineering 198 (41-44) (2009) 3278–3286.
+
+[7] M. Olshanskii, G. Lube, T. Heister, J. Löwe, Grad-div stabilization and subgrid pressure mod-
+els for the incompressible Navier-Stokes equations, Computer Methods in Applied Mechanics and
+Engineering 198 (49-52) (2009) 3975–3988.
+
+[8] T. J. R. Hughes, L. Mazzei, A. A. Oberai, A. A. Wray, The multiscale formulation of large eddy
+simulation: Decay of homogeneous isotropic turbulence, Physics of Fluids 13 (2) (2001) 505–512.
+
+[9] T. J. R. Hughes, A. A. Oberai, L. Mazzei, Large eddy simulation of turbulent channel flows by the
+variational multiscale method, Physics of Fluids 13 (6) (2001) 1784–1799.
+
+[10] R. Codina, Stabilized finite element approximation of transient incompressible flows using orthogo-
+nal subscales, Computer Methods in Applied Mechanics and Engineering 191 (39–40) (2002) 4295–
+4321.
+
+[11] B. Koobus, C. Farhat, A variational multiscale method for the large eddy simulation of compressible
+turbulent flows on unstructured meshes–application to vortex shedding, Computer Methods in
+Applied Mechanics and Engineering 193 (15-16) (2004) 1367–1383.
+
+[12] V. John, A. Kindl, Variants of projection-based finite element variational multiscale methods for
+the simulation of turbulent flows, International Journal for Numerical Methods in Fluids 56 (8)
+(2008) 1321–1328.
+
+[13] V. John, A. Kindl, Numerical studies of finite element variational multiscale methods for turbulent
+flow simulations, Computer Methods in Applied Mechanics and Engineering 199 (13-16) (2010)
+841–852.
+
+[14] A. Masud, R. Calderer, A variational multiscale method for incompressible turbulent flows: Bubble
+functions and fine scale fields, Computer Methods in Applied Mechanics and Engineering 200 (33-
+36) (2011) 2577–2593.
+
+[15] Y. Bazilevs, V. Calo, J. Cottrell, T. Hughes, A. Reali, G. Scovazzi, Variational multiscale residual-
+based turbulence modeling for large eddy simulation of incompressible flows, Computer Methods
+in Applied Mechanics and Engineering 197 (1-4) (2007) 173–201.
+
+[16] O. Colomés, S. Badia, R. Codina, J. Principe, Assessment of variational multiscale models for the
+large eddy simulation of turbulent incompressible flows, Computer Methods in Applied Mechanics
+and Engineering 285 (2015) 32–63.
+
+[17] R. Codina, Stabilization of incompressibility and convection through orthogonal sub-scales in finite
+element methods, Computer Methods in Applied Mechanics and Engineering 190 (13-14) (2000)
+1579–1599.
+
+[18] R. Codina, J. Principe, O. Guasch, S. Badia, Time dependent subscales in the stabilized finite
+element approximation of incompressible flow problems, Computer Methods in Applied Mechanics
+and Engineering 196 (21-24) (2007) 2413–2430.
+
+[19] R. Codina, Analysis of a stabilized finite element approximation of the Oseen equations using
+orthogonal subscales, Applied Numerical Mathematics 58 (3) (2008) 264–283.
+
+[20] M. Braack, E. Burman, Local Projection Stabilization for the Oseen Problem and Its Interpretation
+as a Variational Multiscale Method, SIAM Journal on Numerical Analysis 43 (6) (2006) 2544–2566.
+
+24
+
+http://www.sciencedirect.com/science/article/pii/0045782582900718
+http://www.sciencedirect.com/science/article/pii/0045782582900718
+http://www.sciencedirect.com/science/article/pii/S0045782509002138
+http://www.sciencedirect.com/science/article/pii/S0045782509002138
+http://www.sciencedirect.com/science/article/pii/S004578250900303X
+http://www.sciencedirect.com/science/article/pii/S004578250900303X
+http://pof.aip.org/resource/1/phfle6/v13/i2/p505_s1
+http://pof.aip.org/resource/1/phfle6/v13/i2/p505_s1
+http://pof.aip.org/resource/1/phfle6/v13/i6/p1784_s1
+http://pof.aip.org/resource/1/phfle6/v13/i6/p1784_s1
+http://www.sciencedirect.com/science/article/pii/S0045782502003377
+http://www.sciencedirect.com/science/article/pii/S0045782502003377
+http://www.sciencedirect.com/science/article/pii/S0045782504000398
+http://www.sciencedirect.com/science/article/pii/S0045782504000398
+http://onlinelibrary.wiley.com/doi/10.1002/fld.1712/abstract
+http://onlinelibrary.wiley.com/doi/10.1002/fld.1712/abstract
+http://www.sciencedirect.com/science/article/pii/S0045782509000395
+http://www.sciencedirect.com/science/article/pii/S0045782509000395
+http://www.sciencedirect.com/science/article/pii/S0045782511001435
+http://www.sciencedirect.com/science/article/pii/S0045782511001435
+http://www.sciencedirect.com/science/article/pii/S0045782507003027
+http://www.sciencedirect.com/science/article/pii/S0045782507003027
+http://www.sciencedirect.com/science/article/pii/S0045782514004113
+http://www.sciencedirect.com/science/article/pii/S0045782514004113
+http://www.sciencedirect.com/science/article/pii/S0045782500002541
+http://www.sciencedirect.com/science/article/pii/S0045782500002541
+http://www.sciencedirect.com/science/article/pii/S0045782507000035
+http://www.sciencedirect.com/science/article/pii/S0045782507000035
+http://www.sciencedirect.com/science/article/pii/S0168927406002194
+http://www.sciencedirect.com/science/article/pii/S0168927406002194
+http://www.jstor.org/stable/40232751
+http://www.jstor.org/stable/40232751
+
+
+[21] S. Badia, On stabilized finite element methods based on the Scott–Zhang projector. Circumvent-
+ing the inf–sup condition for the Stokes problem, Computer Methods in Applied Mechanics and
+Engineering 247–248 (0) (2012) 65–72.
+
+[22] G Lube, G Rapin, J Löwe, Local projection stabilization for incompressible flows: Equal-order vs.
+inf-sup stable interpolation, Electronic Transactions on Numerical Analysis 32 (2008) 106–122.
+
+[23] M. Olshanskii, A. Reusken, Grad-div stablilization for Stokes equations, Mathematics of Compu-
+tation 73 (248) (2004) 1699–1718.
+
+[24] T. Heister, G. Rapin, Efficient augmented Lagrangian-type preconditioning for the Oseen problem
+using Grad-Div stabilization, International Journal for Numerical Methods in Fluids 71 (1) (2013)
+118–134.
+
+[25] S. Badia, A. F. Martín, R. Planas, Block recursive LU preconditioners for the thermally coupled
+incompressible inductionless MHD problem, Journal of Computational Physics 274 (2014) 562–591.
+
+[26] L. P. Franca, T. J. R. Hughes, Two classes of mixed finite element methods, Computer Methods in
+Applied Mechanics and Engineering 69 (1) (1988) 89–129.
+
+[27] T. Gelhard, G. Lube, M. A. Olshanskii, J.-H. Starcke, Stabilized finite element schemes with
+LBB-stable elements for incompressible flows, Journal of Computational and Applied Mathematics
+177 (2) (2005) 243–267.
+
+[28] E. W. Jenkins, V. John, A. Linke, L. G. Rebholz, On the parameter choice in grad-div stabilization
+for the Stokes equations, Advances in Computational Mathematics 40 (2) (2013) 491–516.
+
+[29] M. Case, V. Ervin, A. Linke, L. Rebholz, A connection between Scott-Vogelius and grad-div stabi-
+lized Taylor-Hood FE approximations of the Navier-Stokes equations, SIAM Journal on Numerical
+Analysis 49 (4) (2011) 1461–1481.
+
+[30] L. R. Scott, M. Vogelius, Conforming finite element methods for incompressible and nearly incom-
+pressible continua, Lectures in Applied Mathematics 22 (1985) 221–244.
+
+[31] A. Linke, L. G. Rebholz, N. E. Wilson, On the convergence rate of grad-div stabilized Taylor-Hood
+to Scott-Vogelius solutions for incompressible flow problems, Journal of Mathematical Analysis and
+Applications 381 (2) (2011) 612–626.
+
+[32] S. Zhang, A family of Qk+1,k ×Qk,k+1 divergence-free finite elements on rectangular grids, SIAM
+Journal on Numerical Analysis 47 (3) (2009) 2090–2107.
+
+[33] M. Yano, D. L. Darmofal, BDDC preconditioning for high-order Galerkin Least-Squares methods
+using inexact solvers, Computer Methods in Applied Mechanics and Engineering 199 (45–48) (2010)
+2958–2969.
+
+[34] H. C. Elman, D. J. Silvester, A. J. Wathen, Finite elements and fast iterative solvers: with appli-
+cations in incompressible fluid dynamics, Oxford University Press, 2005.
+
+[35] S. Badia, R. Codina, Algebraic pressure segregation methods for the incompressible Navier-Stokes
+equations, Archives of Computational Methods in Engineering 15 (3) (2008) 343–369.
+
+[36] O. Colomés, S. Badia, Segregated Runge-Kutta methods for the incompressible Navier-
+Stokes equations, International Journal for Numerical Methods in Engineering In press (2015)
+doi:10.1002/nme.4987.
+
+[37] M. Brachet, Direct simulation of three-dimensional turbulence in the Taylor—Green vortex, Fluid
+Dynamics Research 8 (1-4) (1991) 1–8.
+
+[38] G. J. Gassner, A. D. Beck, On the accuracy of high-order discretizations for underresolved turbu-
+lence simulations, Theoretical and Computational Fluid Dynamics 27 (3-4) (2013) 221–237.
+
+25
+
+http://www.sciencedirect.com/science/article/pii/S0045782512002435
+http://www.sciencedirect.com/science/article/pii/S0045782512002435
+https://scholar.google.es/scholar?q=Lube+Rapin+applying&btnG=&hl=ca&as_sdt=0%2C5
+https://scholar.google.es/scholar?q=Lube+Rapin+applying&btnG=&hl=ca&as_sdt=0%2C5
+http://www.ams.org/mcom/2004-73-248/S0025-5718-03-01629-6/
+http://onlinelibrary.wiley.com/doi/10.1002/fld.3654/abstract
+http://onlinelibrary.wiley.com/doi/10.1002/fld.3654/abstract
+http://linkinghub.elsevier.com/retrieve/pii/S0021999114004355
+http://linkinghub.elsevier.com/retrieve/pii/S0021999114004355
+http://www.sciencedirect.com/science/article/pii/0045782588901685
+http://www.sciencedirect.com/science/article/pii/S0377042704004236
+http://www.sciencedirect.com/science/article/pii/S0377042704004236
+http://link.springer.com/article/10.1007/s10444-013-9316-1
+http://link.springer.com/article/10.1007/s10444-013-9316-1
+http://epubs.siam.org/doi/abs/10.1137/100794250
+http://epubs.siam.org/doi/abs/10.1137/100794250
+http://www.sciencedirect.com/science/article/pii/S0022247X1100240X
+http://www.sciencedirect.com/science/article/pii/S0022247X1100240X
+http://epubs.siam.org/doi/abs/10.1137/080728949
+http://www.sciencedirect.com/science/article/pii/S0045782510001738
+http://www.sciencedirect.com/science/article/pii/S0045782510001738
+http://link.springer.com/article/10.1007/s11831-008-9020-3
+http://link.springer.com/article/10.1007/s11831-008-9020-3
+http://onlinelibrary.wiley.com/doi/10.1002/nme.4987/abstract
+http://onlinelibrary.wiley.com/doi/10.1002/nme.4987/abstract
+http://www.sciencedirect.com/science/article/pii/016959839190026F
+http://link.springer.com/article/10.1007/s00162-011-0253-7
+http://link.springer.com/article/10.1007/s00162-011-0253-7
+
+
+[39] R. D. Moser, J. Kim, N. N. Mansour, Direct numerical simulation of turbulent channel flow up to
+Reτ=590, Physics of Fluids 11 (4) (1999) 943–945.
+
+[40] J. Kim, P. Moin, R. Moser, Turbulence statistics in fully developed channel flow at low Reynolds
+number, Journal of Fluid Mechanics 177 (1987) 133–166.
+
+[41] S. B. Pope, Turbulent Flows, Cambridge University Press, 2000.
+
+[42] P. Moin, J. Kim, On the numerical solution of time-dependent viscous incompressible fluid flows
+involving solid boundaries, Journal of Computational Physics 35 (3) (1980) 381–392.
+
+[43] P. Gamnitzer, V. Gravemeier, W. A. Wall, Time-dependent subgrid scales in residual-based large
+eddy simulation of turbulent channel flow, Computer Methods in Applied Mechanics and Engineer-
+ing 199 (13-16) (2010) 819–827.
+
+26
+
+http://scitation.aip.org/content/aip/journal/pof2/11/4/10.1063/1.869966
+http://scitation.aip.org/content/aip/journal/pof2/11/4/10.1063/1.869966
+http://journals.cambridge.org/article_S0022112087000892
+http://journals.cambridge.org/article_S0022112087000892
+http://www.sciencedirect.com/science/article/pii/0021999180900765
+http://www.sciencedirect.com/science/article/pii/0021999180900765
+zotero://attachment/3162/
+zotero://attachment/3162/
+
+	Introduction
+	Problem statement
+	VMS methods
+	Residual-based ASGS
+	Term by term OSS
+	Term by term OSS with ISS elements
+	The grad-div stabilization
+
+	Block preconditioning for the monolithic problem
+	Numerical tests
+	Analytical colliding flow
+	Taylor Green Vortex flow
+	Test setting
+	Comparison between different VMS methods
+	Computational cost
+	Influence of the pressure subscale term
+	Refinement analysis for the OSS-ISS method
+
+	Turbulent channel flow at Re=395
+	Test setting
+	Effect of the pressure subscale term on the conservation of mass
+	Refinement for a given cc
+
+
+	Conclusions
+

@@ -1,0 +1,1943 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+DESIGN ENERGY INPUT SPECTRA FOR MODERATE SEISMICITY REGIONS
+
+
+RC Structures Cyclic Behavior Simulation with a Model 
+integrating Plasticity, Damage and Bond-Slip 
+
+ 
+Short title: RC Structures Simulation integrating Plasticity, Damage and Bond-Slip 
+ 
+
+B. Alfarah1, J. Murcia-Delso2, F. López-Almansa3, S. Oller4
+
+1 PhD Candidate, Technical University of Catalonia, Civil and Environmental Engineering Department, Campus Nord UPC, 
+08034 Barcelona, Spain  
+
+2 Assistant Professor, Department of Civil, Architectural and Environmental Engineering, 301E E Dean Keeton St C1700, 
+Austin, TX 78712 
+
+3 Professor, Technical University of Catalonia, Architecture Technology Department, Avda. Diagonal 649, 08028 Barcelona, 
+Spain 
+
+4 Professor, Technical University of Catalonia, Civil and Environmental Engineering Department, Campus Nord UPC, 08034 
+Barcelona, Spain 
+
+ 
+Correspondence to: Francisco López-Almansa; Departament d’Estructures; ETSAB (UPC); Avda. 
+
+Diagonal 649; 08028 Barcelona (Spain); Phone +34934016316, FAX +34934016096; E-mail: 
+francesc.lopez-almansa@upc.edu 
+
+ 
+Summary: The behavior of reinforced concrete structures under severe demands, as strong ground 
+motions, is highly complex; this is mainly due to the complexity of concrete behavior and to the strong 
+interaction between concrete and steel, with several coupled failure modes. On the other hand, given the 
+increasing awareness and concern on the worldwide seismic risk, new developments have arisen in 
+earthquake engineering; nonetheless, some developments are mainly based on simple analytical tools that 
+are widely used, given their moderate computational cost. This research aims to provide a solid basis for 
+validation and calibration of such developments using computationally-efficient continuum 
+mechanics-based tools. Within this context, this paper presents a model for 3-D simulation of cyclic 
+behavior of RC structures. The model integrates a bond-slip model developed by one of the authors and the 
+damage variables evolution methodology for Concrete Plastic Damage Model (CDPM) developed by some 
+authors. In the integrated model, a new technique is derived for efficient 3-D analysis of bond-slip of two or 
+more crossing reinforcing bars in beam-column joints, slabs, footings, pile caps and other similar members. 
+The analysis is performed by implementing the bond-slip model in a user element subroutine of Abaqus and 
+the damage variables evolution methodology in the original CDPM in the package. Two laboratory 
+experiments consisting of a column and a frame subjected to cyclic displacements up to failure are 
+simulated with the proposed formulation. 
+ 
+Keywords: Concrete Plastic Damage Model, Bond-Slip Model, Numerical Simulation, Concrete 
+Structures, Cyclic Behavior. 
+ 
+
+1. Introduction 
+
+Under severe seismic excitation, structural behavior of buildings and other constructions is highly complex. 
+It involves, among other issues, soil-structure interaction, large strains and displacements, damage, 
+plasticity, and near-collapse behavior. Moreover, in reinforced concrete structures, there are several 
+coupled degradation and failure modes: cracking, crushing and spalling of concrete, yielding, bond-slip and 
+pull-out of tensioned reinforcement, and yielding, buckling and rupture of compressed reinforcement. 
+Therefore, in earthquake engineering, advanced numerical simulations based on continuum mechanics are 
+strongly necessary; conversely, oversimplified models are commonly used, as a result of their moderate 
+computational cost. Furthermore, another circumstance makes the situation more alarming: given the 
+increasing awareness and concern on the huge worldwide seismic risk, earthquake engineering has recently 
+experienced substantial advances; new design and analysis strategies have been proposed (CBD, PBD, 
+pushover analysis, IDA, among others), leading to relevant developments. These developments rely on 
+extensive testing and numerical simulation; nonetheless, as discussed before, an important number of 
+numerical analyses are mainly conducted by using simplified models. Therefore, there is a strong need of 
+verifying the reliability of the new developments by comparison with analyses performed using more 
+
+mailto:francesc.lopez-almansa@upc.edu
+
+
+advanced simulation tools. Being aware of this circumstance, the authors have started a long-term research 
+activity aiming to clarify this issue and to provide accurate and reliable models that are based on continuum 
+mechanics. In previous works [López-Almansa et al. 2014; Bashar et al. 2017], the authors have proposed a 
+new methodology for calculating the damage variables of Concrete Damage Plastic Models (CDPM); this 
+methodology had been implemented in Abaqus, thus generating a model for simulation of the structural 
+behavior of RC frames. It has proven satisfactory for describing monotonic experiments on RC frames; 
+cyclic performance is only verified on plain concrete. The model does not contemplate sliding between 
+reinforcement bars and the surrounding concrete (perfect bond); therefore, it might be not completely 
+suitable for earthquake engineering, since sliding can be highly relevant in cyclic behavior. This paper 
+extends the capabilities of this model by incorporating a formulation for describing reinforcement bond-slip 
+developed by one of the authors [Murcia-Delso 2013; Murcia-Delso et al. 2013; Murcia-Delso, Shing 
+2015a, 2015b]; this formulation had been verified with monotonic and cyclic pull-out tests, as well as 
+large-scale tests of bridge pier-shaft systems. The resulting integrated model is aimed to reproduce 
+accurately and reliably, although with a rather moderate computational cost, the cyclic behavior of 2-D RC 
+frames under severe degradation conditions.  
+ 
+Given the accuracy and reliability of the proposed model, it can be utilized for calibration of more 
+simplified algorithms. As well, its numerical efficiency make it suitable for research, typically nonlinear 
+dynamic analysis of concrete buildings undergoing strong ground motion excitation. A study for 
+reproducing with the proposed model the hysteretic behavior of connections between RC columns and 
+building waffle slabs is currently in progress. 
+ 
+2. State of the art  
+
+2.1. Concrete Plastic Damage Models 
+
+Nonlinear concrete response can be represented using plasticity or damage theory. However, none of these 
+formulations alone is able to describe adequately this phenomenon. Plastic models [Chen, Chen 1975; Lin 
+et al. 1987] do not capture stiffness degradation [Grassl, Jirasek 2006], and damage models are not suitable 
+for description of irreversible deformations and inelastic volumetric expansion in compression [Mazars 
+1984]. Given these circumstances, it has been been widely accepted that coupling between damage and 
+plasticity models is essential [Nguyen, Korsunsky 2008]. Coupled models consider plasticity with isotropic 
+hardening and damage; regarding damage, works [Lee, Fenves 1998; Burlion et al. 2000; Salari et al. 2004; 
+Krätzig, Pölling 2004] use same values of compression and tension damage, conversely, studies [Carol et 
+al. 2001; Voyiadjis et al. 2008] consider differences among them. In addition, fracture propagation can be 
+represented by embedded crack models, where standard FEM interpolations are enriched with strain or 
+displacement discontinuities [Belytschko et al. 1988; Simo, Oliver 1994; Jirásek, Zimmermann 2001]. 
+These models can be used for high strain localization problems (fracture).  
+ 
+Coupled damage and plasticity models differ mainly in the coupling method and the damage evolution law. 
+In the implicit methods [Luccioni et al. 1996; Nguyen, Houlsby 2004; Salari et al. 2004], coupling and 
+damage evolution law are embedded in yield and damage criteria. Other researchers describe coupling 
+using a single function. In this context, [Lee, Fenves 1998; Lemaitre 1992] use a yield function; inside it, 
+damage can be measured either following some criteria (e.g. a threshold based on the equivalent plastic 
+strain [Lemaitre 1992]) or obtained imposing damage variables laws. [Faria et al. 1998] use a damage 
+loading function where damage evolution law shall be imposed. 
+ 
+A major problem in implementation of any Plastic Damage Model is the calculation of the damage 
+variables that govern damage evolution. A number of researchers have proposed methodologies for 
+selecting such variables: 
+ 
+ [Mazars, Pijaudier-Cabot 1989]. The damage variables are obtained from parameters derived from 
+
+experiments on specimens and beams. It is concluded that damage formulations describe adequately 
+the behavior of reinforced concrete, and agreement with experimental results is achieved.  
+
+ [Birtel, Mark 2006]. Tension and compression damage variables are calculated by assuming constant 
+ratios between compressive plastic and crushing strains, and between tensile plastic and cracking 
+strains, respectively. These fixed ratios are calibrated with an experimental curve. 
+
+ 2 
+
+
+
+ [Häussler-Combe, Hartig 2008]. A damage evolution function is used. It depends on four material 
+parameters to be calibrated with experimental results. 
+
+ [Yu et al. 2010]. This work focuses on confined concrete. A linear expression of damage variable vs. 
+stress is proposed for the compressive descending branch (compressive damage). As well, modified 
+linear expressions in terms of confining pressure and stress invariants are suggested. 
+
+ [Al-Rub, Kim 2010]. This work focuses on plain concrete. Tensor damage variables that are separated 
+into compressive and tensile parts are proposed. The evolution of damage variables is derived by 
+identification with loading–unloading uniaxial test results. Two different damage evolution laws for 
+tension and compression are proposed. 
+
+ [Zheng et al. 2012]. The function developed by [Mazars, Pijaudier-Cabot 1989] is used to analyze the 
+damage evolution. Damage constants also have to be calibrated from experiments. 
+
+ [López-Almansa et al. 2014]. Damage variables are determined by an iterative empirical procedure 
+aiming to fit experimental results.  
+
+ 
+After these investigations, some of the authors proposed [Alfarah et al. 2017] a new approach for obtaining 
+damage variables. This methodology is based on the formulation by Lubliner and Lee/Fenves [Lubliner et 
+al. 1989; Lee, Fenves 1998], which is the base for the Abaqus plastic damage model for concrete. After 
+integration of concrete fracture and crushing energy, the proposed approach obtains closed-form 
+expressions of the damage variables in terms of the corresponding strains. No calibration with experimental 
+results is required and a strategy aiming to avoid mesh-dependency is incorporated.  
+ 
+This approach can consider any concrete constitutive law, either empirical (e.g. like formulations 
+commonly recommended by design codes) or directly based on particular experiments. A particular 
+algorithm using laws based on European recommendations was derived and implemented in the software 
+package Abaqus [Abaqus 2013]. This algorithm was used for describing cyclic experiments on plain 
+concrete and monotonic tests on full-scale RC frames. The objective of this research is to validate this 
+model under cyclic loading and enhance its performance for simulation of RC frames by incorporating a 
+bond-slip model. 
+ 
+
+2.2. Bond-slip Models 
+
+Bond-slip is a rather complex phenomenon since involves the interaction of the reinforcement steel and the 
+surrounding concrete under severe loading conditions, which severely deform the reinforcing bars and 
+damage the concrete surrounding the bars. A number of numerical models have been proposed to simulate 
+bond-slip behavior; they can be classified depending on their scale [Cox, Herrmann 1998]: 
+ 
+Rib scale. The detailed geometry of the interface, including bar ribs, is modelled, and concrete and steel are 
+discretized with continuum elements [Maekawa et al. 2003, Daoud et al. 2012]. These models can provide 
+very high accuracy, although with a high computational cost. 
+ 
+Bar scale. Ribs are not directly included in the simulation; the contact surface is idealized as smooth. 
+Concrete and steel can be discretized with different types of elements (e.g. solid for concrete and truss or 
+beam for steel). The interaction forces (cohesion, friction and bearing) are represented by tangential (bond) 
+and normal stress; particular attention is usually paid to the tangential component. Bond-slip is represented 
+through relation between bond stress and bar slip implemented in zero-thickness interface element. [Lowes 
+et al. 2004] developed a four-node zero-thickness bond-slip element to be used for two-dimensional 
+modelling; other studies using this model have been reported. Broadly speaking, bar scale models have 
+good balance between computational cost and ability to reproduce accurately bond behavior. 
+  
+Structural Element scale. The bond-slip effects are either incorporated in the formulation of the element 
+or taken into consideration through zero-length springs. [Monti, Spacone 2000] introduced the 
+beam-column model with bond-slip proposed by [Monti et al. 1997] into the force-based fiber-section 
+element developed by [Spacone et al. 1996]. [Zhao, Sritharan 2007] proposed a law to relate bar stress and 
+slip at end of anchorage in footing-column or beam-column connections; this law has been calibrated with 
+experimental results and used as a constitutive relation for steel fibers in a zero-length fiber-section element 
+to simulate end rotation of RC columns. These models have low computational cost and, therefore, are 
+suitable for simulation of full-scale structures; conversely, they do not study explicitly the bond behavior, 
+merely reflect the additional flexibility provided by bond-slip. 
+
+ 3 
+
+
+
+ 
+Rib scale models are too computationally expensive for the practical simulation of full-scale actual 
+structures, and element scale models can be an attractive option for large-scale simulation but cannot 
+capture strength reduction due to bond degradation (because of slip, concrete spalling or steel yielding) and 
+cannot be implemented in continuum elements. Bar scale models are the most appropriate for 
+implementation in continuum elements under seismic excitation, as they represent efficiently interaction 
+between two materials and predict different deterioration modes. A number of models of this type have 
+been proposed:  
+ 
+ [Gan 2000]. A double-node zero-thickness contact element is used to connect steel bar elements with 
+
+the surrounding concrete. The monotonic and cyclic behavior of this element is governed by a 
+bond-slip law originally proposed by [Eligehausen et al. 1983] and later modified by [Gan 2000] 
+according to experimental observations. This contact element was implemented in Finite Element 
+Code TRIX99 and used to perform 2-D cyclic analysis for shear walls. 
+
+ [Ožbolt et al. 2002]. These researchers proposed a monotonic bond-slip law based on experimental 
+results [Eligehausen et al. 1983; Malvar 1992]. This law was implemented in the finite element code 
+MASA using a zero-width element. Concrete and steel are discretized with solid and truss elements, 
+respectively. This model was been verified with pull-out tests and simply-supported RC beams. 
+
+ [Lowes et al. 2004]. A four-node zero-thickness bond-slip element is used for two-dimensional 
+monotonic and cyclic modelling. The model is characterized by a normalized bond stress-slip law and 
+a relation between the maximum bond strength and stress-strain state of concrete and steel. 
+
+ [Rabczuk et al. 2005]. A 2-D two-double-node interface element, bond behavior is described in terms 
+of radial stress-strain relation. This element was implemented in FE package Abaqus using user 
+subroutine; it was used in the simulation of a prestressed RC beam subjected to static load. 
+
+ [Murcia-Delso, Shing 2015a]. These researchers developed a general 3-D bond-slip model 
+accounting for bond deterioration due to cyclic slip reversals, concrete splitting, and bar yielding in 
+tension. This model is an extension, to represent different bond deteriorations, of the semi-empirical 
+cyclic bond-slip law proposed by [Murcia-Delso 2013; Murcia-Delso et al. 2013] which is similar to 
+that proposed by [Eligehausen et al. 1983]. This model was implemented in a four-node zero-thickness 
+interface element with linear shape functions and two integration points.  
+
+ 
+2.3. Integration of  CPDM and Bond-slip Models 
+
+A few researchers have attempted to integrate concrete damage-plastic behavior and bond-slip of 
+reinforcement for practical 3-D continuum simulation of RC structures subjected to seismic loads: 
+ 
+ [Car et al. 2002]. These researchers proposed a constitutive model based on assuming that stress 
+
+transfer from concrete to steel depends on concrete damage and steel strength. Slip is represented by an 
+irrecoverable inelastic steel strain. 
+
+ [Deaton 2013]. Proposed a general model to study the 3-D cyclic behavior of non-seismic RC 
+beam-column joints. Concrete behavior was represented by a damage model originally developed by 
+[Vecchio, Collins 1986] and implemented in the FE analysis program DIANA. Bond-slip was 
+described with an interface model “line-to-solid” that follows a built-in stress-slip hysteretic law. 
+Verifications with experimental results showed the inability of the bond model to represent the actual 
+hysteretic behavior; concrete model showed good capacity to represent the capacity envelope but not 
+the dissipated energy. 
+
+ [Ali et al. 2013]. Studied the cyclic behavior of composed concrete–steel shear walls. The original 
+CDPM that is implemented in Abaqus was used to simulate concrete behavior; bond-slip is described 
+with contact conditions. Comparison with experimental results, pointed out the lack of capturing the 
+pinching effect (due to bond degradation and cracks opening-closing) and the strength degradation. 
+
+ [Murcia-Delso 2013]. The 3-D bond-slip model was used together with the original CDPM that is 
+implemented in Abaqus. It is calibrated with pull-out tests and utilized to simulate 3-D cyclic behavior 
+of RC columns supported on enlarged pile shaft foundations; satisfactory agreement was obtained. 
+Discrete cracks were introduced at column base to simulate opening and closing of wide flexural 
+cracks at this location and circumvent limitations of the CDPM in Abaqus to handle the large stiffness 
+degradation required to accurately represent cyclic response of cracks.  
+
+ 
+
+ 4 
+
+
+
+ 
+3. Calculation of Damage Variables for Concrete Plastic Damage Model 
+
+As discussed in Section 2, calculating the evolution of damage variables in Concrete Plastic Damage 
+Models is a crucial issue. This section summarizes the algorithm proposed by [Alfarah et al. 2017] for 
+obtaining the damage variables and its implementation in Concrete Damage Plastic Models.  
+ 
+In the considered CPDM [Lubliner et al. 1989; Lee, Fenves 1998], stiffness degradation in the uniaxial 
+cyclic behavior is described as: 
+ 
+
+𝐸𝐸 = (1 − 𝑑𝑑) 𝐸𝐸0  (1) 
+ 
+In equation (1), E0 is the initial (undamaged) elastic stiffness, E is the reduced tangent stiffness and d is a 
+scalar degradation variable, which is a function of stress state and compression and tension damage 
+variables dc and dt, respectively: 
+ 
+
+1 − 𝑑𝑑 = (1 − 𝑠𝑠t𝑑𝑑c) (1 − 𝑠𝑠c𝑑𝑑t)  (2) 
+ 
+In equation (2), sc and st are dimensionless coefficients accounting for stress state and stiffness recovery 
+effects, being given by 
+ 
+
+𝑠𝑠c =  1 − ℎc (1 − 𝑟𝑟∗(𝜎𝜎11))  (3) 
+𝑠𝑠t =  1 − ℎt 𝑟𝑟∗(𝜎𝜎11)  (4) 
+
+ 
+In equations (3) and (4), σ11 is the first principal uniaxial stress (positive for tension), r* is a stress state 
+parameter being 𝑟𝑟∗(𝜎𝜎11) = 1 for tension and 𝑟𝑟∗(𝜎𝜎11) = 0 for compression, and ℎc and ℎt are weighting 
+factors ranging between 0 and 1. Factor ℎc accounts for re-closing of cracks after tension-compression 
+reversal; ℎt represents recovery of crushed concrete after compression-tension reversal. In this work, ℎt = 0; 
+i.e. crushed concrete does not experience any recovery. Regarding ℎc, ℎc = 0.9 is assumed in the main 
+concrete bodies (90% of the stiffness in compression is recovered once cracks close), and lower values are 
+taken in the zones where widely-opened cracks and bond-slip effects concentrate. Equations (3) and (4) 
+show that 𝑠𝑠c and 𝑠𝑠t range between 0 and 1. Further explanation on the effect of sc and st and the constitutive 
+equations of the 3-D model can be found in [Alfarah et al. 2017; Alfarah 2017].  
+ 
+The methodology to obtain the damage evolution proposed by [Alfarah et al. 2017] is based on assuming 
+that compressive and tensile damage variables are the portions of normalized energy dissipated by damage: 
+ 
+
+ 𝑑𝑑c  =
+1
+
+ 𝑔𝑔c
+� σc dεcch
+εcch
+
+0
+  𝑑𝑑t  =
+
+1
+ 𝑔𝑔t
+
+� σt dεtck
+εt
+ck
+
+0
+ (5) 
+
+ 
+In equation (5), εcch and εtck are crushing and cracking strain defined as the inelastic compressive and tensile 
+strain, respectively [Alfarah et al. 2017]. Normalization coefficients gc and gt represent the energies per unit 
+volume dissipated by damage along the entire deterioration process:  
+ 
+
+ 𝑔𝑔c  = � σc dεcch
+∞
+
+0
+  𝑔𝑔t  = � σt dεtck
+
+∞
+
+0
+ (6) 
+
+ 
+Equations (5) and (6) show that dc and dt range between 0 (no damage) and 1 (destruction). Figure 1 
+describes the meaning of gc and gt. 
+ 
+
+ 5 
+
+
+
+  
+(a) Compression (gc) (b) Tension (gt) 
+
+Figure 1. Portions of energy dissipated by damage [Alfarah et al. 2017] 
+ 
+Noticeably, the energies per unit area and per unit volume are related by  𝑔𝑔c  =  𝐺𝐺ch / 𝑙𝑙eq  and  𝑔𝑔t  =
+ 𝐺𝐺F / 𝑙𝑙eq;  𝐺𝐺ch and  𝐺𝐺F are material parameters defined as crushing and fracture energies by unit area and 
+ 𝑙𝑙eq is the characteristic length of the finite element, which depends on the mesh size, the type of element 
+and the crack direction [Oliver 1989; Krätzig, Pölling 2004]. In this paper, an idealized behavior of single 
+band of cracks is assumed; therefore, the characteristic length is taken as the average of the brick (solid) 
+element size. 
+ 
+Compressive and tensile damage evolution laws are defined according to [Alfarah et al. 2017] in equations 
+(7) and (8). 
+
+ 𝑑𝑑c  = 1 −
+1
+
+2 + 𝑎𝑎c
+�2 (1 + 𝑎𝑎c) exp�−𝑏𝑏c εcch� − 𝑎𝑎c exp�−2 𝑏𝑏c εcch�� (7) 
+
+ 𝑑𝑑t  = 1 −
+1
+
+2 + 𝑎𝑎t
+�2 (1 + 𝑎𝑎t) exp�−𝑏𝑏t εtck� − 𝑎𝑎t exp�−2 𝑏𝑏t εtck�� (8) 
+
+ 
+In equations (7) and (8), ac, at, bc and bt are dimensionless coefficients given by 
+ 
+
+ac = 2 (𝑓𝑓cm  𝑓𝑓c0⁄ ) − 1 + 2 �(𝑓𝑓cm  𝑓𝑓c0⁄ )2 − (𝑓𝑓cm  𝑓𝑓c0⁄ ) (9) 
+at = 2 (𝑓𝑓tm  𝑓𝑓t0⁄ ) − 1 + 2 �(𝑓𝑓tm  𝑓𝑓t0⁄ )2 − (𝑓𝑓tm  𝑓𝑓t0⁄ ) (10) 
+
+𝑏𝑏c =
+𝑓𝑓c0 𝑙𝑙eq
+𝐺𝐺ch 
+
+ �1 +
+𝑎𝑎c 
+2
+� 𝑏𝑏t =
+
+𝑓𝑓t0 𝑙𝑙eq
+𝐺𝐺F 
+
+ �1 +
+𝑎𝑎t 
+2
+� (11) 
+
+ 
+In equations (9), (10) and (11), fc0 and ft0 are the compressive and tensile stresses that correspond to zero 
+crushing (εcch = 0 ) and to onset of cracking (εtck = 0 ), respectively; fcm and ftm are the maximum 
+compressive and tensile stress, respectively. 
+ 
+Implementing the damage evolution algorithm in the CPDM requires the concrete compression and tension 
+stress-strain relation to be determined. The concrete uniaxial law described in [Alfarah et al. 2017] is used 
+in this study; then, coefficients ac, at, bc and bt are determined: 
+ 
+
+𝑎𝑎c = 7.873 𝑎𝑎t = 1 𝑏𝑏c =
+1.97(𝑓𝑓ck  +  8)
+
+𝐺𝐺ch
+𝑙𝑙eq 𝑏𝑏t =
+
+0.453𝑓𝑓ck
+2/3
+
+  𝐺𝐺F
+𝑙𝑙eq (12) 
+
+ 
+In equation (12), fck is the characteristic value of the compressive strength and GF is calculated in (13) in 
+(N/mm) according to [CEB-FIP 2010]. Gch is obtained in equation (13) assuming that the ratio between 
+crushing and fracture energies is proportional to the square of the ratio between compressive and tensile 
+strengths [Oller 1988]:  
+  
+
+𝐺𝐺F = 0.073 𝑓𝑓cm0.18 𝐺𝐺ch = �
+𝑓𝑓cm
+𝑓𝑓tm
+
+�
+2
+
+𝐺𝐺F (13) 
+
+ 
+Stresses in equation (13) are expressed in MPa. The abovementioned concrete uniaxial law provides the 
+behavior of the CPDM under uniaxial loading in any direction. Extending the behavior to multiaxial stress 
+conditions is controlled by the CPDM parameters defining the shape of the yield surface and the plastic 
+
+ 6 
+
+
+
+potential [Lubliner et al. 1989; Lee and Fenves 1998]. The selection of these parameters is described in 
+[Alfarah 2017; Alfarah et al. 2017]. Regarding the confinement effect, is not represented by different 
+concrete constitutive laws, but by the direct consideration of the transverse compression exerted by the 
+stirrups; noticeably, such transverse reinforcement bars are explicitly modelled. 
+ 
+After parameters ac, at, bc and bt, damage variables dc and dt are determined by equations (7) and (8) in 
+terms of crushing and cracking strain, respectively.  
+ 
+The major output of the algorithm are curves of compressive / tensile stress and damage variables vs. 
+crushing / cracking strain, respectively. These plots constitute the input of the implementation in any model 
+describing the global structural behavior. This algorithm is suited for software package Abaqus [Abaqus 
+2013]. 
+ 
+4. Bond-slip Model 
+
+The 3-D interface model proposed by [Murcia-Delso, Shing 2015a] is used to represent the bond relation 
+between the longitudinal reinforcement bars and the surrounding concrete. This model is assigned to a 2-D 
+interface element connecting steel and concrete representing a fraction of the perimeter of the bar. Their 
+interaction is represented in the longitudinal direction by the relation between an equivalent bond stress and 
+the bar slip. The stress-slip constitutive law uses the phenomenological law proposed by [Murcia-Delso et 
+al. 2013] which is based on concepts originally developed by [Eligehausen et al. 1983]. This law was 
+extensively verified by pull-out tests on bars embedded in well confined concrete. 
+ 
+Figure 2 displays the three components of interaction stress (σ1, τ2, τ3) and relative displacement (S1, S2, S3) 
+during sliding. 
+ 
+
+ 
+Figure 2. Stress and relative displacement components at bar-concrete interface [Murcia-Delso, Shing 
+
+2015a] 
+
+The bond resistance τ2 in the model proposed by [Murcia-Delso, Shing 2015a] is decomposed into bearing 
+and friction components: 
+
+τ2 =  ρn�ρb,s  ρb,c τb + ρf,s ρf,c τf� (14) 
+
+In equation (14), τb and τf are the full bearing and friction resistance of an elastic bar under monotonic 
+pull-out action. Such resistances are multiplied by reductions factors. ρb,s and ρf,s account for the influence 
+of yielding of bar in tension, ρb,c and ρf,c represent the effect of slip history, and ρn takes into consideration 
+splitting cracks and is a function of S1. 
+ 
+Figure 3 shows the considered monotonic and cyclic bond stress versus bar slip curves. These curves are 
+defined piecewise using polynomial functions [Murcia-Delso, Shing 2015a] in terms of three parameters: 
+the peak bond strength τmax, the slip at the pick bond strength Speak and the clear spacing between the bar ribs 
+SR. 
+
+ 7 
+
+
+
+ 
+
+Figure 3. Bond stress-versus-slip law: (a) monotonic response; (b) cyclic response [Murcia-Delso, Shing 
+2015a] 
+
+One of the main features of this model is the consideration of the reduction of bearing and friction 
+resistance because of the diminution of the bar contact area due to yielding in tension [Shima et al. 1987; 
+Liang, Sritharan 2014]. Reduction factors that account for steel yielding in tension are expressed as follows:  
+ 
+
+ρb.s(εs) =
+
+⎩
+⎨
+
+⎧
+1           for εs ≤ εy
+
+εsh − εs
+εsh − εy
+
+          for εy < εs < εsh  
+
+0           for εs > εsh ⎭
+⎬
+
+⎫
+ (15) 
+
+  
+
+ρf.s(εs) = �
+1                  for εs ≤ εsh
+εu − εs
+εu − εsh
+
+       for εs > εsh  
+� (16) 
+
+ 
+In equations (15) and (16), εy, εsh and εu are yielding, hardening and ultimate strains, respectively. 
+ 
+Reduction factors due to the slip history are given by: 
+
+ρb.c = 1.2 e−2.7(𝑆𝑆m̅ax 𝑆𝑆R⁄ )
+0.8
+≤ 1  
+
+(17) 
+ 
+
+ρf.c = 1 − min�
+𝑆𝑆max+ + 𝑆𝑆max−
+
+𝑆𝑆R
+, 1� �1 − e−0.45(𝑆𝑆cum 𝑆𝑆R⁄ )
+
+0.75
+� (18) 
+
+ 
+In equations (17) and (18), 𝑆𝑆max+  and 𝑆𝑆max−  are the maximum absolute values of slip in positive and negative 
+directions, respectively. 𝑆𝑆cum is the cumulated slip after slip exceeds Speak for the first time. 𝑆𝑆m̅ax is equal to: 
+
+𝑆𝑆m̅ax = 0.75 max(𝑆𝑆max+ , 𝑆𝑆max− ) + 0.25 (𝑆𝑆max+ + 𝑆𝑆max− ) (19) 
+
+In this work, the normal displacement S1 is assumed to be very small due to the well confined conditions in 
+the region where it is expected that slip occurs. Therefore, the reduction factor that accounts for splitting 
+cracks is equal to 1: ρn = 1. 
+ 
+The interface element has two additional components perpendicular to the bar longitudinal axis, one normal 
+and one transverse tangential. The stress-displacement relations in the normal direction represent the 
+splitting stresses introduced by the wedging action of the bar ribs. Assuming that the resultant bond force 
+has a fixed angle of inclination of 60º as proposed in [Murcia-Delso, Shing 2015a], the normal stress is 
+proportional to the bond stress. For the transverse tangential direction, a penalty stiffness is introduced to 
+restrain the rotation of the bar about its longitudinal axis. 
+ 
+5. Proposed Implementation Approach  
+
+ 8 
+
+
+
+5.1. General considerations 
+
+This section describes the two main original contributions of the present study to integrate the damage and 
+bond-slip models. Next subsection presents a new modeling scheme to implement the bond-slip model 
+developed by [Murcia-Delso, Shing 2015] in a FEM analysis, and last subsection describes a new smeared 
+strategy to simulate the reclosing of cracks after tension-compression reversals. 
+ 
+
+5.2. Modeling Scheme for Bond-Slip  
+
+The bond-slip model was originally implemented in an interface element in the FEM package Abaqus using 
+the user element subroutine UEL. This interface element can connect truss or beam elements representing 
+reinforcing bars with solid elements representing surrounding concrete, as shown in Figure 4.a. The 
+modeling scheme proposed by [Murcia-Delso, Shing 2015] required the same discretization for steel, 
+interface and concrete elements. This technique is efficient when longitudinal reinforcement consists of 
+parallel bars, but can complicate the mesh when there are crossing bars with non-parallel directions. Figure 
+4.b describes the basis of the new modeling scheme proposed herein. 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+(a) Modeling scheme used 
+
+in [Murcia-Delso, 
+Shing 2015]  
+
+(b) Proposed modeling scheme 
+
+Figure 4. Modeling schemes with bond-slip interface model 
+
+Figure 4.b shows that the proposed technique is based on assigning, for each interface element, a pair of 
+tie-constraint conditions; this being defined as two surfaces having the same degrees of freedom in all the 
+contact points. The softest and stiffest surfaces are slave and master, respectively. The first tie-constraint (1) 
+connects concrete nodes (master surface) with the interface nodes on the concrete side (slave surface). The 
+second constrain (2) ties bar nodes (master surface) and the interface nodes on the bar side (slave surface). 
+Hence, the relative displacement between the concrete and the bar is equal to the relative displacement at 
+the interface element.  
+ 
+Figure 5 illustrates the modeling scheme for two perpendicular crossing bars. Figure 5.b and Figure 5.c 
+show, respectively, that Bar 1 (CD) and Bar 2 (AB) are connected to four interface elements each.  
+ 
+
+Removed 
+part (hole) 
+
+4 interface 
+elements 
+
+Concrete 
+
+Bar elements 
+
+Tie constraint (2) 
+ 
+
+Tie constraint (1) 
+
+ 9 
+
+
+
+ 
+
+ 
+
+  
+
+(a) Two bars crossing 
+within a solid element 
+
+(b) Four inteface elements 
+attached to Bar 1 (CD) 
+
+(c) Four inteface elements 
+attached to Bar 2 (AB) 
+
+Figure 5. Application of the proposed modeling scheme for two orthogonal longitudinal crossing bars 
+
+By using tie constraints, the proposed technique does not require that interface and solid elements have the 
+same discretization. This strategy aims to overcome meshing problems and convergence difficulties. It is 
+particularly suitable for regions with non-parallel longitudinal reinforcement bars, such as beam-column 
+and slab-column joints, structural walls, foundations, and connections among these elements.  
+ 
+
+5.3. Simulation of cracks at member ends 
+
+As discussed in section 3, the reclosing of cracks after tension-compression reversals is governed by the 
+parameter hc, representing the percentage of compression stiffness recovery in the reclosed cracks. Low 
+values of ℎc reduce the concrete strength after reversing; subsequently, the relative displacement between 
+concrete and steel will be higher, thus simulating bond degradation and poor quality concrete. The influence 
+of ℎc in the concrete stress-strain cyclic behavior is further explained in [Alfarah et al. 2017]. 
+ 
+In actual structures, highly uneven behavior is expected, due to the irregular distribution of bond-slip 
+effects and to the poorer performance in the casting joints. For both reasons, in any framed structure, 
+significantly less reclosing of cracks is expected at the member ends and the nearby segments. To enhance 
+the opening-closing simulation of widely opened cracks in the casting joint region, Murcia-Delso [2013] 
+introduced discrete cracks at the member ends. In the current study, an alternative solution is proposed by 
+using small values of hc near the member ends; Figure 6 displays a frame modelled with different values of 
+hc. The darkest shadowed zones represent casting discontinuity, and little or no stiffness is expected upon 
+cracks reclosing, therefore hc = 0.01. The lightly dark zones correspond to the rest of regions where 
+bond-slip is introduced and hc = 0.1 is selected. Finally, in the not-shadowed regions no significant 
+bond-slip effect is expected, and hc = 0.9 is chosen. Noticeably, in each of these cases, the results have 
+exhibited little sensitivity to variations of hc reaching 100%. 
+.  
+ 
+
+Interface 
+element 
+
+Tie constraint 
+connecting 
+interface to 
+
+concrete 
+
+Tie constraint 
+connecting 
+interface to 
+
+rebar  
+
+Interface 
+element 
+
+Tie 
+constraint 
+connecting 
+interface to 
+
+concrete  
+
+Tie constraints 
+connecting 
+interface to 
+
+rebar  
+
+ 10 
+
+
+
+ 
+ 
+
+Figure 6. Zones of framed structures with different cracks opening-closing behavior 
+
+ 
+In practical applications, the darkest shadowed areas in Figure 6 can correspond to the first and last rows of 
+finite elements in the discretization of each column; the lightest shadowed segments can comprise the zones 
+where bond-slip is modelled. Both shadowed regions correspond to the plastic hinge length. In this study, 
+such length is selected according to [Paulay and Priestley 1992]. For cantilever RC columns, it is given by 
+Lp = 0.08 L + 0.002 Db fy, where L is the column height, and Db and fy are the longitudinal rebar diameter and 
+the steel yield point (MPa), respectively. For RC frames, Lp is half of the section depth.  
+ 
+6. Simulation of cyclic tests of RC structures 
+
+6.1. Bridge Column 
+
+Several RC columns have been tested by [Tanaka 1990] to study the effect of lateral confinement on their 
+ductility. Main differences are the type of transverse reinforcement, its anchorage detailing, the axial force, 
+and the mechanical and geometric parameters. Column unit 6 [Tanaka 1990] has been analyzed with the 
+proposed model. Figure 7 describes the tested column and the experimental mockup. 
+
+hc close to 1 
+
+hc close to 0 
+
+intermediate values of hc  
+
+ 11 
+
+
+
+ 
+ 
+
+(a) Loading arrangements 
+
+ 
+(b) Vertical section  (c) Horizontal section 
+
+Figure 7. Experiment on the bridge RC column [Tanaka 1990] 
+ 
+Figure 7.b and Figure 7.c display the geometry of the column, dimensions are in mm. The column was 
+loaded with constant force 0.1 f’c/Ag and a cyclic lateral displacement protocol was imposed by hydraulic 
+jacks as shown in Figure 7.a. Concrete mechanical parameters were determined from standard cylinder 
+tests. The characteristic value of compressive strength is 32 MPa and the average value of secant 
+deformation modulus is 27.65 GPa; Poisson ratio and shear deformation modulus were estimated as 0.2 and 
+11.52 GPa, respectively. Steel parameters were obtained from coupon tests. Table 1 displays the most 
+relevant information regarding reinforcement steel. In Table 1, bars HD20 and D12 correspond to 
+longitudinal and transverse reinforcement, respectively. fu is the steel ultimate stress, Es is the modulus of 
+elasticity, εsh is the strain corresponding to the hardening onset, and εu is the ultimate strain. 
+ 
+
+Table 1. Reinforcement steel parameters for the bridge column 
+Bar Id. Db (mm) fy (MPa) fu (MPa) Es (GPa) εsh εu 
+HD20 20 511 675 200 0.0165 0.14 
+D12 12 325 429 200 0.015 0.14 
+
+ 
+Figure 8 displays the imposed displacement law.  
+ 
+
+x 
+z 
+
+x 
+y 
+
+x 
+z 
+
+ 12 
+
+
+
+ 
+
+Figure 8. Imposed displacement law for the bridge column experiment 
+ 
+The results of the experiment showed stable hysteretic behavior, good energy dissipation and limited 
+strength reduction up to the final stage. Substantial crushing of compressed cover concrete (spalling) was 
+first observed near peak load during the first cycle. During the final stage, the visible damage was concrete 
+crushing and slight buckling of longitudinal reinforcement bars. 
+ 
+The bond-slip model [Murcia-Delso, Shing 2015a] has been used in the simulation using the analyzed with 
+the proposed model described in section 5. Figure 9 depicts the element discretization. Figure 9.a describes 
+the concrete discretization with 3-D 8-node hexahedron solid elements (C3-D8R). Figure 9.b and Figure 9.c 
+represent the steel and interface elements; steel is discretized with 2-node truss elements (T3-D2). 
+Bond-slip effect is considered for the column longitudinal bars at the base of the column and development 
+region in the footing, as shown in Figure 9.b; full bond conditions are assumed for the other segments of 
+longitudinal bars as well as for transverse reinforcement because minimal bar slip is expected for these bars. 
+  
+
+ 
+
+(a) Column discretization (b) Steel and interface 
+elements 
+
+(c) Plan view of steel and 
+interface elements 
+
+Figure 9. Finite element discretization of the bridge column  
+ 
+Steel behavior is described with a classical plastic model; isotropic hardening is used for stirrups, and 
+nonlinear isotropic/kinematic hardening for longitudinal bars. Concrete behavior is simulated by 
+implementing the methodology described in section 3 [Alfarah et al. 2017] in Abaqus code [Abaqus 2013] 
+using the particular algorithm described in [Alfarah et al. 2017].  
+ 
+Figure 10.a displays plots of ratio εc
+
+pl / εcch vs. εcch, where εc
+pl refers to plastic compressive strain. Figure 
+
+10.b displays analogous plots for the tensile behavior (εt
+pl / εtck vs. εtck). 
+
+  
+
+-10
+
+-5
+
+0
+
+5
+
+10
+
+0 20 40 60
+
+D
+is
+
+pl
+ac
+
+em
+en
+
+t (
+cm
+
+)
+Number of points
+
+Interface 
+elements  
+
+1.30 m 
+
+ 13 
+
+
+
+  
+(a) Compression (b) Tension 
+
+Figure 10. Variation of ratios between plastic and crushing / cracking strains for the bridge column 
+experiment 
+
+ 
+Figure 10 highlights that, in the proposed methodology, damage and plastic energy absorptions are not 
+related, since ratios εc
+
+pl / εcch and εt
+pl / εtck do not approach zero when damage variables dc and dt are close 
+
+to 1 [Alfarah et al. 2017]. Figure 10.a points out that the average of εc
+pl / εcch is approximately equal to 0.88; 
+
+this magnitude is termed b and is a required parameter in the implementation of the algorithm [Alfarah et al. 
+2017]. Table 2 displays the considered values of the parameters. 
+ 
+
+Table 2. Parameters for simulation of the first experiment 
+fck 
+
+(MPa) 
+fcm 
+
+(MPa) 
+ftm 
+
+(MPa) 
+ Gch 
+
+ (N/mm) 
+GF 
+
+(N/mm) b ac at 
+leq 
+
+(mm) bc bt 
+
+24 32 2.51 22.14 0.136 0.889 7.873 1 50 142.65 1381.74 
+ 
+Figure 11 displays comparisons between experimental and numerical hysteresis loops calculated with the 
+proposed model. In Figure 11.a, the numerical results are obtained by using hc = 0.9 in all the body, and 
+generating a discrete crack at the footing-column interface; normal friction contact condition is assumed at 
+that interface. In Figure 11.b, the approach to represent concrete discontinuity described in subsection 5.3 is 
+applied by assigning ℎc = 0.01 to the first row of elements above the footing, ℎc = 0.1 to the elements where 
+bond-slip is considered (Figure 9.b), and ℎc = 0.9 for the rest of the model (Figure 6). These values have 
+been selected to provide the best fit with the experiment.  
+ 
+
+  
+(a) Experiment and proposed formulation 
+
+with a discrete crack 
+(b) Experiment and proposed formulation 
+
+with reduced ℎc (subsection 5.3) 
+
+Figure 11. Experimental and numerical force-displacement response of the bridge column test 
+ 
+Figure 11 shows that the proposed model provides a satisfactory agreement with test results, capturing 
+initial stiffness, strength and stiffness degradation, and pinching. Plots from Figure 11.a show that the 
+model with discrete crack is able to reproduce the main aspects of cyclic behavior; the analysis ended 
+prematurely due to the large nonlinearity and the important separation between both blocks. The model 
+with reduced ℎc (Figure 11.b) captured suitably the dissipated energy from the experiment with difference 
+−1.66 %; conversely, the model with discrete crack (Figure 11.a) overestimated that energy by 22.88 %.  
+ 
+Figure 12 displays comparisons between pairs of plots obtained by numerical simulation with the proposed 
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+0 0.01 0.02 0.03 0.04 0.05
+
+εcch
+
+εc
+pl/ εcch
+
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+
+1
+
+0 0.001 0.002 0.003 0.004 0.005
+
+εt
+pl/ εt
+
+ck
+
+εt
+ck
+
+-470
+
+-370
+
+-270
+
+-170
+
+-70
+
+30
+
+130
+
+230
+
+330
+
+430
+
+-0.1 -0.05 0 0.05 0.1
+
+F
+o
+
+rc
+e 
+
+(k
+N
+
+)
+
+Displacement (m)
+
+Experiment
+Proposed Model
+
+-470
+
+-370
+
+-270
+
+-170
+
+-70
+
+30
+
+130
+
+230
+
+330
+
+430
+
+-0.1 -0.05 0 0.05 0.1
+
+F
+o
+
+rc
+e 
+
+(k
+N
+
+)
+
+Displacement (m)
+
+Experiment
+Proposed Model
+
+ 14 
+
+
+
+model and with a similar model assuming perfect bond between the reinforcement and the surrounding 
+concrete. In Figure 12.a a discrete crack is introduced in the proposed model (as in Figure 11.a), and in 
+Figure 12.b reduced values of ℎc are considered (as in Figure 11.b).  
+ 
+
+  
+(a) Proposed formulation with a discrete 
+
+crack vs. perfect bond 
+(b) Proposed formulation with reduced ℎc 
+
+(subsection 5.3) vs. perfect bond 
+
+Figure 12. Numerical force-displacement response of the bridge column test 
+ 
+Figure 12 highlights the relevance of bond-slip. Comparison between Figure 12.a and Figure 12.b shows 
+that differences are more significant in the smeared model.  
+ 
+Comparison between Figure 11 and Figure 12 shows that the models with perfect bond reproduce 
+satisfactorily the envelope behavior but lack to capture the unloading and reloading branches. The discrete 
+crack model response in Figure 12.a exhibits some pinching due to the added flexibility at the column 
+bottom; conversely, the smeared model response in Figure 12.b shows higher energy dissipation.   
+ 
+Experimental observations revealed buckling in the longitudinal reinforcement bars at column bottom 
+[Tanaka 1990]. Figure 13 presents numerical (Figure 13.a and Figure 13.b) and experimental (Figure 13.c) 
+representations of this failure. Figure 13.a displays the buckling that is detected at the last cycle, Figure 13.b 
+shows the final damage state and Figure 13.c depicts the observed damage. Comparison between numerical 
+and experimental results highlights the accuracy of the proposed formulation. 
+  
+
+  
+  
+
+(a) Buckling in the longitudinal 
+bars 
+
+(b) Final damage state (c) Final state 
+[Tanaka 1990] 
+
+Figure 13. Final state of the bridge column  
+ 
+
+6.2. Building  Frame  
+
+This experiment [Pires 1990] consists in imposing a quasi-static cyclic displacement law to a laboratory 
+
+-470
+
+-370
+
+-270
+
+-170
+
+-70
+
+30
+
+130
+
+230
+
+330
+
+430
+
+-0.1 -0.05 0 0.05 0.1
+
+F
+o
+
+rc
+e 
+
+(k
+N
+
+)
+
+Displacement (m)
+
+Perfect Bond
+Proposed Model
+
+-470
+
+-370
+
+-270
+
+-170
+
+-70
+
+30
+
+130
+
+230
+
+330
+
+430
+
+-0.1 -0.05 0 0.05 0.1
+
+F
+o
+
+rc
+e 
+
+(k
+N
+
+)
+
+Displacement (m)
+
+Perfect Bond
+Proposed Model
+
+Bar 
+buckling 
+at the last 
+cycle 
+
+ 15 
+
+
+
+single-bay, single-story 2-D RC frame. Figure 14.b describes the tested frame, and Figure 14.a and Figure 
+14.c display beam and columns sections, respectively. Figure 14.b shows that both columns were loaded 
+with constant forces and that displacement was imposed to the top left joint. Noticeably, given the absence 
+of distributed loads on beam, there was no initial cracking. 
+
+ 
+
+ 
+
+(a) Beam section 
+
+ 
+(b) Tested frame (c) Column section 
+
+Figure 14. RC frame experiment [Braz-César et al. 2008a, 2008b] 
+ 
+Mechanical parameters of materials are based on nominal values. The characteristic value of the concrete 
+compressive strength is 20 MPa (C20/25, [EN 1992 2004]), and the steel yield point is 400 MPa for the 
+longitudinal reinforcement and 500 MPa for the stirrups [EN 10080 2006]. As described in Figure 14.c, in 
+the critical end segments (“confinement sections”), closer stirrup spacing was used; the lengths of these 
+segments are 40 cm in beam and 30 cm in columns. 
+ 
+Figure 15 displays the imposed displacement law.  
+ 
+
+ 
+
+Figure 15. Imposed displacement law for the frame experiment 
+ 
+This frame had been previously simulated by [Braz-César et al. 2008a, 2008b] by using concentrated and 
+distributed plasticity models. 
+ 
+Analogously to bridge column experiment [Tanaka 1990], this test is simulated by implementing the 
+damage variables algorithm and the bond-slip model [Murcia-Delso, Shing 2015a] in Abaqus code [Abaqus 
+2013] using the modeling scheme described in section 5.  
+ 
+Table 3 displays the calculated values for the parameters of the damage variables methodology. 
+ 
+
+-10
+
+-5
+
+0
+
+5
+
+10
+
+0 20 40 60 80
+
+D
+is
+
+pl
+ac
+
+em
+en
+
+t 
+(c
+
+m
+)
+
+Number of points
+
+x 
+y 
+
+z 
+y 
+
+x 
+z 
+
+ 16 
+
+
+
+Table 3. Parameters for simulation of the frame experiment 
+fck 
+
+(MPa) 
+fcm 
+
+(MPa) 
+ftm 
+
+(MPa) 
+Gch 
+
+(N/mm) 
+GF 
+
+(N/mm) b ac at 
+leq 
+
+(mm) bc bt 
+
+20 28 2.222 21.12 0.133 0.97 7.873 1 21.6 56.57 541.45 
+20 28 2.222 21.12 0.133 0.94 7.873 1 37 96.91 927.48 
+
+ 
+This experiment is simulated using bond-slip elements where bars are expected to slip. Figure 16 displays 
+the frame discretization; Figure 16.a shows the overall discretization, Figure 16.b presents a general view of 
+steel and interface elements and Figure 16.c depicts a more detailed view of the right beam-column joint. 
+As shown in Figure 16.b, bond-slip elements are assigned to the longitudinal bars along the column 
+foundation, inside beam-column joints, at the column top and bottom ends, and at beam-ends. Noticeably, 
+the proposed modeling scheme (section 5) allows that bar elements intersect in the same solid element 
+without need to generate perpendicular holes nor to use double nodes. Regarding the approach described in 
+subsection 5.3, similarly to Figure 6, ℎc = 0.01 for the bottom and top row of elements inside the columns; 
+then, ℎc = 0.1 for the elements where bond-slip is considered (Figure 16), and ℎc = 0.9 for the rest of the 
+model. The results from this approach are compared with those after introducing discrete cracks right above 
+the footings. 
+
+  
+
+ 
+
+ 
+
+a) Frame discretization b) Steel and interface elements  c) Interface elements at the right beam-column joint 
+
+Figure 16. Finite element discretization of the frame experiment  
+
+Analogously to Figure 11, Figure 17 displays comparisons between experimental and numerical hysteresis 
+loops obtained with the proposed model. Plots from Figure 17 provide similar conclusions than Figure 11. 
+ 
+ 
+
+  
+(a) Experiment and proposed formulation 
+
+with a discrete crack 
+(b) Experiment and proposed formulation 
+
+with reduced ℎc (subsection 5.3) 
+
+Figure 17. Experimental and numerical force-displacement response of the frame test 
+ 
+Similarly to Figure 12, Figure 18 displays comparisons between numerical hysteresis loops obtained with 
+the proposed model and assuming perfect bond. Figure 18 allows deriving parallel observations than Figure 
+
+-45
+
+-35
+
+-25
+
+-15
+
+-5
+
+5
+
+15
+
+25
+
+35
+
+45
+
+-0.1 -0.05 0 0.05 0.1
+
+F
+o
+
+rc
+e 
+
+(k
+N
+
+)
+
+Displacement (m)
+
+Experiment
+
+Proposed Model
+
+-45
+
+-35
+
+-25
+
+-15
+
+-5
+
+5
+
+15
+
+25
+
+35
+
+45
+
+-0.1 -0.05 0 0.05 0.1
+
+F
+o
+
+rc
+e 
+
+(k
+N
+
+)
+
+Displacement (m)
+
+Experiment
+Proposed Model
+
+63 cm 
+
+  26 cm 
+
+  28 cm 
+
+ 17 
+
+
+
+12. 
+ 
+
+  
+(a) Proposed formulation with a discrete 
+
+crack vs. perfect bond 
+(b) Proposed formulation with reduced ℎc 
+
+(subsection 5.3) vs. perfect bond 
+
+Figure 18. Numerical force-displacement response of the frame experiment 
+
+ 
+7. Conclusions 
+
+An integrated continuum FEM model is proposed for monotonic and cyclic simulation of RC frames. The 
+model combines the methodology proposed by some of the authors for calculating the damage variables of 
+CPDM and the 3-D interface bond-slip model developed by one of the authors. A new technique to 
+integrate the interface model in a continuum FEM model of regions with crossing bars is presented in this 
+paper. The proposed model is used to simulate two experiments consisting in imposing cyclic displacement 
+laws to an RC column and a frame. These experiments are also simulated with the same model although 
+assuming perfect bond conditions. 
+ 
+Obtained results show that the proposed model is able to predict the actual behavior of highly damaged RC 
+elements and frames, capturing strength reduction, stiffness degradation and pinching. This model uses 
+only a reduced number of parameters, and the authors believe that no calibration with experimental results 
+is required; more research is currently in progress to further validate this statement. Comparison with the 
+results obtained assuming perfect bond points out the high relevance of bond-slip in the hysteretic behavior 
+and the energy dissipation capacity.  
+ 
+The proposed integrated model can constitute a practical tool for accurate simulation of highly damaged 
+medium-size RC structures, both in research and in conventional analyses. It can be also used to calibrate 
+more simplified models. 
+ 
+Acknowledgements 
+
+This work has received financial support from Spanish Government under projects BIA2014-60093-R, 
+MAT2014-60647-R and CGL2015-6591 and from European Commission under projects 
+ERC-2012-AdG-320815 and PIRSES-GA-2013-612607. These supports are gratefully acknowledged. 
+ 
+References 
+
+[1] Abaqus analysis user’s manual version 6.11.3. (2013). Pawtucket (RI): Hibbitt, Karlsson & Sorensen. 
+[2] Alfarah B (2017). Advanced Computationally Efficient Modelling of RC Structures Nonlinear Cyclic 
+
+Behavior. Doctoral dissertation, Technical University of Catalonia. 
+[3] Alfarah B, López-Almansa F, Oller S (2017). New methodology for calculating damage variables 
+
+evolution in Plastic Damage Model for RC structures. Engineering Structures (published on-line). 
+[4] Ali A, Kim D, Cho SG (2013). Modeling of Nonlinear Cyclic Load Behaviour of I-shaped Composite 
+
+Steel-Concrete Shear Walls of Nuclear Power Plants, Nuclear Engineering and Technology 45(1). 
+[5] Al-Rub A, Kim S-M (2010). Computational applications of a coupled plasticity-damage constitutive 
+
+-45
+
+-35
+
+-25
+
+-15
+
+-5
+
+5
+
+15
+
+25
+
+35
+
+45
+
+-0.1 -0.05 0 0.05 0.1
+
+F
+o
+
+rc
+e 
+
+(k
+N
+
+)
+Displacement (m)
+
+Perfect Bond
+
+Proposed Model
+
+-45
+
+-35
+
+-25
+
+-15
+
+-5
+
+5
+
+15
+
+25
+
+35
+
+45
+
+-0.1 -0.05 0 0.05 0.1
+
+F
+o
+
+rc
+e 
+
+(k
+N
+
+)
+
+Displacement (m)
+
+Perfect Bond
+
+Proposed Model
+
+ 18 
+
+
+
+model for simulating plain concrete fracture, Engineering Fracture Mechanics. 77:1577–1603. 
+doi:10.1016/j.engfracmech.2010.04.007. 
+
+[6] Belytschko T, Fish J, Engelmann BE. (1988). A finite element with embedded localization zones. 
+Computer Methods in Applied Mechanics and Engineering 70:59-89. 
+
+[7] Birtel V, Mark P (2006). Parametrised Finite Element Modelling of RC Beam Shear Failure. Abaqus 
+Users Conference 95-108. 
+
+[8] Braz-César MT, Oliveira D, Barros RC (2008a). Comparison of cyclic response of reinforced 
+concrete infilled frames with experimental results, 14th World Conference on Earthquake Engineering 
+(14WCEE), Beijing, China. 
+
+[9] Braz-César MT, Oliveira D, Barros RC (2008b). Numerical validation of the experimental cyclic 
+response of reinforced concrete frames. In “Trends in Computational Structures Technology” 
+Topping BHV, Papadrakakis M Eds., Saxe-Coburg. 
+
+[10]  Burlion N, Gatuingt F, Pijaudier-Cabot G, Daudeville L. (2000). Compaction and tensile damage in 
+concrete: constitutive modelling and application to dynamics, Comput. Methods Appl. Mech. Engrg. 
+183:291-308 
+
+[11] Car E, Zalamea F, Oller S, Miquel J, Oñate E. (2002). Numerical simulation of fiber reinforced 
+composite materials. Two procedures. International Journal of Solids and Structures. 
+39(7):1967-1986. 
+
+[12] Carol I, Rizzi E, Willam KJ. (2001). On the formulation of anisotropic elastics degradation. II. 
+Generalized pseudo-Rankine model for tensile damage. International Journal of Solids and Structures 
+38:519–546. 
+
+[13] CEB-FIP (2010). Model Code 2010. Thomas Telford, London. 
+[14] Chen AC, Chen WF. (1975). Constitutive relations for concrete. Journal of Engineering Mechanics 
+
+Division, ASCE 101:465–481. 
+[15] Cox JV, Herrmann LR. (1998). Development of a plasticity bond model for steel reinforcement, 
+
+Mechanics of Cohesive-Frictional Materials, 3(2):155-180. 
+[16] Daoud A, Maurel O, Laborderie C. (2012). Mesoscopic modeling of the interaction between steel 
+
+reinforcement and the early-age cracking during cement hydration, Bond in Concrete, Brescia, Italy. 
+[17] Deaton JB. (2013). Nonlinear finite element analysis of reinforced concrete exterior beam-column 
+
+joints with nonseismic detailing. PhD Thesis, School of Civil and Environmental Engineering, 
+Georgia Institute of Technology. 
+
+[18] Eligehausen R, Popov EP, Bertero VV. (1983). Local bond stress—slip relationships of deformed bars 
+under generalized excitations. UCB/EERC-83/23, Earthquake Engineering Research Center, Univ. of 
+California, Berkeley. 
+
+[19] EN 10080 (2006). Steel for the reinforcement of concrete, weldable, ribbed reinforcing steel. 
+European Committee for Standardization. 
+
+[20] EN 1992 (2004). Eurocode 2: Design of concrete structures. European Committee for 
+Standardization. 
+
+[21] Faria R, Oliver J, Cervera M. (1998). A strain-based plastic viscous-damage model for massive 
+concrete structures, Int. J. Solids Structures 35(14), 1533-1558 
+
+[22] Gan, Y (2000). Bond stress and slip modeling in nonlinear finite element analysis of reinforced 
+concrete structures. M.A.Sc. Thesis, Department of Civil Engineering, University of Toronto. 
+
+[23] Grassl P, Jirásek M. (2006). Damage-plastic model for concrete failure. International Journal of 
+Solids and Structures, 43(22-23):7166-7196. (doi:10.1016/j.ijsolstr.2006.06.032). 
+
+[24] Häussler-Combe U, Hartig J (2008). Formulation and numerical implementation of a constitutive law 
+for concrete with strain-based damage and plasticity. International Journal of Non-Linear Mechanics 
+43:399–415. doi:10.1016/j.ijnonlinmec.2008.01.005. 
+
+[25] Jirásek M, Zimmermann T (2001). Embedded crack model: I. Basic formulation. Int. J. Numer. Meth. 
+Engng 50:1269–1290. 
+
+[26] Krätzig WB, Pölling R (2004). An elasto-plastic damage model for reinforced concrete with 
+minimum number of material parameters, Computer and Structures 82(15-16): 1201–1215. 
+
+[27] Lee J, Fenves GL (1998). Plastic-Damage Model for Cyclic Loading of Concrete Structures, 
+Engineering Mechanics 124(8):892–900. 
+
+[28] Lemaitre J. (1992). A course on damage mechanics, Springer Verlag. 
+
+ 19 
+
+http://eprints.gla.ac.uk/view/author/10467.html
+http://eprints.gla.ac.uk/view/journal_volume/International_Journal_of_Solids_and_Structures.html
+http://eprints.gla.ac.uk/view/journal_volume/International_Journal_of_Solids_and_Structures.html
+http://dx.doi.org/10.1016/j.ijsolstr.2006.06.032
+
+
+[29] Liang X, Sritharan S. (2014). An Investigation of Bond-Slip Behaviour of Reinforcing Steel 
+Subjected to Inelastic Strains. Tenth U.S. National Conference on Earthquake Engineering Frontiers 
+of Earthquake Engineering. 
+
+[30] Lin FB, Bazant ZP, Chern JC, Marchertas AH. (1987). Concrete model with normality and sequential 
+identification. Computers and Structures 26:1011–1025. 
+
+[31] López-Almansa F, Alfarah B, Oller S (2014). Numerical simulation of RC frame testing with Damage 
+Plasticity Model. Comparison with Simplified Models, 15th European Conference on Earthquake 
+Engineering (15ECEE), Istanbul, Turkey. 
+
+[32] Lowes LN, Moehle JP, Govindjee S. (2004). Concrete-Steel Bond Model for Use in Finite Element 
+Modeling of Reinforced Concrete Structures, ACI Structural Journal, Vol. 101, No. 4, July-August, 
+501-511. 
+
+[33] Lubliner J, Oliver J, Oller S, Oñate E (1989). A plastic-damage model for concrete, Solids and 
+Structures, 25(3):299–326. 
+
+[34] Luccioni B, Oller S, Danesi R. (1996). Coupled plastic-damaged model, Comput. Methods Appl. 
+Mech. Engrg 129:81-89. 
+
+[35] Maekawa, K., Pimanmas, A., Okamura, H., Nonlinear mechanics of reinforced concrete, Ed. Spon 
+Press, New York, NY, 2003. 
+
+[36] Malvar, L.J. (1992): Bond reinforcement under controlled confinement. ACI Materials Journal 89(6), 
+711-721. 
+
+[37] Mazars J. (1984). Application de la mécanique de l'endommagement au comportement non linéaire et 
+à la rupture du béton de structure. Doctoral Thesis, University of Paris.  
+
+[38] Mazars J, Pijaudier-Cabot G. (1989). Continuum damage theory-application to concrete. Journal of 
+Engineering Mechanics ASCE, 115(2):345–365. 
+
+[39] Monti G, Filippou FC, Spacone E. (1997) Finite element for anchored bars under cyclic load 
+reversals, ASCE Journal of Structural Engineering, 123(5):614-623. 
+
+[40] Monti G, Spacone E. (2000). Reinforced concrete fiber beam element with bond-slip, Journal of 
+Structural Engineering, 126(6):654-661. 
+
+[41] Murcia-Delso J. (2013). Bond-slip behavior and development of bridge column longitudinal 
+reinforcing bars in enlarged pile shafts. PhD Thesis, Dept. of Structural Engineering, Univ. of 
+California, San Diego. 
+
+[42] Murcia-Delso J, Stavridis A, Shing PB. (2013). Bond strength and cyclic bond deterioration of 
+large-diameter bars. ACI Struct. J., 110(4):659–669. 
+
+[43] Murcia-Delso J, Shing PB. (2015a). Bond-Slip Model for Detailed Finite-Element Analysis of 
+Reinforced Concrete Structures. J. Struct. Eng., ASCE, 0733-9445/04014125(10). 
+
+[44] Murcia-Delso J, Shing PB. (2015b). Elastoplastic Dilatant Interface Model for Cyclic Bond-Slip 
+Behavior of Reinforcing Bars. J. Eng. Mechanics, ASCE, 10.1061/(ASCE)EM.1943-7889.0000994. 
+
+[45] Nguyen GD, Houlsby GT. (2004). A thermodynamic approach to constitutive modelling of concrete, 
+Proceedings of the 12th conference, Association for Computational Mechanics in Engineering 
+(ACME-UK), Cardiff UK. 
+
+[46] Nguyen GD, Korsunsky A. (2008). Development of an approach to constitutive modelling of 
+concrete: damage coupled with plasticity. International Journal of Solids and Structures, 
+45(20):5483-5501.  
+
+[47] Oliver J. (1989). A consistent characteristic length for smeared cracking models. Int J Numer 
+Methods Engng; 28:461–74. 
+
+[48] Oller S (1988). A continuous damage model for frictional materials (in Spanish), Doctoral 
+Dissertation, Technical University of Catalonia. 
+
+[49] Oller S, Car E, Oñate E. (2000). A numerical approach to simulate the behavior of fiber reinforced 
+composite materials. European Congress on Computational Methods in Applied Engineering, 
+ECCOMAS-2000. Barcelona. 
+
+[50] Oller S. (2014). Numerical Simulation of Mechanical Behavior of Composite Materials. 
+CIMNE-Springer, Barcelona, Spain.  
+
+[51] Ožbolt J, Lettow S, Kožar I. (2002). Discrete Bond Element for 3-D Finite Element Analysis of 
+Reinforced Concrete Structures. Proceedings of the 3rd International Symposium: Bond in Concrete - 
+from research to standards. Budapest: University of Technology and Economics. 
+
+ 20 
+
+http://cat.inist.fr/?aModele=afficheN&cpsidt=9153637
+http://cat.inist.fr/?aModele=afficheN&cpsidt=9153637
+
+
+[52] PEER. (2015). Open System for Earthquake Engineering Simulation (OpenSEES). Pacific 
+Earthquake Engineering Research Center, Berkeley. 
+
+[53] Pires F (1990). Influência das paredes de alvenaria no comportamento de estruturas reticuladas de 
+betão armado sujeitas a acções horizontais, PhD Thesis, LNEC, Lisbon, Portugal (in Portuguese). 
+
+[54] Rabczuk T, Akkermann J, Eibl J. (2005). A numerical model for reinforced concrete structures, 
+International Journal of Solids and Structures, 42(5–6):1327–1354. 
+
+[55] Salari MR, Saeb S, Willam KJ, Patchet SJ, Carrasco RC. (2004). A coupled elastoplastic damage 
+model for geomaterials, Comput. Methods Appl. Mech. Engrg. 193(27-29):2625-2643. 
+
+[56] Shima H, Chou L, Okamura H. (1987). Bond characteristics in post-yield range of deformed bars. 
+Proc. JSCE, 6(387):113–124. 
+
+[57] Simo JC, Oliver J. (1994). A new approach to the analysis and simulation of strain softening in solids. 
+In Fracture and Damage in Quasibrittle Structures, E&FN:25-39. 
+
+[58] Sinha BP, Gerstle KH, Tulin LG (1964). Stress-strain relations for concrete under cyclic loading, ACI 
+Structural Journal 62(2):195-210. 
+
+[59] Spacone E, Filippou FC, Taucer FF. (1996). Fiber beam-column model for nonlinear analysis of R/C 
+frames. Part I: Formulation, Earthquake Engineering and Structural Dynamics, 25(7):711–725. 
+
+[60] Tanaka H. (1990). Effect of Lateral Confining Reinforcement on the Ductile Behaviour of Reinforced 
+Concrete Columns. Doctoral Dissertation. University of Canterbury, New Zealand. 
+
+[61] Vecchio F, Collins M. (1986). The modified compression-field theory for reinforced concrete 
+elements subjected to shear, ACI Journal, 83:219–231. 
+
+[62] Voyiadjis GZ, Ziad N. Taqieddin, Kattan PI. (2008). Anisotropic damage–plasticity model for 
+concrete. International Journal of Plasticity 24:1946–1965. 
+
+[63] Yu T, Teng JG, Won YL, Dong SL (2010). Finite element modeling of confined concrete-II: 
+Plastic-damage model. Journal of Engineering Structures 32:680–691. 
+doi:10.1016/j.engstruct.2009.11.013. 
+
+[64] Zhao J, Sritharan S. (2007). Modeling of strain penetration effects in fiber-based analysis of 
+reinforced concrete structures. ACI Structural Journal, 104(2):133-141. 
+
+[65] Zheng FG, Wu ZR, Gu CS, Bao TF, Hu J (2012). A plastic damage model for concrete structure 
+cracks with two damage variables. Science China, 55(11):2971–2980. 
+
+ 
+List of symbols 
+
+Roman letters  
+ 
+ac / at / bc / bt: dimensionless coefficients in equations (9), (10) and (11) 
+b: εc
+
+pl/εcch ratio (Table 2 and Table 3) 
+Db: reinforcement bar diameter 
+d / dc / dt: damage variable / compression damage variable / tension damage variable 
+E / E0: modulus of deformation / undamaged modulus of deformation 
+Es: steel modulus of elasticity 
+f / fcm / ftm / fc0 / ft0 / fck: stress strength / concrete compressive stress strength / concrete tensile stress strength 
+
+/ limit stress of linear compressive branch / limit stress of linear tensile branch / characteristic value of 
+concrete compressive strength 
+
+fy / fu: steel yield point / ultimate stress 
+G / Gch / GF: flow potential / crushing energy per unit area / fracture energy per unit area 
+gc / gt: compressive / tensile energies per unit volume dissipated by damage along entire deterioration 
+
+process 
+ℎc / ℎt: weighting factors accounting for stiffness recovery 
+leq: mesh size (finite element characteristic length) 
+r*: stress state; for uniaxial stress r*(σ11) = 1 for tension and r*(σ11) = 0 for compression 
+S1 / S2 / S3: relative normal displacement / longitudinal slip / transverse slip 
+Speak /𝑆𝑆max+  / 𝑆𝑆max−  / 𝑆𝑆cum: peak slip / maximum positive slip / maximum negative slip / cumulated slip 
+SR: clear spacing between bar ribs 
+sc / st: coefficients accounting for stress state and stiffness recovery effects 
+ 
+
+ 21 
+
+
+
+Greek letters 
+ 
+εs / εy / εsh / εu:  axial steel strain / yielding steel strain / hardening steel strain / ultimate steel strain 
+εcch / εtck: crushing compressive strain / cracking tensile strain 
+εc
+pl / εt
+
+pl: plastic compressive / tensile strain 
+ρb,s / ρf,s: reduction factor in bar bearing resistance accounting for steel yielding in tension / reduction factor 
+
+in bar friction resistance accounting for steel yielding in tension 
+ρb,c / ρf,c: reduction factor in bar bearing resistance accounting for slip history / reduction factor in bar 
+
+friction resistance accounts for slip history 
+ρn: reduction factor accounting for opening of splitting cracks 
+σ1: normal bond stress 
+σ / σ11: normal stress / first principal uniaxial stress  
+τ2 / τmax / τb / τf: longitudinal shear bond stress / peak bond strength / due to bar bearing resistance/ due to 
+friction resistance 
+τ3: transverse shear bond stress 
+ 
+
+ 22 
+
+

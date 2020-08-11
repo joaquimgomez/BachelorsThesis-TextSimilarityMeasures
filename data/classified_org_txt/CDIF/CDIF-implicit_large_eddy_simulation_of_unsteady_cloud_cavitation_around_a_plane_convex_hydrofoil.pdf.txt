@@ -1,0 +1,731 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Original file was exampleVic.tex
+
+
+Implicit large eddy simulation of unsteady cloud cavitation 
+around a plane-convex hydrofoil 
+
+Victor Hidalgo1, Xianwu Luo1*, Xavier Escaler 2, Bin Ji 3, Alvaro Aguinaga 4 
+
+ 
+1 State Key Laboratory of Hydroscience and Engineering, Tsinghua University, 
+
+Beijing 100084, China 
+
+2 CDIF, Universitat Politècnica de Catalunya, 
+
+Barcelona, Spain 
+
+3 School of Power and Mechanical Engineering, Wuhan University, 
+
+Hubei 430072, China 
+
+4 Mechanical Engineering Department, Escuela Politecnica Nacional University, 
+
+Quito E11-253, Ecuador 
+
+ 
+
+* Correspondence author: luoxw@mail.tsinghua.edu.cn  
+
+ 
+
+Abstract 
+ The present research, focuses on the erosive cavitation behavior 
+
+around a plane convex hydrofoil. For that, Tthe Zwart-Gerber-Belamri 
+cavitation model has been implemented in library form to be used withto 
+carry out in OpenFOAM. Implicit Large Eddy Simulation (ILES) has 
+been applied to analyze the three dimensional unsteady cavitating flow 
+around a plane convexthe hydrofoil. The numerical results corresponding 
+to hydrodynamic conditions that have been experimentally tested at the 
+high speed cavitation tunnel of the École Polytechnique Fédérale de 
+Lausanne (EPFL) show the sheet cavitation development and the 
+shedding and collapse of vapor clouds. It is noted that cavitation 
+evolution including maximum vapor length, detachment and oscillation 
+frequency are fairly well simulated. Furthermore, the pressure pulses due 
+to the cavitation development as well as complex vortex structures are 
+reasonably predicted. Consequently, these results confirm that the 
+present numerical method can be used to investigate unsteady cavitation 
+around hydrofoils with satisfactory accuracy.  
+
+Formatat: Color de la lletra:
+Automàtic
+
+Formatat: Color de la lletra:
+Automàtic
+
+1 
+
+
+
+1  Introduction 
+Studies of unsteady cloud cavitation around hydrofoils are important to improve the design 
+theory of fluid machinery [1, 2] and to understand the mechanisms , due to questions around 
+the cavitation dynamic behavior and the collapse of the cloud of bubbles. However, 
+experimental studies are expensive and have limitations such as the accuracy of lab 
+equipments [3]. Therefore, computational fluid mechanics (CFD) are a complementary option 
+to understand the cavity shedding and collapse, the cyclic stresses being generated and the 
+resulting cavitation erosion.  
+
+In this way, Kunz et al. [4] proposed a cavitation model based on Merkle's ideas for the 
+analysis of unsteady cavitating flow. The model considers the continuity of a mixture volume 
+rather than a mixture mass equation. The transfer from liquid to vapor is modeled as being 
+proportional to the liquid volume fraction and the pressure below the vapor pressure. For 
+instance, Nouri et al. [5] studied unsteady cavitating flow over a disc using OpenFOAM with 
+explicit LES based on this cavitation model. Their results showed that the main aspects of 
+super cavitation could be captured. However, selecting the correct explicit subgrid model is 
+shown to be a problem for different cases. Moreover, the shape of the cluster of bubbles can 
+be improved with a cavitation model based on Rayleigh-Plesset’s equation. Based on this 
+premise, Roohi et al. [6] studied the cavitating flow over the Clark-Y hydrofoil and they 
+compared the Kunz model with Schnerr-Sauer cavitation model [7] which is based on 
+Rayleigh-Plesset’s equation and is part of the default OpenFOAM solver packages too. The 
+corresponding results showed that the Schnerr-Sauer model predicted a stronger re-entrant jet, 
+which was visible in experiment, and the shape of the obtained cavity was improved as well. 
+However, it was found that the symmetrical consideration for condensation and vaporization 
+processes may induce the high error of the force coefficients for super cavitation regime. 
+
+Consequently, Zwart et al. [8] presented a two phase flow model for predicting cavitation 
+dynamics which was implemented in CFX-5 based on Rayleigh-Plesset’s equation. The model 
+worked well for condensation but it was unstable for vaporization. So, such unsymmetrical 
+consideration was taken into account with empirical constants for calibration. As a result, the 
+model shows improvements for non-equilibrium effects, which were not included in previous 
+models as Schnerr- Sauer, Gerber [9], Senocak and Shyy [10]. Different researchers have used 
+this model to capture the cavitation phenomenon with good results. That is the case of Ji et 
+al. [11, 12] who  studied the horse-shoe cloud behavior over a twisted hydrofoil and predicted 
+the performances of a marine propeller under cavitation condition with different skew angles. 
+Shi et al. [13] also showed the remarkable use of the Zwart-Gerber-Belamri model for the 
+study of cavitation in a WP7 automobile centrifugal pump. Zhang et al. [14] used this model 
+to study the effects of density ratio on the maximum length of the attached sheet of vapor. 
+Some studies have been carried out to improve the model as  the case of Morgut et al. [15] 
+who determined the possible values of the calibration constants for numerical simulations. In 
+this line, Li et al. [16] studied the influences of the empirical constants and  the nucleation 
+volume fraction for the model. From their research, it was concluded that the evaporation 
+coefficient controls the cavity length and the high vapor volume fraction, while the 
+condensation vapor regulates the cavity length. Unfortunately, the cavitation model of Zwart-
+Gerber-Belamri is not part of the OpenFOAM solvers and no references are available of 
+
+Formatat: Color de la lletra:
+
+Formatat: Color de la lletra:
+
+2 
+
+
+
+previous works with this solver. Therefore, its proper implementation and validation is a 
+challenge, which is the main objective of the current work.  
+
+Due to the high Reynolds numbers of cavitation flows in hydro machinery, the traditional 
+RANS and turbulence models must be adapted to predict the cavity sheet and the shedding 
+process. Some examples are the cases of Huang and Wang [17] and Ji et al. [18] who used 
+Partially-Averaged Navier-Stokes (PANS) equations in the commercial code ANSYS-CFX for 
+the cavitation simulation. PANS is a hybrid turbulence model which conducts the simulation 
+from RANS to Direct Numerical Simulation (DNS) based on unresolved to total ratios of 
+kinetic energy ( ) and dissipation ( ). Nevertheless, those ratios can only be found by a 
+subgrid independence analysis and they can not be easily estimated according to Sharath and 
+Girimaji [19]. Another solution was proposed by Zuo et al. [20] who added a function to the  
+
+ turbulence model to consider the influence of variations in density on the turbulence 
+viscosity for the study of cavitation in a Francis turbine. Looking for a better solution, Bensow 
+and Bark [21] and Lu et al. [22] worked with OpenFOAM to use large eddy simulation (LES) 
+instead of RANS to simulate the formation of erosive cavitation based on Implicit Large Eddy 
+Simulation (ILES). ILES was selected to avoid the explicit coupling between mass transfer 
+modeling and subgrid modeling. ILES has been validated by recent studies on aerospace and 
+naval engineering for highly turbulent flows such as the flows over a fully three-dimensional 
+swept-wing geometry [23] and a marine propeller [24].  
+
+In summary, the main contribution in this paper will be the implementation and validation 
+of the Zwart-Gerber-Belamri cavitation model in OpenFOAM using ILES. Therefore, it is 
+intended to obtain accurate simulations of the shedding process of partial cavitation, which is 
+considered the main mechanism of material erosion. For validation purposes, the experimental 
+results obtained by Escaler et al. [25, 26] with a 2D plane-convex hydrofoil at the École 
+Polytechnique Fédérale de Lausanne (EPFL) high speed cavitation tunnel have been used. 
+Previous comparisons with OpenFOAM were focused on NACA series or twisted geometries 
+with unsteady cavitation [27, 28, 29] to compare the cavitation hydrodynamic behavior. For 
+the present paper, the plane-convex hydrofoil was specifically investigated to reveal the 
+unsteady cavitation dynamics.  
+
+2  Description of the numerical method 
+
+2.1  Implicit Large Eddy Simulation 
+Continuity and Navier-Stokes equations are the basis of LES, as shown in Eqs. 1 and 2. 
+
+      (1) 
+ 
+
+,   (2) 
+ 
+where  is the instant velocity,  t is time, i and j are the space axes subscripts. 
+
+In ILES, Eqs. 1 and 2 are filtered to use the approximation  and to exclude some solutions, 
+which are not relevant for Eqs. 3 and 4 [30]. 
+
+Formatat: Color de la lletra:
+Automàtic
+Formatat: Color de la lletra:
+
+3 
+
+
+
+      (3) 
+
+     (4) 
+Then Eq. 4 is reduced to obtain Eq. 5 by the following considerations:  
+
+1. The product of filtered velocities is .  
+
+2. The subgrid stress tensor, which is the Reynolds stress tensor is 
+.  
+
+3. The filtered strain tensor rate is .  
+
+4. The filtered viscous stress tensor is .  
+
+     (5)  
+ 
+The subgrid stress tensor  is a nonlinear term, so it is separated as indicated in Eq. 6. 
+
+      (6) 
+ 
+where, the tensor  according to Bensow-Bark [21] and Lu et al. [22] is modeled by using 
+the truncation error of the discretization, which acts as a dissipative action to obtain an 
+implicit subgrid scale (SGS) for ILES. Adams et al. [30] gives more details about the 
+mathematical implementation of this implicit model.  
+
+2.2  Zwart-Gerber-Belamri cavitation model 
+The cavitating flow is considered as a single fluid with  two-phase homogeneous mixture with 
+phase changes between vapor and water. Eq. 7 to 9 indicate the vapor volume fraction , the 
+density , and the dynamic viscosity  of the vapor-water mixture as flows: 
+
+       (7) 
+      (8) 
+      (9) 
+
+ 
+where V is the total volume, l and v are subscripts for liquid and vapor respectively. Thus Eq. 
+10 available based on Eq. 3, which considers the phase transfer  called  as the transport 
+equation. 
+
+     (10) 
+ where  is the inter-phase mass transfer rate per unit volume.     
+
+The Zwart-Gerber-Belamri model considers a variable bubble radius, R, based on Eq. 11, 
+in which the second derivative term is neglected to simplify the expression and to get Eq. 12. 
+
+4 
+
+
+
+     (11)  
+
+      (12) 
+Thus the Zwart-Gerber-Belamri model is expressed with Eq. 13. 
+
+   (13) 
+where  and  are the selected calibration constants for vaporization and 
+condensation,  is the nucleation site volume fraction and   m 
+is the typical bubble size in water [29]. The work of Morgout et al. [15] has been used to 
+choose  and  values. Moreover, a preliminary study of  sensitivity was carried out to 
+select its value.  
+
+The Zwart-Gerber-Belamri model has been written in C++ based on the OpenFOAM code. 
+The code has been saved on the new solver directory and compiled to become an implemented 
+OpenFOAM’s cavitation model for the present research.  
+
+2.3  OpenFOAM set up 
+The OpenFOAM version 2.2.x was used in the present research because it solves the bugs of 
+the previous version [17]. GNU/Linux Mint 6 Petra with kernel Linux 3.11.0-12-generic (x86 
+64) and XFCE desktop were also used. This version of OpenFOAM is used especially in the 
+CentOS GNU/Linux distribution, which is based on the official GNU/Linux version of 
+RedHAT. In fact, the following implementations were carried out: 
+
+1. In the directory OpenFOAM/OpenFOAM-2.2.x/etc the text document bashrc was 
+modified. The lines “foamCompiler=system" and “WMCOMPILER=Gcc" were written 
+and the line “foamCompiler=ThirdParty" was eliminated in the compiler 
+location (#Compiler Location:). These actions had to be made to compile the 
+implemented cavitation solver of Zwart-Gerber-Belamri [29].  
+
+2. The library libmpi.so.1 is required in GNU/Linux Mint Petra. Thus, a symbolic link (ln -
+s) with libmpi.so was implemented, which is part of Message Passing Interface (MPI) 
+GNU/Linux library [31].  
+
+3  Hydrofoil geometry, mesh generation and boundary conditions 
+
+3.1  Hydrofoil geometry and computation domain 
+Figure 1 shows a plane-convex hydrofoil used in Escaler's studies [25, 26]. This hydrofoil 
+presents a plane upper surface, a convex lower surface. The hydrofoil has a chord length c 
+equal to 91.1 mm, a span-length equal to 0.3c, a semicircular leading edge and a tip trailing 
+edge.  
+
+5 
+
+
+
+    The hydrofoil is positioned in a computation domain with an angle of attack, , as 
+shown in Fig. 2. 
+
+3.2  Mesh generation 
+Meshing is a challenge for this type of plane-convex hydrofoils due to the fact that the leading 
+edge presents a great change from a convex shape to a plane shape with a semicircular leading 
+edge. 
+
+Therefore, a structured C mesh generated using Gmsh 2.8.5 and Salome 7.4.0 was 
+obtained with scale distribution and hexahedron elements. The resulting mesh has 393980 
+hexahedra. The quality of the mesh is guaranteed by the Salome taper analysis as indicated in 
+Fig. 3. This analysis shows proportional changes of elements such as 0.021, which is an 
+acceptable value according to previous works [28]. 
+
+The Yplus, , is calculated based on Eq. 14 and the mean value for the hydrofoil wall is 
+9.2. This mean value is within the range from 1 to 15, which ensures that the mesh matches 
+the conditions for ILES based on Lu et al. [22]. 
+
+       (14) 
+where  is the friction velocity, y is the distance to the nearest hydrofoil wall and  is the 
+kinematic viscosity [29]. 
+
+3.3  Boundary Conditions 
+Both, the Reynolds number, , and the cavitation number, , indicated in Eqs. 15 and 16 are  
+applied to show the cavitating flow conditions: 
+
+      (15) 
+ 
+
+            (16) 
+ 
+
+where  is the free stream velocity [15, 32], c is the chord length, and  and  are the 
+reference and saturation pressures, respectively. 
+
+Based on the experimental tests carried out by Escaler [25], five flow conditions 
+combining different free stream velocity at domain inlet, angle of attack and the reference 
+pressure at domain outlet  have been selected as shown in Tab. 1. The uniform velocity and the 
+static pressure were assassinated for the domain inlet and outlet.  
+
+ 
+
+Table 1: Simulated flow conditions  
+
+ Cases σ [ ] [m/s]  [kPa] 
+ (i) 0.70 2.3 35.0 430.19 
+ (ii) 0.70 3.0 25.0 220.60 
+ (iii) 0.70 3.0 35.0 430.19 
+ (iv) 1.00 3.0 35.0 613.58 
+ (v) 1.12 3.0 35.0 680.82 
+
+6 
+
+
+
+  
+
+The front and back planes of the domain were considered as symmetry boundaries. 
+Besides, the top and bottom of the computation domain,  the hydrofoil surface were treated as 
+no-slip wall. 
+
+4  Results and Discussion 
+Figure 4 shows several characteristic parameters defined for the cavity attached to the 
+hydrofoil such as the cavity length L, the maximum cavity length , the depth , etc. 
+The cavitating flow over the plane-convex hydrofoil presents a typical partial cavitation 
+development consisting of an attached cavity from the leading edge. Under unsteady 
+conditions, the re-entrant jet mechanism provokes the periodic shedding of bubble 
+clouds [26].  
+   Strouhal number, Str, is a typical dimensionless parameter to show the feature of cavity 
+oscillation, as indicated in Eq. 17. 
+
+      (17) 
+where f is the cavity oscillation frequency and  is the mean velocity of the free stream. 
+
+The transient numerical results have been post-processed and analyzed along the time to 
+identify a single  period of the cavitation oscillation process. Particular attention has been 
+given to the vapor volume fraction, the development of the reentrant jet, the shedding of a 
+cloud cavity and its final collapse. The cloud cavity like the horse-shoe is visible and there is a 
+good similarity between the experiment and simulation, as indicated in Fig. 5.  
+
+For a better comparison, the dimensionless time given by Eq. 18 has been used. 
+
+      (18) 
+where t is a time between initial time, , and final time, , in one cycle. In particular six time 
+instants corresponding to 0, 1/6, 1/3, 1/2, 2/3 and 5/6  have been selected, and the 
+corresponding contour of the vapor volume fraction  are plotted in Fig. 6, for all flow 
+conditions. 
+
+Based on Fig. 6 the following information can be obtained: 
+1. All the cases show the growth and detachment of leading edge cavity, and the break off 
+
+and collapse of the cavity cloud.   
+
+2. The maximum length of the leading edge attached cavity decreases with the increase of 
+the cavitation number.  
+
+3. With , the cavity cloud  is observed more clearly for case (i) and (iii) at  
+m/s than that for case (ii) at  m/s. Therefore, the larger velocity enhances the 
+probabilities of cloud cavity, which is linked to erosive power of cavitation erosion.  
+
+4. Cavities at the hydrofoil trailing edge were observed along the lower surface of the 
+hydrofoil for three cases with . This kind of cavitation is due to the hydrofoil 
+convex shape and it is also observed experimentally.  
+
+7 
+
+
+
+5. It is noted that results obtained by ILES method has good accuracy as previous studies 
+[33] based on explicit subgrid model of LES.  
+
+In order to understand the dimensionless evolution of cavity shedding shown in Fig. 6, the  
+pressure coefficient, Cp, calculated based on Eq. 19 and the vapor void fraction, , have been 
+plotted in Fig. 7 and Fig. 8, respectively, as a function of  for six points located along the 
+upper surface at  in spanwise direction.  
+
+ 
+
+     (19) 
+ 
+where  is the static pressure. 
+      According to the definition of σ and Cp, there is the following relation: 
+ 
+
+              (20) 
+ 
+Due to the fact that  is always larger than  Cp must be larger than -σ.  
+Because those cases with  σ = 0.7 have larger cavity lengths , the flat Cp lines, whose 
+
+value corresponding to the cavitation number are observed at x/c = 0.2 and 0.4, compared with 
+other two cases. On the contrary, the cavity length of case (v) is shortest, and the static 
+pressure oscillation violently even at x/c = 0.2. From x/c = 0.6 to 1.0, Cp lines with strong 
+pressure oscillations can be observed for all cases. At the downstream of the hydrofoil (x/c = 
+1.2) , the average static pressure is basically around the reference pressure level, and some 
+pressure pulses can be captured. Those pulses may relates with the collapse of  vapor droplet. 
+Based on vapor volume fraction oscillations shown in Fig. 8, the vapor sizes are larger for 
+case (i) and (iii), and the vapor size is smallest for case (v) due to its highest reference 
+pressure.  
+
+The comparison of cavity length among those five cases is listed at Tab. 2, where both 
+experimental and simulation data are included. To show the difference between the experiment 
+and calculation, Eq. 21 defines the error evaluation of the relative cavity length. The 
+prediction accuracy is fairly good, though the largest error is near 20%. It must be noted that 
+due to the transient nature of the shedding process and the high frequencies involved during 
+the tests [25], the maximum length could not be determined with sufficient accuracy from the 
+experiments so an error of about ±5% can be assumed.Probably the error can decrease  if the 
+experiments can be repeated with the goals to measure the cavity length and frequency, which 
+were not the main objects of EPFL's researchers in 2003 [25]. 
+
+   
+
+    (21) 
+
+Table 2: Numerical studies and experimental results based on  
+
+  f Str 
+ Cases Num. Exp. Error [%] Num. [Hz] Num. 
+
+ (i) 0.47 0.50 6.0 166.67 0.20 
+
+Formatat: Color de la lletra:
+
+Formatat: Color de la lletra:
+
+Formatat: Color de la lletra:
+Automàtic
+
+Formatat: Color de la lletra:
+Automàtic
+
+8 
+
+
+
+ (ii) 0.40 0.50 20.0 163.93 0.24 
+ (iii) 0.44 0.45 2.2 151.51 0.18 
+ (iv) 0.13 0.16 18.7 588.24 0.20 
+ (v) 0.12 0.14 14.3 588.24 0.18 
+
+  
+
+ 
+For a better understanding of the phenomenon, the Q-criterion based on Eq. 22 is used to 
+
+obtain the 3D vorticity distribution.  
+
+     (22) 
+where  is the vorticity rate, S is the strain rate.  
+
+The Q-criterion is plotted in Fig. 9 where iso-contours of  s-2 show similarities 
+with vapor volume fraction iso-contours ( ). Results depicted that there were strong 
+interaction between the vorticity and cavitation evolution. 
+
+5  Conclusions 
+A numerical simulation of unsteady cloud cavitation around a plane convex hydrofoil has 
+
+been carried out with a free OpenFOAM software package using Implicit Large Eddy 
+Simulation (ILES) where and a newly implemented Zwart-Gerber-Belamri cavitation model 
+were implemented.  The transient results at different operation conditions show the typical 
+cavitation dynamic behaviors including the growth of the leading edge cavity, the 
+development of the reentrant jet, the shedding of bubble clouds and their collapses. 
+
+The pressure oscillations due to cavitation evolution dynamics as well as the complex 
+vortex structures observed with Q-criterion were have been reasonably predicted. Further, a 
+strouhal number between 0.18 and 0.24 denotes that the cavitation mechanics can be 
+reproducedare well captured. In conclusion, the proposed numerical method are has been 
+validated as a reliable tool for numerical studies and it can be used in future research to study 
+cavitation-erosion mechanicsmechanisms.  
+
+     
+
+Acknowledgement 
+This work was financially supported by the National Natural Science Foundation of China 
+(Project Nos. 51306018, 51206087 and 51179091) and State key Laboratory of Hydroscience 
+and Engineering, Tsinghua University (Project Nos. 2014-KY-05 and 2015-E-03). 
+
+Conflict of interest 
+Victor Hidalgo, Xianwu Luo, Xavier Escaler, Bin Ji and Alvaro Aguinaga declare that they 
+have no conflict of interest.  
+
+References and Notes 
+[1] FRANC J.. and MICHEL J. Fundamentals of cavitation[M]. Dordrecht, The 
+Netherlands:  Springer, 2005, 1993-221. 
+
+Formatat: Color de la lletra:
+Automàtic
+
+9 
+
+
+
+[2] LUO X., JI B. and XU H. Design and Optimization for Fluid Machinery[B]. 
+Tsinghua University Press, 2012. 
+[3] ESCALER X., EGUSQUIZA E., FARHAT M., AVELLAN F., and COUSSIRAT M. 
+Detection of cavitation in hydraulic turbines[J]. Mechanical systems and signal processing, 
+2006, 20(4):983–1007. 
+[4] KUNZ R., BOGER D., STINEBRING D., CHYCZEWSKI T., LINDAU J., 
+GIBELING H., VENKATESWARAN S. and GOVINDAN T. A preconditioned Navier Stokes 
+method for two-phase flows with application to cavitation prediction[J]. Computers & 
+Fluids, 2000, 29(8):849–875. 
+[5] NOURI N., MOGHIMI M., and MIRSAEEDI S. Numerical simulation of unsteady 
+cavitating flow over a disc[J]. Proceedings of the Institution of Mechanical Engineers, Part 
+C: Journal of Mechanical Engineering Science, 2010, 224(6):1245–1253. 
+[6] ROOHI E., ZAHIRI A., and ANDIDEH-FARD M. Numerical simulation of cavitation 
+around a two-dimensional hydrofoil using VOF method and LES turbulence model[J]. 
+Applied Mathematical Modelling, 2013, 37(9):6469–6488. 
+[7] SCHNERR G. and SAUER J. Physical and numerical modeling of unsteady cavitation 
+dynamics[C]. Proceedings of International Conference on Multiphase Flow ICMF, 
+Orleans, USA, 2001. 
+[8] ZWART P., GERBER A. and BELAMRI T. A Two-Phase Flow Model for Predicting 
+Cavitation Dynamics[C]. Proceedings of International Conference on Multiphase Flow 
+ICMF 2004,  Yokohama, Japan, 2004. 
+[9] GERBER A. A CFD model for devices operating under extensive cavitation 
+conditions[C].  Proceedings of IMECE, New Orleans, Louisina, 2002. 
+[10] SENOCAK I. and SHYY W. Evaluation of cavitation models for navier-stokes 
+computations[C]. Proceedings of FEDSM, Montreal, Quebec, Canada, 2002. 
+[11] JI B., LUO X., WU Y., PENG X. and DUAN Y. Numerical analysis of unsteady 
+cavitating turbulent flow and shedding horse-shoe vortex structure around a twisted 
+hydrofoil[J]. International Journal of Multiphase Flow, 2013, 51:33–43. 
+[12] JI B., LUO X. and WU Y. Unsteady cavitation characteristics and alleviation of 
+pressure fluctuations around marine propellers with different skew angles[J]. Journal of 
+Mechanical Science and Technology, 2014, 28(4):1339–1348. 
+[13] SHI W., WANG C., WANG W., and PEI B. Numerical Calculation on Cavitation 
+Pressure Pulsation in Centrifugal Pump[J]. Advances in Mechanical Engineering, 2014, 
+6:367631. 
+[14] ZHANG G., SHI W., ZHOU L. and ZHANG D. Effect of the Maximun Density Ratio 
+Between Liquid and Vapor on Cavitating Simulation[J]. American Journal of Engineering 
+and Applied Sciences, 2015, 9(1): 119-126. 
+[15] MORGUT M. and NOBILE E. Influence of the mass transfer model on the numerical 
+prediction of the cavitating flow around a marine propeller[C]. Proceding of The Second 
+International Symposium on Marine Propulsors,  Hamburg, Germany, 2011. 
+[16] LIU H., WANG J., WANG Y., ZHANG H. and HUANG H. Influence of the empirical 
+coefficients of cavitation model on predicting cavitating flow in the centrifugal pump[J]. 
+International Journal of Naval Architecture and Ocean Engineering, 2014, 6:119-131. 
+
+10 
+
+
+
+[17] HUANG B. and WANG G. Partially Averaged Navier-Stokes method for time-
+dependent turbulent cavitating flows[J]. Journal of Hydrodynamics, Ser. B, 2011, 23(1):26–
+33. 
+[18] JI B., LUO X., WU Y., PENG X., and XU H. Partially-Averaged Navier Stokes 
+method with modified k model for cavitating flow around a marine propeller in a non-uniform 
+wake[J]. International Journal of Heat and Mass Transfer, 2012, 55(2324):6582–6588. 
+[19] GIRIMAJI S. and ABDOL-HAMID K. Partially-Averaged Navier Stokes Model for 
+Turbulence: Implementation and Validation[C]. Proceeding of 43rd AIAA Aerospace 
+Sciences Meeting and Exhibit, Reno, Nevada, 2005. 
+[20] ZUO Z., LIU S., LIU D., QIN D. and WU Y. Numerical Predictions of the Incipient 
+and Developed Interblade Vortex Lines of a Model Francis Turbine by Cavitation 
+Calculations[J]. Advances in Mechanical Engineering, 2013, 5:397583. 
+[21] BENSOW R. and BARK G. Simulating cavitating flows with LES in OpenFoam[C]. 
+Proceeding of V European Conference on Computational Fluid Dynamics, Lisbon, 
+Portugal,  2010. 
+[22] LU N., BENSOW R. and BARK G. LES of unsteady cavitation on the Delft twisted 
+foil[J]. Journal of Hydrodynamics, Ser. B, 2010, 22(5, Supplement 1):784–791. 
+[23] HAHN M. and DRIKAKIS D. Implicit Large-Eddy Simulation of Swept-Wing Flow 
+Using High-Resolution Methods[J]. AIAA Journal, 2009, 47(3):618–630. 
+[24] BENSOW R. and LIEFVENDAHL M. Implicit and explicit subgrid modeling in LES 
+applied to a marine propeller[C]. Proceeding of 38th Fluid Dynamics Conference and 
+Exhibit, Seattle, Washington, 2008. 
+[25] ESCALER X., FARHAT M., AVELLAN F. and EGUSQUIZA E. Cavitation erosion 
+tests on a 2d hydrofoil using surface-mounted obstacles[J]. Wear, 2003, 254(5):441–449. 
+[26] ESCALER X., FARHAT M., EGUSQUIZA E. and AVELLAN F. Dynamics and 
+Intensity of Erosive Partial Cavitation[J]. Journal of Fluids Engineering-transactions of 
+The ASME, 2007, 129(7). 
+[27] HUUVA T., CURE A., BARK G. and NILSSON H. Computations of unsteady 
+cavitating flow on wing profiles using a volume fraction method and mass transfer models[C]. 
+Proceeding of 2nd IAHR International Meeting of the Workgroup on Cavitation and 
+Dynamic Problems in Hydraulic Machinery and Systems, Timisoara, Romania, 2007. 
+[28] HIDALGO V., LUO X., JI B., and AGUINAGA A. Numerical study of unsteady 
+cavitation on 2D NACA0015 hydrofoil using free/open source software[J]. Chinese Science 
+Bulletin, 2014, 59(26):3276–3282. 
+[29] HIDALGO V., LUO X., ESCALER X., JI J. and AGUINAGA A. Numerical 
+investigation of unsteady cavitation around a NACA 66 hydrofoil using OpenFOAM[J]. IOP 
+Conference Series: Earth and Environmental Science, 2014, 22(5):052013. 
+[30] ADAMS N., HICKEL S. and FRANZ S. Implicit subgrid-scale modeling by adaptive 
+deconvolution[J]. Journal of Computational Physics, 2004, 200(2):412–431. 
+[31] HIDALGO V., LUO X., HUANG R.and CANDO E. Numerical simulation of 
+cavitating flow over 2D hydrofoil using openFOAM adapted for Debian operating system 
+with LXDE based in kernel GNU/Linux[C]. Proceedings of the ASME 2014 4th Joint US-
+European Fluids Engineering, Chicago, Illinois, US, 2014. 
+
+11 
+
+
+
+[32] VALLIER A., NILSSON H. and REVSTEDT J. Mass transfer cavitation model with 
+variable density of nuclei[C]. Proceeding of 7th International Conference on Multiphase 
+Flow, Tampa, Florida, 2010. 
+[33] JI B., LUO X., PENG X. and WU Y. Three-dimensional large eddy simulation and 
+vorticity analysis of unsteady cavitating flow around a twisted hydrofoil[J]. Journal of 
+Hydrodynamics, Ser. B, 2013, 25(4):510–519. 
+[34] PETKOVSEK M. and DULAR M. Simultaneous observation of cavitation structures 
+and cavitation erosion[J]. Wear, 2013, 300(2013):55–64. 
+ 
+
+12 
+
+
+
+  
+Figure 1: Plane-convex hydrofoil [25]  
+
+  
+Figure 2: Computation Domain  
+
+  
+Figure 3: Structured and scale distributed mesh with taper analysis of the mesh around the 
+plane-convex hydrofoil  
+
+  
+
+13 
+
+
+
+Figure 4: The Characteristic lengths of a sheet cavity  
+
+  
+Figure 5: Comparison of the leading edge cavity growth between numerical simulation result 
+and the experimental result for case (i) in horizontal plane using iso-contour of   
+
+Figure 6: Dimensionless time evolution of cloud shedding for cases from (i) to (v) in 3D using 
+iso-contour of vapor volume fraction   
+
+14 
+
+
+
+Figure 7: Local pressure coefficient, , by dimensionless time, , for cases from (i) to (v) at 
+different . 
+
+ 
+
+15 
+
+
+
+Figure 8: Vapor void fraction, , by dimensionless time, , for cases from (i) to (v) at different 
+.  
+
+  
+Figure 9:  Comparison between  (a) vapor volume fraction isosurface  = 0.5  and   (b) Q 
+criterion vorticity  isosurface  at . (c) Vertical plane of the Q 
+criterion. 
+
+16 
+
+
+	1  Introduction
+	2  Description of the numerical method
+	2.1  Implicit Large Eddy Simulation
+	2.2  Zwart-Gerber-Belamri cavitation model
+	2.3  OpenFOAM set up
+
+	3  Hydrofoil geometry, mesh generation and boundary conditions
+	3.1  Hydrofoil geometry and computation domain
+	3.2  Mesh generation
+	3.3  Boundary Conditions
+
+	4  Results and Discussion
+	5  Conclusions
+	Acknowledgement
+	Conflict of interest
+
+

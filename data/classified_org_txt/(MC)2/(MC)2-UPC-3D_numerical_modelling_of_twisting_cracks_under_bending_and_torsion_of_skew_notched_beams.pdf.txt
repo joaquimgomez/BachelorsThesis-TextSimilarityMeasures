@@ -1,0 +1,1612 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3D numerical modelling of twisting cracks
+
+under bending and torsion of skew notched beams
+
+Lorenzo Benedetti, Miguel Cervera, Michele Chiumenti
+International Center for Numerical Methods in Engineering (CIMNE),
+
+Technical University of Catalonia (UPC), Edificio C1, Campus Norte,
+
+Jordi Girona 1-3, 08034 Barcelona, Spain
+
+Corresponding author: lbenedetti@cimne.upc.edu
+
+Abstract
+
+The testing of mode III and mixed mode failure is every so often encountered in the dedicated
+literature of mechanical characterization of brittle and quasi-brittle materials. In this work, the
+application of the mixed strain displacement ε − u finite element formulation to three examples
+involving skew notched beams is presented. The use of this FE technology is effective in problems
+involving localization of strains in softening materials.
+
+The objectives of the paper are: (i) to test the mixed formulation in mode III and mixed mode
+failure and (ii) to present an enhancement in terms of computational time given by the kinematic
+compatibility between irreducible displacement-based and the mixed strain-displacement elements.
+
+Three tests of skew-notched beams are presented: firstly, a three point bending test of a Poly-
+Methyl MethaAcrylate beam; secondly, a torsion test of a plain concrete prismatic beam with
+square base; finally, a torsion test of a cylindrical beam made of plain concrete as well. To describe
+the mechanical behavior of the material in the inelastic range, Rankine and Drucker-Prager failure
+criteria are used in both plasticity and isotropic continuum damage formats.
+
+The proposed mixed formulation is capable of yielding results close to the experimental ones in
+terms of fracture surface, peak load and global loss of carrying capability. In addition, the symmetric
+secant formulation and the compatibility condition between the standard irreducible method and
+the strain-displacement one is exploited, resulting in a significant speedup of the computational
+procedure.
+
+1
+
+
+
+1 Introduction
+
+The experimental testing of brittle and quasi-brittle materials is an exacting and challenging exercise.
+Three are the failure modes that can be activated: tensile opening, in-plane shearing and out-of-
+plane shearing. While experimental tests that involve only mode I or mode II are comparatively
+straightforward to devise, the isolation of mode III represents a challenge. Indeed, this failure type
+requires the application of a torsion-like load on the specimen but, in reality, it is often impossible
+to separate mode III from the other two. There is a vast literature that deals specifically with the
+details of mixed mode tests [1, 2, 3, 4, 5] and their analytical solutions [6, 7, 8, 9, 10]. Quasi brittle
+materials that fail under tension have the tendency to return to mode I fracture when loaded with a
+mixed mode stress state. Frequently, this transition takes place because of the curvature of the failure
+surface and, for this reason, interest is drawn by the shape of the crack propagation.
+
+From the theoretical stand-point, the strength of brittle materials can be predicted by means of
+Linear Elastic Fracture Mechanics (LEFM), which provides useful quantitative assessment of stress
+intensity factors and strain energy dissipation near the tip of an evolving crack due to an external load.
+Nevertheless, LEFM alone is quite limited when addressing elaborated geometries or the progression
+of the crack tip position. Moreover, it does not provide directly either the shape of the fracture or
+the global force-displacement behavior. Therefore, the prediction of twisting fracture surfaces in 3D
+specimens can be only tackled with numerical methods such as the Finite Element Method.
+
+Softening materials exhibiting localization of strains and fracture under external loading are still
+a strenuous topic in Computational Mechanics. The creation of failure surfaces in a solid body repre-
+sents, from a mathematical point of view, the inception of a discontinuity in a previously continuous
+displacement field. Within the FE technology, smearing the localization of strains across a finite length
+(usually a single element) is an attractive way of avoiding the explicit introduction of discontinuities
+in the numerical scheme. Once the localization band is smeared across the elements, the dissipation
+energy becomes dependent on the mesh size and proper energy regularization is necessary for local
+models to be objective [11, 12]. For that reason, a considerable effort has been focused on reintroduc-
+ing the missing length scale in the problem. Non-local [13, 14], gradient-enhanced [15, 16] micropolar
+continua [17, 18] and phase-field [19, 20] are some of the approaches that were proposed in the last
+three decades. Classically, the problem of mesh size objectivity is overcome by considering explicitly
+the resolution of the spatial discretization [12, 21]. However, such straight-forward methodology is held
+back because standard displacement-based finite elements suffer sensibly from mesh bias and stress
+locking. The first issue causes the solution to be strongly dependent on the orientation of the compu-
+tational mesh, with the local lack of convergence affecting the results. The second one is linked to the
+poor kinematics of standard finite elements, similar to the pressure locking in quasi-incompressible
+situations. These facts are linked with the limitations of the irreducible formulation and, in turn,
+they crucially affect energy dissipation and global softening behavior. It is clear that the basic FE
+technology is not able to deal with propagation of 3D twisting cracks, typical of complex mixed load
+states.
+
+To take into account the limited capability of the irreducible formulation, several alternative tech-
+nologies were suggested. Initially, local remeshing of the elements in the vicinity of the crack was used
+[22, 23]. Simo [24, 25] proposed the enhanced strain elements, which take into account a local decom-
+position of the strains in compatible and incompatible modes. More recently, the XFEM [26, 27] was
+introduced as an enrichment of finite elements through the notion of partition of unity. Finally, the
+strong discontinuity approach [28, 29] provides an element formulation that embed the displacement
+jump in its interior. The implementation of such enrichments requires the use of auxiliary tracking
+techniques in 2D and 3D.
+
+Recently, the authors have shown that global and local lack of convergence of the standard
+displacement-based finite element is the reason for FE spurious mesh biased results. Initially, Cervera
+et al. [30, 31] proved that avoiding global pressure locking in J2 softening material (both with plasticity
+and isotropic damage constitutive laws) with the introduction of a proper mixed displacement/pressure
+u−p formulation leads to mesh-bias independent results for quasi-incompressible localization problems.
+Then, Cervera et al. [32, 33] generalized such concept with the introduction of the strain/displacement
+
+2
+
+
+
+ε− u formulation. These formulations were capable to cope with strain softening problems involving
+isotropic damage [34], quasi-brittle tensile cracking [35], J2 [36] and pressure-dependent plasticity [37]
+without the need of auxiliary techniques.
+
+The mixed ε−u finite element formulation is very effective for the solution of linear and nonlinear
+problems, but it comes at some expense. The simultaneous solution of the displacement and the
+strain unknown requires larger computational resources. However, it is possible to take advantage of
+the mathematical structure of the proposed formulation to make important savings on this extra cost.
+
+Therefore, the objective of this work is two-fold. On the one hand, to benchmark the mixed strain-
+displacement ε−u formulation in problems involving strain localization and crack propagation under
+mixed mode I, II, III loading. On the other hand, to exploit the kinematic compatibility between the
+mixed and irreducible FE formulations to reduce the computational time.
+
+The paper initially presents a summary of the mixed (stabilized) strain/displacement finite ele-
+ments formulation. The implementation of the method is addressed. Firstly, using a secant formulation
+yields a symmetric algebraic system to be solved. Secondly, the kinematic compatibility between the
+irreducible and mixed FE enables the use of the two different formulations on the same mesh in or-
+der to save on computational resources. The constitutive laws of isotropic continuum damage and
+associative plasticity are recalled; both Rankine and Drucker-Prager failure criteria are discussed.
+
+Then, three numerical examples are presented. The first example considers the three point bending
+test of a PolyMethyl MethAcrylate (PMMA) beam with a skewed 45 degree notch located at the
+midsection. This first analysis is performed with both irreducible and mixed formulations in order to
+illustrate the relative benefits of the proposed finite elements technology. The second example tackles
+the torsion test of a skew-notched prismatic beams with square cross section. The specimen is made
+of plain concrete and has a centered 45◦ notch as well. The objective of this test is to compare the
+performance of the isotropic continuum damage model or the associative plasticity one using a mode
+I failure criterion such as Rankine. The third example is a skew-notched cylindrical beam made of
+plain concrete under torsional load. This test is identical to the previous one except for the geometry
+of the specimen. Indeed, the different shapes play a major role in the propagation of the localization
+and the final crack surface. In this case the Drucker-Prager constitutive law is introduced to study the
+dependence of the experimental results on shear and, consequently, to evaluate mixed mode loading.
+
+Finally, the simultaneous use of irreducible and mixed formulations is benchmarked in terms of
+computational time and memory requirements. Results show that the proposed solution scheme is
+capable of saving substantial computational resources while maintaining the same accuracy.
+
+2 Mixed ε− u finite elements
+The mixed (stabilized) strain displacement ε−u finite element method was introduced in Cervera et al.
+[32] for elasticity and it was extended to isotropic damage constitutive models in Cervera et al. [33]
+and [34]. The extension to plasticity has been recently presented in Cervera et al. [36] and Benedetti
+et al. [37], where both incompressible and pressure-dependent plasticity models has been considered
+for shear-softening materials. In the following, the formulation is briefly recalled in a secant format
+that can accommodate either continuum damage and plasticity constitutive laws.
+
+The mechanical behavior of a solid body B occupying the space domain Ω is described through
+the compatibility of deformation and the equilibrium of body forces:
+
+−ε+ ∇su = 0 (1a)
+
+∇ · σ + f = 0 (1b)
+
+where u is the displacement vector, ε is the strain tensor, σ represents the Cauchy stress tensor, ∇s
+and ∇· are the symmetric gradient and the divergence operators respectively, and f is the vector of
+body forces. The constitutive equation links the strain and stress fields; in the following, a secant
+form of the system is assumed
+
+σ = Csε (2)
+
+3
+
+
+
+where Cs is the secant constitutive tensor. As the strain and stress tensors are symmetric, thermo-
+dynamic considerations imply that the secant constitutive tensor needs be symmetric (see Faria et al.
+[38] for reference). For the isotropic damage model, the constitutive equation reads:
+
+σ = (1− d)C : ε = Cs,d : ε (3)
+
+where d is the damage parameter and C is the elastic constitutive tensor. The damage secant consti-
+tutive tensor can be defined as [36]:
+
+Cs,d = (1− d)C (4)
+
+In case of plasticity, the constitutive equation reads:
+
+σ = C : (ε− εp) = Cs,p : ε (5)
+
+where εp is the plastic strain tensor. The plastic secant constitutive tensor is defined as:
+
+Cs,p = C−
+(C : εp)⊗ (C : εp)
+
+ε : C : εp
+(6)
+
+Note that both secant constitutive tensors, equations (4) and (6), are symmetric.
+The strong form of the boundary value problem is completed by imposing proper boundary condi-
+
+tions on ∂Ω and providing the evolution laws for the plastic strain tensor εp or for the damage variable
+d.
+
+After symmetrizing the system of equations by pre-multiplication of the secant constitutive tensor
+Cs, the strong form of the mixed problem in the unknown fields of total strains ε and displacements
+u reads:
+
+−Cs : ε+ Cs : ∇su = 0 (7a)
+
+∇ · [Cs : ε] + f = 0 (7b)
+
+Now, equation (7a) represents compatibility of deformation and constitutive behavior while equa-
+tion (7b) represents equilibrium. The corresponding weak form is obtained by introducing the test
+functions γ for strains and v for displacements, respectively, pertaining to the functional spaces
+G ⊂ L2 (Ω)dim and V ⊂ H1 (Ω)dim. Hence, applying Gauss’s divergence theorem to the equilibrium
+equation, the weak form of the mixed problem is:
+
+−
+∫
+
+Ω
+γ : Cs : ε+
+
+∫
+Ω
+γ : Cs : ∇su = 0 ∀γ ∈ G (8a)
+
+∫
+Ω
+∇sv : [Cs : ε] = F (v) ∀v ∈ V (8b)
+
+where the term F (v) represents the work done by tractions on ∂Ω and body forces in Ω. Note that
+this continuous weak form is symmetric.
+
+The discrete FE version of the mixed weak form of the problem is found by substituting the
+unknown fields with their finite element interpolation counterparts:
+
+ε→ εh =
+npts∑
+i=1
+
+γ
+(i)
+h ε
+
+(i)
+h γh ∈ Gh (9a)
+
+u→ uh =
+npts∑
+i=1
+
+v
+(i)
+h u
+
+(i)
+h vh ∈ Vh (9b)
+
+where εh and uh are the nodal degrees of freedom whereas γh and vh are the discrete interpolation
+functions for the strain and the displacement fields pertaining respectively to the spaces Gh and Vh,
+the discrete counterparts of G and V.
+
+4
+
+
+
+The choice of finite elements in the discretization is crucial for the necessary stability of the
+employed numerical scheme, e.g. [39, 40, 41, 42]. In particular, the Inf-Sup condition proves that equal
+interpolations for strains and displacements (such as P1P1) are bound to be unstable. A stabilization
+procedure is then required: a modification of the discrete variational form provides the numerical
+stability, while maintaining consistency. Using the Variational Multiscale Stabilization procedure
+[43, 44] as presented in [36, 37], the set of equations for the stabilized problem reads:
+
+− (1− τε)
+∫
+
+Ω
+γh : Cs : (εh −∇
+
+suh)
+
+−τu
+∫
+
+Ω
+[∇ · (Cs : γh)] · [∇ · [Cs : εh] + f ] = 0 ∀γh ∈ Gh
+
+(10a)
+
+∫
+Ω
+∇svh : Cs : εh − τε
+
+∫
+Ω
+∇svh : Cs : [εh −∇suh] = F (vh) ∀vh ∈ Vh (10b)
+
+The scalars τε and τu are the stabilization parameter computed as:
+
+τε = cε
+h
+
+L0
+τu = cu
+
+hL0
+E
+
+(11)
+
+where cu and cε are arbitrary positive numbers, E is the Young’s modulus, h is the representative size
+of the finite element mesh and L0 is a characteristic length of the problem.
+
+The stabilized formulation is consistent with the original discrete weak form since, with converging
+values of the unknowns εh and uh, the contribution of the stabilization terms (those multiplied by τε
+and τu) disappears, being dependent on the residuals of the strong form of the problem, respectively
+(see equations (7a) and (7b)):
+
+rεh = Cs : εh − Cs : ∇
+suh ruh = ∇ · [Cs : εh] + f (12)
+
+When dealing with problems that do not involve incompressibility constrains, it is possible to
+drop the displacement subscale and consider solely the strain one by setting τu = 0. The final set of
+equations for the mechanical problem reads:
+
+− (1− τε)
+∫
+
+Ω
+γh : Cs : (εh −∇
+
+suh) = 0 ∀γh ∈ Gh (13a)
+
+∫
+Ω
+∇svh : Cs : εh − τε
+
+∫
+Ω
+∇svh : Cs : [εh −∇suh] = F (vh) ∀vh ∈ Vh (13b)
+
+Furthermore, expression (13b) can be written as:∫
+Ω
+∇svh : Cs : εstab,h = F (vh) ∀vh ∈ Vh (14)
+
+where the stabilized discrete strain field
+
+εstab,h = (1− τε) εh + τε∇suh (15)
+
+is a blending of the continuous (εh) and discontinuous (∇suh) strain fields weighted by the stabilization
+parameter τε. The discrete stabilized form, equation (13), is symmetric.
+
+3 Compatibility with standard u finite elements
+
+The mechanical problem is governed by the compatibility equation (1a), the equilibrium equation (1b)
+and the constitutive equation (2), all in strong form. As described above, the variational mixed ε−u
+form, in equations (8a)-(8b), takes ε and u as main variables and considers both compatibility and
+
+5
+
+
+
+Figure 1: FE mesh with combined standard and mixed formulations. Turquoise color represents the
+ε−u elements whereas yellow represents the displacement-based ones. The strain tensor at the Gauss
+points (symbolized with red crosses) is computed with the interpolation of nodal strain in the mixed
+formulation or the discrete symmetric gradient of displacements in the irreducible one.
+
+equilibrium in weak form. The corresponding discrete FE form requires the interpolation of both the
+strain and the displacement fields, with εh and uh as nodal degrees of freedom.
+
+Alternatively, the more standard irreducible u form takes only the displacement as main variable
+and considers only equilibrium in weak form. To this end, substituting equation (1a) into equation
+(2), and this into equation (1b), yields:
+
+∇ · [Cs : ∇su] + f = 0 (16)
+
+with the corresponding variational (weak) form∫
+Ω
+∇sv : Cs : ∇su = F (v) ∀v ∈ V (17)
+
+The irreducible discrete FE form requires solely the interpolation of the displacement field:
+
+u→ uh =
+npts∑
+i=1
+
+v
+(i)
+h u
+
+(i)
+h vh ∈ Vh (18)
+
+with uh as the nodal degrees of freedom, which is identical to equation (9b).
+From a computational perspective, the ε− u finite element presents a larger number of variables
+
+to be solved compared to the standard one. For each mesh node of a 3D problem, the vector of
+unknowns contains 9 scalars, 3 displacements (ux, uy, uz) and 6 strains (εxx, εyy, εzz, εxy, εxz, εyz) of
+the symmetric deformation tensor, in Voigt’s notation.
+
+Note that, if the same interpolation functions uh are selected, the kinematics of the mixed and the
+irreducible formulations are compatible, i.e. the requirement of inter-elemental continuity is satisfied.
+This is necessary to prove consistency of the FE form in the classical Rayleigh-Ritz sense. Therefore,
+a mesh constructed as in Figure 1, where the top part is formed by mixed ε − u elements while the
+bottom part is made of standard u ones, is feasible.
+
+Indeed, the standard finite elements are a particular case of the stable mixed formulation, see
+equation (14). Setting τε = 1 in expressions (13), equation (13a) becomes an identity and (13b)
+reduces to (17).
+
+6
+
+
+
+Therefore, it is possible to reduce the computational burden by considering a combined stan-
+dard/mixed FE mesh. Setting the stabilization parameter τε = 1 where possible and skipping the
+corresponding elemental computations leads to substantial savings in the total number of degrees of
+freedom, global operations and corresponding matrix storage.
+
+4 Algebraic implementation aspects
+
+In previous works [35, 36, 37], the nonlinear algebraic problem in equations (13a)-(13b) was solved in
+an incremental-iterative manner using the Newton-Raphson method.
+
+Let the algebraic nonlinear problem be written in an incremental-iterative fashion as
+
+R
+(
+Xi+1n+1
+
+)
+= P
+
+(
+Xi+1n+1
+
+)
+− F n+1 = 0 (19)
+
+where n and i are the increment and iteration counters, respectively; X is the solution vector, P ,F
+and R are the internal, external and residual force vectors.
+
+Writing an iterative correction as:
+
+Xi+1n+1 = X
+i
+n+1 + δX
+
+i+1 (20)
+
+and given that a linear Taylor’s approximation of the internal forces
+
+R
+(
+Xi+1n+1
+
+)
+' R
+
+(
+Xin+1
+
+)
++ J
+
+(
+Xin+1
+
+)
+δXi+1 = 0 (21)
+
+where J
+(
+Xin+1
+
+)
+is the jacobian (tangent) matrix. It follows that
+
+J
+(
+Xin+1
+
+)
+δXi+1 = −R
+
+(
+Xin+1
+
+)
+(22)
+
+This is Newton-Raphson’s method. On the one hand, this procedure presents asymptotic quadratic
+convergence when exact tangent matrices are used and the initial approximation is close enough to
+the solution; on the other hand, this results in a non-symmetric algebraic system to be solved. The
+reason for the non-symmetry of the rate problem derived from equations (13) are (i) the (possible)
+lack of symmetry of the constitutive tangent tensor and (ii) the non-symmetric dependence of the
+discrete stresses on εh and uh.
+
+Alternatively, the nonlinear algebraic problem in equations (13) may be solved using the secant
+(or Picard’s) method.
+
+Let the internal forces be written in secant form as
+
+P
+(
+Xi+1n+1
+
+)
+= S
+
+(
+Xi+1n+1
+
+)
+Xi+1n+1 (23)
+
+Given that
+R
+(
+Xin+1
+
+)
+= S
+
+(
+Xin+1
+
+)
+Xin+1 − F n+1 (24)
+
+it follows that
+S
+(
+Xin+1
+
+)
+δXi+1 = −R
+
+(
+Xin+1
+
+)
+(25)
+
+The secant method converges superlinearly, but the need of evaluating consistent derivatives is avoided.
+Furthermore, in the case under consideration, the secant matrix S
+
+(
+Xin+1
+
+)
+is symmetric.
+
+Comparing expressions (22) and (25) it is obvious that both methods can be implemented similarly,
+the only difference being the use of the tangent or secant matrix.
+
+A further approximation can be used in both methods by making J
+(
+Xin+1
+
+)
+' J
+
+(
+X1n+1
+
+)
+and
+
+S
+(
+Xin+1
+
+)
+' S
+
+(
+X1n+1
+
+)
+with the matrices recomputed only for the first iteration of the increments.
+
+These are modified Newton-Raphson’s and Picard’s schemes. The convergence is linear for both
+methods.
+
+7
+
+
+
+For the mixed finite element formulation discussed in Section 2, Xn+1 = [εh,uh]
+T
+n+1. Details on
+
+the algebraic tangent system of equations (22) are given in references [37, 36]. The algebraic secant
+system of equations (25) reads:[
+
+M τ Gτ
+Dτ Kτ
+
+]i
+n
+
+[
+δεh
+δuh
+
+]i+1
+n+1
+
+= −
+[
+R1,h
+R2,h
+
+]i
+n+1
+
+(26)
+
+and the submatrices M τ , Gτ , Dτ and Kτ are computed as:
+
+M τ = − (1− τε)
+∫
+
+Ω
+Nε
+
+TCsNε − τu
+∫
+
+Ω
+CsBBT Cs (27)
+
+Gτ = (1− τε)
+∫
+
+Ω
+Nε
+
+TCsB (28)
+
+Dτ = (1− τε)
+∫
+
+Ω
+BTCsNu (29)
+
+Kτ = τε
+
+∫
+Ω
+BTCsB (30)
+
+where M is the mass-like projection matrix, G is the discrete gradient matrix, D is the discrete
+divergence matrix and K is the stiffness matrix.
+
+5 Plasticity and damage models
+
+In this work, both plasticity and damage models are introduced to describe strain localization and
+failure. Both Rankine and Drucker-Prager failure criteria are used. Figure 2 shows a representation
+of the corresponding admissible elastic domains in the Haigh-Westergaard space.
+
+In this space of principal stresses, the Rankine criterion appears as the intersection of three mutu-
+ally orthogonal planes, which are, at the same time, orthogonal to the principal axes. Therefore, it is
+a triangular pyramid with the apex located on the hydrostatic axis. Contrariwise, the Drucker-Prager
+criterion appears as a cone with a circular cross-section in the octahedral plane and axisymmetric to
+the σ1 = σ2 = σ3 axis. Both criteria are pressure-dependent, although the Drucker-Prager criterion
+reduces to the pressure-independent Von Mises one for vanishing friction angle.
+
+In Table 1, a general overview of the implemented constitutive laws is presented. The failure
+criterion is defined by the scalar function f (σ, q) which depends on the equivalent stress measure
+
+Figure 2: Representation of the Rankine and Drucker-Prager failure criteria in the principal stress
+space
+
+(
+σ1, σ2, σ3
+
+)
+.
+
+8
+
+
+
+τ (σ) and the stress-like isotropic softening function q (ξ); ξ is the strain-like softening variable which
+controls the evolution of the failure surface.
+
+In the case of the Rankine failure criterion, the equivalent stress is given by the first principal
+stress value as:
+
+τ (σ) = σ1 (31)
+
+whereas, in the Drucker-Prager failure criterion, shear stress and pressure are linearly combined
+through the tangent of the friction angle φ:
+
+τ (σ) =
+√
+
+3J2 (σ) +
+1
+
+3
+I1 (σ) tan (φ) (32)
+
+being I1 (σ) the trace of the stress tensor and J2 (σ) the second invariant of the deviatoric part of σ.
+Despite having identically failure criteria and being their evolution controlled by analogous loading-
+
+unloading conditions (Karush-Kuhn-Tucker conditions), the global behavior of the two constitutive
+models is substantially different. Inelastic flow in plasticity is directional; in particular, in the associa-
+tive case, it is defined by the normal vector to the yield surface. Therefore, for Rankine-type plastic
+models, the inelastic flow occurs strictly parallel to one of the principal axes. This does not occur
+for the Drucker-Prager model, where plastic flow is orthogonal to the cone in Figure 2. In marked
+contrast, inelastic deformation in the continuum isotropic damage model is not directional, since it
+affects equally all directions of the Haigh-Westergaard space. As shown later, this has a large influence
+on strain localization and failure when softening behavior is considered.
+
+In the following, exponential softening is considered for both the plastic and continuum damage
+models. Note that, in a softening process, the energy dissipated by the inelastic behavior is linked to
+the fracture energy Gf , defined by unit surface. However, when using a plastic or damage model, the
+dissipated energy is defined by unit volume. These two definitions are related through a characteristic
+length lch in the discrete FE setting, which, in turn, depends on the resolution of the mesh. The
+size of the strain concentration band depends on the finite element technology, as pointed out by
+Cervera et al. [33]: irreducible finite elements provide a concentration band within a single element
+span, having a discontinuos strain field; contrariwise, in the ε − u mixed FE formulation, the slip
+line spans two elements due to inter-elemental continuous strain. Consequently, the characteristic
+length lch is taken accordingly. Additional details of the models can be found in references [37] for the
+Drucker-Prager plasticity model, [35] for the Rankine plasticity model and [34, 45, 46] for the Rankine
+isotropic damage model.
+
+Associative plasticity model Isotropic continuum damage model
+
+Constitutive equation σ = C : (ε− εp) σ = (1− d)C : ε
+
+Softening function q = q (ξ)
+
+Inelastic criterion f (σ, q) = τ (σ)− (σy − q)
+
+Internal variables evolution ξ̇ = λ̇, ε̇p = λ̇
+∂f
+∂σ
+
+ξ̇ = λ̇, d (ξ) = 1− q
+ξ
+
+Loading-unloading conditions λ̇ ≥ 0, f (σ, q) ≤ 0, λ̇f (σ, q) = 0
+
+Table 1: Summary of associative plasticity and isotropic continuum damage models. Both Rankine
+and Drucker-Prager failure criteria are considered.
+
+9
+
+
+
+6 Numerical Simulations
+
+6.1 Three point bending test on skew notched beam
+
+The first example is a three point bending test on a beam with a slanted notch. The slot is vertical, with
+an inclination of 45◦ with respect to the longitudinal midplane of the beam. The specimen geometry,
+represented in Figure 3, has a total length L = 260 mm, effectively supported span Le = 240 mm, by
+a thickness t = 10 mm and a total height w = 60 mm. The initial notch is a = 20 mm high (a = w/3),
+with a constant section width of 2 mm and a slant angle γ = 45◦.
+
+Figure 3: Geometry of the twisted crack 3PB test, taken from Citarella and Buchholz [47]
+
+This test was initially introduced by Pook [1] to study the propagation of the crack front under
+cyclic loading in steel specimens. More recently, the same tests were recreated by Cooke and Pollard
+[5], Buchholz et al. [9] using PolyMethyl MethAcrylate (PMMA), also known as Plexiglass, in order
+to better examine the crack front evolution through its transparency. Lazarus and Leblond [6] and
+Lazarus et al. [8] studied the same problem in the case of monotonic load. Finally, Citarella and
+Buchholz [47] and Ferté et al. [48] studied the problem from a computational stand point using the
+Boundary Elements Method and the X-FEM technology, respectively.
+
+Figure 4: Crack path interpretation from Pook [3]
+
+10
+
+
+
+Figure 5: Computational mesh of P1 and P1P1 tetrahedral elements used for the 3 point bending test.
+
+Examining the experimental results (Figure 4), the crack starts from the initial notch and, with
+increasing applied load, a rotation of the failure surface is observable. Pook [3] and Yates and Mo-
+hammed [4] showed that this characteristic behavior is due to the transition from Mode III to Mode
+I fracture. At the beginning of the test, the stresses in the vicinity of the notch are given by the
+asymmetrical bending of the specimen, resulting in a diagonal onset of cracking. Then, as the crack
+progresses, Mode I becomes predominant and the failure surface aligns with the dominant longitudi-
+nal normal stresses due to bending. The geometrical symmetry midplane, which coincides with the
+loading symmetry plane, can be considered as an attractor of the twisting crack.
+
+PolyMethyl MethAcrylate is an amorphous glass polymer which is characterized by homogeneous
+mechanical properties and brittle failure. The literature previously cited reports a Young’s modulus
+E = 2800 MPa, a Poisson’s ratio ν = 0.38, an elastic threshold uniaxial stress σy = 40 MPa and
+fracture energy Gf = 500 J/m. Because of the clear role of tensile failure in this problem, it is natural
+to describe the inelastic processes using constitutive models based on Rankine’s criterion.
+
+In the finite element model, the beam is supported by two rollers on the lower surface which
+sustain only vertical forces (in the Y direction). The centerline on the top surface of the beam not
+only imposes a vertical displacement of 2 mm, but also provides restraint to the out-of-plane forces
+(X direction) and horizontal sliding (Z direction). In the numerical analysis, the PMMA beam is
+subjected to monotonic loading.
+
+(a) Experiment (b) IsoDamage (c) Plasticity
+
+Figure 6: Experimental [10] and numerical (ε−u formulation) crack surface of the three point bending
+test on PMMA.
+
+11
+
+
+
+(a) Detail of the
+structured mesh
+in the middle re-
+gion
+
+(b) u − ε with
+IsoDamage
+
+(c) u − ε with
+Plasticity
+
+(d) u with Iso-
+Damage
+
+(e) u with Plas-
+ticity
+
+(f) Figure legend
+
+Figure 7: Contour fills of major principal total strain in the crack at the front and back faces of the
+beam under 3 point bending test.
+
+The FE mesh consists of tetrahedral elements (Figure 5 and Figure 7(a) for a detailed view),
+structured in the vicinity of the slot, where the elements have a characteristic size h = 1 mm, and
+unstructured elsewhere. This allows to model the part subjected to localization with a 12 × 10 base
+grid and the notch is two elements wide. The grid of structure elements shows biased planes at
+0◦,+45◦, 90◦ and −45◦. The final computational mesh is composed by 58,557 tetrahedral elements
+(11,677 points).
+
+The objective of the numerical analysis is to test the mixed ε − u formulation in comparison to
+the standard displacement-based FEM. This benchmark is challenging for two reasons. Firstly, the
+problem involves strain localization and crack propagation in a rather brittle material, which implies
+a sudden drop in stresses after cracking. As a consequence, global stability is sharply lost. Secondly,
+the discretization is rather coarse. In fact, from the notch to the midsection, the mesh presents just
+4 elements; that is the available resolution to model the onset of failure propagation and its twisting
+and alignment with the mid-section.
+
+Both Rankine-like isotropic damage and plasticity models provide similar solutions to this problem:
+Figure 6 compares the crack surface in the PMMA beam with the crack front propagating from the
+initial notch to the top surface, obtained with the two constitutive laws using the proposed mixed FE
+method. The numerical crack surfaces are plotted as the level set of zero horizontal displacements (Z
+direction), thanks to the symmetry of the problem.
+
+Nevertheless, Figure 7 shows a detail of the mesh grid used for the computations and some sub-
+stantial differences among the standard and mixed FE formulations in the contour fills of principal
+total strain in the crack, at the front and the back faces of the beam. Using the ε−u formulation, the
+
+12
+
+
+
+(a) u− ε with IsoDamage (b) u− ε with Plasticity
+
+(c) u with IsoDamage (d) u with Plasticity
+
+Figure 8: Top view of the crack twist rotation in the 3 point bending test. Light yellow color represents
+the initial notch. Turquoise color represents the isosurface corresponding to the centerline of the
+localization band. The bottom crack profile is identified with the blue color while the top crack profile
+is highlighted in red.
+
+failure surface is very similar with the two constitutive laws (Rankine isotropic damage and directional
+plasticity), with the strain softening band that initiate from two opposed notch corners and twists to
+the mid-section of the beam.
+
+The solution given by the irreducible formulation is rather different. A substantially mesh-biased
+crack surface is obtained for both isotropic damage and plasticity cases: while the first one shows a
+slight tendency to converge to the center of the specimen, the latter one presents multiple vertical
+localization bands.
+
+Owing to inter-element continuity of strains, mixed formulations for nonlinear analysis presents an
+effective localization band that spans two elements. The kinematic enhancement of using a continuous
+strain field results in a convergent and more accurate outcome than the standard finite elements, which
+suffer from severe mesh bias dependence.
+
+In order to further compare the two FE technologies, Figure 8 shows the top view of the center
+line of the localization band, at a position 10 mm below the top surface. As discussed before, the
+crack starts from the 45◦ slanted notch and then twists until it aligns with the mid-plane. Figure 8
+depicts in yellow the initial notch profile and in turquoise the failure surface. In addition, the bottom
+crack profile is signaled in blue, whereas the top one is highlighted in red.
+
+The initial profile of the localization band coincides in all four examples: the surface develops from
+
+13
+
+
+
+Figure 9: Plot of the computed crack path with respect to the experimental data from Citarella and
+Buchholz [47] and previous results from Ferté et al. [48].
+
+Figure 10: Plot of support reaction force with respect to the imposed vertical displacement.
+
+14
+
+
+
+the two opposite inner corners of the notch and connects (almost) symmetrically at the center of the
+specimen. The mixed ε− u formulation shows the expected twist rotation, with the final position of
+the crack surface close to the central symmetry plane of the beam. The slight asymmetry is due, on
+the one hand, to the orientation of the structured mesh and, on the other hand, to the use of a pure
+tensile failure criterion, which does not allow the crack surface to cross the compression head at the
+top of the beam. Concerning the irreducible formulation, the results shows a clear mesh bias, with a
+relatively small twisting rotation for the isotropic damage case and almost no twisting at all in the
+case of plasticity.
+
+Figure 9 depicts the relative position of the computed crack path with respect to the notch location
+compared to the experimental results reported by Citarella and Buchholz [47] and the XFEM numerical
+simulation of Ferté et al. [48]. Once again, standard displacement based finite elements are unable to
+provide a satisfactory result, with the crack having a marked tendency to follow one of the directions
+of the mesh, independently from the constitutive law. Contrariwise, the mixed formulation achieves
+rather adequate outcomes. Both the isotropic damage and plasticity models converge at the top of
+the plot to the experimental range; in fact, the first one computes a crack path which is very close
+to the experiments. The only substantial differences are attributed to the relatively coarse mesh
+discretization in the vicinity of the notch.
+
+Finally, the structural softening behavior is studied plotting the support reaction versus the im-
+posed vertical displacement (Figure 10). The reduction of the carrying capacity is visible in all cases.
+In the elastic range, the standard and mixed finite elements show two different stiffnesses. For a given
+degree of refinement, the enhanced kinematics of the mixed formulation, with continuous strain fields,
+results in an accurate, and more flexible, response. Eventually, the two methods will converge to the
+same result in the elastic case as the mesh is refined.
+
+The isotropic damage solution presents a well defined peak load with a sudden change of global
+behavior whereas the plastic one has a smoother transition. A similar sharp change in the carrying
+load was previously studied in PMMA specimens in the work of Cooke and Pollard [5]. The mixed
+FE is able to reproduce a monotonic softening branch with both constitutive laws. The displacement-
+based shows excessive energy dissipation in the plasticity case due to the multiple numbers of cracks
+developed during the inelastic branch of the test, see Figure 7(e).
+
+6.2 Prismatic skew notched concrete beam under torsion
+
+The second example is a prismatic skew edge notched beam under torsional load. This experiment was
+first performed by Jefferson et al. [49] on plain concrete specimens, but it was conducted on smaller
+PMMA beams as well by Buchholz et al. [50].
+
+The test setup is shown in Figure 11: a prismatic beam with square base is positioned horizontally,
+with steel clamps at both ends. These present appendages on both sides which allow to avoid rigid
+movements and to apply the load. Three of the four steel arms are restrained in the vertical direction,
+
+(a) (b)
+
+Figure 11: Geometry and experimental setup of the tests on prismatic beam under torsion with square
+cross section, from Jefferson et al. [49].
+
+15
+
+
+
+Figure 12: Plot of the contour fill of longitudinal stress distribution and vectors of longitudinal dis-
+placements due to uniform and non-uniform torsion on a prismatic square beam. Top figure shows
+the uniform (Saint Venant’s) torsion of the unnotched specimen. Bottom figure shows the case of non
+uniform torsion of notched specimen.
+
+whereas the last one is subjected to a concentrated load. The clamping frame is assumed to make
+perfect contact with the concrete specimen and ensure the transferring of the eccentric load to the
+specimen, resulting in a torsional moment aligned with the axis of the beam. It is also designed not
+to constrain warping of the end cross-sections.
+
+The objective of this experiment is to test the tensile strength of plain concrete under torsion. The
+highest stress is located in the vicinity of the notch, with maximum values on the lateral surface of
+the beam. According to several works in the field [1, 6, 4], the fracture initiation is caused by a mode
+III loading with transition to mode I brittle failure.
+
+An unnotched specimen would be subjected to uniform (Saint-Venant’s) torsion, characterized by
+a uniform warping of the cross section, unhindered by the design of the clamping frames at both ends.
+Under uniform torsion, no longitudinal normal stress (σzz) would develop.
+
+The slanted notch induces non-uniform torsion. This is shown in Figure 12(b), which overlaps con-
+tour fills of the longitudinal normal stresses (σzz) and vectors of longitudinal (warping) displacement
+at five different cross-sections of the beam, in the elastic regime. It is obvious that: (i) the warping
+displacement is not uniform, being rather distorted by the notch and (ii) the σzz stresses are not
+zero, particularly in the vicinity of the notch. Note that these non-vanishing normal stresses have null
+resultant axial force and null resultant bending moments, but they have a resultant warping moment,
+also known as bimoment. In comparison, Figure 12(a) depicts the case for the unnotched specimen,
+where uniform displacement and null stress are observed.
+
+Considering tensile fracture as the main cause for cracking of unreinforced concrete, this example
+investigates the differences between the isotropic damage and plasticity constitutive laws, both based
+on Rankine’s failure criterion with the same mechanical parameters. The material properties are (from
+[49]): Young’s modulus E = 35 GPa, Poisson’s ratio ν = 0.2, tensile uniaxial strength σy = 2.3 MPa
+and fracture energy Gf = 80 N/m.
+
+The mesh is composed by 67,038 tetrahedral elements (12,729 nodes) subdivided in three regions.
+The part of the beam around the notch consists of ε−u mixed finite elements with nonlinear consti-
+tutive behavior; outside this, the remaining concrete volume in contact with the clamps and, finally,
+
+16
+
+
+
+the steel frame itself are elastic. In the latter two regions, the FEM formulation is the standard
+displacement-based, since no cracking is expected there.
+
+The boundary conditions, as demonstrated in [35], are crucial for the correct numerical analysis of
+the test. In the present case, the model constraints are recovered from photos to be as close as possible
+to the experimental setup. From Figure 11(b), details of the boundary conditions can be extracted.
+Three vertical supports consist of steel posts, allowing for free rotation. Two of them (the closest and
+furthest ones in the photo) restrain the horizontal motion of the beam. Finally, the free appendage is
+subjected to an imposed vertical displacement.
+
+In the numerical model, the four appendages are restrained vertically in a single point. Taking
+advantage of the symmetry of the setup, the horizontal motion is limited by constraining the center
+of the front and rear faces of the beam. Both the geometry and the loading conditions are skew-
+symmetric, i.e. a 180◦ rotation of the problem would result in the same test setup. Given the nature
+of the problem, localization of strains is expected to be skew-symmetric.
+
+The results are presented and discussed next. The displacement solution at the end of the test, with
+the corresponding deformation, is presented in Figure 13. Here, similar solution fields are captured
+for the two constitutive laws: the opening of the notch allows for a substantial rotation of one beam
+end from the other, meaning that localization of strain has occurred.
+
+Figure 14 compares the experimental crack surface with the numerically computed ones, at the
+end of the analysis. While both plasticity and damage constitutive laws are able to predict correctly
+the global behavior, it is possible to notice that the latter one provides a more curved profile than
+the first one. In the case of damage, the crack starts from the notch almost horizontally and, then,
+rotates to reach the expected angle of 45◦. On the contrary, in the case of plasticity, the propagation
+direction of the crack is constantly orientated at 45◦.
+
+The two solutions can be also compared with the top view of the experimental tests on PMMA,
+as depicted in Figure 15, and a side perspective in Figure 16. In all cases, a skew-symmetric crack
+is obtained as expected. The top view shows that both material laws, used with the mixed strain-
+displacement finite elements, are able to describe effectively the complex twisting crack pattern.
+
+The peculiar arch-like shape, observable in the side view, proves that the highest tensile stress is
+located on the external surface of the beam, as previously discussed. Contrariwise, the central part
+is under compressive stresses arising from the additional bending. In the numerical analyses, as the
+failure criterion only involves the major principal tensile stress, the bottom part of the beam remains
+elastic.
+
+Finally, Figure 17 shows the force-displacement plots. The experimental data is compared with
+the numerical solution using the ε − u formulation with isotropic damage and plasticity. There is a
+
+(a) Isodamage (b) Plasticity
+
+Figure 13: Plot of the contour fills of the displacement field superposed on the computed beam
+deformation at the end of the test. The isotropic damage solution is very similar to the plasticity one.
+
+17
+
+
+
+(a) (b) (c)
+
+Figure 14: Comparison of (a) the experimental outcome with the computed crack surfaces in the case
+of (b) isotropic damage and (c) plasticity for the prismatic beam with square cross section.
+
+(a) (b) (c)
+
+Figure 15: Top views of the crack surface from (a) tests on PMMA [50], (b) Isotropic Damage and (c)
+Plasticity.
+
+(a) (b)
+
+Figure 16: Side view of the fracture surface: (a) Isotropic Damage and (b) Plasticity.
+
+18
+
+
+
+(a) (b)
+
+Figure 17: Plots of vertical force versus (a) orthogonal CMOD and (b) sliding CMOD
+
+(a) (b)
+
+Figure 18: Residual principal stresses in the (a) isotropic Damage and (b) plasticity cases. Blue
+vectors represents compressive stress, red vectors represents tensile stress.
+
+major difference in the global behavior: the case involving damage shows an almost complete loss of
+load carrying capacity due to strain softening whereas the plasticity one does not. Instead, the plastic
+model reaches a plateau and, then, the load carrying capacity increases again.
+
+Indeed, there is a fundamental difference in the definition of the plastic and damage constitutive
+laws. Plasticity is based on the definition of plastic flow, which gives a directional character to the
+inelastic deformation. Moreover, associative plasticity implies that the stress reduction is proportional
+to the plastic flow, but also to the elastic constitutive tensor; hence, it is affected by the Poisson’s
+effect. Such orthotropic behavior does not ensure a complete stress release even in softening cases. In
+fact, Poisson’s effect generate significant residual compressive stresses around the crack associated to
+the localization of the opening strains, as it is shown in Figure 18(b). This stress field is restrained
+by the longitudinal boundary conditions and, consequently, it increases the force required for the
+progression of the localization.
+
+In contrast, isotropic damage reduces the material stiffness isotropically, resulting in a uniform
+reduction of all the principal stresses. In Figure 18(a) stresses are almost completely released. The
+only remaining stresses are the compressive ones due to the non uniform torsion caused by the slanted
+notch.
+
+6.3 Cylindrical skew notched concrete beam under torsion
+
+In this final example, the test on a skew-notched cylindrical plain concrete beam subjected to torsion
+is modeled. The experimental setup is quite similar to the previous example. Figure 19(a) shows
+
+19
+
+
+
+(a) (b)
+
+Figure 19: Geometry and experimental setup of the tests on cylindrical beam under torsion, from
+Jefferson et al. [49].
+
+the characteristic dimensions of the specimen and of the steel frame. The cylindrical beam has the
+same length as the prismatic one and also presents a 45◦ notch located at the center of the specimen.
+The clamping system is visible in Figure 19(b) and, likewise, it provides the transfer of external
+vertical imposed displacement to the specimen as a torsion force and ensures proper restraint of rigid
+movements. Therefore, boundary conditions are identical to the ones used in the previous example.
+
+The material properties are assumed the same as in the last example: Young’s modulus E = 35
+GPa, Poisson’s ratio ν = 0.2, tensile uniaxial strength σy = 2.3 MPa and fracture energy Gf = 80
+N/m. Indeed, the referenced work by Jefferson et al. [49] is followed, although the batch of concrete
+for the cylindrical beams has not been tested for mechanical parameters. The numerical analysis has
+been performed considering Rankine’s and Drucker-Prager’s (with 45◦ friction angle) failure criteria.
+In fact, the objective of this example is to assess the influence of the shear stresses in the experimental
+results and the failure mechanism.
+
+Concrete is frequently thought to fracture in mode I and Rankine based criteria have been widely
+adopted. However, when dealing with mode III and mixed mode loading, the dependence of shear
+strength from pressure can play a fundamental role in the prediction of the failure mechanism. Conse-
+quently, it is convenient to introduce a pressure dependent model such as Drucker-Prager. Note that,
+as shown in Saloustros et al. [51], Rankine’s criterion is a limit case of a family of pressure dependent
+constitutive models.
+
+The mesh consists of 62,309 tetrahedral elements (11,892 nodes) which concentrate in the vicinity
+of the notch. In order to save on computational resources, the central part of the FE mesh is modeled
+using mixed ε− u finite elements whereas the two beam ends as well as the steel frame are modeled
+using irreducible displacement-based elements, since, in these regions, inelastic phenomena do not
+appear.
+
+An unnotched circular beam, subjected to uniform (Coulomb’s) torsion, does not present any warp-
+ing nor longitudinal stresses. Figure 20(a) shows the null field of σzz and null warping displacements
+in the elastic range at five different cross sections. As in the case of the square prismatic beam, the
+slanted notch causes the torsion to be non uniform, resulting in nonzero stresses σzz and longitudinal
+warping displacements, with the maximum values in the vicinity of the cut (see Figure 20(b)).
+
+Figure 21 compares the final shape of the crack surface for the four analyzed cases. No images of the
+experimental crack surface are given in [49]. Plasticity and isotropic damage in the case of Rankine’s
+failure criterion show a larger and more complex fracture geometry, whereas the Drucker-Prager’s ones
+are sensibly closer to the notch cross section. The top views of such surfaces are presented on Figure
+22 and the side perspectives are depicted in Figure 23. Rankine’s cases show a behavior similar to
+the square prismatic beam, with a typical skew-symmetric curved shape; the circular shape of the
+specimen causes a more curved bottom profile of the failure surface.
+
+Similarly, the Drucker-Prager criterion shows a curved profile, although rather smaller. The less
+pronounced crack surface is the direct result of a failure criterion that is based on the interdependence
+
+20
+
+
+
+Figure 20: Plot of the contour fill of longitudinal stress distribution and vectors of longitudinal displace-
+ments due to uniform and non-uniform torsion on a cylindrical beam. Top figure shows the uniform
+(Coulombs’s) torsion of the unnotched specimen. Bottom figure shows the case of non uniform torsion
+of notched specimen.
+
+(a) (b) (c) (d)
+
+Figure 21: View of the crack surface at the end of the analysis from (a) Rankine Isotropic Damage, (b)
+Rankine Plasticity, (c) Drucker-Prager isotropic damage and (d) Drucker-Prager plasticity solutions.
+
+21
+
+
+
+(a) (b) (c) (d)
+
+Figure 22: Top view of the crack pattern from (a) Rankine Isotropic Damage, (b) Rankine Plasticity,
+(c) Drucker-Prager isotropic damage and (d) Drucker-Prager plasticity solutions.
+
+(a) (b)
+
+(c) (d)
+
+Figure 23: Side view of the crack pattern from (a) Rankine Isotropic Damage, (b) Rankine Plasticity,
+(c) Drucker-Prager isotropic damage and (d) Drucker-Prager plasticity solutions.
+
+22
+
+
+
+(a) (b)
+
+Figure 24: Plots of vertical force versus (a) orthogonal CMOD and (b) sliding CMOD using Rankine
+failure criterion
+
+(a) (b)
+
+Figure 25: Plots of vertical force versus (a) orthogonal CMOD and (b) sliding CMOD using Drucker-
+Prager failure criterion with 45◦ friction angle
+
+of pressure and shear through the friction angle, in lieu of the major principal stress.
+Finally, Figure 24 shows the plot of applied load versus orthogonal and sliding CMOD values with
+
+the Rankine constitutive law while Figure 25 shows the same plot for the Drucker-Prager case. Here,
+the experimental values from [49] are compared with the numerical analyses.
+
+In the first place, it is observed that the stiffness of the experimental specimen differs substantially
+from that of the numerical analyses. Since it is reported that a different batch was used for the cylinder
+specimens, it is possible that the concrete mix might have had a higher Young’s modulus.
+
+Notwithstanding, the numerical analyses with the Drucker-Prager failure criterion predict the
+peak load satisfactorily, followed by full reduction of stresses. Contrariwise, the Rankine based models
+provide different results. As in the previous example, plasticity fails to produce decrease of load-
+carrying capacity while isotropic damage presents a reduction of the total load, but the peak load
+value is slightly overestimated.
+
+Hence, the numerical analysis shows that the torsional tests on circular specimens require a detailed
+description of the mixed mode failure of concrete. On the one hand, the numerically computed fracture
+surface shows a similar “S” shaped profile in both cases. On the other hand, the softening behavior
+appears to be properly captured by the ε−u mixed finite elements when using Drucker-Prager’s model
+with 45◦ friction angle whereas Rankine’s one slightly overestimates the peak load.
+
+23
+
+
+
+7 Computational pay-off of kinematic compatibility and iterative
+procedure
+
+The computational time and memory requirements for the last two examples are presented in the fol-
+lowing tables. Three different finite element technologies are considered: full mixed ε− u, combined
+kinematically compatible mixed and irreducible FE and full displacement-based standard u formula-
+tions. In the first one, the whole mesh consists of mixed elements and, for this reason, it is the most
+demanding from the computational point of view. The second one combines compatible elements in
+the same mesh; its performance pay-off will be benchmarked. Finally, the third one, with the standard
+irreducible only, is the less demanding.
+
+These numerical analysis are run on a desktop computer with 8 GB of RAM and a dual core CPU
+clocking at 2.83 GHz.
+
+The prismatic skew notched concrete beam under torsion is calculated with a mesh of 67,038
+elements. When the combined formulation is used, the computational grid is composed of 9,783
+irreducible and 57,255 mixed finite elements. Table 2 shows a substantial reduction in computational
+time for the proposed methodology. Similarly, the RAM usage is slightly reduced. The irreducible
+formulation is added for reference, as the corresponding results are generally deficient.
+
+Formulation Solver CPU
+tfact (s)
+
+niter CPU
+titer (s)
+
+CPU
+tstep (s)
+
+RAM (MB)
+
+Full mixed ε− u formulation Newton-Raphson 71 3 71 213 5660
+(67,038 elements) Secant scheme 55 10 2 75 2833
+
+Mixed ε− u and irreducible u Newton-Raphson 61 3 61 183 4129
+(57,255 + 9,783 elements) Secant scheme 51 10 2 71 2065
+
+Irreducible u Newton-Raphson 7 3 7 21 683
+(67,038 elements) Secant scheme 6 10 2 26 369
+
+Table 2: CPU time and RAM memory requirements in the prismatic skew notched concrete beam
+under torsion. The proposed method is compared with the full mixed and full irreducible formulations.
+Likewise, the Newton-Raphson and Secant schemes are compared per first iteration factorization time,
+number of iterations and step average time.
+
+The cylindrical skew notched concrete beam under torsion is modeled with 62,309 elements. In
+the case of combination of kinematically compatible FE, the mesh is subdivided in 53,876 mixed and
+8,433 irreducible elements. CPU time gains are similar to the ones observed for the prismatic beam
+case.
+
+Note that using the irreducible formulation in only 14 % of the total number of elements translates
+directly in a 14 % pay-off of CPU time per step in the Newton-Raphson, and 5.6 % in the Secant
+method. In analyses where the ratio of irreducible to mixed elements can be greater, the gain increases
+correspondingly.
+
+Moreover, for each case, the performance of the Newton-Raphson solver is compared with the
+Secant scheme. The first one requires a lower number of iterations per step thanks to the quadratic
+convergence given by the consistently linearized global matrix. Nevertheless, each iteration requires
+the solution of the full updated algebraic system which, as in this case, can not be symmetric.
+
+Contrariwise, the modified Secant scheme updates the global matrix only at the beginning of
+each step and then it iterates using the already factorized system. Although the rate of convergence
+is linear and more iterations are needed, it results in a faster procedure. In both of the proposed
+examples, the computational time for the secant solver is less than half of the Newton-Raphson for
+the same convergence tolerance, which is set to 10−3 with respect to the residual forces. Moreover,
+the symmetry of the matrix reduces the required memory to almost half.
+
+24
+
+
+
+Formulation Solver CPU
+tfact (s)
+
+niter CPU
+titer (s)
+
+CPU
+tstep (s)
+
+RAM (MB)
+
+Full mixed ε− u formulation Newton-Raphson 65 3 65 195 4459
+(62,309 elements) Secant scheme 50 8 2 66 2232
+
+Mixed ε− u and Irreducible u Newton-Raphson 54 3 54 162 3334
+(53,876 + 8,433 elements) Secant scheme 45 8 2 61 1668
+
+Irreducible u Newton-Raphson 6 3 6 18 546
+(62,309 elements) Secant scheme 6 8 2 22 299
+
+Table 3: CPU time and RAM memory requirements in the skew-notched cylindrical beam under
+torsion. The proposed method is compared with the full mixed and full irreducible formulations.
+Likewise, the Newton-Raphson and Secant schemes are compared per first iteration factorization
+time, number of iterations and step average time.
+
+8 Conclusion
+
+The mixed strain displacement ε − u finite element method is applied to problems involving mode
+III and mixed mode failure in quasi-brittle materials. First, the formulation is presented for isotropic
+continuum damage and plasticity constitutive models. The compatibility between the proposed for-
+mulation and the standard irreducible one is established, as a mean to provide a speedup of the
+computational time. The proposed mixed finite element technology is able to describe effectively
+failure processes that involve complex crack surfaces.
+
+The three point bending test of a skew notched beam is studied using Rankine’s failure criterion.
+The mixed strain-displacement ε − u formulation outperforms the standard irreducible one, which
+shows mesh biased localization and lack of accuracy. The characteristic failure surface twisting rotation
+is recovered and the numerically computed crack profile is satisfactorily close to the experimental one.
+
+Then, the torsion test of a skew-notched prismatic beam with square cross section is studied.
+Firstly, using the isotropic damage and the associative plasticity with Rankine’s failure criterion, it is
+possible to properly reproduce the propagation of fracture surface found experimentally. Secondly, the
+two constitutive laws are compared with the plots of the vertical force versus orthogonal and sliding
+CMOD. It is determined that, in the mode I failure, the orthotropic nature of plasticity results in a
+different global behavior than the isotropic damage. The latter one provides good results, with similar
+values to the experiments.
+
+Using an identical test setup, a skew-notched cylindrical beam under torsion is studied as well.
+Here, using a Drucker-Prager constitutive model, the influence of shear strength in the experiment
+is highlighted. By introducing a Drucker-Prager law with friction angle of 45◦, the global behavior
+found in experiments is accurately predicted. This shows that the mode I failure criterion has to be
+combined with a shear-pressure dependent one, in a mixed mode fracture fashion, to properly compute
+the cracking of the specimen.
+
+Finally, the kinematic compatibility between the mixed and the standard finite elements is exploited
+to provide considerable gains in terms of computational time. Moreover, a symmetric scheme, such
+as the secant one, is demonstrated as a feasible and advantageous alternative to the Newton-Raphson
+method.
+
+9 Acknowledgments
+
+Financial support from the EC 7th Framework Programme under the MuMoLaDe project - Multi-
+scale Modelling of Landslides and Debris Flows - within the framework of Marie Curie ITN (Initial
+Training Networks) and the Spanish Ministry of Economy and Competitivity under the EACY project
+- Enhanced accuracy computational and experimental framework for strain localization and failure
+mechanisms- within the ”Excellency” Program for Knowledge Generation is gratefully acknowledged.
+
+25
+
+
+
+References
+
+[1] L. P. Pook. The effect of crack angle on fracture toughness. Engineering Fracture Mechanics, 3
+(3):205 – 218, 1971.
+
+[2] L. P. Pook. The fatigue crack direction and threshold behaviour of mild steel under mixed mode
+I and III loading. International Journal of Fatigue, 7(1):21–30, 1985.
+
+[3] L. P. Pook. On fatigue crack paths. International Journal of Fatigue, 17(1):5–13, 1995.
+
+[4] J. R. Yates and R. A. Mohammed. Crack propagation under mixed mode (I+ III) loading. Fatigue
+& Fracture of Engineering Materials & Structures, 19(10):1285–1290, 1996.
+
+[5] M. L. Cooke and D. D. Pollard. Fracture propagation paths under mixed mode loading within
+rectangular blocks of polymethyl methacrylate. Journal of Geophysical Research: Solid Earth,
+101(B2):3387–3400, 1996.
+
+[6] V. Lazarus and J.-B. Leblond. Crack paths under mixed mode (I+ III) or (I+ II+ III) loadings.
+Comptes Rendus de l’Academie des Sciences Series IIB Mechanics Physics Chemistry Astronomy,
+326(3):171–177, 1998.
+
+[7] V. Lazarus, J.-B. Leblond, and S.-E. Mouchrif. Crack front rotation and segmentation in mixed
+mode I+III or I+II+III. Part I: Calculation of stress intensity factors. Journal of the Mechanics
+and Physics of Solids, 49(7):1399–1420, 2001.
+
+[8] V. Lazarus, J.-B. Leblond, and S.-E. Mouchrif. Crack front rotation and segmentation in mixed
+mode I+III or I+II+III. Part II: Comparison with experiments. Journal of the Mechanics and
+Physics of Solids, 49(7):1421–1443, 2001.
+
+[9] F.-G. Buchholz, A. Chergui, and H. A. Richard. Fracture analyses and experimental results of
+crack growth under general mixed mode loading conditions. Engineering Fracture Mechanics, 71
+(4):455–468, 2004.
+
+[10] V. Lazarus, F.-G. Buchholz, M. Fulland, and J. Wiebesiek. Comparison of predictions by mode
+II or mode III criteria on crack front twisting in three or four point bending experiments. Inter-
+national Journal of Fracture, 153(2):141–151, 2008.
+
+[11] A. Hillerborg, M. Modéer, and P.-E. Petersson. Analysis of crack formation and crack growth in
+concrete by means of fracture mechanics and finite elements. Cement and Concrete Research, 6
+(6):773–781, 1976.
+
+[12] Z. P. Bažant and B. H. Oh. Crack band theory for fracture of concrete. Matériaux et Construction,
+16(3):155–177, 1983.
+
+[13] G. Pijaudier-Cabot and Z. P. Bazant. Nonlocal damage theory. Journal of engineering mechanics,
+113(10):1512–1533, 1987.
+
+[14] M. Jirasek. Nonlocal models for damage and fracture: comparison of approaches. International
+Journal of Solids and Structures, 35(31):4133–4145, 1998.
+
+[15] R. H. J. Peerlings, R. De Borst, W. A. M. Brekelmans, and M. G. D. Geers. Gradient-enhanced
+damage modelling of concrete fracture. Mechanics of Cohesive-frictional Materials, 3(4):323–342,
+1998.
+
+[16] A. Simone, G. N. Wells, and L. J. Sluys. From continuous to discontinuous failure in a gradient-
+enhanced continuum damage model. Computer Methods in Applied Mechanics and Engineering,
+192(41):4581–4607, 2003.
+
+26
+
+
+
+[17] P. Steinmann and K. Willam. Localization within the framework of micropolar elasto-plasticity.
+In Advances in continuum mechanics, pages 296–313. Springer, 1991.
+
+[18] H. B. Mühlhaus and I. Vardoulakis. The thickness of shear bands in granular materials. Geotech-
+nique, 37(3):271–283, 1987.
+
+[19] C. Miehe, F. Welschinger, and M. Hofacker. Thermodynamically consistent phase-field models
+of fracture: Variational principles and multi-field fe implementations. International Journal for
+Numerical Methods in Engineering, 83(10):1273–1311, 2010.
+
+[20] J. Vignollet, S. May, R. De Borst, and C. V. Verhoosel. Phase-field models for brittle and cohesive
+fracture. Meccanica, 49(11):2587–2601, 2014.
+
+[21] M. Cervera, E. Hinton, and O. Hassan. Nonlinear analysis of reinforced concrete plate and shell
+structures using 20-noded isoparametric brick elements. Computers & structures, 25(6):845–869,
+1987.
+
+[22] D. V. Swenson and A. R. Ingraffea. Modeling mixed-mode dynamic crack propagation nsing finite
+elements: theory and applications. Computational Mechanics, 3(6):381–397, 1988.
+
+[23] T. Belytschko and T. Black. Elastic crack growth in finite elements with minimal remeshing.
+International journal for numerical methods in engineering, 45(5):601–620, 1999.
+
+[24] J. C. Simo and M. S. Rifai. A class of mixed assumed strain methods and the method of
+incompatible modes. International journal for numerical methods in engineering, 29(8):1595–
+1638, 1990.
+
+[25] J. C. Simo and F. Armero. Geometrically non-linear enhanced strain mixed methods and the
+method of incompatible modes. International Journal for Numerical Methods in Engineering, 33
+(7):1413–1449, 1992.
+
+[26] N. Sukumar, D. L. Chopp, N. Moës, and T. Belytschko. Modeling holes and inclusions by level sets
+in the extended finite-element method. Computer methods in applied mechanics and engineering,
+190(46):6183–6200, 2001.
+
+[27] N. Moës and T. Belytschko. Extended finite element method for cohesive crack growth. Engi-
+neering fracture mechanics, 69(7):813–833, 2002.
+
+[28] J. Oliver, M. Cervera, and O. Manzoli. Strong discontinuities and continuum plasticity models:
+the strong discontinuity approach. International journal of plasticity, 15(3):319–351, 1999.
+
+[29] F. Armero and C. Linder. New finite elements with embedded strong discontinuities in the
+finite deformation range. Computer Methods in Applied Mechanics and Engineering, 197(33):
+3138–3170, 2008.
+
+[30] M. Cervera, M. Chiumenti, Q. Valverde, and C. Agelet de Saracibar. Mixed linear/linear simplicial
+elements for incompressible elasticity and plasticity. Computer Methods in Applied Mechanics and
+Engineering, 192(49-50):5249–5263, 12 2003.
+
+[31] M. Cervera, M. Chiumenti, and C. Agelet de Saracibar. Shear band localization via local J2
+continuum damage mechanics. Computer Methods in Applied Mechanics and Engineering, 193
+(9-11):849–880, March 2004.
+
+[32] M. Cervera, M. Chiumenti, and R. Codina. Mixed stabilized finite element methods in nonlinear
+solid mechanics. Part I: Formulation. Computer Methods in Applied Mechanics and Engineering,
+199(37-40):2559–2570, August 2010.
+
+27
+
+
+
+[33] M. Cervera, M. Chiumenti, and R. Codina. Mixed stabilized finite element methods in nonlin-
+ear solid mechanics. Part II: Strain localization. Computer Methods in Applied Mechanics and
+Engineering, 199(37-40):2571–2589, August 2010.
+
+[34] M. Cervera, M. Chiumenti, and R. Codina. Mesh objective modeling of cracks using continuous
+linear strain and displacement interpolations. International Journal for Numerical Methods in
+Engineering, 87(10):962–987, 2011.
+
+[35] L. Benedetti, M. Cervera, and M. Chiumenti. High-fidelity prediction of crack formation in 2D
+and 3D pullout tests. Computers & Structures, 172:93 – 109, 2016.
+
+[36] M. Cervera, M. Chiumenti, L. Benedetti, and R. Codina. Mixed stabilized finite element methods
+in nonlinear solid mechanics. Part III: Compressible and Incompressible Plasticity. Computer
+Methods in Applied Mechanics and Engineering, 285:752–775, 2015.
+
+[37] L. Benedetti, M. Cervera, and M. Chiumenti. Stress-accurate Mixed FEM for soil failure under
+shallow foundations involving strain localization in plasticity. Computers and Geotechnics, 64:
+32–47, 2015.
+
+[38] R. Faria, J. Oliver, and M. Cervera. A strain-based plastic viscous-damage model for massive
+concrete structures. International Journal of Solids and Structures, 35(14):1533–1558, 1998.
+
+[39] I. Babuška. Error-bounds for finite element method. Numerische Mathematik, 16:322–333, 1971.
+
+[40] F. Brezzi. On the existence, uniqueness and approximation of saddle-point problems arising from
+lagrangian multipliers. ESAIM: Mathematical Modelling and Numerical Analysis - Modlisation
+Mathmatique et Analyse Numrique, 8(R2):129–151, 1974.
+
+[41] T. J. R. Hughes, L. P. Franca, and M. Balestra. A new finite element formulation for computa-
+tional fluid dynamics: V. Circumventing the Babuška-Brezzi condition: A stable Petrov-Galerkin
+formulation of the Stokes problem accommodating equal-order interpolations. Computer Methods
+in Applied Mechanics and Engineering, 59(1):85–99, 1986.
+
+[42] D. Boffi, F. Brezzi, and M. Fortin. Mixed Finite Element Methods and Applications. Springer,
+2013 edition, 7 2013.
+
+[43] T. J. R. Hughes, G. R. Feijóo, L. Mazzei, and J. B. Quincy. The variational multiscale method
+- a paradigm for computational mechanics. Computer Methods in Applied Mechanics and Engi-
+neering, 7825(98), 1998.
+
+[44] R. Codina. Stabilization of incompressibility and convection through orthogonal sub-scales in
+finite element methods. Computer Methods in Applied Mechanics and Engineering, 190:1579–
+1599, 2000.
+
+[45] M. Cervera, L. Pelà, R. Clemente, and P. Roca. A crack-tracking technique for localized damage
+in quasi-brittle materials. Engineering Fracture Mechanics, 77(13):2431–2450, 2010.
+
+[46] M. Cervera and M. Chiumenti. Mesh objective tensile cracking via a local continuum damage
+model and a crack tracking technique. Computer Methods in Applied Mechanics and Engineering,
+196(1):304–320, 2006.
+
+[47] R. Citarella and F.-G. Buchholz. Comparison of crack growth simulation by DBEM and FEM
+for SEN-specimens undergoing torsion or bending loading. Engineering Fracture Mechanics, 75
+(3):489–509, 2008.
+
+[48] G. Ferté, P. Massin, and N. Moës. 3D crack propagation with cohesive elements in the extended
+finite element method. Computer Methods in Applied Mechanics and Engineering, 300:347–374,
+2016.
+
+28
+
+
+
+[49] A. D. Jefferson, B. I. G. Barr, T. Bennett, and S. C. Hee. Three dimensional finite element
+simulations of fracture tests using the Craft concrete model. Computers and Concrete, 1(3):
+261–284, 2004.
+
+[50] F.-G. Buchholz, V. Just, and H. A. Richard. Computational simulation and experimental findings
+of three-dimensional fatigue crack growth in a single-edge notched specimen under torsion loading.
+Fatigue & Fracture of Engineering Materials & Structures, 28(1-2):127–134, 2005.
+
+[51] S. Saloustros, L. Pelà, and M. Cervera. A crack-tracking technique for localized cohesive–frictional
+damage. Engineering Fracture Mechanics, 150:96–114, 2015.
+
+29
+
+View publication statsView publication stats
+
+https://www.researchgate.net/publication/315446554
+

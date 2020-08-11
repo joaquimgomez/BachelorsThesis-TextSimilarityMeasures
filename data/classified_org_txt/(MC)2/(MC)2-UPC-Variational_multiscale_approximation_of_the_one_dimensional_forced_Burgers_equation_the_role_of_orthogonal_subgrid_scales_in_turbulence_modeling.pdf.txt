@@ -1,0 +1,1669 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+INTERNATIONAL JOURNAL FOR NUMERICAL METHODS IN FLUIDS
+Int. J. Numer. Meth. Fluids 0000; 00:1–18
+Published online in Wiley InterScience (www.interscience.wiley.com). DOI: 10.1002/fld
+
+Variational multi-scale approximation of the one-dimensional
+forced Burgers equation: the role of orthogonal sub-grid scales in
+
+turbulence modeling
+
+Camilo Bayona, Joan Baiges∗ and Ramon Codina
+
+Centre Internacional de Mètodes Numèrics en Enginyeria (CIMNE), Edifici C1, Campus Nord UPC C/Gran Capità S/N
+08034 Barcelona, Spain
+
+Universitat Politècnica de Calatunya, Jordi Girona 1-3, Edifici C1, 08034 Barcelona, Spain
+
+SUMMARY
+
+A numerical approximation for the one-dimensional Burgers equation is proposed by means of the
+Orthogonal Sub-Grid Scales - Variational Multi-Scale (OSGS-VMS) method. We evaluate the role of the
+variational subscales in describing the Burgers “turbulence” phenomena. Particularly, we seek to clarify the
+interaction between the subscales and the resolved scales when the former are defined to be orthogonal to the
+finite dimensional space. Direct Numerical Simulation (DNS) is used to evaluate the resulting OSGS-VMS
+energy spectra. The comparison against a Large Eddy Simulation (LES) model is presented for numerical
+discretizations in which the grid is not capable of solving the small scales. An accurate approximation to
+the phenomena of turbulence is obtained with the addition of the purely dissipative numerical terms given
+by the OSGS-VMS method without any modification of the continuous problem. Copyright c© 0000 John
+Wiley & Sons, Ltd.
+
+Received . . .
+
+KEY WORDS: Burgers equation; Turbulence; Variational multi-scale method; Orthogonal sub-grid
+scales; Large eddy simulation; Direct numerical simulation
+
+1. INTRODUCTION
+
+The Burgers equation is a simplified model of the equations that govern fluid flow, and in spite of its
+simplicity it shares some features of the nonlinear dynamics present in the Navier-Stokes equations.
+Burgers attempted unsuccessfully to arrive at a statistical theory of turbulent fluid motion in [2],
+but he was able to clarify the interaction between transient, dissipative, and nonlinear terms in an
+extremely simplified equation of motion. His contribution still represents a significant achievement
+when one aims to describe turbulence: Burgers turbulence exhibits an energy cascade that is similar
+to that encountered in fluid flow turbulence governed by the Navier-Stokes equations, containing
+also an inertial and a dissipation range.
+
+Analytic solutions are known for the forced Burgers equation: when the nonlinear term is
+dominant it leads to the formation of shocks, and the solution exhibits an energy spectrum that
+behaves as k−2 in the inertial range, k being the wavenumber. A complete review of the analytical
+solutions by Hopf [18] and Cole [9], including some of the mathematical and computational
+framework for the viscous form of the time-dependent Burgers equation, has been reported in [27].
+Nevertheless, the important difference between the Navier-Stokes and the Burgers dynamics is that
+the smallest scales that dissipate the energy of the flow in the Burgers equation do not refer to the
+smallest eddies, but to the shock thickness instead.
+
+∗Correspondence to: jbaiges@cimne.upc.edu
+
+Copyright c© 0000 John Wiley & Sons, Ltd.
+Prepared using fldauth.cls [Version: 2010/05/13 v2.00]
+
+
+
+2 C.A. BAYONA ROA, J. BAIGES AND R. CODINA
+
+Numerically resolving every scale of the solution is what is referred as the Direct Numerical
+Simulation (DNS). Most of the numerical approaches that aim to correctly describe turbulent flows
+can be prohibitively expensive for nearly all systems with complex geometries, since the discrete
+meshes of the approximation (or the number of basis functions in the approximation space) need
+to be refined up to a power of the Reynolds number. Hence, it is presently impossible to simulate
+flows at high Reynolds numbers using DNS, and in most of the practical fluid dynamics applications
+turbulence phenomena are modeled somehow.
+
+Several alternatives have raised in the turbulence modeling community, being Large Eddy
+Simulation (LES) one of the most robust and prevailing approaches. The basic idea of this method
+is to filter the fluid equations in space and time, simulating only the filtered large scales, while
+the smallest (and most expensive to compute) scales are incorporated into the overall solution by
+including a modelling term in the filtered equations. The filtered scales are called the resolved
+scales of the flow, the scales below the resolved scales are called the subscales. However, filtering
+the equations results in an unclosed term involving the subscales that cannot be determined from
+the resolved quantities, so that it needs to be calculated by assuming some a priori properties of
+the flow. In particular, eddy viscosity type models, such as the Smagorinsky model [26] and the
+Germano model [13], apply proportionality constants that must be set empirically a priori, and this
+makes them incomplete models. Some other authors, such as [24, 14], approximated the problem
+by decomposing the resolved and unresolved scales into deterministic and stochastic components,
+in which the subscales are calculated by using a stochastic estimation. And yet, as reviewed by [11],
+all these models fail to accurately represent inhomogeneous flows.
+
+Another method that separates the solution into resolved and unresolved scales is the Variational
+Multi-Scale (VMS) method [19]. Alternatively to the LES approach, this method splits the solution
+in order to stabilize the numerical approximation of the problem. Fluid flow equations have been
+traditionally stabilized by using the family of VMS methods, including the Algebraic Sub-Grid
+Scales (ASGS) and the Orthogonal Sub-Grid Scales (OSGS) methods (like in [4]). The original
+idea of using the multiscale formulation with local approximation to the fine scales to compute
+turbulent flows was introduced in [6], and later discussed in [20]. The illustration that the VMS
+formulation works as a turbulent model, that depends on the validity of the approximation made
+to derive the evolution equation for the unresolved scales, was elaborated in [8, 16]. Some other
+authors proposed to further split the resolved scales into coarse and fine scales, and to adopt the
+hypothesis that the subscales do not affect the coarse resolved scales. Among these methods we
+can distinguish [29, 15], in which the effect of the unresolved scales is introduced only into the
+fine resolved scales. More recently, [17, 1, 23, 10, 12] have directly applied the VMS method in
+order to solve the Navier-Stokes turbulence, in what are called Implicit LES (ILES) techniques.
+This approach accurately solves turbulence relying on the addition of dissipative numerical terms
+solely, and without any modification of the continuous problem.
+
+In this work we aim to apply the OSGS-VMS method to the numerical approximation of the
+one-dimensional forced Burgers equation. In the spirit of ILES methods, we aim to clarify the
+mechanisms through which the resolved and unresolved scales interact with each other, and remark
+about the role of the orthogonal sub-grid scales in modeling Burgers turbulence. The proposed
+numerical approximation exploits the Fourier transform of the Burgers equation, following the
+work in [28], in which the scale dependence on the numerical dissipation introduced by the
+subscales is clarified. Complementary to that approach, we include the orthogonal sub-grid scales
+into the resolved scales equation by means of the adjoint of the nonlinear operator applied to the
+test function, so that both terms associated with the Cross and Reynolds stresses are accounted
+for. Solving the subscales in a separated equation (subscales equation) leads to the inclusion of
+a Leonard stress term. In addition, we propose to calculate subscales in terms of the resolved
+scales by defining a priori the space where the subscales exist (as the orthogonal space to the
+finite dimensional resolved space), and approximating the nonlinear operator associated to the
+Burgers problem. The scale dependence of the introduced numerical dissipation terms is studied
+by considering the triadic interactions among the resolved scales and the subscales. More precisely,
+terms associated with the Leonard, Cross and Reynolds stresses (involving resolved and unresolved
+
+Copyright c© 0000 John Wiley & Sons, Ltd. Int. J. Numer. Meth. Fluids (0000)
+Prepared using fldauth.cls DOI: 10.1002/fld
+
+
+
+OSGS-VMS APPROXIMATION OF THE BURGERS EQ. 3
+
+scales) allow forward and backward scattering. Contrary to [22], we are not interested in transient
+turbulent solutions. Instead, we test the OSGS-VMS method in contrast to the static Smagorinksy
+LES model, and present some conclusions about the behavior of the orthogonal subscales in the
+numerical approximation of the Burgers turbulence phenomena.
+
+The outline of this article is organized as follows. In Section 2 we define the Burgers equation and
+the VMS form of the problem. The numerical approximation used to solve the problem is presented
+in Section 3. Section 4 shows the numerical results for a test example. OSGS-VMS results are
+compared both to DNS and LES simulations at the end of that section. Finally, conclusions are
+stated in Section 5.
+
+2. PROBLEM DEFINITION
+
+In this section we define the VMS approximation of the Burgers problem. First, we recall the one-
+dimensional forced Burgers equation in the physical space, and derive the Galerkin form of the
+problem. Then, we apply the VMS framework and present the equations for both the resolved scales
+and the subscales.
+
+2.1. Burgers equation
+
+The one-dimensional forced Burgers equation [3] consists of finding a scalar function u(x, t) of
+position x ∈Ω = (0,2π) and of time t ≥ 0 such that, given a forcing term f (x, t),
+
+∂tu+u∂xu−ν∂xxu = f , x ∈ (0,2π), t > 0, (1)
+
+with an initial condition u(x,0) = u0(x) in Ω and periodic boundary conditions at x = 0 and x = 2π ,
+t ≥ 0. The diffusivity coefficient ν is considered as homogeneous and constant.
+
+The Burgers equation shares some of the properties of the Navier-Stokes equations. Apart from
+the temporal derivative, the left-hand-side (LHS) contains both a nonlinear and a linear term,
+associated to convection and diffusion, respectively. The interaction between the dissipation given
+by the diffusive term (containing second order derivatives) and the convection given by the nonlinear
+inertial term also appears in the incompressible Navier-Stokes equations.
+
+For convenience Eq. (1) can be written in the form
+
+∂tu+L (u;u) = f , x ∈ (0,2π), t > 0, (2)
+
+by introducing the bilinear operator L (u;v) = u∂xv− ν∂xxv. For smooth solutions, L (u;u) =
+u∂xu−ν∂xxu = ∂x
+
+(
+1
+2 u
+
+2−ν∂xu
+)
+. The latter is the form that admits physically meaningful solutions
+
+when they develop discontinuities; it is known as the conservation form.
+Let W = H1per(Ω) be the subspace of periodic functions in H
+
+1(Ω), and let us write ( f ,g) =
+∫
+
+Ω
+f g
+
+for any two functions f and g. Introducing the form
+
+A(u;w,v) :=−
+1
+2
+(u∂xw,v)+ν(∂xw,∂xv), (3)
+
+the variational form of the problem can be written as: find u : R+ −→W such that
+
+(w,∂tu)+A(u;w,u) = (w, f ), t > 0, (4)
+
+(w,u) = (w,u0), t = 0, (5)
+
+for all w ∈W
+
+2.2. Variational multi-scale method
+
+Let us consider a finite-dimensional subspace WN ⊂ W , of dimension N, which approximates
+W as N → ∞. The Galerkin approximation to problem (4)-(5) can be stated as follows: find
+
+Copyright c© 0000 John Wiley & Sons, Ltd. Int. J. Numer. Meth. Fluids (0000)
+Prepared using fldauth.cls DOI: 10.1002/fld
+
+
+
+4 C.A. BAYONA ROA, J. BAIGES AND R. CODINA
+
+uN : R+ −→WN such that
+
+(wN ,∂tuN)+A(uN ;wN ,uN) = (wN , f ), t > 0, (6)
+
+(wN ,uN) = (wN ,u
+0), t = 0, (7)
+
+for all wN ∈WN . This approximation suffers from instability problems, which vary according to the
+way to construct WN , but which are in any case due to the convective property of the nonlinear term.
+
+The idea of the VMS method is to decompose the space of the unknown into a finite-dimensional
+space WN , and an infinite-dimensional one, W̃ , so that W = WN ⊕ W̃ . The unknown and the test
+functions are accordingly split as u = uN + ũ and w = wN + w̃, respectively. We shall refer to
+functions in WN as the large or resolved scales and to functions in W̃ as the subscales or unresolved
+scales.
+
+Equation (4) can be equivalently written as the system of equations
+
+(wN ,∂tu)+A(u;wN ,u) = (wN , f ), for all wN ∈WN , t > 0, (8)
+(w̃,∂tu)+A(u; w̃,u) = (w̃, f ), for all w̃ ∈ W̃ , t > 0, (9)
+
+and likewise for the initial condition, Eq. (5). The second term in the LHS of Eq. (8) can be split as
+
+A(u;wN ,u) = A(uN ;wN ,uN)+A(uN ;wN , ũ)+A(ũ;wN ,uN)+A(ũ;wN , ũ). (10)
+
+We may define:
+
+A(uN ;wN ,uN) Galerkin terms (11)
+A(uN ;wN , ũ)+A(ũ;wN ,uN) Nonlinear Cross terms (12)
+A(ũ;wN , ũ) Nonlinear contribution of the unresolved scales (13)
+
+If WN is made of smooth functions, as it is the case considered below, it is readily seen that the
+equation for the unresolved scales (9) can be written as
+
+(w̃,∂t ũ)+(w̃,L (u; ũ)) = (w̃, f −∂tuN−L (u;uN)) , for all w̃ ∈ W̃ , t > 0. (14)
+
+The objective of the VMS method is to approximate the subscales in terms of the resolved scales,
+in order to end up with a problem for the resolved scales alone. The key point is the approximation
+of L (u; ũ) in order to make Eq. (14) easily solvable. We will not describe the motivation, which can
+be based on a Fourier analysis of the problem, but the approximation that we consider is (see [5])
+
+L (u; ũ)≈ τ−1(u)ũ, (15)
+
+where τ(u) > 0 is a numerical parameter of the formulation, the expression of which is given
+later for a particular approximation. The objective of (15) is not to provide an accurate pointwise
+approximation to ũ, but to capture its effect on the resolved scales.
+
+The residual of the resolved scales is defined as RN(u;uN) = f − ∂tuN − L (u;uN). If
+approximation (15) is inserted in (14), one obtains a nonlinear problem for ũ. Even though it is
+possible to deal with this nonlinearity (see [5]), we will consider that the unresolved scales are
+smaller than the resolved ones, so that
+
+τ(u)≈ τ(uN), RN(u;uN)≈ RN(uN ;uN). (16)
+
+These approximations and (15) allow us to write the approximate equation for the subscales as(
+w̃,∂t ũ+ τ
+
+−1(uN)ũ
+)
+= (w̃,RN(uN ;uN)) , for all w̃ ∈ W̃ , t > 0. (17)
+
+Even though we have not distinguished them, the subscales solution of (17) are approximate,
+whereas those solution of (14) are exact.
+
+Copyright c© 0000 John Wiley & Sons, Ltd. Int. J. Numer. Meth. Fluids (0000)
+Prepared using fldauth.cls DOI: 10.1002/fld
+
+
+
+OSGS-VMS APPROXIMATION OF THE BURGERS EQ. 5
+
+The subscales space is generally defined in two different ways. The first, and the most common
+approach, is to define it as the space of residuals of the resolved scales, and therefore to consider
+that
+
+∂t ũ+ τ
+−1(uN)ũ = RN(uN ;uN), t > 0.
+
+This is what we call Algebraic Sub-Grid Scales (ASGS) method in finite elements. The second
+approach is the Orthogonal Sub-Grid Scales (OSGS) method, which defines the subscales space
+as the space orthogonal to the resolved scales space. If PN is the L2-projection onto WN and
+P⊥N = I−PN , I being the identity, then the equation for the unresolved scales in this case is
+
+∂t ũ+ τ
+−1(uN)ũ = P
+
+⊥
+N [RN(uN ;uN)], t > 0.
+
+In the spectral approximation described next, we shall see that the OSGS method is in fact the
+natural approach, since the basis functions are mutually L2-orthogonal (and also H1-orthogonal).
+In this case, we thus have that W = WN⊕W ⊥N , with W
+
+⊥
+N = W̃ .
+
+3. SOLUTION METHOD
+
+In the previous section, we have defined the variational formulation for each scale of the Burgers
+problem. The two sub-problems (8) and (17) are now numerically approximated by transforming
+them into the Fourier space or, equivalently, by using a spectral Fourier method. Considering ũ = 0
+would reduce the problem to be solved to (6)-(7), i.e., the Galerkin-Fourier method. It is well
+known that this approximation of the Burgers equation suffers from numerical instabilities. In this
+section we recall the importance of the numerical diffusion introduced by the VMS formulation, not
+only to prevent spurious oscillations in the numerical solution, but also to model the “turbulence”
+phenomena. Next, we derive the energy equation in Fourier space. Finally, the time integration
+scheme is described.
+
+3.1. Discrete Burgers equation
+
+Let us consider N even and define the discrete space where the solution is sought as
+
+WN := span{eikx : k ∈ [−N/2,N/2−1]⊂ N},
+
+i.e., the space spanned by N Fourier modes, k being the wavenumber. Let us write ( f ,g) =
+∫
+
+Ω
+f g
+
+for the L2 inner product over complex-valued functions f and g, by denoting the complex conjugate
+with an overline. The approximate unknown can thus be expressed as
+
+uN(x, t) =
+N/2−1
+
+∑
+k=−N/2
+
+ûk(t)e
+ikx,
+
+where ûk(t) :=
+(
+uN(x, t),eikx
+
+)
+. We recall the orthogonality relation
+
+(
+eikx,eilx
+
+)
+= 2πδkl , where δkl is
+
+the Kronecker delta. The notation ∑
+N/2−1
+k=−N/2 ûk(t)e
+
+ikx := ∑k ûke
+ikx will be used in the following.
+
+To obtain the discrete weak form of the problem, let us test the differential equation (8) with the
+basis functions of WN . If f̂l , l ∈ N, are the Fourier coefficients of the forcing term f , we have that(
+eikx,∑l f̂le
+
+ilx
+)
+= 2π f̂k. For the transient and diffusive terms we have(
+
+eikx,∂t ∑
+l
+
+ûle
+ilx
+)
+= 2π∂t ûk,
+
+(
+ν∂xe
+
+ikx,∂x ∑
+l
+
+ûle
+ilx
+)
+=−2πνk2ûk,
+
+for all k, l ∈ [−N/2,N/2−1] and t > 0. Moreover, the nonlinear Galerkin term results in(
+1
+2 ∑q
+
+ûqe
+iqx
+
+∂xe
+ikx,∑
+
+l
+ûle
+
+ilx
+
+)
+=−πik ∑
+
+q+l=k
+ûqûl , (18)
+
+Copyright c© 0000 John Wiley & Sons, Ltd. Int. J. Numer. Meth. Fluids (0000)
+Prepared using fldauth.cls DOI: 10.1002/fld
+
+
+
+6 C.A. BAYONA ROA, J. BAIGES AND R. CODINA
+
+for all k,q, l ∈ [−N/2,N/2−1] and t > 0. The remaining terms of Eq. (10), which depend on the
+subscales, are developed next. Note first that the transient and diffusive terms belong to WN , and we
+may assume that f also belongs to this space without losing accuracy, since the order of the error
+made will be the same as that of approximating W by WN . Therefore, if the subscales are defined to
+belong to the space orthogonal to the finite-dimensional resolved space, then the subscales equation
+can be expressed as(
+
+w̃,∂t ũ+ τ
+−1(uN)ũ
+
+)
+= (w̃,−uN∂xuN +PN(uN∂xuN)) , for all w̃ ∈ W̃ . (19)
+
+Now, the term uN∂xuN can be developed as
+
+uN∂xuN = ∑
+q
+
+eiqxûq ∑
+l
+
+ileilxûl = ∑
+q,l
+
+ilei(q+l)xûqûl ,
+
+for all q, l ∈ [−N/2,N/2−1]. This term belongs to the space span{eirx : r ∈ [−N,N − 2]}. The
+projection onto the space of resolvable scales, PN , can be obtained by considering in the sum above
+only the wavenumbers q, l, that satisfy q + l ∈ [−N/2,N/2− 1]. Consequently, the orthogonal
+subscales belong to the Fourier space W̃ , given by
+
+W̃ := span{eirx : r ∈ [−N,N−2]\ [−N/2,N/2−1]}.
+
+With this definition, taking w̃ = eirx in (19), we obtain the equation for the subscales
+
+∂t ˆ̃ur + τ
+−1(uN) ˆ̃ur = ∑
+
+q+l=r
+ilûqûl , (20)
+
+for all q, l ∈ [−N/2,N/2−1],r ∈ [−N,N−2]\ [−N/2,N/2−1], and t > 0.
+In order to close the subscales calculation, the approximation of the Burgers nonlinear operator
+
+(15) is needed. The key point in the design of the VMS formulation is the construction of τ . In this
+work we use the approximation of the nonlinear Burgers operator proposed in [28], which is defined
+as
+
+τ(uN) =
+
+[
+3πν2
+
+(
+4
+h2
+
+)2
++
+
+4
+h2
+‖uN‖2
+
+]− 12
+, (21)
+
+where h = π/N can be considered as an effective grid size and ‖uN‖ is the L2-norm of uN . This
+approximation basically aims to bound the effect of the nonlinear operator in Fourier space. Now
+we can compute the subscales in terms of the resolvable scales from (20) and use the resulting
+expression in the equation for the latter.
+
+Remark 1
+The space of subscales is in principle of infinite dimension, and defined as the complimentary of the
+Fourier space of resolved scales. It can also be defined as the difference between the DNS solution
+and the resolved space, such as the one derived in [28]. However, with the approximations we have
+assumed, the space of subscales turns out to be of finite dimension, and defined in terms of the finite-
+dimensional resolved space. In particular, the Fourier space where the orthogonal subscales live has
+the same dimension as the resolved space, and a finer discretization generates a richer definition of
+the subscales.
+
+Remark 2
+We could actually solve the subscales taking into account the nonlinearity of the problem, that is to
+say, we could proceed without approximation (16). This simply amounts to replace u by uN + ũ and
+deal with the additional nonlinearity by using an appropriate linearization scheme.
+
+Remark 3
+Neglecting the time derivative in (20) leads to the so-called quasi-static subscales, which could be
+understood as the subscales given automatically by the residual. On the contrary, by defining the
+
+Copyright c© 0000 John Wiley & Sons, Ltd. Int. J. Numer. Meth. Fluids (0000)
+Prepared using fldauth.cls DOI: 10.1002/fld
+
+
+
+OSGS-VMS APPROXIMATION OF THE BURGERS EQ. 7
+
+subscales equation as in (20), it must be solved as a separated differential equation of the problem.
+This corresponds to what was termed as dynamic subscales in [5]. Note that Eq. (20) is in fact an
+ordinary differential equation that needs to be integrated in time for each Fourier mode.
+
+Let us look now at the contribution of the subscales into the finite-dimensional equation (10). For
+conciseness, let us imply q,k∈ [−N/2,N/2−1],r ∈ [−N,N−2]\ [−N/2,N/2−1], and t > 0. Since
+the subscales are orthogonal to the finite-dimensional space, and the diffusive term in (13) belongs
+to the resolved space, it reduces to
+
+(
+ν∂xxeikx,∑r ˆ̃ure
+
+irx
+)
+= 0. The same occurs with the transient
+
+term for the subscales (13),
+(
+eikx,∂t ∑r ˆ̃ure
+
+irx
+)
+= 0, which is orthogonal to the resolved scales by
+
+definition. Regarding the nonlinear terms that involve the subscales in (10), each one is developed
+as follows: (
+
+1
+2 ∑q
+
+ûqe
+iqx
+
+∂xe
+ikx,∑
+
+r
+
+ˆ̃ure
+irx
+
+)
+=−πik ∑
+
+q+r=k
+ûq ˆ̃ur, (22)(
+
+1
+2 ∑r
+
+ˆ̃ure
+irx
+
+∂xe
+ikx,∑
+
+q
+ûqe
+
+iqx
+
+)
+=−πik ∑
+
+r+q=k
+
+ˆ̃urûq, (23)(
+1
+2 ∑r
+
+ˆ̃ure
+irx
+
+∂xe
+ikx,∑
+
+p
+
+ˆ̃upe
+ipx
+
+)
+=−πik ∑
+
+r+p=k
+
+ˆ̃ur ˆ̃up. (24)
+
+As we can solve each Fourier wavenumber k separately, the final expression for the resolvable scales
+of the Burgers equation is
+
+∂t ûk +
+ik
+2 ∑q+l=k
+
+ûqûl + ik ∑
+q+r=k
+
+ûq ˆ̃ur +
+ik
+2 ∑r+p=k
+
+ˆ̃ur ˆ̃up +νk
+2ûk = f̂k, (25)
+
+for all k,q, l ∈ [−N/2,N/2−1], r, p ∈ [−N,N−2]\ [−N/2,N/2−1], and t > 0.
+The formulation is now complete. It consists of solving (25) together with (20), for uN and ũ.
+
+Remark 4
+The problem has to be completed with initial conditions for (20). We assume that ˆ̃u0r = 0, for all
+r ∈ [−N,N − 2] \ [−N/2,N/2− 1], which means that we assume for simplicity that the initial
+condition belongs to the space of resolvable scales.
+
+3.2. Discrete energy equation
+
+We now develop the numerical approximation to the energy equation in Fourier space. The energy
+ek of the k-th wavenumber is obtained by taking the product of ûk with its complex conjugate ûk
+(and dividing by 2, if wished). Its time derivative is given by:
+
+∂tek = ∂t(ûkûk) = ûk∂t ûk + ûk∂t ûk. (26)
+
+After the right-hand-side terms of the previous equation are developed, the discrete energy equation
+can be written as:
+
+∂tek =−ν2k2ek−T (k)−C(k)−R(k)+ ûk f̂k + f̂kûk, (27)
+
+for all k ∈ [−N/2,N/2−1], and t > 0, where
+
+T (k) =ûk
+
+(
+ik
+2 ∑q+l=k
+
+ûqûl
+
+)
++ ûk
+
+(
+ik
+2 ∑q+l=k
+
+ûqûl
+
+)
+(28)
+
+stands for the nonlinear transfer term due to the resolved scales,
+
+C(k) =ûkik ∑
+q+r=k
+
+ûq ˆ̃ur + ûkik ∑
+q+r=k
+
+ûq ˆ̃ur (29)
+
+Copyright c© 0000 John Wiley & Sons, Ltd. Int. J. Numer. Meth. Fluids (0000)
+Prepared using fldauth.cls DOI: 10.1002/fld
+
+
+
+8 C.A. BAYONA ROA, J. BAIGES AND R. CODINA
+
+q l
+
+k
+N/2
+
+q
+
+lk
+N/2
+
+Figure 1. Triadic interactions among the resolved scales
+
+is the transfer due to the Cross nonlinear term involving resolved scales and subscales, and
+
+R(k) =ûk
+
+(
+ik
+2 ∑r+p=k
+
+ˆ̃ur ˆ̃up
+
+)
++ ûk
+
+(
+ik
+2 ∑r+p=k
+
+ˆ̃ur ˆ̃up
+
+)
+(30)
+
+is the transfer term due to the nonlinear relation among subscales. All previous relations are defined
+for k,q, l ∈ [−N/2,N/2−1], r, p ∈ [−N,N−2]\ [−N/2,N/2−1], and t > 0.
+
+Remark 5
+The Galerkin nonlinear term (18) is responsible for the interaction among the resolved scales. The
+triadic interaction of this term expresses all the possible combinations with the pairs of resolved
+wavenumbers q and l such that q+ l = k. In Fig. 1 a brief schematic depicts the triadic interactions
+between the resolved wavenumbers; the two groups of possible combinations q+ l = k include: both
+q and l smaller than k (at the LHS of the figure), and either one of q or l greater than k, added with
+the remainder conjugate less than k (at the RHS of the figure). The possible combination depicted
+at the LHS of the figure relates two big resolved scales with one smaller resolved scale. Instead, the
+combination at the RHS indicates the relation between a resolved scale with a bigger and a smaller
+resolved scale. It can be proved (like in [21]), that for a given time, T (k) ∈ R, and that the total
+energy transfer due to the Galerkin nonlinear term is conserved, i.e., ∑k T (k) = 0. Therefore, the
+nonlinear transfer term due to the resolved scales (28), and its respective sign, determines the way
+the energy is transferred between the resolved scales, in which not only large resolved wavenumbers
+can transfer energy forward to small resolved wavenumbers, but also the possibility of transferring
+backwards the energy from small to large resolved wavenumbers exists, as commented before.
+
+Having remarked the importance of the Galerkin nonlinear term, which rules the development
+of an energy cascade as it transfers energy between the resolved wavenumbers in the inertial range
+[21], we focus our attention to the terms arising from relations (20), (22), (23) and (24). Such terms
+represent the interaction between the resolved scales and the subscales, and correspond to the so-
+called Leonard, Cross, and Reynolds stresses in the standard large eddy simulation (LES) approach
+to solve turbulent flows. It is worthy to note that the presence of these terms is related only to the
+introduction of the VMS method, without the modification of the continuous problem that occurs
+with the LES method.
+
+We can detail the effect of the Cross nonlinear term (22) and (23) by looking to Fig. 2. This
+figure shows how the subscales play a fundamental role in the resolved scales equation by means
+of this term. More precisely, the LHS of the figure depicts the possible combinations q+ r = k
+between the resolved and subgrid scales. These type of combinations increase with the resolved
+wavenumber k, and therefore, term (29) can be seen as increasingly responsible for dissipating
+energy at high wavenumber resolved scales. This will be verified later in the numerical example. On
+the contrary, for the Reynolds stress term (24) possible combinations p+ r = k decrease with the
+resolved wavenumber. A depiction of that type of combinations involving the subscales is shown in
+the right side of Fig 2. Therefore, the transfer term due to the nonlinear relation among subscales
+(30) is essentially related to the dissipation of energy at small resolved wavenumbers.
+
+As in (27), the discrete energy equation for the subscales can be obtained by taking the product
+of Eq. (20) with the complex conjugate of the subscale
+
+(
+ˆ̃ur
+)
+. If er is the energy of the subscales, its
+
+Copyright c© 0000 John Wiley & Sons, Ltd. Int. J. Numer. Meth. Fluids (0000)
+Prepared using fldauth.cls DOI: 10.1002/fld
+
+
+
+OSGS-VMS APPROXIMATION OF THE BURGERS EQ. 9
+
+r
+qk
+
+N/2
+
+r
+pk
+
+N/2
+
+Figure 2. Triadic interactions among the resolved and subgrid scales: Cross stress (left), and Reynolds stress
+(right).
+
+q l
+
+r
+
+N/2
+
+Figure 3. Triadic interactions among the resolved and subgrid scales for the Leonard stress.
+
+time derivative is:
+
+∂ter =−2τ−1(uN)er +L(r), (31)
+
+for all r ∈ [−N,N−2]\ [−N/2,N/2−1], and t > 0. Here we have arranged the nonlinear transfer
+term due to the residual as:
+
+L(r) = ˆ̃ur
+
+(
+∑
+
+q+l=r
+ilûqûl
+
+)
++ ˆ̃ur
+
+(
+∑
+
+q+l=r
+ilûqûl
+
+)
+, (32)
+
+for all q, l ∈ [−N/2,N/2−1], r ∈ [−N,N− 2] \ [−N/2,N/2− 1], and t > 0. This transfer term is
+related to the Leonard stress term and provides the energy that is dissipated by the subscales. An
+example of the possible combinations between the resolved wavenumbers in the Leonard stress
+term is presented in Fig. 3, where it can be observed that the possible combinations with the pairs
+of resolved wavenumbers q and l, such that q+ l, decreases with the subscale wavenumber. As a
+consequence of this, the rate of energy transfer (and dissipation) of the subscales is in principle
+smaller for unresolved high wavenumbers.
+
+Remark 6
+The energy transfer terms (29), (30), and (32) allow for the backward transfer of energy from the
+subscales to the resolved scales, provided the sign of those terms is negative for certain resolved and
+subscale wavenumbers.
+
+3.3. Time integration method
+
+Let 0 = t0 < t1 < ... < tN be a partition of the time interval of analysis, with 0 < δ t = tn+1− tn
+for n = 0,1,2, .... Here and below the superscript denotes the time step counter. The transient term
+integration of the evolution equation for the resolvable scales and the subscales, as well as the energy
+equations, can be described as follows. Let us write these equations in the form:
+
+∂tvk = F (vk) , (33)
+
+for each k wavenumber. We use a fully explicit Runge-Kutta time-integration scheme of S stages. If
+vnk is known, the solution at t
+
+n+1 is given by
+
+vn+1k = v
+n
+k +δ t
+
+S
+
+∑
+i=1
+
+biK
+n
+i , (34)
+
+Copyright c© 0000 John Wiley & Sons, Ltd. Int. J. Numer. Meth. Fluids (0000)
+Prepared using fldauth.cls DOI: 10.1002/fld
+
+
+
+10 C.A. BAYONA ROA, J. BAIGES AND R. CODINA
+
+for each k wavenumber, where Kni (defined for 1≤ i≤ S) are the stage increments, obtained as
+
+Kni = F
+
+(
+vnk +δ t
+
+i−1
+
+∑
+j=1
+
+ai jK
+n
+j
+
+)
+. (35)
+
+Expresions (34) and (35) depend on the definition of the coefficients ai j (for 1 ≤ j ≤ i ≤ S) and bi
+(for 1 ≤ i ≤ S) for a specific explicit method. In particular, the explicit Euler scheme corresponds
+to S = 1 and b1 = 1. A stability condition of Courant-Friedrichs-Lewy type must be imposed in
+order to guarantee stability of the time integration method. The previous time marching technique
+applied to Eqs. (25), (20), and (27), defines the spatial and temporal OSGS-VMS discretization
+of the Burgers problem. In the following section we apply this discretized formulation in order to
+simulate a numerical example.
+
+4. NUMERICAL EXAMPLE
+
+In this section we solve a numerical example that is selected to test the OSGS-VMS formulation. We
+first define the continuous problem, which is an steady one-dimensional viscid case. The fact that the
+”turbulent” energy spectrum of the one-dimensional Burgers problem is only due to the resolution
+of strong gradients in the solution (shocks), and not to the unsteady solution of the problem (as in
+the case of the dissipative eddies in the Navier-Stokes turbulence), has prompted us to select the
+problem as a steady case. Then we present the DNS of the problem, which accounts for all the
+wavenumbers in the solution. The DNS solution is used to evaluate the accuracy of the OSGS-VMS
+method. Specifically, we discuss the resulting energy spectra for discretizations in which the number
+of modes N is not enough to resolve all of the wavenumbers present in the solution. As in (21), we
+can consider an effective grid size h = π/N and refer to coarse and fine grids. In the spirit of ILES
+methods, coarse grid solutions are also compared against LES results in the last part of this section.
+
+Under certain conditions (detailed in [30]), the periodic solution of the one-dimensional forced
+Burgers problem tends toward a stationary state. This is achieved in particular by selecting û00 = 0
+and û0k = k
+
+−1 as initial conditions, and by fixing ∂t û1 = 0 for t > 0. Given these conditions, the
+diffusivity coefficient of the example is fixed to ν = 0.025, so that the nonlinear term is dominant
+in the Burgers equation. The periodic solution describes a single shock that arises from the large-
+scale restriction over û1 and the predominance of the nonlinear term. This restriction also provides
+the amount of energy that is propagated through the simulation and dissipated by the center of the
+shock. In this sense, the smallest scales corresponding to the “Kolmogorov” scale belong to the
+viscous shock thickness l ≈ ν/|u|, and the maximum resolved wavenumber of the DNS solution is
+calculated such that the associated grid spacing is below this size. The DNS solution of the numerical
+example is carried out by completely solving all the scales, which is achieved with N = 400 (so
+that h = 7.85× 10−3 is below l ≈ 10−2). We also perform simulations in which the grid is not
+fine enough to resolve all the wavenumbers of the solution. The comparison of the coarse grid
+simulations (solved with a maximum resolved wavenumber N) and the DNS solution is explained
+below. In order to guarantee numerical stability, the time integration stability criterion is set for all
+the resolved cases to a CFL number smaller that 0.01 for the linearized problem, converging to the
+steady state at approximately t = 2.
+
+Figure 4 shows the energy spectrum at the stationary converged state for the DNS and coarse
+grid simulations. The energy spectrum at the initial simulation time has a regular distribution and
+behaves as k−2, with the large scales containing the majority of the energy in the system. As it
+evolves in time, the energy spectrum develops the cascade shape with the typical slope −2 (in a
+log scale) behavior in the inertial range (that differs from the well-known k−5/3 behavior of the
+Navier-Stokes turbulence), and a drop-off corresponding to the dissipation provided by the shock.
+The decay in time of the energy spectra solved by the OSGS-VMS method is accurate for all the
+coarse grids, giving the k−2 behavior at the inertial range, with only small deviations occurring
+near the maximum resolved wavenumber. In this sense, an energy pile up is observed for a few
+wavenumbers below the maximum resolved wavenumber. It is also observed that refining the grid,
+
+Copyright c© 0000 John Wiley & Sons, Ltd. Int. J. Numer. Meth. Fluids (0000)
+Prepared using fldauth.cls DOI: 10.1002/fld
+
+
+
+OSGS-VMS APPROXIMATION OF THE BURGERS EQ. 11
+
+ 1e-09
+
+ 1e-08
+
+ 1e-07
+
+ 1e-06
+
+ 1e-05
+
+ 0.0001
+
+ 0.001
+
+ 0.01
+
+ 0.1
+
+ 1
+
+ 1  10  100
+
+E
+n
+
+e
+rg
+
+y
+
+Modes
+
+k
+-2
+
+N=40
+N=80
+
+N=200
+DNS
+
+Figure 4. OSGS-VMS results: energy spectrum.
+
+and consequently enriching the space of the subscales, improves the accuracy of the energy spectrum
+near the maximum resolved wavenumber as the dissipation of energy increases and the pile up
+vanishes. These results indicate that the turbulent energy spectrum is correctly approximated by the
+OSGS-VMS numerical method. Even for coarse discretizations that are not sufficient to solve the
+smallest scales of the solution, the inertial range of the energy spectrum is accurately captured.
+
+Let us discuss now the solution to the Burgers problem in the physical space. Figure 5 presents
+the physical space solution, including the coarse grid solutions and the DNS solution. The physical
+space solution uN ∈ R is plotted in the range [0,2π], since the solution is periodic. In general, the
+OSGS-VMS method gives an accurate physical solution, including the periodic wave behavior and
+the formation of the one-dimensional shock as a step in the solution. For the coarse grid solutions the
+Gibbs phenomenon is present. This can be observed in the figure as local oscillations near the shock,
+which are commonly eliminated through shock capturing techniques. A slight inaccuracy different
+from the Gibbs phenomenon is observed for the coarsest grid solutions, which corresponds to the
+previously described energy pile up at the highest resolved wavenumbers.
+
+Now we center the discussion about the implicit modeling of turbulence done by the OSGS-
+VMS method. As in the case of the Navier-Stokes turbulence, the forced Burgers problem exhibits
+the energy dissipation cascade, in which the energy of the large scales is transferred to the small
+scales where the energy is dissipated. The triadic interaction mechanism commented in Section 3,
+corresponding to the nonlinear term involving the resolved scales, is responsible for the energy
+transfer from the preponderant resolved large scales to the much smaller resolved scales. The
+mechanisms through which the energy contained in the resolved and unresolved scales interact
+with each other can be clarified by analyzing the scale dependence and the dissipation driven by
+the nonlinear terms. For doing so, we plot the spectral eddy viscosity arising from the Cross and
+Reynolds stress terms, which is a scaled version of the energy dissipated by each nonlinear term,
+and it is calculated as νC(k) = C(k)/k2e(k), and νR(k) = R(k)/k2e(k), where e(k) is the energy
+of the wavenumber. We plot the scale dependence of the nonlinear terms for a N = 80 case in
+Fig 6. It has been previously explained that the Cross stress contribution (involving the resolved and
+unresolved scales) dissipates energy increasingly with the resolved wavenumber. On the contrary,
+
+Copyright c© 0000 John Wiley & Sons, Ltd. Int. J. Numer. Meth. Fluids (0000)
+Prepared using fldauth.cls DOI: 10.1002/fld
+
+
+
+12 C.A. BAYONA ROA, J. BAIGES AND R. CODINA
+
+-2.5
+
+-2
+
+-1.5
+
+-1
+
+-0.5
+
+ 0
+
+ 0.5
+
+ 1
+
+ 1.5
+
+ 2
+
+ 2.5
+
+0 π 2π
+
+S
+o
+
+lu
+ti
+o
+n
+
+Position
+
+N=40
+
+N=80
+
+N=200
+
+DNS
+
+Figure 5. OSGS-VMS results: physical space solution.
+
+ 1e-05
+
+ 0.0001
+
+ 0.001
+
+ 0.01
+
+ 0.1
+
+ 1
+
+ 1  10
+
+E
+d
+d
+y
+ V
+
+is
+c
+o
+s
+it
+y
+
+Modes
+
+Cross-Stress N=80
+Reynolds-Stress N=80
+
+Total N=80
+
+Figure 6. OSGS-VMS results: Eddy viscosity.
+
+the energy dissipation related to the Reynolds stress is greater for the largest scales of the solution.
+In fact, the largest scales of turbulence are only correctly solved if the nonlinear term accounting
+for the unresolved scales is included. Contrary to [28], where the stabilizing term was defined by
+a linearized asymptotic expansion over the residual, and hence only Cross stress terms appeared in
+
+Copyright c© 0000 John Wiley & Sons, Ltd. Int. J. Numer. Meth. Fluids (0000)
+Prepared using fldauth.cls DOI: 10.1002/fld
+
+
+
+OSGS-VMS APPROXIMATION OF THE BURGERS EQ. 13
+
+the discretized equation, we find that including the Reynolds stress tensor (resulting from nonlinear
+terms involving the subscales) is a requirement for the proper stabilization of the problem, but
+also for the correct approximation of the turbulence phenomena. In this sense, we also find that
+including the transient term in the subscales equation (14), and therefore solving the subscales
+equation as a separate equation, makes the Leonard stress term to be explicitly defined and improves
+the numerical convergence to the steady state of the solution. Adding the dissipation provided by the
+Cross and Reynolds terms results in a plateau distribution of the spectral eddy viscosity regardless
+of the resolved wavenumber. The dissipation increases only at higher resolved wavenumbers by the
+effect of the Cross stress term. It is remarkable that the numerical dissipation given by the OSGS-
+VMS method removes energy at a correct rate, mainly due to the relation between the variational
+subscales and the finite resolved scales through the nonlinear terms, which improves by enriching
+the discretization.
+
+We aim to compare now the previous results with some Burgers turbulence results obtained with a
+LES model. First, let us briefly comment about the modifications in the continuous Burgers equation
+when the LES method is applied. The LES method filters the Burgers equation in space and time,
+leading to the problem
+
+∂tu+∂x(
+1
+2
+
+uu) = ν∂xxu+ f , x ∈ (0,2π), t > 0. (36)
+
+We have denoted the filtered quantities by using an underline. The filtered nonlinear term uu is
+the main difficulty in LES: it requires knowledge of the unfiltered velocity field a priori, which is
+unknown, so it must be modeled somehow. In this sense, the filtered nonlinear term can be split up
+in the form uu =T +u u, where the quantity u u is resolved. The introduced residual subfilter-scale
+stress tensor T must be taken into account in the solution of Eq. (36). This tensor has to be modeled
+in terms of the filtered unknown in order to close the filtered equation. The static Smagorinsky model
+T ≈ −2νtS introduced in [26] is a common closure model for this problem, where S = 12 ∂xu
+is the one-dimensional strain tensor and νt an additional eddy viscosity. Other closures, such as
+the Dynamic Smagorinsky, Scale-similarity, Mixed, and Linear unified RANS-LES models, are
+discussed in [22]. The closure model can be replaced directly in the filtered equation, so that the
+modified Burgers equation is obtained:
+
+∂tu+u∂xu = νeff∂xxu+ f , x ∈ (0,2π), t > 0. (37)
+
+In practice, the main change with respect to the original equation is to modify ν by νeff = ν +νt . In
+order to numerically approximate the previous equation, the Fourier-Galerkin method can applied
+to the previous equation. Using the same notation as before, the discretized problem is then:
+
+∂t ûk +
+ik
+2 ∑k=q+l
+
+ûqûl +νeffk
+2ûk = f̂k, (38)
+
+for all k,q, l ∈ [−N/2,N/2−1], and t > 0. We apply also the time marching scheme described in
+Section 3. The eddy viscosity defined in the Fourier space is modeled using a spectral eddy viscosity
+proposed in [25], in our case taking the cutoff wavenumber as the number of modes, N. It is given
+for each wavenumber k by
+
+νt(k) = ν
++∞
+t
+
+(EN
+N
+
+)1/2
+ν
+∗
+t
+
+( k
+N
+
+)
+,
+
+with
+
+ν
++∞
+t = 0.31
+
+5−m
+m+1
+
+√
+3−mC−3/2k ,
+
+where m is the negative slope of the energy spectrum, EN is the total energy spectrum at the cutoff
+wavenumber, Ck is the Kolmogorov constant, and ν∗t is a non-dimensional eddy-viscosity, given by
+
+ν
+∗
+t (k) = 1+34.5e
+
+−3.03(N/k).
+
+Copyright c© 0000 John Wiley & Sons, Ltd. Int. J. Numer. Meth. Fluids (0000)
+Prepared using fldauth.cls DOI: 10.1002/fld
+
+
+
+14 C.A. BAYONA ROA, J. BAIGES AND R. CODINA
+
+Since we may consider that the density is ρ = 1, the total energy spectrum is such that E =
+∫
+
+Ω
+|û|2dk,
+
+and therefore, its value at the cutoff wavenumber is EN = eN/N. Numerical coefficients must be set
+in order to close the viscosity model, which must be known a priori. In particular, we need to set
+the Burgers energy spectrum negative slope, which has been previously shown to be m = 2, and the
+Kolmogorov constant Ck, which we set experimentally to 0.1 in order to obtain the most accurate
+results.
+
+As the filtering procedure selects only a certain number of wavenumbers to be solved by the
+spectral method, the resolved scales are the filtered scales below the selected cutoff wavenumber N.
+Figure 7 shows several solutions in the physical space when applying the static Smagorinsky model
+with different grid resolutions. The figure shows a correct description of the physical solution for
+all simulations. Gibbs phenomenon close to the shock is also observed. In general, the method
+is accurate and correctly portrays the physical solution of the Burgers problem with the given
+numerical coefficients. Figure 8 presents the energy spectrum for the simulations using the static
+Smagorinsky model. Even though the LES model is accurate for most of the resolved scales of
+turbulence, the energy spectra of the DNS and the LES solutions differ substantially for some
+resolved wavenumbers belonging to the inertial range. In this sense, the LES spectrum presents
+some energy pile up near the cutoff wavenumber, which is stronger for finer grids. This is an
+important difference between the LES and the OSGS-VMS turbulence modeling; while applications
+with the former have to care for the range of scales that are correctly solved by the grid, applying
+the OSGS-VMS method correctly describes the turbulence phenomena no matter the grid resolution.
+Remarkably, refining the grid improves the accuracy of the OSGS-VMS energy spectrum near the
+maximum resolved wavenumber, contrary to the decrease in the energy dissipation observed in
+LES. Numerical experiments indicate that increasing the Kolmogorov constant value improves the
+accuracy of the energy spectrum in the inertial range, but produces a more pronounced energy pile up
+at the cutoff wavenumber. These under dissipative solutions behave similar to the Fourier-Galerkin
+method presented in Fig. 9 for a N = 40 simulation, which gives globally unstable solutions. In
+that figure we show the energy spectrum results for Galerkin, OSGS-VMS and LES methods. On
+the contrary, the LES energy spectrum results are not accurate when the Kolmogorov constant is
+decreased. In this sense, the LES spectrum falls faster than the DNS one, and even some energy pile
+up near the cutoff wavenumber occurs. The possibility of obtaining an over-dissipative character is
+well known for the LES models: even though the large scales of turbulence may be correctly solved,
+the energy spectra of the LES solution can differ substantially from DNS due to the enforcement
+of the energy dissipation for the smaller resolved scales belonging to the inertial range. Another
+substantial difference between the OSGS-VMS and LES methods is that, while for the OSGS-VMS
+the calculation of the energy in (27) and (31) is performed only as a post-process (for illustrating
+purposes), the discrete energy equation for the resolved scales needs to be solved at each time
+step for the calculation of the LES spectral eddy viscosity, with the consequent increment in the
+computational cost.
+
+Finally, we address the scale dependence of the LES and the OSGS-VMS nonlinear terms spectral
+eddy viscosity by using a grid resolution and cutoff wavenumber of N = 80. The plot of the eddy
+viscosity with respect to the resolved wavenumbers is presented in Fig 10. It can be seen that the
+eddy viscosity given by the static Smagorinsky model is almost flat, only increasing at high resolved
+wavenumbers. The amount of dissipation given by the LES model is tightly related to the parameters
+of the spectral model. Decreasing the Kolmogorov constant intensifies viscosity, but also makes the
+solution over-dissipative (as demonstrated in Fig. 9). In the case of the OSGS-VMS method, even
+if the obtained eddy viscosity is higher than the one obtained with the LES results, the energy
+spectrum is more accurate than the one obtained with the Ck = 0.05 LES model. The OSGS-VMS
+viscosity exhibits a sharp eddy increment near the cutoff wavenumber that is not observed for the
+LES results. Numerical experiments with finer grids confirm this sharp behavior, which is defined
+solely by the numerical terms involving the variational subscales, and without the need of tuning
+numerical parameters.
+
+We can effectively conclude that the contribution from the Galerkin form of the problem is not
+sufficient to correctly reproduce the turbulent energy spectrum. Moreover, it is clear that for coarse
+
+Copyright c© 0000 John Wiley & Sons, Ltd. Int. J. Numer. Meth. Fluids (0000)
+Prepared using fldauth.cls DOI: 10.1002/fld
+
+
+
+OSGS-VMS APPROXIMATION OF THE BURGERS EQ. 15
+
+-2.5
+
+-2
+
+-1.5
+
+-1
+
+-0.5
+
+ 0
+
+ 0.5
+
+ 1
+
+ 1.5
+
+ 2
+
+ 2.5
+
+0 π 2π
+
+S
+o
+
+lu
+ti
+o
+n
+
+Position
+
+LES N=40
+
+LES N=80
+
+LES N=200
+
+DNS
+
+Figure 7. LES results: physical space solution.
+
+discretizations the present OSGS-VMS formulation works as a turbulence model, only depending
+on the approximations made to derive the subscales (OSGS method and τ definition). The numerical
+terms involving the dynamic evolution of the subscales seem to accurately dissipate the energy of
+the system and to account for the subscale “turbulent effects” onto the resolved scales even better
+than former LES methods. In the spirit of the discussion in [22], the results of the present work
+encourage the application of ILES numerical methods with built-in numerical dissipation instead of
+LES methods. Nevertheless, this conclusion is drawn from the particular case of the steady turbulent
+solution obtained with the OSGS-VMS method, and the static Smagorinsky model with spectral
+eddy viscosity.
+
+5. CONCLUSIONS
+
+In this work, an Orthogonal Sub-Grid Scales - Variational Multiscale (OSGS-VMS) method for
+numerically approximating the Burgers problem has been presented. The analysis of the Burgers
+equation has been done in the Fourier space, which allows us to clarify the scale dependence of the
+numerical diffusion introduced by the variational multiscale method. In particular, the numerical
+dissipation introduced with the orthogonal sub-grid scales has been explained in detail. For this,
+the space for the orthogonal subscales has been defined in terms of the finite-dimensional resolved
+space, so that the numerical approximation of the unresolved scales improves as the grid is refined.
+Results have been contrasted with DNS simulations, validating the ability of the OSGS-VMS model
+to describe the turbulent behavior of the Burgers equation. The scale dependence of the introduced
+numerical dissipation terms has been also compared with a spectral LES method. An accurate
+dissipative structure for the OSGS-VMS method has been found, which arises from the numerical
+approximation exclusively, and without the need of modifying the continuous equation.
+
+As a future work we plan to extend this formulation in order to solve more general problems,
+specially three dimensional periodic cubes, which we expect to be straightforward. In addition, this
+work serves as a first approach on the definition of the subscales as both L2−orthogonal and H1−
+
+Copyright c© 0000 John Wiley & Sons, Ltd. Int. J. Numer. Meth. Fluids (0000)
+Prepared using fldauth.cls DOI: 10.1002/fld
+
+
+
+16 C.A. BAYONA ROA, J. BAIGES AND R. CODINA
+
+ 1e-09
+
+ 1e-08
+
+ 1e-07
+
+ 1e-06
+
+ 1e-05
+
+ 0.0001
+
+ 0.001
+
+ 0.01
+
+ 0.1
+
+ 1
+
+ 1  10  100
+
+E
+n
+
+e
+rg
+
+y
+
+Modes
+
+k
+-2
+
+LES N=40
+LES N=80
+
+LES N=200
+DNS
+
+Figure 8. LES results: energy spectrum.
+
+ 1e-05
+
+ 0.0001
+
+ 0.001
+
+ 0.01
+
+ 0.1
+
+ 1
+
+ 1  10
+ 1e-05
+
+ 0.0001
+
+ 0.001
+
+ 0.01
+
+ 0.1
+
+ 1
+
+E
+n
+e
+rg
+
+y
+
+Modes
+
+Galerkin N=40 
+VMS N=40
+
+LES N=40 CK = 0.1
+LES N=40 CK = 0.05
+
+DNS
+
+ 0.0001
+
+ 0.001
+
+ 0.01
+
+20
+
+Figure 9. Energy spectrum results for Galerkin, OSGS-VMS, and LES simulations.
+
+orthogonal to the finite element space. Therefore, an expected future work will be to include the
+H1− orthogonal subscales to the finite element space in several flow problems. For this goal, we
+first plan to apply this concept to the incompressible Navier-Stokes equations, with the consequence
+hope that the implicit turbulence modelling will be more accurate. Likewise, the energy budget
+
+Copyright c© 0000 John Wiley & Sons, Ltd. Int. J. Numer. Meth. Fluids (0000)
+Prepared using fldauth.cls DOI: 10.1002/fld
+
+
+
+OSGS-VMS APPROXIMATION OF THE BURGERS EQ. 17
+
+ 0.001
+
+ 0.01
+
+ 0.1
+
+ 1
+
+ 1  10
+
+E
+d
+
+d
+y
+ V
+
+is
+c
+o
+
+s
+it
+y
+
+Modes
+
+VMS N=80
+LES N=80 CK = 0.1
+
+LES N=80 CK = 0.05
+
+Figure 10. Eddy viscosity results for OSGS-VMS and LES simulations.
+
+between finite element scales and sub-grid scales involves the same transfer of energy from the
+resolved scales to the sub-grid scales as viceversa (see [7], equations (43) an (44), in the case of the
+incompressible Navier-Stokes problem).
+
+ACKNOWLEDGEMENTS
+
+C. Bayona acknowledges the doctoral scholarship received from the Colombian Government-Colciencias. J.
+Baiges acknowledges the support of the Spanish Government through the Ramón y Cajal grant RYC-2015-
+17367. R. Codina acknowledges the support received from the ICREA Acadèmia Program, from the Catalan
+Government. This work is partially funded through the ELASTIC-FLOW project, Ref. DPI2015-67857-R
+of the Spanish Government.
+
+REFERENCES
+
+1. Y. Bazilevs, V. Calo, J. Cottrell, T. J. R. Hughes, A. Reali, and G. Scovazzi. Variational multiscale residual-based
+turbulence modeling for large eddy simulation of incompressible flows. Comput. Methods. Appl. Mech. & Eng.,
+197(1):173–201, 2007.
+
+2. J. M. Burgers. The nonlinear diffusion equation. D.Reydel publishing company, Boston, 1974.
+3. J. M. Burgers. The nonlinear diffusion equation: asymptotic solutions and statistical problems. Springer Science
+
+& Business Media, 2013.
+4. R. Codina. Stabilization of incompressibility and convection through orthogonal sub-scales in finite element
+
+methods. Comput. Methods. Appl. Mech. & Eng., 190(13):1579–1599, 2000.
+5. R. Codina. A stabilized finite element method for generalized stationary incompressible flows. Comput. Methods.
+
+Appl. Mech. & Eng., 190(20):2681–2706, 2001.
+6. R. Codina. Stabilized finite element approximation of transient incompressible flows using orthogonal subscales.
+
+Comput. Methods. Appl. Mech. & Eng., 191(39):4295–4321, 2002.
+7. R. Codina, J. Principe, and M. Ávila. Finite element approximation of turbulent thermally coupled incompressible
+
+flows with numerical sub-grid scale modelling. International Journal of Numerical Methods for Heat & Fluid
+Flow, 20(5):492–516, 2010.
+
+8. R. Codina, J. Principe, O. Guasch, and S. Badia. Time dependent subscales in the stabilized finite element
+approximation of incompressible flow problems. Comput. Methods. Appl. Mech. & Eng., 196(21):2413–2430,
+2007.
+
+Copyright c© 0000 John Wiley & Sons, Ltd. Int. J. Numer. Meth. Fluids (0000)
+Prepared using fldauth.cls DOI: 10.1002/fld
+
+
+
+18 C.A. BAYONA ROA, J. BAIGES AND R. CODINA
+
+9. J. D. Cole. On a quasi-linear parabolic equation occurring in aerodynamics. Quarterly of applied mathematics,
+9(3):225–236, 1951.
+
+10. O. Colomés, S. Badia, R. Codina, and J. Principe. Assessment of variational multiscale models for the large eddy
+simulation of turbulent incompressible flows. Comput. Methods. Appl. Mech. & Eng., 285:32–63, 2015.
+
+11. A. Das and R. D. Moser. Optimal large-eddy simulation of forced Burgers equation. Physics of Fluids,
+14(12):4344–4351, 2002.
+
+12. D. Forti and L. Dedè. Semi-implicit BDF time discretization of the Navier–Stokes equations with VMS-LES
+modeling in a high performance computing framework. Computers & Fluids, 117:168–182, 2015.
+
+13. M. Germano, U. Piomelli, P. Moin, and W. H. Cabot. A dynamic subgrid-scale eddy viscosity model. Physics of
+Fluids A: Fluid Dynamics (1989-1993), 3(7):1760–1765, 1991.
+
+14. B. J. Geurts and D. D. Holm. Regularization modeling for large-eddy simulation. Physics of Fluids (1994-present),
+15(1):L13–L16, 2003.
+
+15. V. Gravemeier and W. A. Wall. An algebraic variational multiscale–multigrid method for large-eddy simulation of
+turbulent variable-density flow at low mach number. Journal of Computational Physics, 229(17):6047–6070, 2010.
+
+16. O. Guasch and R. Codina. Statistical behavior of the orthogonal subgrid scale stabilization terms in the finite
+element large eddy simulation of turbulent flows. Comput. Methods. Appl. Mech. & Eng., 261:154–166, 2013.
+
+17. J. Hoffman and C. Johnson. A new approach to computational turbulence modeling. Comput. Methods. Appl.
+Mech. & Eng., 195(23):2865–2880, 2006.
+
+18. E. Hopf. The partial differential equation ut +(uu)x = µuxx. Communications on Pure and Applied Mathematics,
+3(3):201–230, 1950.
+
+19. T. J. R. Hughes. Multiscale phenomena: Green’s functions, the Dirichlet-to-Neumann formulation, subgrid scale
+models, bubbles and the origins of stabilized methods. Comput. Methods. Appl. Mech. & Eng., 127(1):387–401,
+1995.
+
+20. T. J. R. Hughes, V. M. Calo, and G. Scovazzi. Variational and multiscale methods in turbulence. In Mechanics of
+the 21st Century, pages 153–163. Springer, 2005.
+
+21. A. K. Kuczaj, B. J. Geurts, and W. D. McComb. Nonlocal modulation of the energy cascade in broadband-forced
+turbulence. Physical Review E, 74(1):016306, 2006.
+
+22. Y. Li and Z. Wang. A priori and a posteriori evaluations of sub-grid scale models for the Burgers’ equation.
+Computers & Fluids, 139:92–104, 2016.
+
+23. J. Liu and A. Oberai. The residual-based variational multiscale formulation for the large eddy simulation of
+compressible flows. Comput. Methods. Appl. Mech. & Eng., 245:176–193, 2012.
+
+24. P. J. Mason and D. Thomson. Stochastic backscatter in large-eddy simulations of boundary layers. Journal of Fluid
+Mechanics, 242:51–78, 1992.
+
+25. O. Métais and M. Lesieur. Spectral large-eddy simulation of isotropic and stably stratified turbulence. Journal of
+Fluid Mechanics, 239:157–194, 1992.
+
+26. J. Smagorinsky. General circulation experiments with the primitive equations: I. The basic experiment. Monthly
+weather review, 91(3):99–164, 1963.
+
+27. K. S. Surana, S. Allu, J. Reddy, and P. Tenpas. Least-squares finite element processes in h, p, k mathematical
+and computational framework for a non-linear conservation law. International Journal for Numerical Methods in
+Fluids, 57(10):1545–1568, 2008.
+
+28. Z. Wang and A. Oberai. Spectral analysis of the dissipation of the residual-based variational multiscale method.
+Comput. Methods. Appl. Mech. & Eng., 199(13):810–818, 2010.
+
+29. C. E. Wasberg, T. Gjesdal, B. A. P. Reif, and Ø. Andreassen. Variational multiscale turbulence modelling in a high
+order spectral element method. Journal of Computational Physics, 228(19):7333–7356, 2009.
+
+30. G. Wei and Y. Gu. Conjugate filter approach for solving Burgers equation. Journal of Computational and Applied
+Mathematics, 149(2):439–456, 2002.
+
+Copyright c© 0000 John Wiley & Sons, Ltd. Int. J. Numer. Meth. Fluids (0000)
+Prepared using fldauth.cls DOI: 10.1002/fld
+
+

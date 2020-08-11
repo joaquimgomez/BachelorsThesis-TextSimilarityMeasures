@@ -1,0 +1,3741 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+A FIC-based stabilized mixed finite element
+method with equal order interpolation for solid-pore
+
+fluid interaction problems
+
+Ignasi de-Pouplanaa,* and Eugenio Oñatea,b
+
+aCIMNE - Centre Internacional de Metodes Numerics en Enginyeria, Gran
+Capitán s/n, 08034 Barcelona, Spain
+
+bDepartament d’Enginyeria Civil i Ambiental (ECA), Universitat Politècnica de
+Catalunya (UPC), Campus Nord, Edif. C1, C. Jordi Girona, 1-3, 08034
+
+Barcelona, Spain
+
+May 23, 2016
+
+Abstract
+A new mixed displacement-pressure element for solving solid-pore
+
+fluid interaction problems is presented. In the resulting coupled system
+of equations the balance of momentum equation remains unaltered,
+while the mass balance equation for the pore fluid is stabilized with
+the inclusion of higher order terms multiplied by arbitrary dimensions
+in space, following the Finite Calculus (FIC) procedure. The stabilized
+FIC-FEM formulation can be applied to any kind of interpolation for
+the displacements and the pressure, but in this work we have used
+linear elements of equal order interpolation for both set of unknowns.
+Examples in 2D and 3D are presented to illustrate the accuracy of the
+stabilized formulation for solid-pore fluid interaction problems.
+
+Keywords: coupled solid-pore fluid formulation, saturated soils, incom-
+pressible undrained limit, Finite Calculus, Finite Element Method.
+
+1 Introduction
+Problems involving the flow of a fluid through a porous medium have al-
+ways been the object of special interest in geomechanics. From the classical
+contributions of Terzaghi [1] and Biot [2] important effort has been made in
+the last decades to develop competent numerical methods in poromechanics
+that allow analysing and understanding the complexity of the mechanisms
+
+∗Correspondence to: Ignasi de Pouplana, CIMNE, Edificio C1, Campus Nord, UPC,
+Gran Capitán s/n, 08034 Barcelona, Spain. Email: ipouplana@cimne.upc.edu
+
+1
+
+ipouplana@cimne.upc.edu
+
+
+involved in problems with a coupling between a solid skeleton and a fluid
+phase.
+
+In hydrogeology, for instance, these numerical methods are important to
+represent the water flow through porous soil when characterizing aquifers
+performance (storage capacity, water transmissivity, water content, etc.),
+and also to study the dispersion and transport of dissolved contaminants [3].
+
+Another important field of application is in petroleum engineering. Here,
+the oil-gas-soil interaction takes the leading role along with the hydraulic
+fracturing as a common technique to enhance reservoir permeability and
+well efficiency [4, 5].
+
+Other applications for numerical methods in poromechanics have re-
+cently emerged for a variety of applications, such as underground storage of
+carbon dioxide [6], geothermal energy production simulation [7], and even
+analysis of interstitial flow in bone tissue [8].
+
+In 1943, a 1D theory of consolidation was proposed by Terzaghi [1]. This
+theory was then extended by Biot to 3D cases [2,9,10]. Although these first
+works were restricted to linear elastic materials, they have been the basis
+for much subsequent research in geophysics, soil and rock mechanics.
+
+The first numerical solution of Biot’s formulation was obtained by Gha-
+boussi and Wilson [11] and the work was further developed by Zienkiewicz et
+al. [12,13]. Later on, due to the increasing interest in non-linear applications,
+Zienkiewicz and co-workers expanded the theory to a generalized incremen-
+tal form for non-linear materials and large deformation problems [14,15].
+
+The mathematical formulation of solid skeleton and pore fluid interaction
+presented here is based on the model proposed by Zienkiewicz et al. [12]. The
+problem was originally formulated for fully saturated conditions in terms of
+the solid matrix displacement ui, the mean fluid velocity relative to the solid
+phase wi and the fluid pore pressure p. However, in many geo-mechanical
+problems with no high-frequency phenomena involved, the fluid relative ve-
+locity wi can be neglected and so the equations can be simplified to work
+with only two main variables: the displacements ui and the pressure p [16].
+
+Although in this work we have solved a two-phase medium, i.e. soil and
+water, the generalization to three-phase problems, such as those encountered
+in unsaturated soils or in oil-gas-soil interaction, are possible extensions of
+the numerical approach presented here. In this regard, a simple extension
+of the two phase formulation to semi-saturated problems was proposed by
+Zienkiewicz et al. [17] and further development was reported by Gawin and
+Schrefler [18], and Khoei et al. [19].
+
+In the limit of nearly incompressible pore fluid and small permeability,
+the coupled poromechanics formulations suffer from instability problems. Fi-
+nite elements exhibit locking in the pressure field and spurious oscillations in
+the numerical solution for the pressure appear near this fully incompressible
+limit, due to the violation of the so-called Babuska-Brezzi conditions [20,21].
+
+2
+
+
+
+The oscillations can be overcome by locally refining the mesh and by using
+shape functions of the displacement field one order higher than those of the
+pressure field. In practical applications this is, however, not the best ap-
+proach because of the increment in the computational cost. In this sense,
+stabilization methods have been found to be powerful tools to circumvent the
+Babuska-Brezzi conditions violation without compromising the efficiency of
+the computation.
+
+Several stabilization techniques have been investigated in the past years
+in the context of computational fluid dynamics [22–27] and (incompress-
+ible) solid mechanics [28–32], and have been also extended to poromechanics
+problems [33–37].
+
+Although each stabilization approach has its differential aspects, they
+can be classified in three main categories.
+
+The first category comprises those techniques in which special time step-
+ping schemes are applied in order to generate stabilization terms. Probably
+the earliest work in this category is due to Chorin [22] who proposed a tech-
+nique to deal with incompressible fluid problems which is now referred as
+the fractional step method or the operator-splitting method. Such a stag-
+gered time stepping algorithm has been found to provide stabilization in the
+steady-state when used in a convenient form [22,25,34,35].
+
+The second type of techniques are more direct stabilization methods
+based on the perturbation of the fluid mass conservation equation. Thereby,
+instead of using special time-stepping algorithms resulting in additional
+terms in the steady-state approximation, the fluid balance equation is mod-
+ified by adding a stabilization term multiplied by a parameter that needs to
+be carefully calibrated [23,24,30,33]. This group also includes the methods
+based on the concept of Polynomial-Pressure-Projections, in which the ad-
+ditional stabilizing terms use element-local projections of the pressure field
+to counteract the inherent instabilities [37–40].
+
+The third category considered here is the Finite Increment Calculus
+method, also called Finite Calculus (FIC) [26,27,31,32,41,42], which is the
+approach also adopted in the present work. The FIC technique is based on
+expressing the equations of balance of mass and momentum in a space/time
+domain of finite size and retaining higher order terms in the Taylor series ex-
+pansion typically used for expressing the change in the transported variables
+within the balance domain. In addition to the standard terms of infinites-
+imal theory, the FIC form of the balance equations contains derivatives of
+the classical differential equations multiplied by characteristic distances in
+space and/or time.
+
+Previously stabilized FIC-FEM formulations were based on the first-
+order form of the FIC balance equation in space and can be found in the
+literature for quasi and fully incompressible fluids and solids [26, 27, 31, 32],
+and even for 1D and 2D poromechancis problems [43]. In this work, the more
+recent second-order FIC form of the mass balance equation [41,42] has been
+
+3
+
+
+
+adopted as the basis for deriving the stabilized FIC-FEM formulation for
+2D and 3D poromechanics problems. This new formulation takes advantage
+of the second order derivatives terms to provide a simpler procedure for
+obtaining a residual-based stable form of the mass balance equation suitable
+for finite element analysis. Proof of the good results of this formulation
+regarding convergence and mass conservation are given in [42].
+
+In this work we present a robust finite element for solving solid-pore fluid
+interaction problems, in which the continuity equation is stabilized by means
+of the FIC method. The element is based on a mixed displacement-pressure
+formulation with equal order interpolation for the displacement and pressure
+variables. In this work linear elements are used for simplicity.
+
+The paper is organized as follows. First, the finite element formulation
+is introduced, starting from the governing equations of the problem and the
+fully coupled system of equations to be solved. After that, the instability
+problem is stated and the stabilization by means of the second-order FIC
+form of the mass balance equation in space is thoroughly detailed. Finally,
+two academic examples are solved in order to test the implemented mixed
+linear element and compare it to stable elements with a higher order inter-
+polation for the displacement field.
+
+2 General finite element formulation
+In the theory of porous media, the effective stress is an essential concept for
+defining the stress state because it is responsible for the major deformations
+and rupture of the solid skeleton. Let σij be the total stress (positive in
+tension) acting on the total area of the soil and the pores, and p the pressure
+of the fluid in the pores (positive in compression), the effective stress is
+defined as:
+
+σ′ij = σij + αpδij (1)
+
+where δij is the Kronecker delta and α is Biot’s coefficient [44]:
+
+α = 1−
+K
+
+Ks
+≤ 1 (2)
+
+with Ks being the bulk modulus of the solid phase and K the bulk modulus
+of the porous medium:
+
+K =
+E
+
+3 (1− 2ν)
+(3)
+
+In order to account for the coupling between the solid and fluid phases,
+the behaviour of a saturated porous medium is governed by the combination
+of two equations: the balance of momentum for the mixture solid-fluid, and
+the mass balance for the pore fluid.
+
+4
+
+
+
+Balance of momentum for the mixture solid-fluid
+
+∂σij
+∂xj
+
++ ρbi = ρüi (4)
+
+where bi is the body force per unit mass, üi is the acceleration of the solid
+skeleton and ρ is the density of the solid-fluid mixture ρ = φρf + (1− φ)ρs,
+being φ the porosity of the soil, ρf the density of the fluid and ρs the density
+of the solid.
+
+Let us introduce the general definition for the effective stress (1) into the
+balance of momentum equation (4). This gives
+
+∂
+
+∂xj
+
+(
+σ′ij − αpδij
+
+)
++ ρbi − ρüi = 0 (5)
+
+Mass balance for the pore fluid
+
+∂ζ
+
+∂t
++
+∂qi
+∂xi
+
+= 0 (6)
+
+where ζ is the fluid mass content per unit volume and qi represents the
+flow rate. It should be noted that Equation (6) is in a linearized form of
+the general mass balance expression as the fluid density variation effect has
+been ignored.
+
+The mass balance equation is modified as follows. Let us first consider
+the constitutive equation presented in [2] relating the fluid mass content per
+unit volume ζ with the volumetric strain of the solid skeleton � and the pore
+pressure p.
+
+ζ = α�+
+p
+
+Q
+(7)
+
+where Q is a combined compressibility of the fluid-solid phases, also called
+Biot’s modulus [44]
+
+1
+Q
+
+=
+α− φ
+Ks
+
++
+φ
+
+Kf
+(8)
+
+being Kf the bulk modulus of the fluid phase.
+Let us now make use of the generalized form of Darcy’s law
+
+qi = −
+1
+µ
+kij
+
+(
+∂p
+
+∂xj
+− ρfbj
+
+)
+(9)
+
+where µ is the dynamic viscosity of the fluid and kij is the intrinsic perme-
+ability matrix of the porous medium.
+
+Taking into account the relations from equations (7) and (9), the mass
+balance equation (6) can be rewritten as
+
+α�̇+
+ṗ
+
+Q
++
+
+∂
+
+∂xi
+
+[
+−
+
+1
+µ
+kij
+
+(
+∂p
+
+∂xj
+− ρfbj
+
+)]
+= 0 (10)
+
+5
+
+
+
+Equations (5) and (10) have to be supplemented by a constitutive law for
+the solid skeleton. In general, for any non-linear material we may consider
+an incremental form with a tangential constitutive tensor Dtanijkl as
+
+dσ′ij = D
+tan
+ijkl dεkl (11)
+
+with
+εij =
+
+1
+2
+
+(
+∂ui
+∂xj
+
++
+∂uj
+∂xi
+
+)
+(12)
+
+The boundary conditions for this problem are specified as:
+
+ui = ũi on Γu (13)
+
+(
+σ′ij − αpδij
+
+)
+nj = t̃i on Γt (14)
+
+where ũi and t̃i are the prescribed displacements and surface tractions, re-
+spectively.
+
+p = p̃ on Γp (15)
+
+[
+−
+
+1
+µ
+kij
+
+(
+∂p
+
+∂xj
+− ρfbj
+
+)]
+ni = q̃n on Γq (16)
+
+where p̃ and q̃n are the prescribed pore pressure and the normal flow rate,
+respectively.
+
+In order to express the resultant system of equations in a more compact
+manner, we will rewrite equations (5) and (10) in matrix form using Voigt
+notation as follows.
+• Balance of momentum
+
+ST
+(
+σ′ − αpm
+
+)
++ ρb− ρü = 0 (17)
+
+• Mass balance
+
+αmTSu̇+
+ṗ
+
+Q
++ ∇T
+
+[
+−
+
+1
+µ
+k (∇p− ρfb)
+
+]
+= 0 (18)
+
+For a general 3D case, we have
+
+S =
+
+
+
+
+∂
+∂x
+
+0 0
+0 ∂
+
+∂y
+0
+
+0 0 ∂
+∂z
+
+∂
+∂y
+
+∂
+∂x
+
+0
+0 ∂
+
+∂z
+∂
+∂y
+
+∂
+∂z
+
+0 ∂
+∂x
+
+
+
+
+; ∇ =
+[
+∂
+∂x
+, ∂
+∂y
+, ∂
+∂z
+
+]T
+(19)
+
+6
+
+
+
+σ′ =
+[
+σ′xx, σ
+
+′
+yy, σ
+
+′
+zz, σ
+
+′
+xy, σ
+
+′
+yz, σ
+
+′
+zx
+
+]T
+(20)
+
+m =
+[
+1, 1, 1, 0, 0, 0
+
+]T
+(21)
+
+The above system of partial differential equations (17) and (18) can be
+discretized by interpolating the displacement and pressure fields as: u =
+Nuū and p = Npp̄ where
+
+¯(·âĂć) denotes nodal values and
+
+Nu =
+
+
+N̂1 0 0 N̂2 0 0 ... N̂n̂ 0 00 N̂1 0 0 N̂2 0 ... 0 N̂n̂ 0
+
+0 0 N̂1 0 0 N̂2 ... 0 0 N̂n̂
+
+
+ (22)
+
+Np =
+[
+N1, N2, ..., Nn
+
+]
+(23)
+
+with N̂i and Ni being, respectively, the shape functions of the displacement
+and pressure interpolations, which do not necessarily need to coincide.
+
+Following the standard Galerkin technique [45,46], we left multiply Equa-
+tion (17) by test functions NTu and Equation (18) by test functions N
+
+T
+p and
+
+integrate them over the spatial domain Ω to obtain the following set of
+ordinary differential equations
+
+• Balance of momentum
+
+ru := M ¨̄u+
+∫
+
+Ω
+BTσ′ dΩ−Qp̄− fu = 0 (24)
+
+• Mass balance
+rp := QT ˙̄u+C ˙̄p+Hp̄− fp = 0 (25)
+
+where ru and rp are the residual vectors for the momentum and the mass
+balance equation, and
+
+M =
+∫
+
+Ω
+NTu ρNu dΩ ; Q =
+
+∫
+Ω
+BTαmNp dΩ (26)
+
+C =
+∫
+
+Ω
+NTp
+
+1
+Q
+Np dΩ ; H =
+
+∫
+Ω
+
+(∇Np)T
+1
+µ
+k∇Np dΩ (27)
+
+fu =
+∫
+
+Ω
+NTu ρb dΩ +
+
+∫
+Γt
+NTu t̃ dΓ (28)
+
+fp =
+∫
+
+Ω
+(∇Np)T
+
+1
+µ
+kρfb dΩ−
+
+∫
+Γq
+NTp q̃n dΓ (29)
+
+with B = SNu.
+
+7
+
+
+
+The time derivatives of u and p are approximated using the Generalized
+Newmark scheme. Thus, for a new time step n+1, we use the GN22 scheme
+for displacements [47]:
+
+un+1 = un + ∆tu̇n +
+(
+
+1
+2
+− β
+
+)
+∆t2ün + β∆t2ün+1 (30a)
+
+u̇n+1 = u̇n + (1− γ)∆tün + γ∆tün+1 (30b)
+and the GN11 scheme for pressure:
+
+pn+1 = pn + (1− θ) ∆tṗn + θ∆tṗn+1 (31)
+which are unconditionally stable for β ≥ 14 , γ ≥
+
+1
+2 and θ ≥
+
+1
+2 [48].
+
+The residual vectors for the momentum and mass balance equations can
+be rewritten as
+
+(ru)n+1 = M
+[
+ūn+1 − ˆ̄un
+β∆t2
+
+]
++
+(∫
+
+Ω
+BTσ′ dΩ
+
+)
+n+1
+−Qp̄n+1 − (fu)n+1 (32)
+
+(rp)n+1 = Q
+T
+[
+γūn+1
+β∆t
+
++ ˆ̄̇un
+]
+
++C
+[
+p̄n+1
+θ∆t
+
++ ˆ̄̇pn
+]
+
++Hp̄n+1 −
+(
+fp
+
+)
+n+1
+
+(33)
+
+where ūn+1 and p̄n+1 are the nodal unknowns at time n + 1, and ˆ̄un,
+ˆ̄̇un
+
+and ˆ̄̇pn stand for values that are computed from known parameters at time
+n as:
+
+ˆ̄un = ūn + ∆t ˙̄un +
+(
+
+1
+2
+− β
+
+)
+∆t2 ¨̄un (34)
+
+ˆ̄̇un = ˙̄un + (1− γ) ∆t¨̄un −
+γ
+
+β∆t
+ˆ̄un (35)
+
+ˆ̄̇pn =
+θ − 1
+θ
+
+˙̄pn −
+1
+θ∆t
+
+p̄n (36)
+
+The Newton-Raphson method is used to solve the problem iteratively.
+Thus, at a time step n+ 1 and the iteration i+ 1 we have:
+
+
+∂ru
+∂ū
+
+∂ru
+∂p̄
+
+∂rp
+∂ū
+
+∂rp
+∂p̄
+
+
+
+i
+
+n+1
+
+[
+δū
+δp̄
+
+]i+1
+n+1
+
+= −
+[
+ru
+rp
+
+]i
+n+1
+
+(37)
+
+
+
+
+1
+β∆t2
+
+M +Ktan −Q
+γ
+
+β∆t
+QT
+
+1
+θ∆t
+
+C +H
+
+
+
+i
+
+n+1
+
+[
+δū
+δp̄
+
+]i+1
+n+1
+
+= −
+[
+ru
+rp
+
+]i
+n+1
+
+(38)
+
+where Ktan is the tangent stiffness matrix:
+
+Ktan =
+∂
+
+∂ū
+
+∫
+Ω
+BTσ′ dΩ =
+
+∫
+Ω
+BTDtanB dΩ (39)
+
+Note that the system of equations (38) can be made symmetric by multi-
+plying Equation (33) by −β∆t/γ.
+
+8
+
+
+
+3 FIC stabilized element
+
+3.1 Introduction to the FIC-stabilization procedure
+
+For a quasi-static problem the term involving the mass matrix is omitted.
+Also, in the undrained-incompressible limit, i.e. when k → 0 and Q → ∞,
+the matrices C and H vanish and the system of equations (38) becomes
+
+[
+Ktan −Q
+−QT 0
+
+]i
+n+1
+
+[
+δū
+δp̄
+
+]i+1
+n+1
+
+= −
+[
+ru
+r∗p
+
+]i
+n+1
+
+(40)
+
+The resultant system matrix is almost identical to that frequently en-
+countered in the solution of incompressible elasticity or incompressible fluid
+mechanics problems [24, 32]. In such cases, the spaces used to approx-
+imate the displacement (or the velocity) and pressure fields must fulfill
+the Babuska-Brezzi conditions [20, 21] or the Zienkiewicz-Taylor patch test
+[49, 50] in order to avoid spurious oscillations and locking in the pressure
+field.
+
+With the equations presented so far, these conditions can be accom-
+plished using shape functions for the displacement field one order higher
+than those for the pressure field. Some examples of "stable" 2D elements are
+depicted in Figure 1.
+
+u p
+
+(a) Quadratic displacement and lin-
+ear pressure.
+
+p
+u
+
+(b) Biquadratic displacement and bi-
+linear pressure.
+
+Figure 1: Some 2D elements that fulfill the Babuska-Brezzi conditions.
+
+However, low order finite elements with equal order interpolation for the
+displacements and the pressure are very attractive due to their simplicity
+and efficiency, and so stabilization techniques must be applied if one aims
+at solving large scale 3D computations.
+
+The stabilization approach implemented in this work relies on the Finite
+Calculus (FIC) method [26, 27, 31, 32, 41, 42] and affects only the continuity
+equation with the balance of momentum remaining unchanged.
+
+For the sake of clarity, let us redefine the mass balance equation (10) as:
+
+rp := α�̇+
+ṗ
+
+Q
++
+
+∂
+
+∂xj
+
+[
+−
+
+1
+µ
+kjk
+
+(
+∂p
+
+∂xk
+− ρfbk
+
+)]
+= 0 (41)
+
+9
+
+
+
+As stated in the introduction, this technique is based on the second-order
+FIC form of the mass balance equation in space for a quasi-incompressible
+fluid. This can be written as [42]:
+
+rp +
+h2i
+12
+∂2rp
+∂x2i
+
+= 0 in Ω i = 1, ns (42)
+
+where ns are the number of space dimensions (i.e. ns = 3 for 3D problems).
+In a 2D case Equation (42) is obtained by expressing the balance of mass
+
+in a rectangular domain of finite size with dimensions h1 × h2, where hi are
+arbitrary distances, and retaining up to third-order terms in the Taylor
+series expansions used for expressing the change of mass within the balance
+domain [41]. The derivation of Equation (42) for a 1D problem is shown
+in [42].
+
+The FIC term in Equation (42) plays the role of a space stabilization
+term, in which hi are space dimensions related to the characteristic element
+dimensions. Note that for hi → 0 the standard form of the mass balance
+equation (41), as given by the infinitesimal theory, is recovered.
+
+Remark 1 : Equation (42) can be interpreted as a particular class of residual-
+based stabilization methods applied to the strong form of the mass conser-
+vation equation. This ensures the consistency of the stabilization method in
+the discretized problem.
+
+3.2 Modified FIC-stabilized form of the mass balance equa-
+tion
+
+Let us first expand Equation (42) using Equation (41) as
+
+α�̇+
+1
+Q
+ṗ+
+
+∂
+
+∂xj
+
+[
+−
+
+1
+µ
+kjk
+
+(
+∂p
+
+∂xk
+− ρfbk
+
+)]
++
+h2i
+12
+
+∂2
+
+∂x2i
+(α�̇)
+
++
+h2i
+12
+
+∂2
+
+∂x2i
+
+(
+1
+Q
+ṗ
+
+)
++
+h2i
+12
+
+∂2
+
+∂x2i
+
+{
+∂
+
+∂xj
+
+[
+−
+
+1
+µ
+kjk
+
+(
+∂p
+
+∂xk
+− ρfbk
+
+)]}
+= 0 (43)
+
+Next we split the stress tensor into its deviatoric and volumetric com-
+ponents as
+
+σij = sij + σδij (44)
+
+where sij is the deviatoric stress tensor and σ is the hydrostatic pressure
+defined as σ = σii/3.
+
+In the same way, we split the strain tensor into its deviatoric and volu-
+metric parts as
+
+εij = eij +
+1
+3
+� δij (45)
+
+with eij being the deviatoric strain tensor and � = εii the volumetric dilation.
+
+10
+
+
+
+Now let us write the isotropic linear elastic constitutive equations:
+
+sij = 2Geij (46)
+
+where G is the shear modulus,
+
+σ = σ′ − αp (47)
+
+where σ′ = σ′ii/3 is the mean effective stress and α is the Biot’s coefficient
+defined in Equation (2).
+
+Combining Equations (44), (45), (46) and (47), we express the stress
+tensor as
+
+σij = 2Gεij −
+2G
+3
+�δij + σ′δij − αpδij (48)
+
+At this point, we substitute the above expression in the balance of mo-
+mentum (4). This gives
+
+∂
+
+∂xj
+(2Gεij)−
+
+∂
+
+∂xi
+
+(
+2G
+3
+�
+
+)
++
+∂σ′
+
+∂xi
+−
+
+∂
+
+∂xi
+(αp) + ρbi − ρüi = 0 (49)
+
+From this point forward, in the derivation of equations (43), (49) and in
+the following, we neglect the space and time changes of α, Q, G and ρ in
+the derivatives.
+
+If we now apply the divergence operator to both sides of Equation (49),
+differentiate it with respect to time, and rearrange the terms we can obtain
+
+∂2�̇
+
+∂x2i
+=
+
+3
+2G
+
+[
+2G
+
+∂2ε̇ij
+∂xi∂xj
+
++
+∂2σ̇′
+
+∂x2i
+− α
+
+∂2ṗ
+
+∂x2i
++ ρ
+
+∂ḃi
+∂xi
+− ρ
+
+D
+
+Dt
+
+(
+∂üi
+∂xi
+
+)]
+(50)
+
+In the previous equation the term ρ ∂ḃi
+∂xi
+
+can be neglected and the term
+involving the third derivative of the displacements with respect to time can
+be obtained from the mass balance equation. Thus if we differentiate Equa-
+tion (10) twice with respect to time assuming that the time derivative of
+the body force per unit mass is negligible, and we take into account the
+definition of the volumetric strain � = ∂ui
+
+∂xi
+, we obtain
+
+D
+
+Dt
+
+(
+∂üi
+∂xi
+
+)
+=
+
+1
+α
+
+[
+∂
+
+∂xj
+
+(
+1
+µ
+kjk
+
+∂p̈
+
+∂xk
+
+)
+−
+
+1
+Q
+
+Dp̈
+
+Dt
+
+]
+(51)
+
+Introducing (51) into (50) gives
+
+∂2�̇
+
+∂x2i
+=
+
+3
+2G
+
+{
+2G
+
+∂2ε̇ij
+∂xi∂xj
+
++
+∂2σ̇′
+
+∂x2i
+− α
+
+∂2ṗ
+
+∂x2i
+
+−
+ρ
+
+α
+
+[
+∂
+
+∂xj
+
+(
+1
+µ
+kjk
+
+∂p̈
+
+∂xk
+
+)
+−
+
+1
+Q
+
+Dp̈
+
+Dt
+
+]}
+(52)
+
+11
+
+
+
+At this point, we can already substitute the above relation in Equation
+(43) giving
+
+α�̇+
+1
+Q
+ṗ+
+
+∂
+
+∂xj
+
+[
+−
+
+1
+µ
+kjk
+
+(
+∂p
+
+∂xk
+− ρfbk
+
+)]
++
+h2iα
+
+8G
+
+{
+2G
+
+∂2ε̇ij
+∂xi∂xj
+
++
+∂2σ̇′
+
+∂x2i
+− α
+
+∂2ṗ
+
+∂x2i
+−
+ρ
+
+α
+
+[
+∂
+
+∂xj
+
+(
+1
+µ
+kjk
+
+∂p̈
+
+∂xk
+
+)
+−
+
+1
+Q
+
+Dp̈
+
+Dt
+
+]}
++
+h2i
+12
+
+∂2
+
+∂x2i
+
+(
+1
+Q
+ṗ
+
+)
+
++
+h2i
+12
+
+∂2
+
+∂x2i
+
+{
+∂
+
+∂xj
+
+[
+−
+
+1
+µ
+kjk
+
+(
+∂p
+
+∂xk
+− ρfbk
+
+)]}
+= 0 (53)
+
+The above equation can be simplified if we take into account that the
+last term involves the fourth order spatial derivative of the pore pressure
+and the third order spatial derivative of the body force per unit mass. In
+practical problems these terms are either zero (for constant body forces) or
+much smaller than the others. Hence, these terms will be omitted for the
+rest of this work. Furthermore, numerical results have shown that the terms
+∂
+∂xj
+
+(
+1
+µ
+kjk
+
+∂p̈
+∂xk
+
+)
+and 1
+
+Q
+Dp̈
+Dt
+
+can be neglected without loss of accuracy. Thereby,
+Equation (53) is written in the simpler form as
+
+α�̇+
+1
+Q
+ṗ+
+
+∂
+
+∂xj
+
+[
+−
+
+1
+µ
+kjk
+
+(
+∂p
+
+∂xk
+− ρfbk
+
+)]
+
++
+h2iα
+
+8G
+
+{
+2G
+
+∂2ε̇ij
+∂xi∂xj
+
++
+∂2σ̇′
+
+∂x2i
+− α
+
+∂2ṗ
+
+∂x2i
+
+}
++
+h2i
+12
+
+∂2
+
+∂x2i
+
+(
+1
+Q
+ṗ
+
+)
+= 0 (54)
+
+In the following we will assume hi = h where h is a characteristic length
+related to a typical average dimension of each element in the mesh. After
+rearranging terms, Equation (54) can be rewritten as
+
+α�̇+
+1
+Q
+ṗ+
+
+∂
+
+∂xi
+
+[
+−
+
+1
+µ
+kij
+
+(
+∂p
+
+∂xj
+− ρfbj
+
+)]
+
++ τ
+∂
+
+∂xi
+
+[
+2G
+
+∂ε̇ij
+∂xj
+
++
+∂σ̇′
+
+∂xi
+−
+(
+α−
+
+2G
+3αQ
+
+)
+∂ṗ
+
+∂xi
+
+]
+= 0 (55)
+
+where τ is a stabilization parameter given by
+
+τ =
+h2α
+
+8G
+(56)
+
+The form of the stabilization parameter in Equation (56) resembles that
+typically used in other stabilized procedures. We note that this term has
+naturally formed from the FIC formulation.
+
+Remark 2 : In the examples solved in the work we have chosen h = le, where
+le is a characteristic element length that, for 2D problems, is taken as the
+
+12
+
+
+
+diameter of a circle with the area of the element, while for 3D problems, it
+is the diameter of a sphere with the volume of the element. In essence
+
+le =
+
+√
+4Ae
+π
+
+in 2D (57)
+
+le = 3
+√
+
+6V e
+π
+
+in 3D (58)
+
+where Ae and V e represent the area and the volume of the element, respec-
+tively.
+
+Remark 3 : The presence of the characteristic element length le in equation
+(56) helps us control the diffusion of the stabilized solution, avoiding over-
+diffusive numerical results provided that fine enough discretizations are used.
+This fact is clearly shown in the example of section 5.2.
+
+3.3 Variational form of the FIC-stabilized mass balance equa-
+tion
+
+The variational expression of the FIC-stabilized mass balance equation is
+obtained by multiplying Equation (55) by arbitrary test functions v and
+integrating over the domain Ω to give
+
+∫
+Ω
+v α�̇ dΩ +
+
+∫
+Ω
+v
+
+1
+Q
+ṗ dΩ +
+
+∫
+Ω
+v
+∂
+
+∂xi
+
+[
+−
+
+1
+µ
+kij
+
+(
+∂p
+
+∂xj
+− ρfbj
+
+)]
+dΩ
+
++
+∫
+
+Ω
+v τ
+
+∂
+
+∂xi
+
+[
+2G
+
+∂ε̇ij
+∂xj
+
++
+∂σ̇′
+
+∂xi
+−
+(
+α−
+
+2G
+3αQ
+
+)
+∂ṗ
+
+∂xi
+
+]
+dΩ = 0 (59)
+
+Integrating by parts the last two integrals of Equation (59) and applying
+the divergence theorem yields
+
+∫
+Ω
+v α�̇ dΩ +
+
+∫
+Ω
+v
+
+1
+Q
+ṗ dΩ−
+
+∫
+Ω
+
+∂v
+
+∂xi
+
+[
+−
+
+1
+µ
+kij
+
+(
+∂p
+
+∂xj
+− ρfbj
+
+)]
+dΩ
+
++
+∫
+
+Γ
+v
+
+[
+−
+
+1
+µ
+kij
+
+(
+∂p
+
+∂xj
+− ρfbj
+
+)]
+ni dΓ
+
+−
+∫
+
+Ω
+τ
+∂v
+
+∂xi
+
+[
+2G
+
+∂ε̇ij
+∂xj
+
++
+∂σ̇′
+
+∂xi
+−
+(
+α−
+
+2G
+3αQ
+
+)
+∂ṗ
+
+∂xi
+
+]
+dΩ
+
++
+∫
+
+Γ
+v τ
+
+[
+2G
+
+∂ε̇ij
+∂xj
+
++
+∂σ̇′
+
+∂xi
+−
+(
+α−
+
+2G
+3αQ
+
+)
+∂ṗ
+
+∂xi
+
+]
+ni dΓ = 0 (60)
+
+where ni are the components of the unit normal vector to the external
+boundary Γ of Ω.
+
+13
+
+
+
+Introducing the boundary condition (16) and rearranging terms we have∫
+Ω
+v α�̇ dΩ +
+
+∫
+Ω
+v
+
+1
+Q
+ṗ dΩ +
+
+∫
+Ω
+
+∂v
+
+∂xi
+
+1
+µ
+kij
+
+∂p
+
+∂xj
+dΩ−
+
+∫
+Ω
+
+∂v
+
+∂xi
+
+1
+µ
+kijρfbj dΩ
+
++
+∫
+
+Γ
+v q̃n dΓ−
+
+∫
+Ω
+
+∂v
+
+∂xi
+τ2G
+
+∂ε̇ij
+∂xj
+
+dΩ−
+∫
+
+Ω
+
+∂v
+
+∂xi
+τ
+∂σ̇′
+
+∂xi
+dΩ
+
++
+∫
+
+Ω
+
+∂v
+
+∂xi
+τ
+
+(
+α−
+
+2G
+3αQ
+
+)
+∂ṗ
+
+∂xi
+dΩ +
+
+∫
+Γ
+v τ
+
+(
+2G
+
+∂ε̇ij
+∂xj
+
+ni +
+∂σ̇′
+
+∂xi
+ni − α
+
+∂ṗ
+
+∂xi
+ni
+
+)
+dΓ
+
++
+∫
+
+Γ
+v τ
+
+2G
+3αQ
+
+∂ṗ
+
+∂xi
+ni dΓ = 0 (61)
+
+Using the stress decomposition in (48), we can rewrite the boundary
+condition (14) as
+
+2Gεijnj −
+2G
+3
+�ni + σ′ni − αpni = t̃i (62)
+
+Next if we apply the divergence operator to both sides of Equation (62),
+differentiate it with respect to time and rearrange terms we have
+
+2G
+∂ε̇ij
+∂xj
+
+ni +
+∂σ̇′
+
+∂xi
+ni − α
+
+∂ṗ
+
+∂xi
+ni =
+
+2G
+3
+
+∂�̇
+
+∂xi
+ni +
+
+∂ ˙̃ti
+∂xi
+
+(63)
+
+In all typical problems the divergence of the traction vector will be zero
+and so it will be the term ∂
+
+˙̃ti
+∂xi
+
+. Moreover, numerical tests have shown that the
+results are not affected by the term 2G3
+
+∂�̇
+∂xi
+ni. Consequently, the stabilized
+
+mass balance equation is rewritten as∫
+Ω
+v α�̇ dΩ +
+
+∫
+Ω
+v
+
+1
+Q
+ṗ dΩ +
+
+∫
+Ω
+
+∂v
+
+∂xi
+
+1
+µ
+kij
+
+∂p
+
+∂xj
+dΩ
+
+−
+∫
+
+Ω
+
+∂v
+
+∂xi
+
+1
+µ
+kijρfbj dΩ +
+
+∫
+Γ
+v q̃n dΓ−
+
+∫
+Ω
+
+∂v
+
+∂xi
+τ2G
+
+∂ε̇ij
+∂xj
+
+dΩ
+
+−
+∫
+
+Ω
+
+∂v
+
+∂xi
+τ
+∂σ̇′
+
+∂xi
+dΩ +
+
+∫
+Ω
+
+∂v
+
+∂xi
+τ
+
+(
+α−
+
+2G
+3αQ
+
+)
+∂ṗ
+
+∂xi
+dΩ
+
++
+∫
+
+Γ
+v τ
+
+2G
+3αQ
+
+∂ṗ
+
+∂n
+dΓ = 0 (64)
+
+where ∂ṗ
+∂n
+
+is the derivative of ṗ in the direction of the normal to the external
+boundary. This derivative can be approximated as shown in Figure 2.
+
+14
+
+
+
+Figure 2: Computation of the term ∂ṗ
+∂n
+
+at the side ij of a triangle adjacent
+to the external boundary Γ.
+
+Using the previous argument, the stabilized FIC form for the mass bal-
+ance equation (64) finally becomes
+
+∫
+Ω
+v α�̇ dΩ +
+
+∫
+Ω
+v
+
+1
+Q
+ṗ dΩ +
+
+∫
+Ω
+
+∂v
+
+∂xi
+
+1
+µ
+kij
+
+∂p
+
+∂xj
+dΩ
+
+−
+∫
+
+Ω
+
+∂v
+
+∂xi
+
+1
+µ
+kijρfbj dΩ +
+
+∫
+Γ
+v q̃n dΓ−
+
+∫
+Ω
+
+∂v
+
+∂xi
+τ2G
+
+∂ε̇ij
+∂xj
+
+dΩ
+
+−
+∫
+
+Ω
+
+∂v
+
+∂xi
+τ
+∂σ̇′
+
+∂xi
+dΩ +
+
+∫
+Ω
+
+∂v
+
+∂xi
+τ
+
+(
+α−
+
+2G
+3αQ
+
+)
+∂ṗ
+
+∂xi
+dΩ
+
+−
+∫
+
+Γ
+v
+τ
+
+hn
+
+4G
+3αQ
+
+ṗ dΓ = 0 (65)
+
+where hn is an arbitrary distance in the normal direction to the boundary.
+In our work hn has been taken as the characteristic length le of the element
+adjacent to the external boundary.
+
+4 Discretized form of the momentum and FIC-
+stabilized mass balance equations
+
+Combining the discretized form of Equation (65) along with the residual
+obtained from the original balance of momentum equation (24), the system
+of equations to be solved reads
+
+• Balance of momentum
+
+ru = M ¨̄u+
+∫
+
+Ω
+BTσ′ dΩ−Qp̄− fu = 0 (66)
+
+15
+
+
+
+• Mass balance
+
+r̂p =
+(
+QT −R
+
+)
+˙̄u−
+
+∫
+Ω
+
+(∇Np)T
+τ
+
+3
+Ŝ
+T
+σ̇′ dΩ
+
++ (C + T − T b) ˙̄p+Hp̄− fp = 0 (67)
+
+with
+R =
+
+∫
+Ω
+
+(∇Np)T τ2GST IvB dΩ (68)
+
+T =
+∫
+
+Ω
+(∇Np)T τ
+
+(
+α−
+
+2G
+3αQ
+
+)
+(∇Np) dΩ (69)
+
+T b =
+∫
+
+Γ
+NTp
+
+τ
+
+hn
+
+4G
+3αQ
+
+Np dΓ (70)
+
+where Ŝ = m∇T and the matrix Iv appears due to the difference between
+the strain tensor and the strain vector expressed in Voigt notation. For a
+general 3D case
+
+Iv =
+1
+2
+
+
+
+
+2 0
+2
+
+2
+1
+
+1
+0 1
+
+
+
+
+(71)
+
+Note that since the test functions v are zero on the Dirichlet boundaries Γp,
+matrix T b must be only computed on those external boundaries where no
+pressure Dirichlet conditions are imposed.
+
+Using the stabilized residual vector (67), the system of equations for a
+linear elastic material, quasi-static and undrained-incompressible limit case
+becomes
+
+ Ktan −Qγ
+β∆t
+
+[
+QT − (R+L)
+
+] 1
+θ∆t
+
+T ∗
+
+
+i
+n+1
+
+[
+δū
+δp̄
+
+]i+1
+n+1
+
+= −
+[
+ru
+r̂p
+
+]i
+n+1
+
+(72)
+
+with
+L =
+
+∫
+Ω
+
+(∇Np)T
+τ
+
+3
+Ŝ
+T
+DB dΩ (73)
+
+T ∗ =
+∫
+
+Ω
+(∇Np)T τα (∇Np) dΩ (74)
+
+Note that the diagonal of the iteration matrix is now different from zero.
+MatricesR and L emerging from the stabilized FIC formulation are essential
+for ensuring the consistency of the residual-based stabilization method used.
+
+Remark 4 : The consistency of residual does not directly affect the diffusion
+of the numerical solution, but it helps improving the condition number of
+
+16
+
+
+
+the system matrix and facilitates the convergence of the Newton-Raphson
+scheme.
+
+We highlight that the FIC-FEM formulation presented is applicable
+to equal order interpolation approximations of the displacements and the
+pressure of any degree. In this work we have implemented the FIC-FEM
+formulation using three-noded triangles and four-noded quadrilaterals for
+2D problems, and four-noded tetrahedra and eight-noded hexahedra for 3D
+problems, with equal order interpolation for the displacements and pressure.
+
+5 Examples
+This section includes two academic examples designed to assess the per-
+formance of the stabilized FIC-FEM formulation in situations near the
+undrained-incompressible limit. The first example is an elastic soil column
+subjected to a surface load. The second problem is an elastic soil foundation
+also subjected to a surface load.
+
+The soil column problem is analysed in a 2D framework under plane
+strain conditions, whereas the soil foundation case is tackled as a 3D prob-
+lem. The problems have been solved with simple elements with equal order
+interpolation for the displacements and the pore pressure, using the direct
+(non-stabilized) formulation and the FIC-stabilized formulation presented
+in the previous sections. Stable mixed elements with higher order interpo-
+lation for the displacements have been used to validate the FIC-stabilized
+element.
+
+In both problems, the porous medium is under totally saturated condi-
+tions with isotropic permeability. The effect of gravity is not considered.
+
+5.1 Elastic soil column subjected to surface loading
+
+This example consists on a 1 × 30 m column of saturated soil subjected to
+a surface loading that lies on a rigid rock bed. The geometry and boundary
+conditions of the problem are shown in Figure 3.
+
+The material parameters of the soil column are summarized in Table 1.
+It must be noticed that the indices 1 and 2 in the solid bulk modulus Ks, the
+fluid bulk modulus Kf and the intrinsic permeability k denote the different
+cases that have been considered here. Index 1 corresponds to the nearly
+undrained-incompressible limit, and index 2 corresponds to a more relaxed
+condition.
+
+17
+
+
+
+1 m
+
+H=30 m
+
+q
+
+y
+
+x
+
+Figure 3: Elastic soil column subjected to surface loading. Geometry and
+boundary conditions.
+
+Parameter Value
+
+Young modulus (E) 2.5 · 107 N/m2
+Poisson’s ratio (ν) 0.2
+Solid density (ρs) 2000 Kg/m3
+Fluid density (ρf ) 1000 Kg/m3
+Porosity (φ) 0.3
+Dynamic viscosity (µ) 1 · 10−3 N/m2 · s
+
+Solid bulk modulus 1 (Ks,1) 1.5 · 1017 N/m2
+Fluid bulk modulus 1 (Kf,1) 3 · 1014 N/m2
+Intrinsic Permeability 1 (k1) 1 · 10−14 m2
+
+Solid bulk modulus 2 (Ks,2) 1.5 · 1012 N/m2
+Fluid bulk modulus 2 (Kf,2) 3 · 109 N/m2
+Intrinsic Permeability 2 (k2) 1 · 10−11 m2
+
+Table 1: Elastic soil column problem. Material parameters.
+
+This problem is solved in a 2D configuration under plane strain condi-
+tions. The geometry is discretized with a structured mesh of 20 quadrilat-
+
+18
+
+
+
+eral elements. We have solved the problem using four-noded quadrilateral
+elements with bilinear shape functions for both the pressure and the dis-
+placements (Q4P4), and nine-noded quadrilateral elements with biquadratic
+shape functions for the displacements and bilinear shape functions for the
+pressure (Q9P4).
+
+Two different load cases have been considered: a surface step loading
+(Figure 4) and a surface cyclic loading (Figure 6).
+
+Step loading case
+
+The main purpose of this first case is to verify that the FIC-stabilized for-
+mulation captures properly the pressure distribution along the soil column
+under undrained-incompressible conditions.
+
+0
+
+200
+
+400
+
+600
+
+800
+
+1000
+
+1200
+
+0 0.5 1 1.5 2
+
+S
+u
+
+r
+fa
+
+c
+e
+ L
+
+o
+a
+d
+
+ (
+N
+
+/m
+2
+) 
+
+Time (s) 
+
+0.1 
+
+Figure 4: Surface step loading applied in the elastic soil column problem.
+
+Figure 5 shows the normalized pore pressure along the normalized height
+of the soil column for nearly undrained conditions at a time t = 2 s.
+
+Understanding the results of Figure 5 requires taking into account the
+fact that gravity is not considered. Indeed, since the only force acting over
+the soil column is the surface load, the pressure applied by the surface load
+is completely transferred to the pore pressure throughout the column height
+and thus the ratio p/q should equal 1.
+
+The results obtained with the non-stabilized formulation and the four-
+noded quadrilaterals (hereafter called Q4P4-Direct) are not able to properly
+capture the pressure distribution along the column. The element locks and
+the pressure oscillates with arbitrary values. In contrast, by using the Q4P4
+element stabilized with the FIC approach presented in this work (here called
+
+19
+
+
+
+Q4P4-FIC), the correct pressure distribution is obtained. Similar good re-
+sults are obtained with the Q9P4 element, as expected.
+
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0.9
+
+1
+
+0 0.5 1 1.5 2
+
+y
+/H
+
+ 
+
+p/q 
+
+Q4P4-Direct
+
+Q9P4
+
+Q4P4-FIC
+
+(a) Quasi-incompressible limit (Q = 1015N/m2).
+
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0.9
+
+1
+
+0 0.5 1 1.5 2
+
+y
+/H
+
+ 
+
+p/q 
+
+Q4P4-Direct
+
+Q9P4
+
+Q4P4-FIC
+
+(b) Relaxed incompressibility (Q = 1010N/m2).
+
+Figure 5: Normalized pore pressure along the soil column (k = 1 · 10−14 m2,
+∆t = 0.02 s, t = 2 s).
+
+Comparing the graphs in Figures 5a and 5b one can see the effect of
+the compressibility of the materials on the sought solution. Certainly, as we
+decrease the value of Biot’s modulus Q, or equivalently, the bulk modulus
+of the solid and fluid phases Ks and Kf , the amplitude of the pressure
+oscillations obtained with the Q4P4-Direct element decreases near the rock
+bed. On the other hand, the results obtained with the Q4P4-FIC and Q9P4
+
+20
+
+
+
+elements remain unaltered.
+
+Cyclic loading case
+
+In this second case the objective is to analyse the evolution of the pore pres-
+sure in time, and assess the effect of the soil permeability on the dissipation
+of the pore pressure.
+
+0
+
+500
+
+1000
+
+1500
+
+2000
+
+0 5 10 15 20 25 30
+
+S
+u
+
+r
+fa
+
+c
+e
+ L
+
+o
+a
+d
+
+ (
+N
+
+/m
+2
+) 
+
+Time (s) 
+
+q = 1000 + 500 sin(2t)
+
+Figure 6: Surface cyclic loading applied in the elastic soil column problem.
+
+To that purpose, Figure 7 shows the temporal evolution of the pore
+pressure at a node located 1.5 m below the surface.
+
+Like in the previous case, the pressure obtained here should reflect the
+load applied on the surface. From the results in Figure 7, it is clear that
+the three tested elements show sinusoidal pressure evolutions in time. How-
+ever, from the nearly undrained case of Figure 7a, it appears that while
+the Q4P4-FIC element shows a pressure that correctly oscillates from 500
+to 1500 N/m2, the Q4P4-Direct element presents pressure values that vary
+from 1000 to 3000 N/m2, making no sense. One must notice that although
+the Q9P4 element shows higher pressures than the stabilized element, after
+refining the mesh up to 60 elements, the Q9P4 results are in good agree-
+ment with the solution obtained with 20 Q4P4-FIC elements (Figure 8).
+This evidences the good accuracy of the stabilized FIC-FEM Q4P4 element.
+
+Looking at the graph depicted in Figure 7b one can see that, by increas-
+ing the intrinsic permeability k, the problem is no longer as bad conditioned
+as before, and so the gap in the amplitude of the three elements diminishes.
+Moreover, a greater permeability implies that the water can flow towards
+the surface due to the deformation of the column. Thereby, a dissipation in
+the pore pressure occurs as the computation advances in time.
+
+21
+
+
+
+0
+
+500
+
+1000
+
+1500
+
+2000
+
+2500
+
+3000
+
+3500
+
+0 5 10 15 20 25 30
+
+P
+o
+
+r
+e
+ P
+
+r
+e
+ss
+
+u
+r
+e
+ (
+
+N
+/m
+
+2
+) 
+
+Time (s) 
+
+Q4P4-Direct
+
+Q9P4
+
+Q4P4-FIC
+
+(a) Quasi-undrained limit (k = 10−14m2).
+
+-500
+
+0
+
+500
+
+1000
+
+1500
+
+2000
+
+0 5 10 15 20 25 30
+
+P
+o
+
+r
+e
+ P
+
+r
+e
+ss
+
+u
+r
+e
+ (
+
+N
+/m
+
+2
+) 
+
+Time (s) 
+
+Q4P4-Direct
+
+Q9P4
+
+Q4P4-FIC
+
+(b) Partially drained (k = 10−11m2).
+
+Figure 7: Evolution of the pore pressure with time at a node near the surface
+(Q = 1 · 1015N/m2, ∆t = 0.05 s).
+
+Finally, it is also interesting to notice that the pressure becomes negative
+after the soil has drained a certain amount of water. This is easily under-
+stood if one thinks about the elastic behaviour considered for the porous
+medium. Since the applied load is oscillating, the deformation of the elastic
+soil experiments a similar behaviour. In consequence, when the soil recovers
+its initial position as the load reduces, a suction appears that makes the
+pore pressure negative at some points near the surface.
+
+22
+
+
+
+0
+
+200
+
+400
+
+600
+
+800
+
+1000
+
+1200
+
+1400
+
+1600
+
+1800
+
+0 5 10 15 20 25 30
+
+P
+o
+
+r
+e
+ P
+
+r
+e
+ss
+
+u
+r
+e
+ (
+
+N
+/m
+
+2
+) 
+
+Time (s) 
+
+60 Q9P4
+
+20 Q4P4-FIC
+
+Figure 8: Time evolution of the pore pressure. Comparison between 20
+Q4P4-FIC elements and 60 stable Q9P4 elements (Q = 1 · 1015N/m2, k =
+10−14m2, ∆t = 0.05 s).
+
+5.2 Elastic soil foundation subjected to surface loading
+
+This second example consists on a pillar foundation on a saturated soil
+stratum lying over a rigid rock bed. The geometry and boundary conditions
+are sketched in Figure 9.
+
+30 m
+
+30 m30 m
+x
+
+z
+
+y
+
+q
+
+3 m3 m
+
+Figure 9: Elastic soil foundation subjected to surface loading. Geometry
+and boundary conditions.
+
+23
+
+
+
+The material parameters for the soil are the same as for the previous
+example (Table 2).
+
+Parameter Value
+
+Young modulus (E) 2.5 · 107 N/m2
+Poisson’s ratio (ν) 0.2
+Solid density (ρs) 2000 Kg/m3
+Fluid density (ρf ) 1000 Kg/m3
+Porosity (φ) 0.3
+Dynamic viscosity (µ) 1 · 10−3 N/m2 · s
+
+Solid bulk modulus 1 (Ks,1) 1.5 · 1017 N/m2
+Fluid bulk modulus 1 (Kf,1) 3 · 1014 N/m2
+Intrinsic Permeability 1 (k1) 1 · 10−14 m2
+
+Solid bulk modulus 2 (Ks,2) 1.5 · 1012 N/m2
+Fluid bulk modulus 2 (Kf,2) 3 · 109 N/m2
+Intrinsic Permeability 2 (k2) 1 · 10−11 m2
+
+Table 2: Elastic soil foundation problem. Material parameters.
+
+In this case the soil is subjected to a surface step loading of 1 · 104N/m2
+applied in a linear increment during 0.1 s (Figure 10).
+
+0
+
+2000
+
+4000
+
+6000
+
+8000
+
+10000
+
+12000
+
+0 1 2 3 4 5
+
+S
+u
+
+r
+fa
+
+c
+e
+ L
+
+o
+a
+
+d
+ (
+
+N
+/m
+
+2
+) 
+
+Time (s) 
+
+0.1 
+
+Figure 10: Surface step loading applied in the elastic soil foundation prob-
+lem.
+
+As stated before, this problem is solved by means of a 3D analysis.
+We use four-noded tetrahedral elements with linear interpolation for the
+displacements and the pressure in the non-stabilized form (T4P4-Direct) and
+
+24
+
+
+
+the FIC-stabilized formulation (T4P4-FIC). Ten-noded stable tetrahedral
+elements with quadratic shape functions for the displacement field and linear
+shape functions for the pressure field (T10P4) have also been used in the
+analysis for comparison purposes.
+
+This example has two objectives. First, it should help analysing the
+effect of the spatial discretization on the solution obtained with the FIC-
+stabilized formulation. Second, it may allow us to assess whether the three
+element types considered here converge to the expected solution when the
+mesh is refined.
+
+In order to do so, two different unstructured spatial discretizations have
+been used: a coarse uniform mesh (Figure 11a) and a refined non-uniform
+mesh (Figure 11b).
+
+(a) Coarse uniform mesh: 9985 ele-
+ments.
+
+(b) Refined non-uniform mesh: 13532
+elements.
+
+Figure 11: Spatial discretizations used for the elastic soil foundation prob-
+lem.
+
+In Figure 12 we represent the evolution of the maximum pore pressure
+with time under nearly undrained-incompressible conditions for both the
+coarse and refined meshes using ∆t = 0.02 s. The impermeability of the
+case makes that the pore pressure remains constant after the first 0.1 s
+of application of the load for the two stable elements, the T10P4 and the
+T4P4-FIC. We see, though, a different behaviour in the unstable T4P4-
+Direct element, showing a certain dissipation for the finer mesh.
+
+Comparing the T10P4 and the T4P4-FIC elements we notice that, while
+the first one surpasses the threshold of 10000 N/m2 for both meshes, the
+latter is always below the value of the applied load. In any case, both ele-
+ments approach the expected solution as the mesh is refined, which indicates
+a consistent response.
+
+25
+
+
+
+0
+
+2000
+
+4000
+
+6000
+
+8000
+
+10000
+
+12000
+
+14000
+
+16000
+
+18000
+
+0 0.2 0.4 0.6 0.8 1
+
+M
+a
+
+x
+im
+
+u
+m
+
+ P
+o
+
+r
+e
+ P
+
+r
+e
+ss
+
+u
+r
+e
+ (
+
+N
+/m
+
+2
+) 
+
+Time (s) 
+
+T4P4-Direct
+
+T10P4
+
+T4P4-FIC
+
+(a) Coarse mesh.
+
+0
+
+2000
+
+4000
+
+6000
+
+8000
+
+10000
+
+12000
+
+14000
+
+16000
+
+18000
+
+20000
+
+0 0.2 0.4 0.6 0.8 1
+
+M
+a
+
+x
+im
+
+u
+m
+
+ P
+o
+
+r
+e
+ P
+
+r
+e
+ss
+
+u
+r
+e
+ (
+
+N
+/m
+
+2
+) 
+
+Time (s) 
+
+T4P4-Direct
+
+T10P4
+
+T4P4-FIC
+
+(b) Refined mesh.
+
+Figure 12: Time evolution of the maximum pore pressure under undrained-
+incompressible conditions (Q = 1 · 1015 N/m2, k = 1 · 10−14 m2, ∆t = 0.02
+s).
+
+If we look at the contour lines of the pore pressure distribution obtained
+at time t = 1 s in Figure 13, we can understand the abnormal behaviour of
+the T4P4-Direct element. Indeed, the direct mixed formulation with equal
+order interpolation elements locks under undrained-incompressible condi-
+tions which leads to the incoherent pressure distribution obtained.
+
+26
+
+
+
+(a) T4P4-Direct elements in coarse
+mesh (pmax = 16282N/m2).
+
+(b) T4P4-Direct elements in re-
+fined mesh (pmax = 15851N/m2).
+
+(c) T10P4 elements in coarse mesh
+(pmax = 15197N/m2).
+
+(d) T10P4 elements in refined mesh
+(pmax = 12283N/m2).
+
+(e) T4P4-FIC elements in coarse
+mesh (pmax = 4390.8N/m2).
+
+(f) T4P4-FIC elements in refined
+mesh (pmax = 9609.7N/m2).
+
+Figure 13: Pore pressure distribution under undrained-incompressible con-
+ditions (Q = 1 · 1015 N/m2, k = 1 · 10−14 m2, ∆t = 0.02 s, t = 1 s).
+
+27
+
+
+
+Next we evaluate the capabilities of the FIC stabilized formulation to
+reproduce a solution where stabilization is not needed. For this purpose
+the previous problem has been solved for partially drained and compressible
+conditions up to t = 5 s (Figure 14). Results are again shown at t = 1 s for
+∆t = 0.02 s (Figure 15). Under these relaxed conditions, the equal order
+interpolation mixed element with the direct formulation is able to capture
+acceptable pressure distributions as expected (Figures 15a and 15b).
+
+The higher permeability of this second case also permits capturing the
+so-called Mandel-Cryer effect, i.e. the increase of pore pressure due to the
+application of the load is immediate, but the dissipation due to the outflow
+of the pore fluid is delayed by the permeability of the porous medium [51].
+Figures 14a and 14b show that, after the first 0.1 s of loading, the fluid
+starts draining due to the consolidation of the soil.
+
+In order to properly understand the low peak pore pressure obtained with
+the T4P4-FIC element in Figure 14a, it is useful to recall the definition of
+the stabilization parameter in equation (56) and observe carefully the mesh
+in Figure 11a. It can be noticed that the area of application of the load is
+covered by only two triangular faces. This implies that the characteristic
+element length around that particular zone is relatively large, and so it is the
+stabilization parameter. As a result, one obtains an over-diffusive solution
+that leads to an underestimation of the maximum pore pressure.
+
+However, it is interesting to see that the larger peak pore pressure ob-
+tained with the T4P4-Direct and the T10P4 elements, caused by an initial
+locking of the pressure field, converges to the solution obtained with the
+T4P4-FIC element after the soil consolidates.
+
+On the other hand, the results for the maximum pressure obtained with
+the refined non-uniform mesh (Figures 14b, 15b, 15d and 15f) converge all
+to an almost identical value. This evidences that the FIC stabilization does
+not alter negatively the solution obtained with the original non-stabilized
+mixed formulation.
+
+28
+
+
+
+0
+
+2000
+
+4000
+
+6000
+
+8000
+
+10000
+
+12000
+
+14000
+
+16000
+
+0 1 2 3 4 5
+
+M
+a
+x
+im
+
+u
+m
+
+ P
+o
+r
+e
+ P
+
+r
+e
+ss
+
+u
+r
+e
+ (
+
+N
+/m
+
+2
+) 
+
+Time (s) 
+
+T4P4-Direct
+
+T10P4
+
+T4P4-FIC
+
+(a) Coarse mesh.
+
+0
+
+2000
+
+4000
+
+6000
+
+8000
+
+10000
+
+12000
+
+0 1 2 3 4 5
+
+M
+a
+
+x
+im
+
+u
+m
+
+ P
+o
+
+r
+e
+ P
+
+r
+e
+ss
+
+u
+r
+e
+ (
+
+N
+/m
+
+2
+) 
+
+Time (s) 
+
+T4P4-Direct
+
+T10P4
+
+T4P4-FIC
+
+(b) Refined mesh.
+
+Figure 14: Time evolution of the maximum pore pressure for partially com-
+pressible and drained conditions (Q = 1 · 1010 N/m2, k = 1 · 10−11 m2,
+∆t = 0.02 s).
+
+29
+
+
+
+(a) T4P4-Direct elements in coarse
+mesh (pmax = 7268.1N/m2).
+
+(b) T4P4-Direct elements in re-
+fined mesh (pmax = 8104.1N/m2).
+
+(c) T10P4 elements in coarse mesh
+(pmax = 10427N/m2).
+
+(d) T10P4 elements in refined mesh
+(pmax = 8173.8N/m2).
+
+(e) T4P4-FIC elements in coarse
+mesh (pmax = 4089N/m2).
+
+(f) T4P4-FIC elements in refined
+mesh (pmax = 8086.8N/m2).
+
+Figure 15: Pore pressure distribution for partially compressible and drained
+conditions (Q = 1 · 1010 N/m2, k = 1 · 10−11 m2, ∆t = 0.02 s, t = 1 s).
+
+30
+
+
+
+6 Conclusions
+A stable displacement-pore pressure FIC-FEM formulation for solving cou-
+pled solid-pore fluid interaction problems has been successfully implemented
+for 2D and 3D analysis. The formulation represents the first application of
+the second order FIC mass balance equation in space to the stabilization of
+a poromechanics problem.
+
+The FIC-FEM formulation has been used to solve an elastic saturated
+soil column subjected to surface loading in a 2D problem under plane strain
+conditions. It has proven to avoid arbitrary oscillations along the column,
+and it has shown consistent results for both transient and cyclic loading
+cases, despite modifying the material compressibility and permeability.
+
+Additionally, the FIC-FEM procedure has been tested in a 3D problem of
+an elastic saturated soil foundation. The effect of the spatial discretization
+on the sought solution has been addressed in this case. This problem has
+showed that the the residual-based character of the FIC-stabilization favours
+that the numerical solution converges to the expected solution as the mesh is
+refined. Moreover, after relaxing the undrained-incompressible conditions,
+it has been shown that the FIC stabilization does not alter negatively the re-
+sponse obtained in the original non-stabilized mixed formulation, and yields
+an accurate solution.
+
+Comparing this work with other classical stabilization methods, we must
+notice that the FIC stabilization allows solving the problem in a fully cou-
+pled manner without relying on the time stepping algorithm. It also avoids
+the calibration of the stabilization parameter, which simply depends on the
+characteristic element size.
+
+Finally, like in the projection stabilization method, the presented FIC-
+based approach does not require additional basis functions or element level
+condensation, but relies on higher-order derivatives to obtain the terms that
+ensure the consistency of the residual-based procedure.
+
+Acknowledgements
+This research was partially funded by the Advanced Grant project SAFE-
+CON and the Proof of Concept project FLOODSAFE of the European Re-
+search Council.
+
+References
+[1] K. Terzaghi, Theoretical soil mechanics. Wiley, New York, 1943.
+
+[2] M. A. Biot, “General theory of three-dimensional consolidation,” Jour-
+nal of applied physics, vol. 12, no. 2, pp. 155–164, 1941.
+
+31
+
+
+
+[3] B. Berkowitz, J. Bear, and C. Braester, “Continuum models for con-
+taminant transport in fractured porous formations,” Water Resources
+Research, vol. 24, no. 8, pp. 1225–1236, 1988.
+
+[4] J. Adachi, E. Siebrits, A. Peirce, and J. Desroches, “Computer simula-
+tion of hydraulic fractures,” International Journal of Rock Mechanics
+and Mining Sciences, vol. 44, no. 5, pp. 739–757, 2007.
+
+[5] B. Carrier and S. Granet, “Numerical modeling of hydraulic fracture
+problem in permeable medium using cohesive zone model,” Engineering
+fracture mechanics, vol. 79, pp. 312–328, 2012.
+
+[6] B. Jha and R. Juanes, “Coupled modeling of multiphase flow and fault
+poromechanics during geologic CO2 storage,” Energy Procedia, vol. 63,
+pp. 3313–3329, 2014.
+
+[7] G. Zimmermann and A. Reinicke, “Hydraulic stimulation of a deep
+sandstone reservoir to develop an Enhanced Geothermal System: lab-
+oratory and field experiments,” Geothermics, vol. 39, no. 1, pp. 70–77,
+2010.
+
+[8] S. C. Cowin and L. Cardoso, “Interstitial flow in the hierarchical pore
+space architecture of bone tissue,” in Poromechanics V, pp. 1203–1212,
+ASCE, 2013.
+
+[9] M. A. Biot, “Theory of elasticity and consolidation for a porous
+anisotropic solid,” Journal of applied physics, vol. 26, no. 2, pp. 182–
+185, 1955.
+
+[10] M. A. Biot, “Theory of propagation of elastic waves in a fluid-saturated
+porous solid. I: Low-frequency range. II: Higher frequency range,” the
+Journal of the Acoustical Society of America, vol. 28, no. 2, pp. 168–191,
+1956.
+
+[11] J. Ghaboussi and E. L. Wilson, “Flow of compressible fluid in porous
+elastic media,” International Journal for Numerical Methods in Engi-
+neering, vol. 5, no. 3, pp. 419–442, 1973.
+
+[12] O. C. Zienkiewicz, C. T. Chang, and P. Bettess, “Drained, undrained,
+consolidating and dynamic behaviour assumptions in soils,” Géotech-
+nique, vol. 30, no. 4, pp. 385–395, 1980.
+
+[13] O. C. Zienkiewicz and P. Bettess, “Soils and other saturated media un-
+der transient, dynamic conditions: general formulation and the validity
+of various simplifying assumptions,” 1982.
+
+[14] O. C. Zienkiewicz, “Basic formulation of static and dynamic behaviour
+of soil and other porous media,” in Numerical methods in geomechanics,
+pp. 39–55, Springer, 1982.
+
+32
+
+
+
+[15] O. C. Zienkiewicz and T. Shiomi, “Dynamic behaviour of saturated
+porous media; The generalized Biot formulation and its numerical so-
+lution,” International journal for numerical and analytical methods in
+geomechanics, vol. 8, no. 1, pp. 71–96, 1984.
+
+[16] O. C. Zienkiewicz, A. H. C. Chan, M. Pastor, D. K. Paul, and T. Sh-
+iomi, “Static and dynamic behaviour of soils: a rational approach to
+quantitative solutions. I. Fully saturated problems,” in Proceedings of
+the Royal Society of London, vol. 429, pp. 285–309, The Royal Society,
+1990.
+
+[17] O. C. Zienkiewicz, Y. M. Xie, B. A. Schrefler, A. Ledesma, and N. Bi-
+canic, “Static and dynamic behaviour of soils: a rational approach to
+quantitative solutions. II. Semi-saturated problems,” in Proceedings of
+the Royal Society of London, vol. 429, pp. 311–321, The Royal Society,
+1990.
+
+[18] D. Gawin and B. A. Schrefler, “Thermo-hydro-mechanical analysis
+of partially saturated porous materials,” Engineering Computations,
+vol. 13, no. 7, pp. 113–143, 1996.
+
+[19] A. R. Khoei, A. R. Azami, and S. M. Haeri, “Implementation of plas-
+ticity based models in dynamic analysis of earth and rockfill dams:
+A comparison of Pastor–Zienkiewicz and cap models,” Computers and
+Geotechnics, vol. 31, pp. 385–410, 2004.
+
+[20] I. Babuška, “The finite element method with lagrangian multipliers,”
+Numerische Mathematik, vol. 20, no. 3, pp. 179–192, 1973.
+
+[21] F. Brezzi, “On the existence, uniqueness and approximation of
+saddle-point problems arising from lagrangian multipliers,” Revue
+française d’automatique, informatique, recherche opérationnelle. Anal-
+yse numérique, vol. 8, no. 2, pp. 129–151, 1974.
+
+[22] A. J. Chorin, “A numerical method for solving incompressible viscous
+flow problems,” Journal of Computational Physics, vol. 2, no. 1, pp. 12–
+26, 1967.
+
+[23] F. Brezzi and J. Pitkäranta, “On the stabilization of finite element ap-
+proximations of the Stokes equations,” in Efficient Solutions of Elliptic
+Systems (W. Hackbusch, ed.), vol. 10 of Notes on Numerical Fluid Me-
+chanics, pp. 11–19, Vieweg, Wiesbaden, 1984.
+
+[24] T. J. R. Hughes, L. P. Franca, and M. Balestra, “A new finite element
+formulation for computational fluid dynamics: V. Circumventing the
+Babuška-Brezzi condition: A stable Petrov-Galerkin formulation of the
+Stokes problem accommodating equal-order interpolations,” Computer
+
+33
+
+
+
+Methods in Applied Mechanics and Engineering, vol. 59, pp. 85–99,
+1986.
+
+[25] O. C. Zienkiewicz and R. Codina, “A general algorithm for compressible
+and incompressible flow. Part I. The split, characteristic-based scheme,”
+International Journal for Numerical Methods in Fluids, vol. 20, no. 8-9,
+pp. 869–885, 1995.
+
+[26] E. Oñate, “Derivation of stabilized equations for numerical solution of
+advective-diffusive transport and fluid flow problems,” Computer Meth-
+ods in Applied Mechanics and Engineering, vol. 151, no. 1, pp. 233–265,
+1998.
+
+[27] E. Oñate, “A stabilized finite element method for incompressible viscous
+flows using a finite increment calculus formulation,” Computer Methods
+in Applied Mechanics and Engineering, vol. 182, no. 3, pp. 355–370,
+2000.
+
+[28] M. Pastor, M. Quecedo, and O. C. Zienkiewicz, “A mixed displacement-
+pressure formulation for numerical analysis of plastic failure,” Comput-
+ers & Structures, vol. 62, no. 1, pp. 13–23, 1997.
+
+[29] O. C. Zienkiewicz, J. Rojek, R. L. Taylor, and M. Pastor, “Triangles and
+tetrahedra in explicit dynamic codes for solids,” International Journal
+for Numerical Methods in Engineering, vol. 43, no. 3, pp. 565–583, 1998.
+
+[30] M. Chiumenti, Q. Valverde, C. A. De Saracibar, and M. Cervera, “A
+stabilized formulation for incompressible elasticity using linear displace-
+ment and pressure interpolations,” Computer Methods in Applied Me-
+chanics and Engineering, vol. 191, no. 46, pp. 5253–5264, 2002.
+
+[31] E. Oñate, R. L. Taylor, O. C. Zienkiewicz, and J. Rojek, “A residual
+correction method based on finite calculus,” Engineering Computations,
+vol. 20, no. 5/6, pp. 629–658, 2003.
+
+[32] E. Oñate, J. Rojek, R. L. Taylor, and O. C. Zienkiewicz, “Finite calculus
+formulation for incompressible solids using linear triangles and tetra-
+hedra,” International Journal for Numerical Methods in Engineering,
+vol. 59, no. 11, pp. 1473–1500, 2004.
+
+[33] O. C. Zienkiewicz, M. Huang, and M. Pastor, “Computational soil dy-
+namics – A new algorithm for drained and undrained conditions,” in
+Computer Methods and Advances in Geomechanics (H. J. Siriwardane
+and M. M. Zaman, eds.), pp. 47–59, Balkema, Rotterdam, 1994.
+
+[34] M. Pastor, O. C. Zienkiewicz, T. L. L. Xiaoqing, and M. Huang, “Stabi-
+lized finite elements with equal order of interpolation for soil dynamics
+
+34
+
+
+
+problems,” Archives of Computational Methods in Engineering, vol. 6,
+no. 1, pp. 3–33, 1999.
+
+[35] M. Huang, S. Wu, and O. C. Zienkiewicz, “Incompressible or nearly in-
+compressible soil dynamic behaviour–a new staggered algorithm to cir-
+cumvent restrictions of mixed formulation,” Soil Dynamics and Earth-
+quake Engineering, vol. 21, no. 2, pp. 169–179, 2001.
+
+[36] A. Masud and T. J. R. Hughes, “A stabilized mixed finite element
+method for Darcy flow,” Computer Methods in Applied Mechanics and
+Engineering, vol. 191, no. 39, pp. 4341–4370, 2002.
+
+[37] J. A. White and R. I. Borja, “Stabilized low-order finite elements for
+coupled solid-deformation/fluid-diffusion and their application to fault
+zone transients,” Computer Methods in Applied Mechanics and Engi-
+neering, vol. 197, no. 49, pp. 4353–4366, 2008.
+
+[38] W. Sun, J. T. Ostien, and A. G. Salinger, “A stabilized assumed defor-
+mation gradient finite element formulation for strongly coupled porome-
+chanical simulations at finite strain,” International Journal for Numer-
+ical and Analytical Methods in Geomechanics, vol. 37, no. 16, pp. 2755–
+2788, 2013.
+
+[39] J. Choo and R. I. Borja, “Stabilized mixed finite elements for de-
+formable porous media with double porosity,” Computer Methods in
+Applied Mechanics and Engineering, vol. 293, pp. 131–154, 2015.
+
+[40] W. Sun, “A stabilized finite element formulation for monolithic thermo-
+hydro-mechanical simulations at finite strain,” International Journal
+for Numerical Methods in Engineering, vol. 103, no. 11, pp. 798–839,
+2015.
+
+[41] E. Oñate, S. R. Idelsohn, and C. Felippa, “Consistent pressure lapla-
+cian stabilization for incompressible continua via higher-order finite cal-
+culus,” International Journal for Numerical Methods in Engineering,
+vol. 87, no. 1-5, pp. 171–195, 2011.
+
+[42] E. Oñate, A. Franci, and J. M. Carbonell, “Lagrangian formulation for
+finite element analysis of quasi-incompressible fluids with reduced mass
+losses,” International Journal for Numerical Methods in Fluids, vol. 74,
+no. 10, pp. 699–731, 2014.
+
+[43] M. Preisig and J. H. Prévost, “Stabilization procedures in coupled
+poromechanics problems: A critical assessment,” International Jour-
+nal for Numerical and Analytical Methods in Geomechanics, vol. 35,
+no. 11, pp. 1207–1225, 2011.
+
+35
+
+
+
+[44] M. A. Biot and D. G. Willis, “The elastic coefficients of the theory
+of consolidation,” Journal of applied mechanics, vol. 24, pp. 594–601,
+1957.
+
+[45] B. G. Galerkin, “Series solution of some problems of elastic equilibrium
+of rods and plates,” Vestnik Inzhenerov i Tekhnikov, vol. 19, no. 7,
+pp. 897–908, 1915.
+
+[46] C. B. Biezeno and R. Grammel, Technische Dynamik. Springer-Verlag,
+1939.
+
+[47] N. M. Newmark, “A method of computation for structural dynamics,”
+Journal of the Engineering Mechanics Division, vol. 85, no. 3, pp. 67–
+94, 1959.
+
+[48] W. J. T. Daniel, “Modal methods in finite element fluid–structure eigen-
+value problems,” International Journal for Numerical Methods in En-
+gineering, vol. 15, no. 8, pp. 1161–1175, 1980.
+
+[49] O. C. Zienkiewicz, S. Qu, R. L. Taylor, and S. Nakazawa, “The
+patch test for mixed formulations,” International Journal for Numerical
+Methods in Engineering, vol. 23, no. 10, pp. 1873–1883, 1986.
+
+[50] O. C. Zienkiewicz, R. L. Taylor, and J. Z. Zhu, The Finite Element
+Method, vol. 1. Butterworth-Heinemann, 6th ed., 2005.
+
+[51] A. Verruijt, Theory and problems of poroelasticity. Delft University of
+Technology, 2013.
+
+36
+
+
+	Introduction
+	General finite element formulation
+	FIC stabilized element
+	Introduction to the FIC-stabilization procedure
+	Modified FIC-stabilized form of the mass balance equation
+	Variational form of the FIC-stabilized mass balance equation
+
+	Discretized form of the momentum and FIC-stabilized mass balance equations
+	Examples
+	Elastic soil column subjected to surface loading
+	Elastic soil foundation subjected to surface loading
+
+	Conclusions
+

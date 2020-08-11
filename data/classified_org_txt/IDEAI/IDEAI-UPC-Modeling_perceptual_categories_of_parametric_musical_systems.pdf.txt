@@ -1,0 +1,1338 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1
+
+Pattern Recognition Letters
+journal homepage: www.elsevier.com
+
+Modeling perceptual categories of parametric musical systems
+
+Iván Paza,∗∗, Àngela Nebota, Francisco Mugicaa, Enrique Romeroa
+
+aComputer Science Department BarcelonaTech, C/ Jordi Girona 1-3. Omega 005, Barcelona 08034, Spain
+
+ABSTRACT
+
+In computer music fields, such as algorithmic composition and live coding, the aural exploration of pa-
+rameter combinations is the process through which systems’ capabilities are learned and the material
+for different musical tasks is selected and classified. Despite its importance, few models of this process
+have been proposed. Here, a rule extraction algorithm is presented. It works with data obtained during
+a user auditory exploration of parameters, in which specific perceptual categories are searched. The
+extracted rules express complex, but general relationships, among parameter values and categories.
+Its formation is controlled by functions that govern the data grouping. These are given by the user
+through heuristic considerations. The rules are used to build two more general models: a set of “ex-
+tended or inference rules” and a fuzzy classifier which allow the user to infer unheard combinations of
+parameters consistent with the preselected categories from the extended rules and between the limits
+of the explored parameter space, respectively. To evaluate the models, user tests were performed. The
+constructed models allow to reduce complexity in operating the systems, by providing a set of “pre-
+sets” for different categories, and extend compositional capacities through the inferred combinations,
+alongside a structured representation of the information.
+
+c© 2017 Elsevier Ltd. All rights reserved.
+
+1. Introduction
+
+Computer music is the application of computer technology in
+music composition (Dean, 2009), either to program computers
+that create music automatically, like algorithmic composition
+(Nierhaus, 2009), or to help human composers to program mu-
+sic in real time, as is the case in live coding (Collins et al., 2003;
+Magnusson, 2015; Wang and Cook, 2004). In these activities,
+parametric systems capable of generating different types of mu-
+sical material are used (Brown and Sorensen, 2009; Rohrhu-
+ber and de Campo, 2009). Examples of parametric musical
+systems include sound synthesizers and signal processors, as
+well as melodic or rhythmic sequence generators. To develop
+a clearer idea of the wide range of possible parametrical musi-
+cal systems, and therefore motivate the need for a methodology
+that creates a structured model of their capabilities, let us con-
+sider a couple of examples: In the first one, McCormack et al.
+(2009) discuss the granular synthesis system “Chaos-Synth”,
+developed by Miranda (1995) for wind instruments. It consists
+
+∗∗Corresponding author: Tel.: +34-93-413-7783; fax: +34-93-413-7833;
+e-mail: ivanpaz@cs.upc.edu (Iván Paz)
+
+of a bank of oscillators, whose individual frequencies and du-
+rations are controlled by the arithmetic mean of groups of cells
+taken from a cellular automata. In this case, the granular syn-
+thesis engine is parametrized by the cell states. The control
+parameters of the system, once the set of rules for the automata
+is written, are the cells, and the parameter space is the set of
+initial conditions with which the automata can be initialized.
+As a second example, consider a simple synthesis system based
+on two oscillators controlled by directly changing the values of
+their parameters. Suppose the system has two parameters: fre-
+quency 1 and frequency 2 both in Hz, with values ranging from
+a to b. In this case the system has an [a, b] x [a, b] space of pos-
+sibilities, controlled by parameters frequency 1 and frequency
+2. Even though these constructions can be framed in general
+structures (e.g, in additive or granular synthesis), they may have
+small changes or particular characteristics that modify their re-
+sponse. For example, they could have a different number of
+oscillators or envelope types, as well as different ranges in their
+parameters. Therefore, although there is a general idea of the
+behavior of the different architectures, it is necessary to test a
+new system to explore its possibilities.
+
+By changing their parameters, the musician interacts with the
+
+© 2017 Elsevier. This manuscript version is made available under the CC-BY-NC-ND 4.0 license 
+http://creativecommons.org/licenses/by-nc-nd/4.0/ 
+
+
+
+2
+
+parametric musical systems. Therefore, in all cases, the ex-
+ploration of the different combinations of parameter values is
+the process through which the system’s capabilities are learned,
+and the selection and classification of the musical material is
+performed. In Goldmann (2015) the commercial and cultural
+roles that specific parameter settings (called “presets”) have had
+when they become sound “standards” is analyzed. Examples
+of presets include the classic configurations of an equalizer la-
+beled as ”Funk, Rock or Classical”, digital plug-ins that mimic
+iconic instruments and new programs for the automatic audio
+mastering of a song depending on its genre. In a similar way,
+in algorithmic composition and live coding the selection of pa-
+rameter configurations has to do with selecting settings that pro-
+duce musical material with specific perceptual categories. Ex-
+amples of this selection process are: given a system with two
+variable-frequency oscillators, to find all the frequency combi-
+nations that produce a consonant output (in acoustics a sound
+with harmonic partials), or a sound with “rough” quality. Al-
+though the exploration of parameter combinations in search of
+perceptual categories is a common activity in computer music,
+there have been few attempts to formalize the information pro-
+duced during this process with the aim of using it for differ-
+ent musical tasks, such as the automatic creation of variations
+within a part of a piece while playing in front of an audience
+(live performance), or the execution of generative music algo-
+rithms (Brown and Sorensen, 2009).
+
+Nonetheless, there are excellent examples of methods for
+finding sets of parameters that successfully produce entities
+with specific perceptual properties. For example, Dahlstedt
+(2001), Collins (2002b) and Collins (2002a) applied interactive
+evolution (Dawkins, 1986), which uses human evaluation as the
+fitness function of a genetic algorithm for system parameter op-
+timization. In Dahlstedt (2001), this technique was applied to
+sound synthesis and pattern generation tasks, while in Collins
+(2002b) and Collins (2002a), it was used for searching success-
+ful sets of arguments controlling algorithmic routines for audio
+cut procedures.
+
+The present work is inspired by the methodologies of Collins
+(2002b) and Dahlstedt (2001), and further focuses on structur-
+ing the information that is produced during the exploration pro-
+cess to build tools intended for the following objectives:
+
+1. To provide a structured representation of how the values
+of the parameters are related with the user-selected per-
+ceptual categories.
+
+2. To reduce the cognitive and operational complexity of the
+algorithms by providing a set of organized “presets” for
+the different preselected categories which can be used to
+automate some musical tasks, such as live coding.
+
+3. To extend the compositional capacities by inferring new
+unheard (unexplored) parameter combinations consistent
+with the perceptual categories.
+
+In this research, a methodology based on rules is developed for
+the modeling of perceptual properties. Our particular interest
+in a rule-based model relies on its interpretability. Rule mod-
+els, in contrast with subsymbolic approaches (like neural net
+classifiers), are human readable information, which make them
+especially attractive for applications in the context of computer
+
+  
+
+Methodology
+
+2. Strict Rules are extracted
+from data.
+
+2. Strict Rules are evaluated 
+by user visual inspection.
+
+3. Model of interval rules
+(Inference Rules).
+
+3. Inference Rules are 
+validated through user 
+audition of examples. 
+
+4. The fuzzy model is 
+validated by:
+
+a) A fuzzy classifier (10 times 
+CV).
+
+b) Random generation of 
+instances which are classified 
+with the extended model and 
+
+user audition.
+
+4. Fuzzy rules model based on 
+the Inference Rules.
+
+Model Validation
+
+-
+
+G
+e
+n
+e
+ra
+
+li
+z
+a
+t i
+
+o
+n
+
++
+
+1. Data acquisition. 1. Validated through a 
+questionnaire.
+
+Fig. 1. General methodology.
+
+music. In addition, a rule-based model naturally functions as a
+set of presets, by encoding user associations (between param-
+eter configurations and perceptual category). Furthermore, it
+is possible to extend this model to explore new regions of the
+space consistent with the assigned classes of the rules. An early
+version of the methodology can be found in Paz et al. (2017).
+
+The proposed methodology consists of four parts, shown in
+Figure 1, together with their respective evaluation processes.
+The methodology has a data acquisition stage which is per-
+formed through a parametric exploration of a musical system,
+while searching for predefined perceptual categories (see # 1 in
+Figure 1). During this process, the parameter combinations are
+labeled with their respective perceptual categories. Then, the
+data is grouped according to specific patterns, as explained in
+detail in Section 2. The resulting structures are called “Strict
+rules” (see # 2 in Figure 1). This rules are used to build a more
+general model, which extends the validity of the Strict rules
+from points in the space to intervals. The result of this process,
+described in Section 3, is a set of “Inference Rules” (see # 3 in
+Figure 1). Then, a next level generalization based on the set of
+Inference Rules is made through the design of a fuzzy classifier
+(# 4 in Figure 1). This classifier covers the complete explored
+space and is presented in depth in Section 3. Sections 4 and
+5 describe, respectively, the model evaluation process and the
+experiments performed to validate the different models. Sec-
+tion 5 also describes in detail the data acquisition process and
+the user interface used for the parametric exploration. Finally,
+sections 6 and 7 present, in turn, the discussion followed by the
+conclusions and further work.
+
+2. Strict Rules extraction
+
+2.1. Algorithm design considerations
+
+The Strict Rules extraction algorithm was designed to iden-
+tify complex but general relationships among the values in the
+system parameters and the perceptual categories assigned by
+
+
+
+3
+
+the user. The idea is to reorder the data to make visible spe-
+cific patterns. In this way, it produces a “structured” and in-
+terpretable representation of the input data. In Section 3, this
+representation is used to infer new combinations of parameters
+consistent with any of the user-defined perceptual categories.
+The algorithm was inspired by a rule extraction algorithm de-
+veloped by Castro et al. (2011). However, it has two fundamen-
+tal differences. First, the result does not depend on the order of
+the data. Second, the algorithm can create rules requiring fewer
+conditions. These are discussed in Section 2.3.
+
+The input data are organized as data pairs (parameter val-
+ues, perceptual category), which are seen as deterministic input-
+output relations. In these data, the algorithm searches iteratively
+for patterns. Specifically, it looks for combinations of param-
+eters with the same category that differ only in one parameter
+value (let us say p j). In that case, if the absolute difference
+of the p j values that differ is less than a certain threshold (t),
+the combinations are grouped together into one structure. This
+structure has the same values of the grouped combinations in
+all its parameters, the same category and a set in p j that con-
+tains the values that differ. Before presenting the algorithm let
+us define the function that calculates the thresholds.
+
+2.1.1. Threshold function
+The thresholds are calculated through functions that are de-
+
+clared in advance by the user. These are based on heuristic con-
+siderations, i.e. on a priori knowledge of the variables that the
+parameters represent. For example, the frequency or the num-
+ber of upper harmonics added to a signal. Some ideas on how
+to automate this process are presented in Section 7. For each
+parameter p j a threshold function tp j (x) is declared. It assigns
+a threshold to each value x of the parameter p j. Given x1, x2,
+they will be grouped in a set if Equation 1 is satisfied.
+
+| x1 − x2 | < g(tp j (x1), tp j (x2)) (1)
+
+g is a function of two variables, that can be defined as
+Max(tp j (x1), tp j (x2)) or Min(tp j (x1), tp j (x2)) or a constant func-
+tion, for example g(tp j (x1), tp j (x2)) = in f ∀x, etc. Functions t
+and g control, for each parameter, how values are grouped into
+sets.
+
+Example: Let p j be a parameter that controls a frequency
+(Hz). One possible definition of the function tp j (x) could be as
+in Equation 2.
+
+tp j (x) =
+{
+
+10 if x ≤ 20 Hz
+80 if x > 20 Hz
+
+(2)
+
+Suppose that we have the parameter combinations X1, X2 and
+X3, shown at the top of Table 1. They differ only in the value
+of parameter p j, i.e., x1,k = x2,k = x3,k ∀ k , j. Suppose
+also that x1, j = 7, x2, j = 11, x3, j = 25. The bottom of Ta-
+ble 1 shows the result of grouping this combinations using the
+Threshold function of Equation 2 and combining the thresholds
+using g(tp j (x1), tp j (x2)) = Min(tp j (x1), tp j (x2)). For the first two
+values, x1, j = 7 and x2, j = 11, we have tp j (7) = 10 and tp j (11) =
+10. For the values 11 and 25, tp j (11) = 10 and tp j (25) = 80. As
+|7 − 11| < Min(10, 10) and |11 − 25| ≮ Min(10, 80) the com-
+binations X1 and X2 are grouped into RuleX1X2 and X2 is not
+grouped with X3, so X3 remains alone.
+
+Table 1. Consider the parameter combinations X1, X2 and X3 all with class
+(or perceptual category) rough and differing only in the jth parameter
+p j. i.e., x1,k = x2,k = x3,k ∀ k , j. Suppose that x1, j = 7, x2, j = 11,
+x3, j = 25. The result of grouping this combinations using the Tresh-
+old function of Equation 1 and combining the respective thresholds using
+g(tp j (x1), tp j (x2)) = Min(tp j (x1), tp j (x2)) are shown at the bottom of the Ta-
+ble. Note that in RuleX1X2 entrance x1−2,k = x1,k = x2,k ∀ k.
+
+Combination p1 . . . pj . . . pN Class
+X1 x1,1 . . . x1, j = 7 . . . x1,N rough
+X2 x2,1 . . . x2, j = 11 . . . x2,N rough
+X3 x3,1 . . . x3, j = 25 . . . x3,N rough
+
+Result
+RuleX1X2 x1−2,1 . . . {7, 11} . . . x1−2,N rough
+
+X3 x3,1 . . . x3, j = 25 . . . x3,N rough
+
+The thresholds allow the user to define how “close” two val-
+ues can be in order to be placed in the same rule. For example,
+suppose that for a specific parameter (p j), the threshold is set
+equal to infinity for all of their values. I.e., tp j (x) = in f ∀ x
+and g(tp j (x1), tp j (x2)) = in f . Then, all parameter combina-
+tions in the data, differing only in the value of that parameter
+will be grouped into a single rule no matter how “separated”
+they are. This could produce great variability in the combina-
+tions described by the rule. In contrast, suppose that a threshold
+t(x) = constant < in f is set for all the values. The result would
+then be a set of rules, each of them containing values that, when
+ordered from minimum to maximum, will not be separated from
+each other by more than that constant.
+
+2.1.2. Considerations on thresholds applications
+Since thresholds determine, for each parameter, the maxi-
+
+mum distance between two adjacent grouped values, and can be
+used for different purposes. For example, to create small tran-
+sitions when using the rule instances that have been grouped
+with a small threshold, or big transitions (to create contrast)
+in the opposite case. For a discussion of how stepwise per-
+ceptual transitions (or small perceptual changes in the sound)
+have played an essential role in music composition, from gre-
+gorian chant to 20th century music, see Cope (2015). Further-
+more, structures to visualize relationships between parameters
+and perceptual categories, as the rules can be thought of, can
+also be interesting from an analytical point of view. For exam-
+ple, they can be used for computational modeling of musical
+styles (Pearce et al., 2002).
+
+2.2. Algorithm Inputs
+The inputs for the algorithm are:
+
+1. data: {X1,X2, ...,Xm}, where each Xi =
+((xi1, xi2, ..., xin), yi), xi j denotes the value of the jth
+
+parameter of the ith combination explored, and yi denotes
+the perceptual category. Index i satisfies that 1 ≤ i ≤ m
+and n is the number of parameters.
+
+2. thresholds: Array containing, for each parameter, a func-
+tion tp j (x) that calculates the threshold for each value, and
+the function g (defined in Section 2.1.1) to combine the
+thresholds.
+
+
+
+4
+
+2.3. Algorithm
+The algorithm is currently implemented in the SuperCollider
+
+programming language (McCartney, 1996; Wilson et al., 2011)
+since it can also be used as a synthesis engine to implement the
+sound generators. As mentioned, the algorithm searches, pa-
+rameter by parameter, instances differing only in one parameter
+value and belonging to the same perceptual category. Given that
+the result of such search depends on the order of parameters,
+the algorithm starts by calculating all the possible parameter
+permutations of the data. Then it applies the search to each per-
+mutation and the independent results are aggregated by elim-
+inating the redundant and repeated rules at the end. This is a
+difference with the algorithm proposed in Castro et al. (2011)
+that searches using only the initial order of the data.
+
+The search is performed as follows:
+
+1. For each column index the corresponding column is ex-
+cluded from the data and identical rows are searched. Two
+rows are identical if they are equal entry-to-entry. If the en-
+tries are “sets”, they are considered identical if they con-
+tain the same elements.
+
+2. Then, the values of the excluded column for the selected
+(identical) rows are taken.
+
+3. These values are sorted from min to max and used to form
+subsets. Each subset contains all the subsequent values
+whose absolute difference is less or equal to their corre-
+sponding threshold (distance).
+
+4. Finally, the algorithm creates one rule for each created
+subset. The rules have the values of the selected rows in
+all the parameters, and a set with all the values of the sub-
+set in the index of the excluded column. The rows used to
+create the rules are eliminated from the data and the rules
+are added.
+
+As an example of set and rule creation suppose a con-
+stant threshold of 0.2 for parameter k. If we have values =
+{0.1, 0.3, 0.5, 0.8, 0.9, 1.1}, we will have the sets: {0.1, 0.3, 0.5}
+and {0.8, 0.9, 1.1}. As we have excluded column k, the new rules
+created will be : x1, x2, ..., xk−1, {0.1, 0.3, 0.5}, xk+1, ...xn, yk, and
+x1, x2, ..., xk−1, {0.8, 0.9, 1.1}, xk+1, ...xn, yk. As the process of
+creating all the permutations is computationally expensive, the
+user can decide the order of the parameters and avoid this step.
+Note that, through the process of constructing and separating
+sets, the Strict Rules algorithm allows the grouping of rules
+starting from sets containing only two instances. Unlike Castro
+et al. (2011) algorithm in which, for a rule to be formed, it is
+required that the set contains all the possible values that the an-
+alyzed parameter can take. Therefore in one parameter we may
+have different rules covering different ranges of values. This
+gives the algorithm the necessary flexibility to find regularities
+with different levels of generality.
+
+2.3.1. Algorithm pseudocode
+
+1. permutations = array with the possible permutations of the
+parameter indexes (excluding the output)
+
+2. For each permutation :
+temporal data = copy of data
+
+For each index j in permutation (j from 0 to
+# parameters):
+
+Exclude column permutation[ j ] from temporal data
+For each row (in temporal data):
+
+a. Look for identical rows
+b. Collect from the identical rows the values
+
+located at the excluded column
+c. Create sets and new rules with the collected
+
+values (See section 2.3.2)
+d. Eliminate the identical rows
+e. Add the new rules to temporal data
+
+Add temporal data to sets of rules
+3. Eliminate redundant and repeated rules from sets of rules
+4. Return sets of rules (array to store the result of the
+
+algorithm applied to each permutation)
+
+2.3.2. Create sets and rules
+Create sets
+To create the new sets proceed as follows:
+
+1. Sort set (array)
+2. Split the set in subsets S i such that ∀xi, xi+1 ∈ S i
+| xi − xi+1 |≤ t∗
+
+Where t∗ is the assigned threshold for elements xi, xi+1 by
+the functions g, t (described in Section 2.1.1) of parameter
+j (located at thresholds[ j ]).
+
+Create Rules
+To create the new rules proceed as follows:
+
+1. Take the current row (set of parameters) used to look for
+identical rows.
+
+2. For each of the sets created in the previous step (Create
+sets) build a new rule by replacing the excluded column
+( j) by the selected set.
+
+3. Inference Rules and Fuzzy Rules model
+
+3.1. Construction of the Inference Rules
+As mentioned, the Strict Rules do not describe unheard pa-
+
+rameter combinations. They only structure the data by grouping
+the regularities found. This allows us to separately perform the
+process of structuring the existing information and the process
+of building a model able to infer new, unheard combinations,
+consistent with the preselected perceptual categories. To do
+this, a set of Inference Rules is created. These rules are exten-
+sions of the Strict Rules created with the algorithm described
+in Section 2. To extend the rules, the values of the sets con-
+tained in their parameters are replaced by the intervals between
+the minimum and maximum values for each set. For example,
+let us suppose that we have the rule shown in Table 2, contain-
+ing values {a, b, c, d} in parameter p j. Without the extension,
+this rule only describes the cases formed with the combinations
+of the values in the set and the values of the other parameters
+(which could also be a set). To build the inference rule, we sub-
+stitute the set for the interval [a−d], a and d being the minimum
+and maximum values of the set, respectively. The extended rule
+comprises the combinations of the parameter values with all the
+values in the interval.
+
+
+
+5
+
+Table 2. Extension of a Strict rule into an Inference rule. The list of values
+in parameter p j is extended to the interval between the minimum (a) and
+maximum (b) values.
+
+Rule Type p1 . . . pj . . . pn Class
+Strict Rule xk,1 . . . {a, b, c, d} . . . xk,N rough
+
+Inference Rule xk,1 . . . [a − d] . . . xk,N rough
+
+Fig. 2. Membership function for the classifier. The values vk, j and wk, j are,
+respectively, the minimum and maximum values of parameter j in rule k.
+The parameter γ controls the “slopes”.
+
+3.2. A fuzzy classifier based on Inference Rules
+
+To extend the model to cover all the space within the explored
+limits, a fuzzy if-then classifier, based on the Inference Rules,
+was designed. It was built as follows:
+First, consider the trapezoidal membership function of Equa-
+tion 3, which is represented in Figure 2.
+
+µk, j(p j) =
+1
+2
+
+[max(0, 1 − max(0, γ ∗ min(1, p j − wk, j)))
+
++max(0, 1 − max(0, γ ∗ min(1, vk, j − p j)))]
+(3)
+
+In this function (Kuncheva, 2000) the index k represents the rule
+number and the index j counts the parameters. The values vk, j
+and wk, j are, respectively, the minimum and maximum values
+with membership µ(x) = 1 of the kth rule jth parameter. The
+parameter γ controls the “slopes” of the trapezoid and is calcu-
+lated so that the slopes intersect the x-axis at the minimum and
+maximum values of the parameter.
+
+To build the classifier, all features are scaled into [0, 1]. Then,
+for each rule Rk, a trapezoidal membership function is assigned
+to each parameter p j in the following way:
+
+1. If the parameter contains an interval, let us say [a−b], then
+vk, j = a and wk, j = b. In this case, the trapezoidal member-
+ship function has maximum membership values between
+the extremes of the interval.
+
+2. If the parameter contains a single value, then vk, j = wk, j.
+Thus, we obtain a triangular membership function cen-
+tered at that value.
+
+To classify a new parameter combination, the classifier oper-
+ates as follows: Let P be the combination sent to the classifier.
+P is a combination of p j parameter values. Then, for each rule
+Rk, it calculates the membership values µk, j(p j) for each param-
+eter p j. The firing strength τk(P) (Kuncheva, 2000) of a rule Rk,
+
+which measures the degree to which the rule matches the input
+parameters, is defined as the minimum of all the membership
+values obtained for the parameters (see Equation 4), i.e:
+
+τk(P) = min { µk, j(p j) } (4)
+
+Once the firing strength has been calculated for all rules, the
+assigned class (i.e. category; Equation 5) will be equal to the
+class of the rule with maximum firing strength.
+
+Class(P) = Class of Rc where C = arg max
+k
+
+{τk(P)} (5)
+
+An example of the classification process for a hypothetical sys-
+tem with only two rules and two parameters is shown in Figure
+3. The parameter combination P = (p1, p2) is sent to the clas-
+sifier. To classify this combination, for each rule, the degree
+of membership of each pi given by the ith membership func-
+tion of the rule is calculated and the minimum of these values is
+taken. Then, a set containing the minimum value of each rule is
+formed. Finally, the output of the system is the class associated
+with the rule corresponding to the maximum value of that set.
+If more than one rule has the same firing strength, a random
+decision is taken.
+
+4. Model evaluation
+
+The model evaluation was based on the ideas suggested by
+Pearce et al. (2002). They discuss specific motivations for
+the development of programs for composing music, suggesting
+specific criteria for its evaluation depending on the case. They
+identify four activities: algorithmic composition, the design
+of compositional tools, the computational modeling of musical
+styles and the computational modeling of music cognition. Al-
+though the algorithms presented here were originally designed
+for personal compositional purposes and therefore could be cat-
+aloged within the algorithmic composition activity, the further
+development of the system was designed to be a compositional
+tool, i.e. it is a tool intended to be used by composers other
+than the designers. As proposed by Pearce et al. (2002), we
+therefore performed evaluation tests to ensure that the behavior
+of the software satisfies the requirements (unit tests), as well as
+to examine its performance in different scenarios (application
+tests).
+
+The different models presented were evaluated as follows:
+The Strict Rules were validated in experiments through user
+visual inspection, that is, the extracted rules were grouped in
+classes and shown to the user for its validation (in question 2.1
+of the Evaluation questionnaire below). The Inference Rules
+were evaluated through user testing. In this case, the users eval-
+uated, whether or not, random combinations produced from the
+generalized intervals were consistent with the preselected per-
+ceptual categories. To evaluate the Fuzzy Rules model, users
+evaluated random combinations covering the whole range of
+parameter values. The evaluation of the users was compared
+with the results of the classifier described in section 4.2. Finally,
+the accuracy of the classifier was calculated using the latter data
+and the standard technique 10-fold cross-validation. The details
+are presented below.
+
+
+
+6
+
+Fig. 3. Example of the classification process for a system of two rules with two parameters p1 and p2. A new combination P = (p1, p2) is sent to the classifier.
+For the first rule µ(p1) = a and µ(p2) = b. The minimum of these values is a. In the case of the second rule µ(p1) = c, µ(p2) = d and min(c, d) = d. Finally,
+the max(a, d) = a and therefore the class assigned to the instance is Class i, which is the class associated with the first rule.
+
+4.1. Evaluation questionnaire
+
+The tests results were registered through a questionnaire. As
+the system has different components that relate with the user
+in differents ways (user interface, extracted rules and general-
+ization stage) these were addressed in separate sections. The
+questionnarie is shown below.
+
+4.1.1. Assessment questionnarie
+The data and threshold functions were saved for each user.
+
+1. Data acquisition process
+1..1 Interface evaluation: Do you consider that the inter-
+
+face is intuitive and suitable for exploring the space
+of parameter combinations?
+
+1..2 Instructions evaluation: Do you feel the instructions
+given by the interviewer are an efficient way to ex-
+plore changes in the parameters?
+
+2. Extracted rules
+2..1 Do the rules give you interpretable information about
+
+the relationship of the parameter values with the per-
+ceptual category of the output?
+
+3. Generalization
+3..1 Consistency: Do you perceive the produced param-
+
+eter combination to be consistent with the selected
+category?
+
+3..2 Novelty: Do you find novelty in the unheard pat-
+terns?
+
+To answer the questions, we adopted a user-focused evalua-
+tion through Likert scale feedback (Likert, 1932) as proposed
+by Wanderley and Orio (2002). With the following categories:
+strongly agree, agree, neutral, disagree, and strongly disagree.
+We used this approach to evaluate the data acquisition process
+(interface and parameter exploration methodology), the inter-
+pretability of the extracted rules, and the novelty of the unheard
+parameter combinations created in the generalization step. To
+evaluate if the category of the new unheard combinations per-
+ceived by the user was consistent with the selected category
+
+(question 3.1), a consistency score was used, similar to the mu-
+sical Turing Test presented in Stowell et al. (2009). The general
+idea is that, in computer music, we may desire the systems to
+behave in a human-like fashion. In our case, the produced ex-
+amples should emulate patterns that would be selected by the
+human user as belonging to a particular category. Therefore,
+as Stowell et al. (2009) pointed out, “the degree of observed
+confusion between human and automated response is an appro-
+priate route for evaluating systems which perform human-like
+tasks”. In the tests, the Inference Rules generated new param-
+eter combinations, and the users evaluated whether they were
+consistent, or not, with the requested category. If so, we had a
+success and otherwise a failure.
+
+4.2. Evaluation of the fuzzy model
+
+Two tests were performed to evaluate the fuzzy model. First,
+parameter combinations (from the entire observed space) were
+produced, and the classifications of the model and the user were
+compared. Second, we used the classifier described in the Sec-
+tion 3.2 to estimate the model accuracy. A 10-times cross-
+validation standard technique was used on the data acquired
+during these experiments.
+
+5. Experiments
+
+The experiments were conducted with students of the Real
+Time Interaction Class of the Master’s Degree in Sound and
+Music Computing of the Pompeu Fabra University (winter term
+of 2016-2017), as well as with computer music composers and
+audio technology developers. The systems and the collected
+data are available at Paz (2017). Individual sessions were held
+in which the surveyed were introduced to the system interface
+and functionalities. After that, the participants were given time
+to become familiarized with the system before beginning the
+experiment.
+
+For the user-tests, an analytic interface (shown in Figure 4)
+as described by Hunt and Kirk (2000) was designed. It allowed
+the users to listen, tweak and perceptually categorize (into three
+
+
+
+7
+
+Table 3. Synthesis of the questionnaire results for the Blip and Sawtooth generators. The numbers below the quantifiers of the Likert scale denote the
+number of users that selected such option. The percentages in 3.1, are the average percentages of the numbers assigned by the users to the consistency of
+the twenty combinations produced by the Inference Rules.
+
+System Question Strongly
+agree
+
+Agree Neutral Disagree Strongly
+Disagree
+
+Blip 1.1 Interface evalua-
+tion
+
+2 5 2 1 –
+
+Sawtooth 1.1 Interface evalua-
+tion
+
+2 5 2 1 –
+
+Blip 1.2 Instructions 3 5 2 – –
+Sawtooth 1.2 Instructions 3 5 2 – –
+Blip 2 Strict rules evalua-
+
+tion
+6 3 1 – –
+
+Sawtooth 2 Strict rules evalua-
+tion
+
+7 2 1 – –
+
+Blip 3.1 Consistency of
+inference rules com-
+binations
+
+Consistent:
+Inconsistent:
+
+90%
+10%
+
+Sawtooth 3.1 Consistency of
+inference rules com-
+bination
+
+Consistent:
+Inconsistent:
+
+85%
+15%
+
+Blip 3.2 Novelty - 4 4 2 -
+Sawtooth 3.2 Novelty 2 6 2 - -
+
+classes given the perceptual categories of the systems described
+in Section 5.2) the parameter combinations while seeing their
+values in a display. It also allowed the captured data to be re-
+viewed. Once the data were collected, the user executed the rule
+extraction algorithm and listened to parameter combinations in
+the following modalities:
+
+1. Patterns contained in the generated Strict Rules, such that
+they had already been heard and categorized by the user.
+
+2. Patterns inferred through the Inference Rules, i.e, assumed
+to be within some predefined perceptual category, but
+which had not been heard.
+
+Users were asked to collect at least thirty categorized combina-
+tions by following the instructions shown in Section 5.1. After
+this, the rule extraction process was performed and the obtained
+Strict Rules were inspected by the users. Finally, twenty un-
+heard combinations were produced with the Inference Rules.
+These were evaluated as being consistent or not with the cat-
+egories that they described, as well as whether or not they
+showed novelty.
+
+5.1. Instructions for exploring the parametric space
+
+In order to favor rule formation and to avoid having many
+instances not grouped in any rule, users were provided with
+specific instructions to vary the parameters while exploring the
+space. These instructions allow to explore the space in an or-
+dered way, so that changes occur in one parameter at a time.
+Participants were asked to explore the space as follows:
+
+1. Without restrictions, vary the system parameters until a
+new point is found within the desired perceptual category.
+Save the parameter values with its associated category.
+
+Fig. 4. Interface used to explore the parametric space and to collect data.
+The left side allows to boot the system, initialize the data, tweak the pa-
+rameters and classify the combinations into three categories. The central
+part performs the rule extraction process. The right side allows the user to
+listen the Strict Rules (Play buttons) or the Inference Rules (Try buttons),
+as well as to reclassify the instances (Class buttons).
+
+2. From that point, tweak one parameter at a time while keep-
+ing the others constant. If the new combinations belong to
+any of the desired categories save them with its respective
+label. In this way, changes in one or more parameters can
+be explored.
+
+3. When enough has been explored around the combination,
+freely vary the parameters until a new point with a desired
+perceptual category is found.
+
+
+
+8
+
+5.2. Sound generators
+
+For the experiments, two different sound generators were se-
+lected. The first system, was a single band limited impulse os-
+cillator with well defined acoustic properties of its different pos-
+sibilities (Section 5.2.1). The second was a slightly more com-
+plex system for additive synthesis for which an arbitrary per-
+ceptual property was chosen (Section 5.2.2). The first system,
+was selected because of the great amount of psychoacoustics
+documentation describing the human perception of their differ-
+ent aural possibilities, allowing the validation of the obtained
+results (rules). Moreover, the simplicity of the system made it
+an excellent candidate for the interviewees to become familiar
+with the methodology. The second system was chosen given
+that consonance is a well defined perceptual property, and con-
+sidering that, as additive synthesis is generally the first synthe-
+sis technique to be studied, the users were also familiar with
+this system.
+
+5.2.1. Single band limited impulse oscillator
+The single band limited impulse oscillator “Blip”, produces
+
+a fundamental frequency to which a certain number of upper
+harmonics, all with equal amplitude, are added (Blip, 2016). It
+is available as a unit generator (UGen) in SuperCollider. It has
+three parameters: freq, the fundamental frequency; numharm
+which controls the number of upper harmonics added; and amp,
+the output’s amplitude. The parameters can range in the follow-
+ing way: the fundamental frequency can take values from 0Hz,
+with no audible result, to 20KHz which is the upper audible
+limit. However, as the audition capacity is reduced with age
+and environmental factors, the upper limit is sometimes con-
+sidered around 15KHz. The number of added harmonics range
+from 0, which leads to a pure tone frequency of the chosen fun-
+damental, to any (theoretical) number of harmonics. However,
+considering the aliasing processes, this number is limited by the
+sample rate and the chosen fundamental frequency. Finally, the
+signal amplitude is normalized between 0 and 1.
+
+Configuration for the experiments
+For the experiments, the values were restricted within the
+
+following ranges. The frequency took values in the interval
+[0Hz, 400Hz], the number of upper harmonics in [0, 100], and
+the amplitude in [0, 1]. This is a bounded space where the per-
+ceptual properties (described next) are clearly expressed. Al-
+though this is a simple generator, the different aural possibili-
+ties produced by its parameter combinations clearly define dis-
+tinct perceptual subspaces. For the experiment, we worked
+with three perceptual properties. These are outputs perceived
+as rhythmic, rough, and pure-tone. For further reference of
+the Blip generator, the reader is referred to Roads (2001).
+
+Generally speaking, outputs perceived as rhythmic are char-
+acterized by low fundamental frequencies (less than 15Hz). The
+number of upper harmonics controls the pitch of the produced
+pulse (or beat). A low number of harmonics produce constant
+beats with low pitch, while a higher number of upper harmon-
+ics produce the same constant beating, but with higher pitch.
+Outputs perceived as rough have fundamental frequency val-
+ues between 15 and 35 Hz. The number of upper harmonics
+
+plays a similar role as in the case of rhythmic outputs. Finally,
+outputs perceived as pure-tones are produced by any frequency
+greater that 20Hz without upper harmonics. However, combi-
+nations of low-mid to high frequencies (e.g greater than 80Hz)
+with medium to high number of upper harmonics (for example,
+between 40 and 50) can sometimes be perceived as pure-tones.
+This phenomenon is accentuated due to the effects of compar-
+ison on the perception. For example, when hearing something
+highly rough and afterwards hearing a slightly rough combina-
+tion, the latter can be perceived more like a pure tone. Also, it
+is worth saying that the regions described are not crisp, and the
+perception may vary from one user to another, as well as with
+the mentioned perception by comparison effect. For the experi-
+ments, g(tp j (x1), tp j (x2)) = tp j (x1)∀ p j. The threshold functions
+for the parameters were set, for all x, as in Equation 6.
+
+tp j (x) =
+
+
+in f for any freq
+in f for any numharm
+1 for any amp
+
+(6)
+
+5.2.2. Sawtooth wave additive synthesis
+As a second sound generator, a simple Additive Sawtooth
+
+Wave Synthesizer was selected. It consisted of four sawthooth
+waves with frequencies freq1, freq1 - 1, freq2, freq2 + 1 mea-
+sured in Hz, with a general normalized amplitude, amp. The
+system parameters were: freq1, freq2 and amp. The system
+output is the sum of the four frequencies times the amplitude.
+This synthesizer was also implemented in SuperCollider.
+
+Configuration for the experiments
+For the experiments, the frequencies took values in the in-
+
+terval [0Hz, 300Hz]. The sought perceptual property was de-
+fined as follows: The frequency space was divided in ranges of
+100Hz. At the first range ([0Hz, 100Hz]) freq1 was set to 50Hz.
+Then, freq2 was tweaked and all the outputs that exhibited con-
+sonance between freq1 and freq2 were selected at the discretion
+of the user. For example, frequencies 50Hz and 100Hz given
+that one is the octave of the other. For ranges [100Hz, 200Hz]
+and [200Hz, 300Hz] freq1 was set equal to 200Hz and 300Hz
+respectively, and values of freq2 were searched in the same
+way. Consonant values were freely chosen by the users. They
+were able to select, for example, only 50 and 100Hz at the
+first interval, or 50, 100 and 75Hz (the perfect fifth of 50), and
+so on. These values could be chosen guided simply by audi-
+tion or analytically by using the interface. For the experiments
+g(tp j (x1), tp j (x2)) = tp j (x1) ∀ p j and the thresholds were defined
+as in Equation 7.
+
+tp j (x) =
+
+
+10 for any freq1
+10 for any freq2
+1 for any amp
+
+(7)
+
+Remember that consonance can be defined, acoustically, con-
+sidering the coincidence of partials (Helmholtz, 1954) and the
+combined spectral distribution of the sound. There are also sub-
+jective variations dependent on the cultural context. Neverthe-
+less, in this case, each subject evaluates its own material and
+therefore only changes in perception produced by the memory
+of past events (as the ear works by comparison) influence per-
+ception.
+
+
+
+9
+
+Table 4. Example of the Strict Rules obtained during the experiments for
+the Blip generator.
+
+Category Frequency Number of
+harmonics
+
+Amplitude
+
+Rhythmic 2.3 OR 3.94 87.9 4.7
+Rough 14.8 22 OR 47,9
+
+OR 100
+0.35
+
+Pure-Tone 218.5 OR
+323.7 OR
+386.7 OR
+400
+
+0 0.12
+
+Table 5. The second row contains the mean accuracy ± standard deviation
+for the classifiers build with the data collected during the experiments us-
+ing 10 fold cross-validation. For each user, a classifier was build and tested.
+The third row shows the mean percentage of coincidence between the clas-
+sifier and the user, in the classification of new combinations of parameters
+(taken over all parameter input space).
+
+System Blip Sawtooth
+Mean accuracy ±
+Standard deviation 0.955 ±0.0008 0.930 ± 0.0024
+Coincidence user
+and classifier 93 % 88 %
+
+5.3. Results of the experiments
+Ten subjects were interviewed, and all tested both generators.
+
+The evaluation of the systems was done through the presented
+questionnaire. The results evaluating the Strict and Inference
+Rules are presented in Table 3. Table 4 presents examples of
+Strict Rules for the Blip system. And Table 5 presents the eval-
+uation of the fuzzy model. This includes the accuracy of the
+classifiers and the coincidence degree of the classes assigned to
+the new combinations by the users and the classifier.
+
+5.3.1. Evaluation of the Strict and Inference rules
+Table 3 contains the results of the questionnaire evaluating
+
+the Strict and Inference rules models, for the experiments car-
+ried out with both generators. The numbers below the five quan-
+tifiers of the Likert scale indicate the number of users who se-
+lected that option. In the case of the Inference Rules consis-
+tency (column 2, rows 8 and 9), the numbers after “Consistent”
+and “Inconsistent” express the average of the percentages cal-
+culated for the twenty produced combinations. An example of
+the Strict Rules obtained during the experiments is shown in Ta-
+ble 4. The second row shows a rule for the Rhythmic category.
+It should be read in the following way: If Frequency is 2.3 OR
+3.94 AND Number of upper harmonics is 87.9 AND Ampli-
+tude is 4.7 THEN the combination is categorized as rhythmic.
+As can be seen, the rules obtained and shown in Table 4 coin-
+cide with the ranges for the perceptual properties described in
+section 5.2.1. For example, for the output to be perceived as
+Tone the Number of upper harmonics should be low, or zero in
+this case.
+
+5.3.2. Evaluation of the fuzzy model
+The results of the experiments evaluating the fuzzy model
+
+are presented in Table 5. The second row contains the mean
+
+accuracy and standard deviation for the classifiers built for each
+data set generated by the users during the tests. The accuracy
+was calculated by using 10-fold cross-validation. The third row
+shows the mean percentage of coincidence between the cate-
+gories assigned by the user and the classifier to new unheard
+combinations. Such combinations were taken randomly from
+the whole considered parametric space.
+
+6. Discussion
+
+For the purposes of this work, we were mostly interested in
+the evaluation of the perception of the Strict Rules in terms of
+interpretability, and the ability of the Inference Rules to pro-
+duce unheard combinations consistent with the categories and
+the novelty of these combinations. The evaluation of the inter-
+face and the instructions for exploring the space (questionnaire
+1.1 and 1.2), let us know that the collected data actually has
+the desired structure. That is: a combination of parameters as-
+sociated with a particular perceptual category. If we see the
+numbers from second to fifth rows of Table 3, we can say that
+both the interface and the instructions to explore the space were
+considered appropriate for the data collection.
+
+The results evaluating the Strict Rules, sixth and seventh
+rows of Table 3, show that the structure with which the rules
+are presented, effectively allowed the user to have an image of
+the value regions (within the parameters) that “codify” for a
+certain category. In many cases, the visualization of the rules
+allowed the users to verbalize some general ideas to describe its
+own behavior.
+
+The eighth and ninth rows of Table 3, that describe the con-
+sistency of the Inference Rules, show that, in the case of the an-
+alyzed systems, it is possible to use the proposed generalization
+to extend the grouped values (sets) to regions maintaining their
+perceptual properties. In the case of the second generator, the
+consistency values are slightly lower, but the combinations are
+perceived with novelty. However, looking at the novelty evalu-
+ation of the Blip, the produced combinations exhibit moderate
+novelty. This is due in part to the homogeneity in the perception
+of this system. One way to overcome this would be to produce
+more risky combinations, for example by extending the cover
+regions by grouping adjacent intervals. However, when infor-
+mal tests were performed, it was clear that, by doing this, there
+is a higher risk of leaving the perceptual categories. So, it is
+necessary to define a criterion for when the adjacent intervals
+can be grouped together.
+
+This problem is directly related to the choice of the thresh-
+olds, that at the moment it is the user’s complete responsibility.
+During the experiments it was clear that the consistency associ-
+ated with the Inference Rules depends on the thresholds used.
+Since this determines how “separated” the numbers within the
+sets are, and therefore the “length” of the generalization in-
+terval. In the experiments the thresholds were initially set by
+heuristic considerations and then used to process all users’ data.
+Therefore, developing a way to obtain the appropriate thresh-
+olds from the data is important for the quality of the Inference
+Rules, and to free the user from the responsibility of tuning the
+thresholds. In the next section we discuss work in progress to
+automate this process.
+
+
+
+10
+
+Table 5 presents the results that compare the category as-
+signed to new combinations by the user and the Fuzzy Rules
+model (third row). It also presents the accuracy of the classi-
+fiers obtained with the standard 10-fold cross-validation (sec-
+ond row). Given that the results are similar between them, this
+allows us to have a positive evaluation of the Inference Rules
+model extended to Fuzzy Rules covering the whole space.
+
+7. Conclusions and further work
+
+In this paper, we present a methodology for modeling per-
+ceptual categories in parametric musical systems. It begins by
+grouping the variations that can occur in the value of a param-
+eter without changing the perceptual category associated with
+the system output. The result of this analysis is an interpretable
+structure (Strict Rules) that was validated through user tests.
+Based on the Strict Rules, we constructed the first generaliza-
+tion. The new model extends the coverage of each Strict Rule.
+For this, the sets of values contained in their parameters are
+extended to intervals between the minimum and maximum val-
+ues of each set. The resulting rules are called Inference Rules.
+These were validated by generating random combinations from
+the rules, which were evaluated by users as consistent or not
+with the expected perceptual category.
+
+A second generalization was then constructed, covering the
+whole space by associating a trapezoidal membership function
+with each entry of the Inference Rules. For a new entrance, the
+output of the model was calculated by using the rules in a fuzzy
+classifier. This model was validated by generating new param-
+eter combinations of the whole considered space and then, by
+comparing, for each combination, the categories assigned by
+the users and the model. In addition to this, the accuracy of the
+classifiers was calculated by using the 10-fold cross-validation
+method.
+
+The presented models allow to codify the existing relation-
+ships between the parameter values combinations of the gener-
+ative systems, and the perceptual categories assigned. However,
+the effectiveness of the model, highly depends on the selection
+of functions for calculating the thresholds. In this case, this
+responsibility lies on the user, so it is necessary to be familiar
+with the systems in order to choose the thresholds properly. Our
+current research focuses on a way to automatically find these
+functions. A possible solution would be to use the information
+given by the data for the grouping of the values. For exam-
+ple, once we have put together all the combinations that differ
+only in one parameter, and the set containing the different val-
+ues has been formed, we split the set into subsets by grouping
+the values regardless of how distant they are. This is possible as
+long as there is no value between them that shares values in the
+other parameters, but has a different perceptual category asso-
+ciated. If this is the case, we group the values in two subsets to
+the “left” and “right” of that value. By doing this, the grouped
+rules will be naturally split into subsets without containing ex-
+amples with a different label. This would eliminate the need for
+thresholds for data grouping, leaving them for more creative
+processes.
+
+Acknowledgments
+
+The kind help of Angel Faraldo and the Befaco collective for
+the realization of the tests must be acknowledged. This work
+was supported by the National Council of Science and Tech-
+nology of Mexico (CONACyT). We also thank the anonymous
+reviewers whose wise feedback has been essential for improv-
+ing the reading of this contribution.
+
+References
+
+Blip, 2016. Blip. http://doc.sccode.org/Classes/Blip.html. Ac-
+cessed: 2017-01-25.
+
+Brown, A.R., Sorensen, A., 2009. Interacting with Generative Music through
+Live Coding. Contemp. Music Rev. 28, 17–29.
+
+Castro, F., Nebot, À., Mugica, F., 2011. On the extraction of decision support
+rules from fuzzy predictive models. Appl. Soft Comput. J. 11, 3463–3475.
+
+Collins, N., 2002a. Experiments with a new customisable interactive evolution
+framework. Organised Sound 7, 267.
+
+Collins, N., 2002b. Interactive evolution of breakbeat cut sequences. Proc.
+Cybersonics .
+
+Collins, N., McLean, A., Rohrhuber, J., Ward, A., 2003. Live coding in laptop
+performance. Organised sound 8, 321.
+
+Cope, D., 2015. Algorithmic Music Composition. Springer Netherlands, Dor-
+drecht. pp. 405–416.
+
+Dahlstedt, P., 2001. Creating and Exploring Huge Parameter Spaces: Interac-
+tive Evolution as a Tool for Sound Generation., in: ICMC.
+
+Dawkins, R., 1986. The blind watchmaker: Why the evidence of evolution
+reveals a universe without design. WW Norton & Company.
+
+Dean, R.T., 2009. The Oxford Handbook of Computer Music. Oxford Hand-
+books, Oxford University Press.
+
+Goldmann, S., 2015. Presets - Digital shortcuts to sound. The Bookworm, an
+imprint of The Tapeworm.
+
+Helmholtz, H., 1954. On the sensations of tone. Dover Publications, INC., New
+York.
+
+Hunt, A., Kirk, R., 2000. Mapping strategies for musical performance. Trends
+Gestural Control Music 21, 231–258.
+
+Kuncheva, L., 2000. Fuzzy Classifier Design. Physica-Verlag Heidelberg.
+Likert, R., 1932. A technique for the measurement of attitudes.
+Magnusson, T., 2015. Herding cats: Observing live coding in the wild. Comput.
+
+Music J. 38, 8–16.
+McCartney, J., 1996. SuperCollider: a New Real Time Synthesis Language, in:
+
+Proc. Int. Comput. Music Conf.. International Computer Music Association,
+pp. 257–258.
+
+McCormack, J., Eldridge, A., Dorin, A., McIlwain, P., 2009. Generative al-
+gorithms for making music: emergence, evolution and ecosystems. Oxford
+University Press, New York. pp. 354–379.
+
+Miranda, E.R., 1995. Granular Synthesis of Sounds by Means of a Cellular
+Automaton. Leonardo 28, 297–300.
+
+Nierhaus, G., 2009. Algorithmic composition: paradigms of automated music
+generation. Springer Science & Business Media.
+
+Paz, I., 2017. Parametric perceptual exploration. https://github.com/
+ivan-paz/parametric-perceptual-exploration.
+
+Paz, I., Nebot, M., Romero, E., Mgica, F., Vellido, A., 2017. A method-
+ological approach for algorithmic composition systems’ parameter spaces
+aesthetic exploration., in: A: IEEE Congress on Evolutionary Computation.,
+pp. 1317–1323.
+
+Pearce, M., Meredith, D., Wiggins, G., 2002. Motivations and Methodologies
+for Automation of the Compositional Process. Music. Sci. 6, 119–147.
+
+Roads, C., 2001. Sound Composition with Pulsars. J. Audio Eng. Soc 49,
+134–147.
+
+Rohrhuber, J., de Campo, A., 2009. Improvising Formalisation: Conversational
+Programming and Live Coding. New Comput. Paradig. Comput. Music.
+Sampzon, Fr. Delatour .
+
+Stowell, D., Robertson, A., Bryan-Kinns, N., Plumbley, M., 2009. Evalua-
+tion of live human-computer music-making: Quantitative and qualitative
+approaches. Int. J. Hum. Comput. Stud. 67, 960–975.
+
+Wanderley, M., Orio, N., 2002. Evaluation of Input Devices for Musical Ex-
+pression: Borrowing Tools from HCI. Comput. Music J. 26, 62–76.
+
+
+
+11
+
+Wang, G., Cook, P., 2004. On-the-fly Programming: Using Code As an Expres-
+sive Musical Instrument, in: Proc. 2004 Conf. New Interfaces Music. Expr.,
+pp. 138–143.
+
+Wilson, S., Cottle, D., Collins, N., 2011. The Supercollider Book. MIT Press,
+Cambridge, MA.
+
+

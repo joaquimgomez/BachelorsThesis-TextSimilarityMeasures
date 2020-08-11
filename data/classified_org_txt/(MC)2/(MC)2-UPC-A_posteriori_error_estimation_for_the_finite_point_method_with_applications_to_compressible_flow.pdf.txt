@@ -1,0 +1,1785 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Microsoft Word - error_estimate_FPM_rev2.docx
+
+
+ 
+ 
+
+ 
+
+UPCommons 
+Portal del coneixement obert de la UPC 
+
+http://upcommons.upc.edu/e-prints 
+
+ 
+ 
+
+Aquesta és una còpia de la versió author’s final draft d'un article 
+publicat a la revista Computational mechanics. 
+
+La publicació final està disponible a Springer a través de 
+http://dx.doi.org/10.1007/s00466-017-1402-7 
+
+This is a copy of the author 's final draft version of an article 
+published in the journal Computational mechanics. 
+
+The final publication is available at Springer via 
+http://dx.doi.org/10.1007/s00466-017-1402-7 
+
+ 
+Article publicat / Published article: 
+
+ 
+Ortega, E. [et al.] (2017) A-posteriori error estimation for the finite 
+point method with applications to compressible flow. "Computational 
+mechanics ". Doi: 10.1007/s00466-017-1402-7 
+
+http://upcommonsdev.upc.edu/
+http://upcommonsdev.upc.edu/
+http://upcommons.upc.edu/e-prints
+
+
+  1/26 
+
+A-POSTERIORI ERROR ESTIMATION FOR THE FINITE POINT 
+
+METHOD WITH APPLICATIONS TO COMPRESSIBLE FLOW 
+
+Enrique Ortega1, Roberto Flores1, Eugenio Oñate1 and Sergio Idelsohn1,2  
+
+1 Centre Internacional de Mètodes Numèrics en Enginyeria (CIMNE) 
+Technical University of Catalonia (UPC) 
+08034 Barcelona, Spain 
+ 
+2 Institució Catalana de Recerca i Estudis Avançats (ICREA) 
+ 
+
+Abstract. An a-posteriori error estimate with application to inviscid compressible flow 
+
+problems is presented. The estimate is a surrogate measure of the discretization error, 
+
+obtained from an approximation to the truncation terms of the governing equations. This 
+
+approximation is calculated from the discrete nodal differential residuals using a 
+
+reconstructed solution field on a modified stencil of points. Both the error estimation 
+
+methodology and the flow solution scheme are implemented using the Finite Point Method, a 
+
+meshless technique enabling higher-order approximations and reconstruction procedures on 
+
+general unstructured discretizations. The performance of the proposed error indicator is 
+
+studied and applications to adaptive grid refinement are presented.   
+
+1 INTRODUCTION 
+
+Numerical simulation plays an increasingly important role in most fields of science and 
+
+engineering. Thus arises the need for better identification and quantification of numerical 
+
+errors, not only as a means to improve the numerical solutions (e.g. through grid adaptation) 
+
+but also to determine the accuracy and reliability of the computational code and the results. 
+
+Error analyses developed in the framework of verification and validation (V&V) are 
+
+becoming standard practices in numerical simulation, see [1-4] for an overview. 
+
+Among the different errors affecting numerical accuracy, the most relevant are discretization, 
+
+iterative convergence and round-off errors. While iterative convergence and round-off errors 
+
+can be estimated and controlled to a good extent, the discretization error, which tends to 
+
+dominate, is more difficult to evaluate. Therefore, determining the accuracy of a numerical 
+
+simulation relies mainly on the identification and quantification of discretization errors. 
+
+Numerous techniques, mostly based on a-posteriori estimators, have been developed with this 
+
+aim. The most typical approaches are briefly reviewed below to establish the theoretical 
+
+framework of the problem. 
+
+
+
+  2/26 
+
+One of the first effective techniques for error estimation in a single grid was proposed by 
+
+Zienkiewicz and Zhu (ZZ) in the context of the Finite Element Method (FEM) [5]. In this 
+
+approach a higher accuracy estimate of the solution gradients is reconstructed from the super-
+
+convergent points of the discretization (valid for smooth solution fields, with some exceptions 
+
+depending on mesh topology). This high-order estimate is compared against the “ordinary” 
+
+approximate gradients computed directly from the nodal values. The difference between the 
+
+two gradient fields is used as error estimator, converging to the true error as the grid is refined 
+
+[6]. The main advantage of the ZZ estimator is that it provides reasonable measures of local 
+
+and global errors at a low computational cost. In solid mechanics and heat transfer, this 
+
+estimator can give true stress and heat-flux errors, respectively, allowing goal-oriented error 
+
+estimation. However, a direct relation with variables or functionals of interests (e.g. lift or 
+
+drag) has not been found in flow problems. Thus, applications of the ZZ estimator in fluid 
+
+mechanics have been mostly restricted to grid adaptation. 
+
+Other popular a-posteriori error estimators, also conceived within the FEM framework, are 
+
+based on differential residuals of the discrete solution [7, 8]. Though typically these residuals 
+
+are obtained by inserting an approximate solution into a modified form of the governing 
+
+equations, tey can be also computed by using an enhanced solution field with the same set of 
+
+discrete equations. Non-zero local (and global) residual values can be related to an imbalance 
+
+in the governing equations and this, in turn, to errors in the conserved quantities affecting the 
+
+problem solution and derived output functionals (although the relationships are not 
+
+straightforward). In this sense, some applications using residual imbalances (e.g. in kinetic 
+
+energy, momentum, etc.) have proven useful in guiding automatic grid adaptation and also as 
+
+surrogate indicators for errors in derived output quantities; see for instance [9, 10] and more 
+
+recently [11], where power forms of mass and momentum residuals are used to guide mesh 
+
+adaptivity in incompressible flow problems. 
+
+An extension of residual methods which provides goal-oriented error estimates is based on the 
+
+solution of adjoint-problems [12]. Although these methods have a higher complexity and 
+
+require the solution of a dual problem, promising applications can be found in the literature, 
+
+see for example [13] and [14]. The latter work evaluates the influence of artificial dissipation 
+
+on the discretization error and the computed aerodynamic forces.  
+
+Another class of error estimation methods directly models (and solves) the generation and 
+
+transport of error by means of the so-called Discrete Error Transport equations (DET) [15-
+
+17]. These are generally obtained from the truncation terms of the governing equation, i.e. the 
+
+
+
+  3/26 
+
+difference between the original equation and its discrete counterpart. Since explicit forms of 
+
+the truncation terms are difficult to obtain in general problems, approximate expressions have 
+
+to be derived; these usually have a close connection with differential residuals [18]. The key 
+
+role played by truncation terms in DET equations makes them suitable candidates to measure 
+
+discretization errors. An application in which a normalized form of the truncation error is 
+
+adopted as an approximate solution of DET equations is given in [19]. Moreover, the 
+
+proportionality between the local truncation terms and the discretization error is demonstrated 
+
+in [20] over a considerable range of problems and simple discretization schemes. This kind of 
+
+estimators is also efficient drivimg mesh adaptation because the truncation terms account for 
+
+mesh quality and flow features contributions to the discretization error; see applications in 
+
+[18, 21-23]. Other methods closely related to truncation error and differential residuals are 
+
+those based on multi-grid operators [24, 25].  
+
+An important family of methods, commonly adopted in V&V due to their reliability, uses 
+
+extrapolation to estimate solution errors. The most popular technique is based on Richardson 
+
+extrapolation [26, 27] and requires two grids (or three if the order of accuracy of the scheme 
+
+is not known) to compute a higher-order estimate of the numerical solution which is used to 
+
+evaluate the error. This methodology, also known as h-extrapolation, has proved a reliable 
+
+error estimator for any quantity of interest (pointwise values as well as solution functionals, 
+
+see [28, 29]), and is independent of the underlying problem discretization. However, h-
+
+extrapolation has the disadvantage of requiring solutions on different grids subject to certain 
+
+conditions which are sometimes difficult to achieve (e.g. integer refinement ratios and 
+
+solutions in the asymptotic range of convergence [3, 30, 31]). Among the estimators based on 
+
+Richardson’s extrapolation it is worth mentioning Roache’s Grid Convergence Index (GCI) 
+
+[32], which provides conservative confidence intervals (uncertainty) for the extrapolated error 
+
+estimates. In addition, non-integer refinement ratios can be employed with the GCI, 
+
+simplifying the generation of the computational models.  
+
+Also based on extrapolation, there are single-grid techniques where the higher-order solution 
+
+estimates are obtained by increasing the order of accuracy of the underlying numerical 
+
+scheme (p-extrapolation). While these techniques can be implemented in a relatively simple 
+
+manner in structured grids, they cannot be easily extended to unstructured grids and general 
+
+discretization methods. Applications of p-extrapolation can be found in [33-35]. 
+
+In the context of meshless methods, the error estimation methodologies follow the general 
+
+lines mentioned above, but aim at exploiting the advantages of these methods regarding 
+
+
+
+  4/26 
+
+topological requirements and data structures. For example, meshless approaches have a 
+
+considerable potential to deal with general unstructured discretizations and high-order 
+
+approximations, simplifying the implementation of error estimation procedures. Among the 
+
+first meshless applications, error estimates based on residuals [36] and wavelets [37] can be 
+
+found. More recently, enhanced, recovered, or higher-order solution fields have been 
+
+employed to obtain error estimates and indicators [38-42]. Error functionals derived from the 
+
+construction of the approximation have also been proposed, see for instance [43-45] and [46], 
+
+where the error estimate is used as an a-priori indicator to optimize the approximation 
+
+subdomains. The applications of these methods have mostly focused on local improvement of 
+
+the solution (reducing discretization errors) through p or h-adaptation. A recent application to 
+
+goal-oriented error estimation can be found in [47]. 
+
+In this work an a-posteriori meshless estimate of the discretization error is proposed. The 
+
+estimate is based on an approximate form of the truncation terms of the governing equations 
+
+which is obtained through nodal discrete differential residuals. Following typical approaches 
+
+in residual-based error estimation, the residuals are evaluated using a reconstructed solution 
+
+field on a modified stencil of points. The proposed methodology is developed in the context 
+
+of the Finite Point Method (FPM) [48-50], but it could be also extended to conventional 
+
+mesh-based discretization techniques with minor modifications.  
+
+This article is organized as follows. The FPM discretization technique and the flow solver 
+
+used are described in Sections 2 and 3, respectively. The proposed error estimate is presented 
+
+in Section 4, together with tests showing the reliability of the procedure. Applications of the 
+
+technique to adaptive flow problems are provided in Section 5. Finally, the most relevant 
+
+conclusions of this work and future lines of research are outlined in Section 6. 
+
+2 THE FPM APPROXIMATION  
+
+This section describes the main aspects of the FPM approximation. Assume that (x) is an 
+
+unknown function defined in a domain  which is discretized by a set of n points xi. Let  be 
+
+covered by subsets of np points i (clouds of points) consisting of a point xi called star point 
+
+and a collection of surrounding points xj as shown in Figure 1. Then, an approximation of 
+
+(x) in i can be obtained by 
+
+ Tˆ( ) ( ) ( )    px x x   (1) 
+
+
+
+  5/26 
+
+where p is a vector of size m containing monomial basis functions and  is a vector of 
+
+unknown coefficients. In this work complete quadratic polynomial bases are employed (e.g. 
+
+pT(x) = [1,x,y,z,xy,xz,yz,x2,y2,z2] in 3D), where the points’ coordinates are relative to the star 
+
+point position and normalized with the cloud radius. Assuming np > m in i, the vector  is 
+
+determined by minimizing the following Weighted Least-Squares (WLSQ) functional 
+
+ 
+2 2T
+
+1 1
+
+ˆ( ) ( ) ( )
+np np
+
+i i j j j i j j j
+j j
+
+J w w
+ 
+
+             px x x   (2) 
+
+in which wi(xj) = w(||xj-xi||) is a compact support weighting function centered on the star point 
+
+of the cloud (Fixed Least-Squares (FLS)), see [51]. The minimization of Eq. (2) with respect 
+
+to  leads to the following system of equations  
+
+ A B   (3) 
+
+where A=PTW(x)P, B=PTW(x), W(x)=diag(wi(xj)) and P=[p(x1), p(x2),... p(xnp)]T. The vector 
+
+of unknown coefficients can be obtained from Eq. (3) by inverting matrix A. Hence, the 
+
+approximate value of (x) at the star point of the cloud (Eq.(1)) is 
+
+ T -1ˆ ( ) ( )i i ij ja   p A Bx x   (4) 
+
+where summation over repeated indices is assumed. Since in the FLS matrices A and B are 
+
+constant over i, the first-order derivatives of (x) at xi are given by  
+
+ 1
+ˆ ( ) ( )T ki i
+
+ij j
+k k
+
+b
+x x
+
+   
+ 
+
+p
+A B
+
+x x
+  (5) 
+
+and higher-order derivatives can be obtained by successive differentiation of the p vector (up 
+
+to the degree of the basis in use). 
+
+ 
+Figure 1. Local approximation domain in the FPM. 
+
+
+
+  6/26 
+
+It is important to note that the FPM approximation does not interpolate the nodal parameters 
+
+j. These are simply internal values used to construct ϕ , the true approximation for which 
+
+the governing equations and boundary conditions are enforced. In addition, since the FLS 
+
+procedure is discontinuous, the metric coefficients in the FPM lack symmetry properties, i.e 
+
+. As a result, collocation techniques become a natural choice to discretize the 
+
+problem equations. Further details about the FPM approximation and the global and local 
+
+domain discretization techniques employed are given in [51, 52]. 
+
+2.1 Accuracy of the FPM approximation  
+
+The characteristics of the FPM approximation depend to a large extent on the number and 
+
+distribution of points in the local clouds, the weighting function and the approximation bases 
+
+chosen; this makes it difficult to obtain theoretical accuracy estimates for general application 
+
+cases. Nevertheless, studies on simplified models help characterize the behavior of FPM 
+
+approximations. Using regular 1D point distribution and symmetric clouds without weighting, 
+
+[53] shows that quadratic approximations (as used in this work) lead to discrete derivatives 
+
+similar to those obtained with central differences, i.e. second-order space accurate. However, 
+
+in asymmetric clouds (or irregular point distributions) the accuracy tends to first-order and the 
+
+effective value attained depends considerably on the weighting function employed. If the 
+
+locality of the weighting function is increased, the approximation tends to second-order 
+
+accuracy. Comparable results are shown in [54], where theoretical estimates are obtained 
+
+using a MLS technique in multidimensional FPM approximations, and [55], which focuses on 
+
+the effects of the distribution of points. According to these results, second-order accuracy can 
+
+be considered an upper bound in quadratic FPM approximations, with the attainable value 
+
+depending on the characteristics of the specific problem being solved. Numerical 
+
+investigations confirm these results in practical application cases; see grid convergence 
+
+analyses in [56] and the examples in Section 5. 
+
+3 THE FLOW SOLVER 
+
+Problems governed by the compressible Euler equations are considered in this work. In 
+
+conservative differential form these equations can be written as 
+
+ 
+k
+
+kt x
+
+ 
+ 
+
+ 
+U F
+
+0  (6) 
+
+
+
+  7/26 
+
+where U = [,ui,et]T is the conservative variables vector and Fk = [uk,uiuk+ikp,et+ukp]T 
+
+is the advective flux vector in the kth coordinate direction. The variables ui, , p and et denote 
+
+the fluid velocity components, density, pressure and total energy, respectively; ik is the 
+
+Kronecker delta and the subscripts i,k  range from 1  to 3. The equation of state for a perfect 
+
+gas completes the system (6).  
+
+The semi-discrete equations are obtained by replacing the continuous spatial variables with 
+
+their discrete approximations (Eqs. (4) and (5)). Following [50] the equations (6) are rewritten 
+
+as 
+
+ 
+ˆd
+
+2
+dt
+
+k k ki
+ij ij i i
+
+j i
+
+b j
+
+
+      
+U
+
+F F   (7) 
+
+where  is a discrete approximation of the conservative variables at the star point xi, 
+
+ is the kth component of the convective flux vector and  are numerical fluxes at 
+
+the midpoint of the edge connecting xi to another point xj in i. This form enables easy 
+
+introduction of convective stabilization into the numerical scheme. The approximate Riemann 
+
+solver of Roe [57] is employed in this work. This leads to 
+
+    ˆ1 1 ˆ( , )2 2
+k k k k
+
+ij j i n i j j i ijn  F = F F A U U U U    (8) 
+
+where 	is a unit vector in the direction of the edge  and 	, 	  is the 
+
+positive Roe matrix in the same direction [58]. To increase the spatial accuracy of the scheme, 
+
+the variables Ui and Uj in Eq. (8) are replaced with higher-order reconstructions obtained by 
+
+slope-limited MUSCL extrapolation [49] with Van Albada limiter [59]. 
+
+A multi-stage time marching discretization scheme is used for Eq. (7). The problem solution 
+
+is advanced from a time level tn to a level tn+1 by 
+
+  ( ) ( 1) ( 1)ˆ ˆ t 1,m m mi i m i i j m s    U U RHS U  (9) 
+
+where , , m are suitable integration coefficients [60] and  is 
+
+the right-hand side of Eq. (7) with the fluxes evaluated at stage 1 . Local time stepping 
+
+and implicit residual averaging [61] are used to accelerate the convergence to the steady state. 
+
+Since  in Eq. (9) depends on the internal nodal values Uj, a non-symmetric linear 
+
+system has to be solved at the end of each time integration stage to recover Uj from the 
+
+updated approximate solution . From Eq. (4), this system is 
+
+
+
+  8/26 
+
+ ˆ 1,
+i
+
+ij j ij
+a i n
+
+ 
+  U U  (10) 
+
+and can be solved inexpensively with a small number of Gauss-Seidel iterations. 
+
+4 THE MESHLESS ERROR ESTIMATE 
+
+Among the sources of error affecting the accuracy of a numerical solution, the discretization 
+
+error plays a major role. This error, which depends on the underlying discretization and the 
+
+characteristics of the numerical scheme, is typically defined as  
+
+ eh h     (11) 
+
+where  denotes the exact solution of the continuous problem L()=0, and h the exact 
+
+solution of its discrete counterpart, Lh(h)=0, computed on a grid with characteristic size h 
+
+(iterative and round-off errors are considered to be zero). Assuming that the discrete problem 
+
+operator Lh is linear (or has a linearized form) and applying it to Eq. (11), the following 
+
+equation for the discretization error is obtained 
+
+ L (e ) L ( ) L ( ) L ( ) 0 L ( )h h h h h h h          (12) 
+
+Eq. (12) can be solved with the same approximate method used to obtain the discrete solution, 
+
+but with an extra source term responsible for the local generation and destruction of error in 
+
+the domain. The equivalence between Lh(·) (discrete differential residual) and the truncation 
+
+error (h) can be obtained from the following relation between the differential operators [18] 
+
+ L( ) L ( ) ( )h h       (13) 
+
+where (·) denotes an arbitrary problem solution. Introducing  in Eq. (13) the term L() 
+
+vanishes, and substituting the result into Eq. (12) yields 
+
+ L (e ) ( )h h h     (14) 
+
+which is the basis of methods using DET equations. As neither the truncation error nor the 
+
+exact solution are known in practice, approximations are typically used to solve Eq. (14). 
+
+With the objective to identify local discretization errors with minimum computational 
+
+overhead, a surrogate measure of eh is proposed following the results in [20]. There, using 
+
+central differences in a 1D steady diffusion problem, the authors show that eh in Eq. (14) is 
+
+proportional to the local truncation error. Hence, by equivalence between central differences 
+
+
+
+  9/26 
+
+and FPM discretizations on regular 1D clouds (see Section 2.1 and the proof in [53]), we 
+
+assume that locally eh h   and the latter is obtained by inserting  into Eq. (13). This gives 
+
+ e ( ) L ( ) R ( )h h h h          (15) 
+
+where Rh(·) is the discrete differential residual of the problem.  
+
+In the context of the compressible Euler equations, Rh(·) in Eq. (15) can be obtained from a 
+
+discrete (simplified) form of Eq. (7), with the exact solution  replaced by an accurate 
+
+estimate U*. In this way, the local surrogate error proposed is 
+
+    * *
+t
+
+i k ki
+h ij j i
+
+j
+i
+
+b j
+
+
+    
+ 
+
+*U
+e R U F U  (16) 
+
+where Fk is the k-component of the convective flux vector and bij are the metric 
+
+approximation coefficients of the cloud i. A global measure of the numerical error over the 
+
+whole domain is obtained from the local error vector (16) using the following L2-norm 
+
+  
+1/2
+
+21
+i
+
+in
+
+
+ 
+  
+ 
+e e  (17) 
+
+with n denoting the total number of points in the computational domain. 
+
+Note that the discrete residual Rh used to calculate the surrogate error (Eq. (16)) does not 
+
+include the dissipative term arising from the upwind flux discretization in Eq. (7). Numerical 
+
+tests have shown that this simplification, which reduces computational cost, has no negative 
+
+effects on the performance of the surrogate error. If the flow is smooth, the dissipation term 
+
+has no appreciable effects on the solution or indicator; in contrast, near flow discontinuities, 
+
+dropping the artificial diffusion reduces the smoothing of the solution, sometimes increasing 
+
+the sensitivity of the indicator to small flow features. In general, tests show that the 
+
+dissipation terms can safely be omitted in Eq. (16), achieving a considerable reduction in 
+
+computational cost.     
+
+4.1 Computing accurate solution estimates  
+
+The solution estimates required in Eq. (16) are calculated through a modified form of the local 
+
+FPM approximation (Eq. (4)), by using the partition of unity property and scaling by a half 
+
+the stencil of points surrounding xi (see [50]). This results in 
+
+  ˆ ˆ2i i i ij ij i
+i j
+
+a
+
+
+
+         (18) 
+
+
+
+  10/26 
+
+where ϕ	are the values of the original solution at the cloud points and ϕ  are samples of the 
+
+solution at the midpoint of the rays connecting xi with its neighbors. These values will be 
+
+obtained by higher-order reconstruction of the original solution around xi, using a stencil of 
+
+points larger than in the original solution. As will be explained below in Section 4.1.1, the 
+
+support of the enhanced solution typically includes three layers of neighbors around point xi 
+
+vs. only two for the original solution. Therefore, more accurate solution samples are expected 
+
+from the increased support. The improvement in accuracy achieved in practice will be 
+
+numerically investigated in Section 4.2. 
+
+The approach adopted to calculate the samples  is inspired on slope-limited geometric 
+
+methods [62]. These techniques reconstruct the solution between two points xi and xj by 
+
+fitting higher-order interpolators on an enlarged spatial support, and require the use of non-
+
+linear limiters to avoid spurious oscillations across discontinuities. Since this step can 
+
+contaminate the recovered solution field and generate dependence on the limiter function 
+
+chosen (see [63]), a more robust approach is proposed in the next section. 
+
+Note that ϕ∗ could also be obtained by using higher-order schemes [33-35]. Since this 
+
+approach is attractive in a meshless context, a preliminary investigation was conducted. The 
+
+results were satisfactory, but the implementation was not deemed cost-effective, and some 
+
+lack of robustness was also observed (especially in 3D problems). Nevertheless, further 
+
+investigation is required on this issue. 
+
+4.1.1 ENO piecewise polynomial reconstruction 
+
+Essential non-oscillatory schemes (ENO) [64] are a family of reconstruction methods in 
+
+which the solution interpolant is chosen between the smoothest of piecewise polynomials 
+
+computed for the same sampling location on different local supports (stencils). As the 
+
+selection procedure adopted prevents interpolation across discontinuities, limiting is no longer 
+
+necessary. ENO schemes have also interesting properties, such as conservation of the mean, 
+
+and guarantee total variations bounded by the truncation error of the reconstruction. 
+
+Improvements to the basic ENO technique have been also proposed to solve certain 
+
+deficiencies concerning the need of large stencils (difficult to obtain in unstructured 
+
+discretizations) and the lack of accuracy in smooth data reconstruction problems; see for 
+
+instance Weighted-ENO (WENO) [65] and Hermite-WENO (HWENO) [66] methods. 
+
+In this work a standard ENO technique is employed to compute the ϕ  samples required in 
+
+Eq. (18). Thus, the enhanced solution field is reconstructed in the interval Ii = [xi-1/2,xi+1/2] (in 
+
+
+
+  11/26 
+
+the direction of the edge ) by one of the following central, left or right-biased 
+
+quadratic interpolation polynomials [67] 
+
+ 
+
+ 
+
+ 
+
+1 1
+1 1/2
+
+1
+1 1/2
+
+ˆ( ) 1
+24 2
+
+ˆ( )
+24 2
+
+ˆ( ) 1
+24 2
+
+i i
+i i i
+
+i i
+i i i
+
+i i
+i i i
+
+D D
+p x x d x
+
+D D
+p x x d x
+
+D D
+p x x d x
+
+ 
+ 
+
+
+ 
+
+          
+         
+          
+
+ (19) 
+
+where ϕ  is the original discrete solution at xi, 1/2 1
+ˆ ˆ
+
+i i id     and 1/ 2 1/ 2i i iD d d    are the 
+
+first and second differences respectively; 1/ 2 1/ 2( ) / 2i i id d d    and 0 ' 1x   is a non-
+
+dimensional length parameter along lij. In order to evaluate first and second differences, the 
+
+discrete solution at fictitious sampling points xj+1, xi-1 and xi-2 in the direction of the edge is 
+
+required (see Figure 2). These values are obtained by means of the following central and 2nd-
+
+order backward finite difference approximations 
+
+ 
+
+1
+
+1
+
+2 1
+
+ˆ ˆ ˆ2
+
+ˆ ˆ ˆ2
+
+ˆ ˆ ˆ ˆ4 3 2
+
+i j ij i
+
+j i ij j
+
+i i i ij i
+
+
+
+
+
+ 
+
+     
+
+     
+
+       
+
+l
+
+l
+
+l
+
+
+
+
+
+
+
+ (20) 
+
+where the solution gradients are computed from the original FPM solution using Eq. (5). 
+
+ 
+
+Figure 2. Stencil of points employed for cubic ENO reconstruction around xi in the direction of lij. 
+
+The interpolation polynomial reconstructing the enhanced solution field between xi-1/2 and 
+
+xi+1/2 is chosen following standard ENO practice 
+
+
+
+  12/26 
+
+ 
+
+1/2 1/2
+
+1 1
+
+1 1
+
+( ) ( )
+
+( ) ( )
+
+i i
+
+i i i i
+
+i i i i
+
+d d
+
+D D p x p x
+
+D D p x p x
+
+ 
+
+ 
+
+ 
+
+
+
+ 
+
+ 
+
+if  then
+
+if   then else 
+
+else
+
+if then else
+
+endif
+
+ (21) 
+
+and the midpoint samples required in Eq. (18) are obtained from  
+
+  1 2ij kp x    (22) 
+
+where k can take the values 1,  or 1 depending on the polynomial chosen in (21). 
+
+Note that Eqs. (19) allow a continuous reconstruction of the unknown function in the interval 
+
+[xi-1/2,xi+1/2] and this fact enables the use of a different cloud scaling in Eq. (18). The 
+
+numerical tests performed showed little influence of the position of the sampling point on the 
+
+accuracy of ϕ∗. 
+
+4.2 Numerical tests 
+
+The accuracy and convergence of the improved solution estimate (Eq. (18)) is investigated by 
+
+evaluating the effectivity index in several test cases. This parameter is defined as [68] 
+
+ e
+e
+
+   (23) 
+
+where ̅ ϕ∗ ϕ  is the error norm of the original FPM approximation (Eq. (4)) referenced 
+
+to the improved estimate and ϕ ϕ  is the exact error norm. As mentioned in Section 
+
+2.1, the convergence characteristics of the FPM can depend (particularly in 3D problems) on 
+
+the geometry of the clouds and the weighting functions employed. Hence, in the examples 
+
+presented these effects are minimized using similar settings of the FPM approximation, 
+
+regular point discretizations and a uniform scaling between the models. 
+
+The first example involves the approximation of a smooth Gaussian function defined in a one-
+
+dimensional domain [0,1]  
+
+ 
+2 2( ) 2( ) x b cf x ae   (24) 
+
+where a=4/ , b=0.5, c2=2 and =0.005. To study the convergence of the effectivity index, 
+
+the coarser grid used has uniform point distribution with spacing h=0.125, and finer 
+
+discretizations are generated by halving h. The errors in Eq. (23) are computed in L2-norm 
+
+and a complete quadratic polynomial basis is used in clouds with np=5. Both the standard 
+
+FPM approximation and the higher-accuracy approximation are displayed in Figure 3, along 
+
+
+
+  13/26 
+
+with the evolution of the effectivity index. The plots show that a noticeably improved 
+
+approximation is obtained with Eq. (18). Convergence to the exact solution is also 
+
+demonstrated by the evolution of the effectivity index. 
+
+ 
+Figure 3. Approximation of a smooth Gaussian function in a one-dimensional domain. 
+
+A similar setup is employed in the second example, but this time a sign discontinuity is 
+
+introduced in the Gaussian test function. The results show improved approximation for the 
+
+higher-accuracy estimate (Figure 4), but no asymptotic convergence of the effectivity index. 
+
+This happens because the approximation near the discontinuity reverts to O(h), thus 
+
+hampering the convergence of the global error estimate. 
+
+The next two examples investigate the performance of the estimate (18) in 3D problems. The 
+
+following test function is adopted in a cubic analysis domain [0,1]3  
+
+      ( , , ) 64 1 1 1f x y z x x y y z z     (25) 
+
+The initial discretization consists of an unstructured distribution of 1527 points (h0.1) and 
+
+successive refined discretizations are obtained by halving the point spacing. Complete 
+
+quadratic polynomial bases in clouds with np=30 are employed. As observed in Figure 5, 
+
+convergence of the improved estimate is also achieved in this example.  
+
+
+
+  14/26 
+
+ 
+Figure 4. Approximation of a one-dimensional Gaussian function with a sign discontinuity. 
+
+ 
+
+Figure 5. Behavior of the approximation error for a smooth three-dimensional function. 
+
+Finally, mirroring the 1D examples, a sign discontinuity at x=0.5 is introduced in the test 
+
+function. The results in Figure 6 show a satisfactory accuracy of the solution estimate but, like 
+
+the one-dimensional case (Figure 4), the discontinuity affects both the global approximation 
+
+error and its convergence rate. Overall, the behavior observed in the tests indicates the ability 
+
+of the proposed methodology to obtain an improved estimate of the exact solution, as required 
+
+to compute the surrogate local error (16). 
+
+
+
+  15/26 
+
+ 
+
+Figure 6. Behavior of the approximation error for a three-dimensional function with a sign discontinuity. 
+
+5 APPLICATIONS TO ADAPTIVE COMPRESSIBLE FLOW PROBLEMS 
+
+The proposed error estimate is now applied to compressible inviscid flow problems. Its 
+
+performance and suitability to guide grid adaptation procedures is investigated in comparison 
+
+with reference error estimates and typical feature-based flow sensors.  
+
+5.1 NACA 0012 airfoil 
+
+This example involves the 2D flow around a NACA 0012 airfoil. Four discretizations with 
+
+characteristic point spacings h1<h2<h3<h4 are generated from a coarse model (h4) by scaling 
+
+the grid sizes uniformly. This way, discretizations ranging from 2487 to 5836 nodes are 
+
+obtained with an average refinement ratio r = hk+1/hk  (nk+1/nk)-1/2 = 1.15. The simulation 
+
+conditions involve different freestream Mach numbers and angles of attack, namely: M=0.3 at 
+
+=1.25º and 4º and M=0.8 at =0º, 1.25º and 4º. The boundary conditions applied are 
+
+freestream Riemann conditions on the outer domain boundary and slip conditions on the 
+
+airfoil surface. The numerical solutions use third-order MUSCL extrapolation with Van 
+
+Albada limiter and a 4-stage time marching scheme. The FPM discretization uses a complete 
+
+quadratic approximation basis in clouds with 15-21 points.   
+
+For each test case, the observed order of accuracy of the scheme is computed by Richardson’s 
+
+extrapolation using the three finest discretizations. The values obtained range between 1.54 
+
+and 1.87, with mean p=1.74. This averaged convergence rate is assumed to be representative 
+
+of the true discretization error of the problem. As shown in Figure 7, the convergence rates of 
+
+the density (e1), momentum (e2,3) and energy (e4) components of the surrogate error 
+
+estimate (16) are close to the prediction of Richardson’s method. This shows a satisfactory 
+
+relationship between the proposed indicator and the problem discretization error.   
+
+
+
+  16/26 
+
+ 
+
+Figure 7. Convergence of the components of the global truncation error-based estimate (density (e1), momentum 
+(e2,3) and energy (e4)) computed for the NACA 0012 airfoil problem.  
+
+Regarding the iterative convergence of Eq. (17), the test cases analyzed showed that the 
+
+truncation error-based global estimate converges after a short initial transitory, and faster than 
+
+the flow field (results are not reported here). This fact, suggesting that the contribution of the 
+
+underlying discretization (resolution and quality) to the truncation error prevails over the 
+
+contribution of the flow solution itself, could be advantageous. This happens because 
+
+surrogate error measures based on the approximate solution can be obtained early in the 
+
+iterative process, even before full solution convergence is achieved. However, a reduced 
+
+sensitivity of the estimate to the solution features may cause a lack of correlation with errors 
+
+in variables of practical interest. Pros and cons should be carefully analyzed. 
+
+The suitability of the local error estimate (16) to drive grid adaptation is studied next by 
+
+comparison with a typical feature-based sensor relying on the solution curvature 
+
+  
+1
+
+nein
+
+i ij j i i
+j
+
+r j
+
+
+       l    (26) 
+
+The target variable chosen is the fluid density and the adaptive strategy follows the guidelines 
+
+of [69]. Hence, a nodal refinement indicator is first calculated at each point with 
+
+ 
+1
+
+1 1
+log
+
+np
+
+i j
+ji
+
+r
+r np
+
+
+
+
+ 
+  
+
+ 
+  (27) 
+
+where np is the number of points in the cloud of xi and rj depends on the sensor chosen. It is 
+
+calculated with Eq. (26) for feature-based detection, or it corresponds to the density 
+
+component of vector (16) at xj when the surrogate error is used. Once the refinement indicator 
+
+
+
+  17/26 
+
+is calculated, its mean m and standard deviation s are used to determine clouds which 
+
+require refinement or coarsening. The star point xi is tagged for refinement when 
+
+m N si ref      and, conversely, the point xi is marked for removal if m N si rem     . 
+
+Thus, local spikes of the error are put back in line with the mean across the domain, which is 
+
+dominated by smooth flow regions. The thresholds used here are Nref = 1 and Nrem = 0. These 
+
+values have proved satisfactory for a wide range of inviscid compressible flow problems. 
+
+The test case involves an inviscid flow with M=0.8 and =1.25º. The initial discretization 
+
+consists of an unstructured distribution of 2674 points and four refinement levels are 
+
+performed. The first one is triggered after achieving solution convergence on the initial coarse 
+
+grid and additional refinement passes are performed subsequently, ensuring the convergence 
+
+of the intermediate solutions. A close-up of the initial and final adapted discretizations is 
+
+shown in Figure 8. The finest discretization for the truncation error-driven procedure has 6165 
+
+points, versus 7105 for the feature-based indicator. The truncation error-based indicator not 
+
+only concentrates new points around sharper solution features but also near the airfoil surface 
+
+and the wake; two zones mostly ignored by the curvature-based detector. 
+
+ 
+Figure 8. Initial coarse (left) and final adapted discretizations (right): curvature-based adaptivity (top) and 
+truncation error-based adaptivity (bottom). NACA 0012 airfoil, M=0.8 and =1.25º. 
+
+Figure 9 shows the convergence with grid refinement of the aerodynamic normal force error 
+
+(CNh) and the global estimate (17). The force error is computed relative to a grid-converged 
+
+result (CNf) obtained on a very fine uniform discretization (n=15021). The results show that a 
+
+lower error in the aerodynamic force is obtained with the truncation error-based indicator 
+
+
+
+  18/26 
+
+(Figure 9 left), although the convergence rates observed for both methods are quite similar. 
+
+Regarding the global error estimate (Figure 9 right), its magnitude decreases with the grid size 
+
+at a rate close to the order of accuracy of the scheme, but the convergence slows down 
+
+slightly after the second refinement stage. This effect is more notorious when the curvature-
+
+based indicator is used (probably due to a more localized refinement). 
+
+ 
+Figure 9. Behavior of the normal force error (left) and the numerical error estimate (right) with the grid 
+refinement (norm(||e||) is the norm of the global error vector (17)). NACA 0012 airfoil, M=0.8 and =1.25º. 
+
+The pressure distributions calculated for the initial and final adapted discretizations are 
+
+compared in Figure 10. The truncation error-driven adaptivity resolves the upper shock better 
+
+than the feature-based procedure (possibly due to a higher and more uniform density of points 
+
+added near the airfoil) but the shock on the lower side of the airfoil is not well resolved. As 
+
+mentioned before, this could reflect a reduced sensitivity of the proposed indicator to the flow 
+
+features (particularly weaker ones). At the leading and trailing edges both indicators achieve 
+
+similar results, comparable to the reference solution (15021 points). 
+
+ 
+Figure 10. Comparison of the pressure distributions obtained from the adapted flow solutions and the fine 
+reference discretization. NACA 0012 airfoil, M=0.8 and =1.25º. 
+
+
+
+  19/26 
+
+5.2 NACA wing-body configuration 
+
+The proposed error estimate is applied below to the transonic flow over a NACA wing-body 
+
+configuration [70] (Figure 11) and the results are compared with Richardson’s extrapolation. 
+
+To this effect, four model discretizations with point spacings h1<h2<h3<h4 are generated from 
+
+a coarse model (h4) by scaling the grid sizes in a uniform manner. The discretizations range 
+
+from 427000 to 2860318 nodes with 83162 to 694482 boundary triangles respectively. The 
+
+averaged refinement ratio is r = hk+1/hk = (Nk+1/Nk)-1/3 = 1.235. Figure 12 shows a close view 
+
+of the surface discretization near the wing tip. 
+
+ 
+
+Figure 11. Analysis test model NACA RM L51F07. 
+
+The flight conditions chosen are M=0.9 with angles of attack =1 and 4º. The boundary 
+
+conditions are flow symmetry on a plane along the fuselage centerline, freestream Riemann 
+
+conditions on the outer boundary and slip conditions on the body surface. The solution 
+
+scheme is similar to that used in the previous test cases. The FPM approximation uses a 
+
+complete quadratic basis on clouds with 30-50 points. As mentioned, Richardson’s 
+
+extrapolation is used to obtain the higher-order estimates of the aerodynamic forces used to 
+
+calculate the solution error. The observed order of accuracy of the scheme is p=1.69 for =1º 
+
+and p=1.41 for =4º.    
+
+ 
+
+Figure 12. View of the boundary discretization near the wing tip for grids 1-4. 
+
+The convergence of the global error estimate (17) is examined in Figure 13 for the different 
+
+components of the truncation error. The convergence rates obtained are close to that predicted 
+
+by Richardson’s extrapolation. Similar to the 2D case, an early iterative convergence of the 
+
+proposed error estimate was also observed in this case (results are not reported here). 
+
+
+
+  20/26 
+
+The error estimate (16) is used next to drive h-adaptation and the results are compared with 
+
+those from the conventional feature-based indicator (26). The freestream Mach number is 
+
+M=0.9 and the body angle of attack is =4º. The initial domain discretization consists of an 
+
+unstructured distribution of 606756 points and 174812 boundary triangles. Four refinement 
+
+levels are performed during the adaptive simulation and the settings of the adaptive procedure 
+
+are similar to those used in the previous example. 
+
+ 
+
+Figure 13. Convergence of the truncation-error based estimate for the NACA wing-body test case (density (e1), 
+momentum (e2,3,4) and energy (e5)). 
+
+The level of refinement achieved with both error indicators is very similar. The truncation 
+
+error-driven procedure attains 1001624 points and 198822 boundary triangles, while 1041624 
+
+points and 205320 triangles are obtained with the curvature-based indicator. The evolution of 
+
+normal force error (computed with respect to the extrapolated value CNe) and the global error 
+
+estimate (17) during the adaptive computation is shown in Figure 14. Like the previous test 
+
+case, the truncation error-based indicator leads to a lower error. The convergence rates and the 
+
+reduction of the surrogate error estimate (17) achieved are quite similar for both indicators.  
+
+Pressure distributions along two wing spanwise stations are shown in Figure 15 together with 
+
+experimental and reference results from the finest grid model. Both error indicators lead to 
+
+similar results around the main flow features. Figure 16 shows the adapted discretizations. As 
+
+observed in the previous test case, feature-based adaptivity appears more effective around 
+
+weaker flow discontinuities (e.g the shock on the fuselage) but truncation error adaptivity 
+
+refines in areas where the flow field is smoother (trailing edge and wing tip), probably 
+
+contributing to the more effective reduction of the force errors shown in Figure 14.  
+
+ 
+
+
+
+  21/26 
+
+ 
+Figure 14. Behavior of the normal force error (left) and the numerical error estimate (right) with the grid 
+refinement. (norm(||e||) denotes the norm of the global error vector (17)). NACA wing-body, M=0.9 and =4º. 
+
+ 
+Figure 15. Comparison of pressure distributions obtained with the final adapted flow solutions and the finest 
+reference discretization. NACA wing-body, M=0.9 and =4º. 
+
+ 
+Figure 16. Final adapted boundary discretizations obtained with the truncation error-based indicator (left) and the 
+curvature-based indicator (right). NACA wing-body, M=0.9 and =4º. 
+
+6 CONCLUSIONS 
+
+An a-posteriori error estimate based on an approximate form of the truncation error terms has 
+
+been presented in this work. The methodology is implemented in the framework of the 
+
+
+
+  22/26 
+
+meshless Finite Point Method, although the formulation could be easily extended to other 
+
+conventional discretization techniques with minor modifications. The proposed error estimate 
+
+is a surrogate measure of the discretization error obtained from an approximation to the 
+
+truncation terms of the governing equations. This approximation is calculated from the 
+
+discrete nodal differential residuals using a reconstructed solution field on a modified stencil 
+
+of points. To this end, a standard ENO technique is used. It is important to note that the 
+
+proposed error estimate is designed to be calculated with very low overheads using data 
+
+structures and information generally available in CFD codes. 
+
+The applications of the truncation error-based estimator in this work focus on identification of 
+
+local and global errors in compressible flow problems. Regarding the global behavior of the 
+
+indicator, its relation with the problem discretization error was first analyzed using reference 
+
+values obtained by Richardson’s extrapolation. In all the test cases studied the proposed 
+
+estimate correlates well with the discretization error, with convergence rates close to the 
+
+observed order of accuracy of the scheme. The relatively fast convergence of the estimate is 
+
+also worth mentioning, as it delivers fast surrogate error measures without complete flow field 
+
+convergence. As far as the local behavior of the truncation error-based estimate is concerned, 
+
+its suitability to guide adaptive procedures has also been examined. Compared with a typical 
+
+curvature-based indicator, the results show that truncation error-driven adaptivity reduces the 
+
+problem discretization error more effectively. This was reflected both in lower aerodynamic 
+
+force error and the evolution of the surrogate numerical error estimate. Moreover, the adapted 
+
+point distributions seem more uniform when using the truncation error-based indicator, 
+
+although a small loss of sensitivity to weaker flow features can be observed. Overall, the 
+
+performance of the proposed local error indicator was considered satisfactory.  
+
+Future research is planned on the ability of truncation error-based estimates to provide error 
+
+bounds for variables of engineering interest in practical applications. In this respect, methods 
+
+based on numerical imbalance arguments suggest interesting alternatives, e.g. [9, 11]. 
+
+ACKNOWLEDGMENTS 
+
+Part of this work was developed within the ALEF (Aerodynamic Loads Estimation at 
+
+Extremes of the Flight Envelope) project under the European Commission’s 7th Framework 
+
+Programme (contract number ACP7-GA-2009-211785). The authors gratefully acknowledge 
+
+the support provided. 
+
+REFERENCES 
+
+
+
+  23/26 
+
+1. Roache, P.J., Quantification of uncertainty in computational fluid dynamics. Annual 
+Review of Fluid Mechanics, 1997. 29: p. 123-160. 
+
+2. Oberkampf, W.L. and T.G. Trucano, Verification and validation in computational 
+fluid dynamics. Progress in Aerospace Sciences, 2002. 38: p. 209-272. 
+
+3. Roy, C.J., Review of code and solution verification procedures for computational 
+simulation. Journal of Computational Physics, 2005. 205: p. 131-156. 
+
+4. Thacker, B.H., et al., Concepts of model verification and validation. Los Alamos 
+National Laboratory, LA-14167-MS 2004. 
+
+5. Zienkiewicz, O.C. and J.Z. Zhu, A simple error estimator and adaptive procedure for 
+practical engineering analysis. International Journal for Numerical Methods in 
+Engineering, 1987. 24: p. 337-357. 
+
+6. Zienkiewicz, O.C. and J.Z. Zhu, The superconvergent patch recovery (SPR) and a-
+posteriori error estimates. Part 2: Error estimates and adaptivity. International 
+Journal for Numerical Methods in Engineering, 1992. 33: p. 1365-1382. 
+
+7. Babuska, I. and A. Miller, Post-processing approach in the finite element method. 
+Part 3: a-posteriori error estimates and adaptive mesh selection. International Journal 
+for Numerical Methods in Engineering, 1984. 20(12): p. 2311-2324. 
+
+8. Oden, J.T., W. Wu, and M. Ainsworth, An a-posteriori error estimate for finite 
+element approximations of the Navier-Stokes equations. Computational Methods in 
+Applied Mechanics and Engineering, 1993. 111: p. 185-202. 
+
+9. Chang, S. and D.C. Haworth, Adaptive grid refinement using cell-level and global 
+imbalances. International Journal for Numerical Methods in Fluids, 1997. 24: p. 375-
+392. 
+
+10. Oden, J.T. and S. Prudhomme, New approaches to error estimation and adaptivity for 
+the Stokes and Oseen equations. International Journal for Numerical Methods in 
+Fluids, 1999. 31: p. 3-15. 
+
+11. Oñate, E., et al., Error estimation and mesh adaptivity in incompressible viscous flows 
+using a residual power approach. Computer Methods in Applied Mechanics and 
+Engineering, 2006. 195: p. 339-362. 
+
+12. Venditti, D.A. and D.L. Darmofal, Adjoint error estimation and grid adaptation for 
+functional outputs: application to quasi-one dimensional flow. Journal of 
+Computational Physics, 2000. 164: p. 204-227. 
+
+13. Fidkowski, K.J. and D.L. Darmofal, Review of output-based error estimation and 
+mesh adaptation in computational fluid dynamics. AIAA Journal, 2011. 49(4): p. 673-
+694. 
+
+14. Dwight, R.P., Heuristic a-posteriori estimation of error due to dissipation in finite 
+volume schemes with application to mesh adaptation. Journal of Computational 
+Physics, 2008. 227(5): p. 2845-2863. 
+
+15. Zhang, X.D., J.Y. Trépanier, and R. Camarero, A posteriori error estimation for finite-
+volume solutions of hyperbolic conservation laws. Computational Methods in Applied 
+Mechanics and Engineering, 2000. 185: p. 1-19. 
+
+16. Hay, A. and M. Visonneau, Error estimation using the error transport equation for 
+finite-volume methods and arbitrary meshes. International Journal of Computational 
+Fluid Dynamics, 2006. 20(7): p. 463-479. 
+
+17. Shih, T. and Y. Qin, A-posteriori method for estimating and correcting grid-induced 
+errors in CFD solutions. Part 1: Theory and method. AIAA Paper 2007-100, 2007. 
+
+18. Roy, C.J., Strategies for driving mesh adaption in CFD. AIAA Paper 2009-1302, 
+2009. 
+
+
+
+  24/26 
+
+19. Muzaferija, S. and D. Gosman, Finite-Volume CFD procedure and adaptive error 
+control strategy for grids of arbitrary topology. Journal of Computational Physics, 
+1996. 138: p. 766-787. 
+
+20. Blottner, F.G. and A.R. Lopez, Determination of solution accuracy of numerical 
+schemes as part of code and calculation verification. SANDIA report SAND98-2222, 
+1998. 
+
+21. Berger, M.J. and A. Jameson, Automatic adaptive grid refinement for the Euler 
+equations. Retrieved from http://hdl.handle.net/2060/19840009909, 1985. 
+
+22. Baker, T.J., Mesh adaptation strategies for problems in fluid dynamics. Finite 
+Elements in Analysis and Design, 1997. 25: p. 243-273. 
+
+23. Aftosmis, M.J. and M. Berger, Multilevel error estimation and adaptive h-refinement 
+for cartesian meshes with embedded boundaries. AIAA Paper 2002-0863, 2002. 
+
+24. Fulton, S.R., On the accuracy of multigrid truncation error estimates. Electronic 
+Transactions on Numerical Analysis, 2003. 15: p. 29-37. 
+
+25. Gao, H. and Z.J. Wang, A residual-based procedure for hp-adaptation on 2D hybrid 
+meshes. AIAA Paper 2011-492, 2011. 
+
+26. Richardson, L.F., The approximate arithmetical solution by finite differences of 
+physical problems involving differential equations, with an application to the stresses 
+in a masonry dam. Philosophical Transactions of the Royal Society of London. Series 
+A 210 1910. (459-470): p. 307–357. 
+
+27. Richardson, L.F. and J.A. Gaunt, The deferred approach to the limit. Philosophical 
+Transactions of the Royal Society of London, Series A 226, 1927. 636-646: p. 299–
+349. 
+
+28. Cadafalch, J., et al., Verification of finite volume computations on steady-state fluid 
+flow and heat transfer. Journal of Fluids Engineering, 2002. 24(11-21). 
+
+29. Roy, C.J. and F.G. Blottner, Methodology for turbulence model validation: 
+application to hypersonic flows. Journal of Spacecraft Rockets, 2003. 40(3): p. 313-
+325. 
+
+30. Roy, C.J., Grid convergence error analysis for mixed-order numerical schemes. 
+AIAA Journal, 2003. 41: p. 595-604. 
+
+31. Salas, M.D., Some observations on grid convergence. Computers and Fluids, 2006. 
+35(688-692). 
+
+32. Roache, P.J., Perspective: a method for uniform reporting of grid refinement studies. 
+Journal of Fluids Engineering, 1994. 116: p. 405-413. 
+
+33. Barth, T.J., A 3D upwind euler solver for unstructured meshes. AiAA Paper 1991-
+1548, 1991. 
+
+34. Zhang, Z. and A. Naga, A new finite element gradient recovery method: 
+superconvergence property. SIAM Journal of Scientific Computing, 2005. 26(4): p. 
+1192-1213  
+
+35. Cueto-Felgueroso, L., et al., Finite volume solvers and moving least-squares 
+approximations for the compressible Navier-Stokes equations on unstructured grids. 
+Computer Methods in Applied Mechanics and Engineering, 2007. 196(45-48): p. 
+4712-4736. 
+
+36. Duarte, C.A. and J.T. Oden, An h-p adaptive method using clouds. Computer Methods 
+in Applied Mechanics and Engineering, 1996. 139: p. 237-262. 
+
+37. Liu, W.K., et al., Multiresolution reproducing kernel particle method for 
+computational fluid dynamics. International Journal for Numerical Methods in Fluids 
+1997. 24(12): p. 1391-1415. 
+
+
+
+  25/26 
+
+38. Gavete, L., J.L. Cuesta, and A. Ruiz, A numerical comparison of two different 
+approximations of the error in a meshless method. European Journal of Mechanics & 
+Solids, 2002. 21: p. 1037-1054. 
+
+39. Lee, C.K. and C.E. Zhou, On error estimation and adaptive refinement for element 
+free Galerking method. Part I: stress recovery and a posteriori error estimation. 
+Computer and Structures, 2004. 82: p. 413-428. 
+
+40. Rabczuk, T. and T. Belytschko, Adaptivity for structured meshfree particle methods in 
+2D and 3D. International Journal for Numerical Methods in Engineering, 2005. 63: p. 
+1559-1582. 
+
+41. Li, Q. and K.-M. Lee, An adaptive meshless method for magnetic field computation. 
+IEEE Transactions on Magnetics, 2006. 42(8): p. 1996-2003. 
+
+42. Angulo, A., L. Pérez Pozo, and F. Perazzo, A posteriori error estimator and an 
+adaptive technique in meshless finite point method. Engineering Analysis with 
+Boundary Elements, 2009. 33(11): p. 1322-1338. 
+
+43. You, Y., J.S. Chen, and H. Lu, Filters, reproducing kernel, and adaptive meshfree 
+method. Computational Mechanics, 2003. 31(3-4): p. 316-326. 
+
+44. Perazzo, F., R. Löhner, and L. Perez-Pozo, Adaptive methodology for meshless finite 
+point method. Advances in Engineering Software, 2007. 39: p. 156-166. 
+
+45. Afshar, M.H. and M. Lashckarbolok, Collocated discrete least-squares (CDLS) 
+meshless method: Error estimate and adaptive refinement. International Journal for 
+Numerical Methods in Fluids, 2008. 56: p. 1909-1928. 
+
+46. Boroomand, B., M. Najjar, and E. Oñate, The generalized finite point method. 
+Computational Mechanics, 2009. 44(2): p. 173-190. 
+
+47. Rüter, M. and J.S. Chen. A multi-space error estimation approach for meshfree 
+methods. in Conference Applications of Mathematics 2015. 2015. Prague. 
+
+48. Oñate, E., et al., A stabilized Finite Point Method for analysis of fluid mechanics 
+problems. Computer Methods in Applied Mechanics and Engineering, 1996. 139: p. 
+315-346. 
+
+49. Löhner, R., et al., A Finite Point Method for compressible flow. International Journal 
+for Numerical Methods in Engineering, 2002. 53: p. 1765-1779. 
+
+50. Ortega, E., E. Oñate, and S. Idelsohn, A finite point method for adaptive three-
+dimensional compressible flow calculations. International Journal for Numerical 
+Methods in Fluids, 2009. 60: p. 937-971. 
+
+51. Ortega, E., E. Oñate, and S. Idelsohn, An improved finite point method for three-
+dimensional potential flows. Computational Mechanics, 2007. 40: p. 949-963. 
+
+52. Ortega, E., et al., Comparative accuracy and performance assessment of the finite 
+point method in compressible flow problems. Computer and Fluids, 2014. 59: p. 53-
+65. 
+
+53. Fischer, T., A contribution to adaptive numerical solution of compressible flow 
+problems. 1996, Universitat Politècnica de Catalunya. 
+
+54. Chen, R. and Y. Chen, Error estimates for the finite point method. Applied Numerical 
+Mathematics, 2008. 58(6): p. 884-898. 
+
+55. Katz, A., Meshless methods for computational fluid dynamics. 2009, Standford 
+University. 
+
+56. Ortega E., O.E., Idelsohn S., Flores R.,, Comparative accuracy and performance 
+assessment of the Finite Point Method in compressible flow problems. Computer and 
+Fluids, 2014. 89: p. 53-65. 
+
+57. Roe, P.L., Approximate Riemann solvers, parameter vectors and difference schemes. 
+Journal of Computational Physics, 1981. 43: p. 357-372. 
+
+
+
+  26/26 
+
+58. Turkel, E., Improving the accuracy of central difference schemes. ICASE Report 88-
+53, 1988. 
+
+59. Van Albada, G.D., B. Van Leer, and W.W.J. Roberts, A comparative study of 
+computational methods in cosmic gas dynamics. Astronomy and Astrophysics, 1982. 
+108: p. 76-84. 
+
+60. Jameson, A., Artificial diffusion, upwind biasing, limiters and their effect on accuracy 
+and multigrid convergence in transonic and hypersonic flows. AIAA-93-3359, 1993. 
+
+61. Jameson, A. and T.J. Baker, Improvements to the aircraft Euler method. AIAA Paper 
+87-0452, 1987. 
+
+62. Van Leer, B., Towards the ultimate conservative difference scheme. V, A second order 
+sequel to Godunov’s method. Journal of Computational Physics, 1979. 32: p. 101-136. 
+
+63. Berger, M. and M.J. Aftosmis, Analysis of slope limiters on irregular grids. AIAA 
+Paper 2005-0490, 2005. 
+
+64. Harten, A., et al., Uniformly high-order accurate essential non-oscillatory schemes III. 
+Journal of Computational Physics, 1987. 71: p. 231-303. 
+
+65. Liu, X., S. Osher, and T.F. Chen, Weighted essential non-oscillatory schemes. Journal 
+of Computational Physics, 1994. 115: p. 200-212. 
+
+66. Qiu, J. and C. Shu, Hermite WENO schemes and their application as limiters for the 
+Runge-Kutta discontinuous Galerking method: one dimensional case. Journal of 
+Computational Physics, 2003. 193: p. 115-135. 
+
+67. Serna, S. and A. Marquina, Power ENO methods: a fifth-order accurate Weighted 
+Power ENO method. Journal of Computational Physics, 2004. 194: p. 632-658. 
+
+68. Zienkiewicz, O.C. and R.L. Taylor, The finite element method, Volume 1. 2000: 
+Butterworth-Heinemann. 
+
+69. Ortega E., et al., A meshless finite point method for three-dimensional analysis of 
+compressible flow problems involving moving boundaries and adaptivity. International 
+Journal for Numerical Methods in Fluids, 2013. 73(4): p. 323-343. 
+
+70. Loving, D. and B. Estabrooks, Transonic-wing investigation in the Langley 8-foot 
+high-speed tunnel at high subsonic Mach numbers and at a Mach number of 1.2. 
+Analysis of pressure distribution of wing-fuselage configuration having a wing of 45º 
+sweepback, aspect ratio 4, taper ratio 0.6, and NACA 65A006 airfoil section. National 
+Advisory Committee for Aeronautics. Research Memorandum NACA RM L51F07, 
+1951. 
+
+  
+
+
+	caratula CM1.pdf
+	UPCommons
+	Portal del coneixement obert de la UPC
+	http://upcommons.upc.edu/e-prints
+	Aquesta és una còpia de la versió author’s final draft d'un article publicat a la revista Computational mechanics.
+	La publicació final està disponible a Springer a través de http://dx.doi.org/10.1007/s00466-017-1402-7
+	This is a copy of the author 's final draft version of an article published in the journal Computational mechanics.
+	The final publication is available at Springer via http://dx.doi.org/10.1007/s00466-017-1402-7
+	Article publicat / Published article:
+
+
