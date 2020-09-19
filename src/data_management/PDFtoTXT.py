@@ -5,9 +5,11 @@ from os.path import isfile, join
 
 def PDFtoTXT(path):
 	rawFile = tike_parser.from_file(path)
-	output = rawFile['content']
-	#output = output.replace('\n', '')
+	output = str(rawFile['content'])
+
 	#output = output.encode('utf-8', errors='ignore')
+
+	#output = output.replace('\n', '')
 
 	return output
 
@@ -21,14 +23,14 @@ def main(org, dest):
 	numFiles = 0
 	for (folderName, path) in folders:
 		print("Converting files from folder " + folderName + ".")
-		mkdir(dest + folderName + "/")
+		mkdir(dest + "/" + folderName + "/")
 
-		files = [(file, join(path, file)) for file in listdir(path) if isfile(join(path, file)) and not file.startswith('.')]
+		files = [(file, join(path, file)) for file in listdir(path) if  not file.startswith('.')] # isfile(join(path, file)) and
 
 		for (file, filePath) in files:
 			txtFile = PDFtoTXT(filePath)
 
-			with open(dest + folderName + "/" + file + ".txt", 'w') as newTXTFile:
+			with open(dest + "/" + folderName + "/" + file + ".txt", 'w') as newTXTFile:
 				newTXTFile.write(str(txtFile))
 
 			numFiles = numFiles + 1
