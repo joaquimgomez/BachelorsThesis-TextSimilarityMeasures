@@ -2,8 +2,14 @@ import argparse
 import nltk.data
 import string
 import pandas as pd
+import re
 from os import listdir, mkdir
 from os.path import isfile, join
+
+from gensim.parsing.porter import PorterStemmer
+from gensim.parsing.preprocessing import remove_stopwords
+
+
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import SnowballStemmer
@@ -13,41 +19,40 @@ def saveFiles(documents, dest):
 
 	for doc in documents:
 		with open(dest + str(doc) + '.txt', 'w') as f:
-			for sentence in documents[doc]:
-				f.write(sentence + '\n')
+			f.write(documents[doc])
+			#for sentence in documents[doc]:
+			#	f.write(sentence + '\n')
 
 def documentPreprocessing(document):
 	# Filter for non-printable characters
 	filter_printable = lambda x: x in string.printable
 
-	for i in range(0, len(document)):
-		# Tokenization per words
-		words = word_tokenize(document[i])
+	# Stemmer
+	porter = PorterStemmer()
 
-		# Lowercasing
-		words = [word.lower() for word in words]
+	#for i in range(0, len(document)):
+	doc = document
 
-		# Stopwords removal
-		stopWords = set(stopwords.words('english'))
-		filteredSentence = [word for word in words if not word in stopWords]
+	# Lowercasing
+	doc = doc.lower()
 
-		# Erase non-printable characters
-		filteredSentence = [''.join(list(filter(filter_printable, word))) for word in filteredSentence]
+	# Remove emails and web addresses
+	doc = re.sub(r'\S*@\S*\s?', '', doc, flags = re.MULTILINE)
+	doc = re.sub(r'http\S+', '', doc, flags = re.MULTILINE)
 
-		# Stemming
-		stemmer = SnowballStemmer("english")
-		stemmedSentence = [stemmer.stem(word) for word in filteredSentence]
+	# Erase non-printable characters
+	doc = ''.join(filter(filter_printable, doc))
 
-		# Reverse tokenization per words
-		resultSentence = ' '.join(stemmedSentence)
+	# Remove Stopwords (using gensim stopwords set)
+	doc = remove_stopwords(doc)
 
-		# Save sentence
-		document[i] = resultSentence
+	# Stemming
+	doc = porter.stem_sentence(doc)
 
-	return document
+	return doc
 
 def obtainFileContents(index):
-	tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+	#tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
 
 	documents = {}
 
@@ -58,7 +63,7 @@ def obtainFileContents(index):
 		f = open(row['file_path'])
 		fContent = f.read()
 
-		documents[row['id']] = tokenizer.tokenize(fContent)
+		documents[row['id']] = fContent #tokenizer.tokenize(fContent)
 
 		f.close()
 
