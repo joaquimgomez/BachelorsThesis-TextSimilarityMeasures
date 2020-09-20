@@ -4,10 +4,11 @@ from os import listdir, mkdir
 from os.path import isfile, join, exists
 from itertools import permutations
 from numpy.random import uniform
+from nltk.tokenize import sent_tokenize
 
-MIN_NUM_SENTENCES_TO_PASS = 1
-MAX_NUM_SENTENCES_TO_PASS = 40
-INCREMENT = 5
+MIN_NUM_SENTENCES_TO_PASS = 10
+MAX_NUM_SENTENCES_TO_PASS = 100
+INCREMENT = 10
 
 def passSentences(fromDocument, toDocument, num):
 	res = toDocument.copy()
@@ -20,37 +21,35 @@ def passSentences(fromDocument, toDocument, num):
 
 	return res
 
-def constructDataset(documents):
-	dataset = {}
-
+def constructAndSaveDataset(documents, dest):
 	keys = documents.keys()
 	perms = list(permutations(keys, 2))
 
 	print("A dataset with " + str(len(perms)) + " permutations will be generated.")
 
-	currentId = 1
-	for (fromDocument, toDocument) in perms:
-		print("Generating documents with sentences from " + str(fromDocument) + " to " + str(toDocument) + ".")
-
-		for i in range(MIN_NUM_SENTENCES_TO_PASS, MAX_NUM_SENTENCES_TO_PASS, INCREMENT):
-			dataset[(currentId, fromDocument, toDocument, i)] = passSentences(documents[fromDocument], documents[toDocument], i)
-			currentId = currentId + 1
-
-	return dataset
-
-def saveDataset(dataset, dest):
-	datasetIndex = pd.DataFrame(columns=['id', 'from', 'to', 'number_of_passed_sentences'])
-
 	mkdir(dest)
 
-	for (id, fromDocument, toDocument, num) in dataset.keys():
-		print("Saving file " + str(id) + "_" + str(fromDocument) + "_" + str(toDocument) + "_" + str(num) + ".txt")
+	datasetIndex = pd.DataFrame(columns=['id', 'from', 'to', 'number_of_passed_sentences'])
 
-		datasetIndex = datasetIndex.append({'id': id, 'from': fromDocument, 'to': toDocument, 'number_of_passed_sentences': num}, ignore_index=True)
+	currentId = 1
+	for (fromDocument, toDocument) in perms:
+		print("\n\nGenerating documents with sentences from " + str(fromDocument) + " to " + str(toDocument) + ".")
 
-		with open(dest + str(id) + "_" + str(fromDocument) + "_" + str(toDocument) + "_" + str(num) + ".txt", 'w') as f:
-			for sentence in dataset[(id, fromDocument, toDocument, num)]:
-				f.write(sentence + '\n')
+		for i in range(MIN_NUM_SENTENCES_TO_PASS, MAX_NUM_SENTENCES_TO_PASS, INCREMENT):
+			newDoc = passSentences(documents[fromDocument], documents[toDocument], i)
+
+			# Save document
+			print("Saving file " + str(currentId) + "_" + str(fromDocument) + "_" + str(toDocument) + "_" + str(i) + ".txt")
+
+			datasetIndex = datasetIndex.append({'id': currentId, 'from': fromDocument, 'to': toDocument, 'number_of_passed_sentences': i}, ignore_index=True)
+
+			with open(dest + str(currentId) + "_" + str(fromDocument) + "_" + str(toDocument) + "_" + str(i) + ".txt", 'w') as f:
+				for sentence in newDoc:
+					f.write(sentence + '\n')
+
+			print("Document" + str(currentId) + "saved.")
+
+			currentId = currentId + 1
 
 	return datasetIndex
 
@@ -61,12 +60,10 @@ def obtainFileContents(files):
 	for (file, path) in files:
 		print("Obtaining content from file " + file + ".")
 
-		f = open(path)
-		fLines = f.readlines()
-
-		documents[file[:-4]] = fLines
-
-		f.close()
+		with open(path) as f:
+			doc = f.read()
+			sentences = sent_tokenize(doc)
+			documents[file[:-4]] = sentences
 
 	return documents
 
@@ -77,25 +74,20 @@ def main(org, dest):
 	# Obtain content of preprocessed files
 	documents = obtainFileContents(files)
 
-	# Constructing dataset
-	print("Constructing dataset:")
-	dataset = constructDataset(documents)
-
-	print("Dataset with " + str(len(dataset.keys())) + " documents constructed.")
-	print("\n\n")
-
 	# Create meta folder
 	if not exists('./meta/'):
 		mkdir('./meta/')
 
-	# Generate index of dataset and save dataset
-	print("Generating dataset and savind index of dataset:")
-	indexDataset = saveDataset(dataset, dest)
+	# Construct and save dataset
+	print("Generating and saving dataset (with its index):")
+
+	indexDataset = constructAndSaveDataset(documents, dest)
 	indexDataset.to_csv('./meta/dataset_index.csv', index=False)
 
-	print("Dataset saved.")
+	print("Dataset generated and saved.")
 	print("Index generated and saved.")
 	print("\n\n")
+
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description = "Creates the dataset from files in the input directory.")
