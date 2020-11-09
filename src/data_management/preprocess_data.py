@@ -5,14 +5,9 @@ import pandas as pd
 import re
 from os import listdir, mkdir
 from os.path import isfile, join
-
 from gensim.parsing.porter import PorterStemmer
 from gensim.parsing.preprocessing import remove_stopwords
 
-
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-from nltk.stem import SnowballStemmer
 
 def saveFiles(documents, dest):
 	mkdir(dest)
@@ -83,7 +78,9 @@ def generateIndex(folders):
 		files = [(file, join(path, file)) for file in listdir(path) if isfile(join(path, file)) and not file.startswith('.')]
 
 		for (file, filePath) in files:
-			index = index.append({'id': currentId, 'category': folderName, 'file_name': file, 'file_path': filePath}, ignore_index=True)
+			group = file.split("-")[0]
+
+			index = index.append({'id': str(currentId) + "-" + group, 'category': folderName, 'file_name': file, 'file_path': filePath}, ignore_index=True)
 
 			currentId = currentId + 1
 

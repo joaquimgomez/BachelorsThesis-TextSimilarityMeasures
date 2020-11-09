@@ -7,7 +7,7 @@ from numpy.random import uniform
 from nltk.tokenize import sent_tokenize
 
 MIN_NUM_SENTENCES_TO_PASS = 0
-MAX_NUM_SENTENCES_TO_PASS = 210
+MAX_NUM_SENTENCES_TO_PASS = 110
 INCREMENT = 10
 
 def passSentences(fromDocument, toDocument, num):
@@ -35,8 +35,9 @@ def constructAndSaveDataset(documents, dest):
 	for (fromDocument, toDocument) in perms:
 		print("\n\nGenerating documents with sentences from " + str(fromDocument) + " to " + str(toDocument) + ".")
 
+		pastDocument = documents[toDocument]
 		for i in range(MIN_NUM_SENTENCES_TO_PASS, MAX_NUM_SENTENCES_TO_PASS, INCREMENT):
-			newDoc = passSentences(documents[fromDocument], documents[toDocument], i)
+			newDoc = passSentences(documents[fromDocument], pastDocument, INCREMENT)
 
 			# Save document
 			print("Saving file " + str(currentId) + "_" + str(fromDocument) + "_" + str(toDocument) + "_" + str(i) + ".txt")
@@ -47,13 +48,15 @@ def constructAndSaveDataset(documents, dest):
 				for sentence in newDoc:
 					f.write(sentence + '\n')
 
+			pastDocument = newDoc
+
 			print("Document" + str(currentId) + "saved.")
 
 			currentId = currentId + 1
 
 	return datasetIndex
 
-def obtainFileContents(files, pair):
+def obtainFileContents(files, pair, numFile):
 	documents = {}
 
 	print("Obtaining content from preprocessed files.")
@@ -68,17 +71,26 @@ def obtainFileContents(files, pair):
 				sentences = sent_tokenize(doc)
 				documents[file[:-4]] = sentences
 		elif group == pair[0] or group == pair[1]:
-			print("Obtaining content from file " + file + ".")
+			if numFile[0] == "NONE":
+				print("Obtaining content from file " + file + ".")
 
-			with open(path) as f:
-				doc = f.read()
-				sentences = sent_tokenize(doc)
-				documents[file[:-4]] = sentences
+				with open(path) as f:
+					doc = f.read()
+					sentences = sent_tokenize(doc)
+					documents[file[:-4]] = sentences
+			else:
+				num = file.split("-")[0]
+				if num == numFile[0] or num == numFile[1]:
+					print("Obtaining content from file " + file + ".")
 
+					with open(path) as f:
+						doc = f.read()
+						sentences = sent_tokenize(doc)
+						documents[file[:-4]] = sentences
 
 	return documents
 
-def main(org, dest, pair):
+def main(org, dest, pair, numFile):
 	# Load paths of preprocessed files
 	files = [(file, join(org, file)) for file in listdir(org) if isfile(join(org, file)) and not file.startswith('.')]
 
@@ -90,8 +102,16 @@ def main(org, dest, pair):
 		aux = pair.split("-")
 		p = (aux[0], aux[1])
 
+	n = ()
+	if str(pair) == "NONE":
+		p = ("NONE", "NONE")
+	else:
+		aux = numFile.split("-")
+		n = (aux[0], aux[1])
+		print(n)
+
 	# Obtain content of preprocessed files
-	documents = obtainFileContents(files, p)
+	documents = obtainFileContents(files, p, n)
 
 	# Create meta folder
 	if not exists('./meta/'):
@@ -119,6 +139,9 @@ if __name__ == "__main__":
 	parser.add_argument("--pair", "-p",
 						help = "Pair of research groups. Format: ORG-DEST",
 						default = "NONE")
+	parser.add_argument("--num", "-n",
+						help = "Pair of paper (number). Format: ORG-DEST",
+						default = "NONE")
 
 	args = parser.parse_args()
-	main(args.origen, args.destination, args.pair)
+	main(args.origen, args.destination, args.pair, args.num)

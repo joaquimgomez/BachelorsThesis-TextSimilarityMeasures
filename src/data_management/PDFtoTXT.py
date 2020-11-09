@@ -1,13 +1,20 @@
 import argparse
+from tika import initVM
 from tika import parser as tike_parser
 from os import listdir, mkdir
 from os.path import isfile, join
+
+initVM()
 
 def PDFtoTXT(path):
 	rawFile = tike_parser.from_file(path)
 	output = str(rawFile['content'])
 
-	#output = output.encode('utf-8', errors='ignore')
+	output = output.encode('utf-8', errors='ignore')
+
+	output = output.replace(b'\xc2\xa0', b' ')
+
+	output = output.decode("utf-8")
 
 	#output = output.replace('\n', '')
 
