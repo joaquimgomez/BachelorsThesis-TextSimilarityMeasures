@@ -26,7 +26,7 @@ def cs(model, experimentsClass, resultsPath, orgExp, docsExp):
     plt.xlabel('# sentences passed')
     plt.ylabel('distance')
     plt.plot(list(range(0, 110, 10)), results)
-    plt.savefig(resultsPath + '/' + model + '_exp1_smallText_SoftCosine.png')
+    plt.savefig(resultsPath + '/' + model + '_exp1_smallText_Cosine.png')
     plt.close()
 
     print("Results SCS:")
@@ -90,7 +90,7 @@ def wmd(model, experimentsClass, resultsPath, orgExp, docsExp):
     for e in results:
         print(e)
 
-    print("Times WMD :")
+    print("Times WMD:")
     for e in times:
         print(e)
     print("Mean execution time: " + str(mean(times)))
@@ -114,15 +114,42 @@ def rwmd(model, experimentsClass, resultsPath, orgExp, docsExp):
     plt.savefig(resultsPath + '/' + model + '_exp1_smallText_RelaxedWordMovers.png')
     plt.close()
 
-    print("Results WMD:")
+    print("Results RWMD:")
     for e in results:
         print(e)
 
-    print("Times WMD :")
+    print("Times RWMD:")
     for e in times:
         print(e)
     print("Mean execution time: " + str(mean(times)))
     print("Standar deviation execution time: " + str(stdev(times)))
+
+    print("---------------------------")
+
+def nrc(model, experimentsClass, resultsPath, orgExp, docsExp):
+    results = []
+    times = []
+
+    for doc in docsExp:
+        start_time = time.time()
+        results.append(experimentsClass.distance(orgExp, doc))
+        times.append(time.time() - start_time)
+
+    plt.xlabel('# sentences passed')
+    plt.ylabel('distance')
+    plt.plot(list(range(0, 110, 10)), results)
+    plt.savefig(resultsPath + '/' + model + '_exp1_smallText.png')
+    plt.close()
+
+    print("Results NRC:")
+    for e in results:
+        print(e)
+
+    print("Times NRC:")
+    for e in times:
+        print(e)
+    print("Mean execution time: " + str(mean(times)))
+    print("Stdev execution time: " + str(stdev(times)))
 
     print("---------------------------")
 
@@ -220,5 +247,10 @@ if __name__ == "__main__":
 
             cs(model, experimentsClass, resultsPath, orgExp, docsExp)
 
+            experimentsClass.closeTFSession()
+
         elif model == "NRC":
-            pass
+            print("Experimenting with NRC.")
+            experimentsClass = sim.NRCSimilarity(modelPath)
+
+            nrc(model, experimentsClass, resultsPath, orgExp, docsExp)
