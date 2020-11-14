@@ -1,0 +1,1080 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Object-Space Ambient Occlusion for Molecular Dynamics
+Sebastian Grottel∗
+Visualization Research
+
+Center, University of
+Stuttgart, Germany
+
+Michael Krone†
+Visualization Research
+
+Center, University of
+Stuttgart, Germany
+
+Katrin Scharnowski‡
+Visualization Research
+
+Center, University of
+Stuttgart, Germany
+
+Thomas Ertl§
+Visualization Research
+
+Center, University of
+Stuttgart, Germany
+
+Figure 1: Molecular dynamics simulation of 2 million molecules forming a liquid layer of argon in vacuum, which gets ripped apart by its vapor
+pressure. The time steps shown are 5, 15, and 30 (from left to right). The lower row shows naı̈ve ray casting of spheres for the individual
+molecules. The upper row shows the same rendering enhanced with our object-space ambient occlusion. Especially the break-up of the
+structure in time steps 5 and 15 is clearly visible.
+
+ABSTRACT
+
+In many different application fields particle-based simulation, like
+molecular dynamics, are used to study material properties and be-
+havior. Nowadays, simulation data sets consist of millions of par-
+ticles and thousands of time steps challenging interactive visual-
+ization. Direct glyph-based representations of the particle data are
+important for the visual analysis process and these rendering meth-
+ods can be optimized to be able to work sufficiently fast with huge
+data sets. However, the perception of the implicit spatial structures
+formed by such data is often hindered by aliasing and visual clut-
+ter. Especially the depth of these structures can be grasped better if
+visual cues are applied, even in interactive representations.
+
+We hence present a method to apply object-space ambient oc-
+clusion, based on local neighborhood information, to large time-
+dependent particle-based data sets without the need for any pre-
+computations. Based on density information collected in real-time,
+glyph-based representations of the data sets can be visually en-
+hanced without significant impact on the rendering performance
+allowing to visualize multi-million particle data sets interactively
+on commodity workstations.
+
+Index Terms: I.3.3 [Computer Graphics]: Picture/Image
+Generation—Display Algorithms; I.3.7 [Computer Graphics]:
+Three-Dimensional Graphics and Realism—Color, shading, shad-
+owing, and texture; I.3.7 [Computer Graphics]: Three-Dimensional
+Graphics and Realism—Raytracing
+
+∗e-mail: grottel@vis.uni-stuttgart.de
+†e-mail: krone@vis.uni-stuttgart.de
+‡e-mail: scharnkn@studi.informatik.uni-stuttgart.de
+§e-mail: ertl@vis.uni-stuttgart.de
+
+1 INTRODUCTION
+Particle-based simulations, e. g. using methods like molecular dy-
+namics, are a powerful tool to model and analyze physical, biologi-
+cal or chemical experiments on different scales, ranging from atoms
+over molecules and proteins up to macroscopic particles like crys-
+tallites or grains. Due to the increased availability of processing
+power and advanced algorithms the data set sizes increase in their
+spatial and temporal extents. These aspects pose a significant chal-
+lenge for an interactive visualization. While the increased extents
+in time, i. e. longer simulation runs, mainly exacerbate the issues
+of data storage and data streaming transfer, the increased spatial
+extents, i. e. the increased number of particles, not only demand
+highly optimized rendering methods but also aggravate perception
+issues, as usually the depth complexity also increases, thereby hin-
+dering the perception of larger spatial structures formed (see lower
+row in Fig. 1).
+
+However, such structures usually are important for the analysis
+process. Thus, whenever possible, these structures should be auto-
+matically detected and presented in a more continuous way. Often
+this is impossible, because there is no fully automated or robust
+working extraction of these features, or the features themselves are
+not even known yet. In any case, direct visualization of the parti-
+cle data is required as reference and ground truth, since only this
+method guarantees the depiction the original data.
+
+Particle data sets are usually represented by glyphs—e. g.
+spheres—shaded with a local lighting model. Unlit points or splats
+would conceal the three dimensional structure of the data. Spher-
+ical glyphs show the particle positions, a significant radius and a
+further attribute, like particle type or temperature, mapped to color.
+Many different methods have been developed for efficiently ren-
+dering such glyphs. GPU-based ray casting has proven to reach
+high performance and high visual quality. This method also of-
+fers good options to integrate further optimizations, like increasing
+performance through data culling or enhancing the perception by
+employing visual cues.
+
+
+
+We employ object space ambient occlusion, as introduced by
+Zhukov et al. [27], as visual cue to ray casting of molecular dynamic
+data sets. Ambient occlusion is based on local geometry proper-
+ties of the scene, which are the features we want to emphasize.
+While ambient occlusion approximations in image space are widely
+used in computer graphics, they are prone to create imperfect or
+even incorrect shadowing effects, since only the visible parts of the
+scene are taken into account. Contrary, object-space ambient occlu-
+sion requires expensive calculations from the local scene geometry,
+usually performed as pre-processing before rendering. This, how-
+ever, is not an option when working with large time-dependent data
+or, even worse, when working with in-situ real-time visualization.
+Therefore, we present a novel method of calculating approximate
+ambient occlusion factors for dynamic multi-million particle-based
+data sets from molecular dynamics simulations in real-time. Our al-
+gorithm is designed to be as simple as possible, but at the same time
+effective. It is based on a coarse resolution density volume repre-
+sentation of the whole data set, does not require any pre-processing
+of the data, and achieves both high image quality and high perfor-
+mance on standard desktop computers.
+
+2 RELATED WORK
+
+Visualizing molecular dynamics data is usually done by glyphs rep-
+resenting the individual particles. Some application fields have de-
+veloped abstract, continuous representations of the data. Two ex-
+amples are the secondary structure representation of proteins in the
+context of bio-chemistry and the visualization of crystal defects in
+crystalline materials [25]. Such extractions, however, cannot be
+automatically generalized for the common case, and are thus not
+in the focus of this paper. For direct particle-based visualization
+of molecular dynamic data sets, there is a wide range of avail-
+able tools, which all use one of the three following approaches:
+geometry-based, texture-based, or ray-casting-based. Geometry-
+based approaches, i. e. constructing triangle meshes from the par-
+ticles’ representation (usually spheres), do not scale beyond a few
+thousand particles, for obvious reasons. Contrary, texture-based ap-
+proaches utilize point-sprites to efficiently cope with large data sets.
+Bajaj et al. [1] presented a solution with depth-corrected textured
+billboards, but due to the intrinsic resolution limitations of texture-
+based methods, they suffer from visual artifacts. To overcome this
+issues, Gumhold [9] presented fragment-based ray casting of ellip-
+soids and other glyphs based on quadric surface descriptions, e. g.
+spheres or cylinders, entirely evaluated at image-space resolution
+on the GPU. Grottel et al. [7] presented an optimized, similar ap-
+proach, introducing a two-stage culling which allows for interactive
+visualization of data sets with tens of millions of molecules on stan-
+dard desktop computers. They also applied an image-space normal
+vector estimation to reduce aliasing from ray casting small spheres,
+and enhances the surface perception of the data set. However, this
+approach does not emphasize depth structure in general.
+
+In fact, all three approaches are prone to artifacts like visual clut-
+ter and aliasing if the data set sizes get too large and the particle-to-
+pixel ratio drops. Especially, the perception of the depth of struc-
+tures formed by the particles suffers. This is usually countered by
+applying visual cues, which can roughly be categorized in depth-
+based cues and lighting-based cues. Depth-based cues hint explic-
+itly on abrupt changes of the depth, i. e. distance to the camera.
+The most basic approach in this direction is fogging, which sim-
+ply blends the color of a pixel to a specified fog color based on the
+depth value. It is easy to implement due to the simple evaluation
+and even built-in in graphics APIs. However, since this is a global
+image-space approach, even particles not occluded might get hard
+to perceive if their distance to the camera is too large.
+
+Lighting-based cues enhance the usually simple shading of the
+particles to improve the spatial perception of the data. This is often
+performed by methods which are also used to increase realism in
+
+Figure 2: A maltoporin protein (PDB-ID: 1AF6, 10 000 atoms); Left:
+our object space ambient occlusion method; Right: depth darken-
+ing [16]; Depth darkening emphasizes the three channels but is not
+able to extract the more shallow structures on top of the protein, un-
+like our technique.
+
+computer graphics. The most prominent example might be shad-
+ows, which add realism by visually connecting objects with their
+surroundings. Implementing shadows for particle-based data sets is
+challenging, because of the nature of the data, as the large number
+of small particles makes it impracticable to use explicit geometric
+shadow data, and there are no obvious large continuous structures
+which could be used to cast approximate shadows. The discrete
+resolution of shadow maps often impairs the aliasing issue of the
+particle data. But even if these problems are correctly addressed an
+issue similar to the one mentioned above for fogging remains: par-
+ticles not occluded by others might be less perceivable due to the
+application of the visual cue itself; in this case due to their position
+in the shadow of other structures.
+
+To remedy this issue, visual cues based on locally defined fea-
+tures of the three dimensional structure of the data can be used,
+like ambient occlusion. This method was first described by Zhukov
+et al. [27]. They modeled the ambient lighting term in local lighting
+equations as radiating, non-absorbing and completely transparent
+gas equally distributed throughout the whole scene. This ambient
+lighting value is evaluated from the amount of this gas surround-
+ing scene surfaces, which again depends on the distances of neigh-
+boring scene objects, figuratively speaking, how much potentially
+incoming light is blocked by surrounding geometry. Recently, Lin-
+demann and Ropinsky [15] found that ambient occlusion helps un-
+derstanding the shape and depth of data sets. Although their study
+was based on volume rendering, we believe their findings are appli-
+cable to particle visualization as well.
+
+Techniques that evaluate these ambient occlusion factors from
+scene information in object space are thus called object-space am-
+bient occlusion. One such technique which allows fast rendering
+was presented by Pharr [20]. His method relies on pre-computation
+of the occlusion factors, which makes it unfeasible for large, dy-
+namic data sets. The same is true for the method originally devel-
+oped by Sattler et al. [21] and later used by Tarini et al. [26] in their
+molecular visualization program QuteMol. However, this method
+samples a set of directions for each vertex in the scene to deter-
+mine the occlusion. Since it scales linearly with the number of
+vertices [21], it is not feasible be for large, dynamic data sets. Bun-
+nell [3] presented an object-space ambient occlusion method for
+dynamic data without pre-computation, which was later refined by
+Hoberock and Jia [11]. Proxy elements (discs), which are used for
+shadow approximation, are placed for each polygon. A hierarchi-
+cal clustering of adjacent elements for distant objects is applied to
+improve the performance. As this method is based on polygonal ob-
+jects it is unsuitable for our case. The same applies for the work of
+Papaioannou [19] which—like our method—uses volumes to store
+the occlusion information. Ambient occlusion volumes by McGuire
+[17] are similar to classical shadow volumes [4]. The technique
+
+
+
+computes an ambient occlusion volume for each polygon, utilizing
+a geometry shader. Regarding these polygon-based methods, one
+could argue that it would be sufficient to choose a minimal tessella-
+tion for the spheres and use this for the ambient occlusion computa-
+tion. However, to reasonably model a sphere at least an octahedron
+is needed, resulting in eight triangles per sphere. For a data set of
+2 million spheres (Fig. 1), this would result in an overall number of
+16 million triangles. None of the aforementioned techniques is able
+to handle this amount of data interactively.
+
+Object-space ambient occlusion can also be applied to volume
+rendering. For example, a recently published work by Hernell
+et al. [10] presented a fast ambient occlusion technique for direct
+volume rendering, which is optimized using a multi-resolution data
+representation. The occlusion factors are determined per voxel for
+a certain radius using ray marching in all directions, not only into
+the visible hemisphere. As this method is specialized for volume
+rendering it cannot be applied to the problem at hand.
+
+There are several approaches to create an effect similar to am-
+bient occlusion which are purely fragment based, which are col-
+lected under the term screen-space ambient occlusion. Their com-
+putation times only depend on the resolution of the image, mak-
+ing these techniques feasible for complex scenes. The most simple
+method is the so-called depth darkening by Luft et al. [16], which
+essentially implements depth-dependent halos by blurring the depth
+buffer. While it can be computed quite fast, the achieved effect re-
+sembles actual ambient occlusion only vaguely. Figure 2 shows
+a comparison between our method and depth darkening. Mittring
+presented a more refined screen-space ambient occlusion variant,
+which was integrated in the game Crysis by Crytek [18]. A re-
+fined approach based on Mittring’s method was later described by
+Kajalin [13]. In this method the amount of solid geometry in the
+surrounding area of the point of interest is estimated by randomly
+sampling the vicinity of the point in object-space. Subsequently the
+samples are projected back into image-space and their depth-value
+is compared to the depth value of the current fragment stored in the
+z-buffer to decide whether or not the sample is located inside solid
+geometry. The inside-outside ratio of the samples can then be used
+as an approximation for the amount of occluding geometry. The
+downside of this technique, and of most image-space approaches,
+is that only visible geometry is used for the occlusion computation,
+thereby creating potentially false shadows for overlapping objects
+which are far apart: Consider the case of a very small object which
+is near to the viewer partially blocks a large object which is farther
+away. However, since image-space based ambient occlusion creates
+a reasonable effect with low computational effort, it has evolved
+into the de-facto-standard for approximated global illumination in
+real-time applications (e.g. computer games). A comparison with
+Kajalin’s method [13] can be found in section 6.
+
+Fox and Compton developed ambient occlusion crease shad-
+ing [5], which enhances the boundaries of displaced objects, not
+unlike depth darkening, but also takes the normal vectors into con-
+sideration, like Mittrings technique. Shanmugam and Arikan [22]
+presented an approach combining near-field occlusion and effects
+of distant occluders. The main contribution of their work is the
+introduction of occluder geometry (spheres) which approximates
+distant geometry. While their approach creates acceptable image
+quality, it is unfeasible for the large, dynamic particle data sets in
+our case, since the occluder geometry cannot be pre-computed (as
+for partially rigid 3D models) but has to be recomputed every frame.
+Shopf et al. [23] propose a method which uses deferred shading and
+computes the occlusion for all objects in screen space during a sec-
+ond render pass. In this additional render pass, polygonal proxy
+objects are used as occluding geometry. They show an example
+scene with 5000 spheres which are approximated as cubes, result-
+ing in 60 000 triangles. Again, the high polygon count inhibits the
+usage of this method for large data sets. Bavoil and Sainz presented
+
+Figure 3: Zoomed in view into a small test data set. Left: the naı̈ve
+rendering. Since the spheres are overlapping in this test data set the
+depth structure is not visible. Especially for the marked sphere it is
+not obvious how much this sphere intersects with the row of three
+spheres in front. Middle: the ambient occlusion factors based on
+the neighborhood. Right: the final image using Phong shading and
+ambient occlusion. The position of the marked sphere is now clearly
+behind all other spheres.
+
+their image-space horizon-based ambient occlusion [2], which is
+included as demo in the NVIDIA DirectX SDK 10. The method
+samples the depth buffer randomly around each fragment to com-
+pute the ambient occlusion value based on horizon angles. Image
+quality and speed are depending highly on the number of samples
+and the maximum sampling distance. For lower numbers of sam-
+ples, visible aliasing occurs which can be only partially remedied by
+blurring, whereas high numbers of samples impede fast rendering.
+Object-space ambient occlusion results in superior image quality
+in terms of reliability and provides the best cues about the spatial
+structure of the data.
+
+3 ALGORITHM OVERVIEW
+The principle idea of ambient occlusion is to calculate a factor Ap
+for ambient light of each (visible) point p in the scene, which ap-
+proximates the light distribution of a global illumination model.
+More precisely, the ambient occlusion factors simulate the lack of
+incident secondary light rays reaching point p [27], because these
+directions are blocked by nearby scene elements. The ambient oc-
+clusion factor Ap at point p is basically given by the distances of
+the occluding geometry in the visible hemisphere hS2, while the
+distances are upper bound to only take a local neighborhood into
+account. These factors are then multiplied with the results of a lo-
+cal lighting calculation to create the final image (see Fig. 3).
+
+Ap =
+∫∫
+
+x∈hS2
+ρ(L(p,x))cosα dx (1)
+
+Equation 1 is a simplified form of the original equation from
+Zhukov et al. [27] to calculate the ambient occlusion factor. Ap
+results from the integral over the visible hemisphere hS2 over the
+blocked incoming light energy ρ(L) based on the distance to the
+nearest obstacle L(p,x) in direction x. α is the angle between x and
+the surface normal np at p and thus cosα = np · x is a basic form
+factor for incoming light. For mesh based geometry, p̄ is selected
+to represent a patch and the resulting Ap is interpolated between
+patches to get a continuous result:
+
+Ap = ∑
+p̄i∈Pp
+
+ω(p, p̄i)Ap̄i (2)
+
+where Pp are the patches in proximity of p and ω(p, p̄i) is the in-
+terpolation weight factor for the value of patch p̄i when evaluated
+at position p. ω(p, p̄i) basically denotes any interpolation, e. g. bi-
+linear factors or barycentric coordinates.
+
+This approach is not directly applicable to particle data sets for
+two reasons: First, the definition of the patches p̄i is not simple,
+
+
+
+since a single particle is depicted as sphere and would thus require
+multiple differently oriented patches. Second, the integration over
+the hemisphere hS2 is usually done in a discretized fashion, e. g. by
+rendering into frame buffer objects. The pure number of required
+evaluations would hinder interactive rendering, and, even worse,
+the discrete resolution would have to be very high to capture the
+intrinsic high frequency of large particle data sets.
+
+Equation 2 is only applicable because Ap is a continuous func-
+tion over p. This is intuitively clear, since the integral over the
+hemisphere in equation 1 basically represents the local neighbor-
+hood of p which changes only very little for near p. In other words,
+Ap does not contain high frequencies, although the original particle
+data set does. These high frequencies get smoothed out by the in-
+tegral over the hemisphere. Thus, the need to represent these high
+frequencies in the first place is not given at all, meaning we can
+approximate blocked incoming light energy ρ(L) by a smooth rep-
+resentation of the particle data neighborhood. The more dense the
+packing of particles is the less light rays are able to reach p from
+the direction x. Equation 1 can therefore be re-written:
+
+Ap =
+∫∫
+
+x∈hS2
+D(p+λx)np · x dx (3)
+
+with D being a density volume of particles and λ being a sampling
+distance from p. The size of the neighborhood used in this approach
+is implicitly defined by the discretization of the density volume,
+meaning that larger density voxels will result in larger neighbor-
+hood ranges being used in our approach. Thus, λ should be half
+the length of a side of a voxel. This value corresponds to Lmax
+in [27]. This means, if we want to take a reasonable neighborhood
+range into account, we actually need rather large voxels, resulting
+in a coarse resolution density volume. From a performance point-
+of-view this is even beneficial. Note, that the built-in tri-linear in-
+terpolation of volume data provides a simple solution to ensure the
+required smoothness property of the data.
+
+There is a further simplification possible due to the coarse resolu-
+tion density volume: The integral over the hemisphere in equation 3
+will only fetch very few real data values, since the used hemisphere
+has radius λ , which is a diameter of only one voxel. In addition,
+the geometry form factor np · x will reduce the influence of the val-
+ues fetched for the border areas of the hemisphere. Thus, we can
+further approximate the occlusion geometry value by only fetching
+the most relevant interpolated density value per patch:
+
+Ap ≈ D(p+λnp). (4)
+
+Please note, that we can do these simplifications and approxima-
+tions only due to the nature of particle data sets as described above.
+The following section will detail the approach of the density vol-
+ume generation we propose.
+
+4 PARTICLE DENSITY VOLUME GENERATION
+The core idea of our approach is the aggregation of the original
+particle data into a coarse resolution density volume for efficient
+evaluation of the ambient occlusion factors and implicit filtering of
+high frequencies from the data set. This introduces a new degree of
+freedom: The density volume resolution, which has direct influence
+on the geometry neighborhood taken into account.
+
+The density resolution should be calculated based on the bound-
+ing box of the whole data set and the mean size of a structure to be
+observed in the data. This value is related to the size of the particles,
+but naturally varies for each data sets. Therefore, we expose the vol-
+ume resolution as adjustable parameter to the user. Figure 4 shows
+a comparison of five different volume resolution settings. On one
+hand, choosing too coarse volumes (left two images), fine struc-
+tures, like small holes, cannot be captured by the density volume
+any more, and visually disappear. On the other hand, our Ambient
+
+Occlusion factor retrieval is implemented as single texture fetch,
+made possible by the assumptions presented in section 3. Taking
+tri-linear interpolation into account, this means, the whole neigh-
+borhood of a particle (in one direction) is described by only eight
+voxel values. A density volume with excessive resolution (right two
+images) thus limits the visible neighborhood and, at the same time,
+reduces the number of particles contributing to the individual vox-
+els. The second issue results in rather frequencies within the density
+volume, rendering the simplification argumentations of our method
+invalid. Thus, the volume resolution must be adjusted for each data
+set and the size of the structures to be visible, but is independent
+of the viewing distance or the shown time-step of a time-dependent
+data set.
+
+The second aspect is the aggregation of the particle data into the
+density volume. We implemented a scatter approach as follows: For
+each particle a representative, in our case a solid sphere, is splatted
+into the correct volume cell. We do this by adding the volume of
+the sphere to the voxels value:
+
+V = ∑
+p∈Vbounds
+
+4
+3
+
+πr3p
+1
+
+V 3size
+(5)
+
+with V being a voxel value, p∈Vbounds all particles being inside this
+voxel, rp being the radius of a particle, and Vsize being the length
+of one edge of the voxel. There are three aspects to equation 5: the
+density might be overestimated, the closest sphere-packing needs
+to be addressed to find fully opaque voxel, and particles placed at
+boundaries between two or more voxel would only contribute par-
+tially to each.
+
+For the first issue, if spheres overlap the summed-up density in
+the voxel will be overestimated. The worst-case scenario is two
+spheres of the same size placed in exactly the same position, re-
+sulting in a volume twice as large as would be correct. This case,
+however, is not relevant for particle data from molecular dynam-
+ics when choosing the correct radius for the spheres. E. g. if the
+force field of simulation is based on Lennard-Jones potentials and
+the spheres radii are set to the Lennard-Jones radii, the spheres may
+only overlap very slightly, as long as the simulation runs correctly.
+
+The second issue arises if we assume the particle cannot overlap.
+Then the close-packing of spheres tells us that a voxel will be com-
+pletely full if the summed up volume of the spheres reach ≈ 74%
+of the voxel’s volume. To take this into account we can simply
+multiply the calculated density volume with a constant g = 1/0.74.
+While this correctly models the aspect of the close-packing of
+spheres, it does not address the fact, that a voxel might be com-
+pletely opaque with far less spheres already: seen from one direc-
+tion a voxel can be completely opaque, if there are just two layers of
+non-overlapping spheres perpendicular to this direction, similar to
+two layers of a close-packing. Obviously this cannot be addressed
+in general by only storing a density volume without any additional
+information.
+
+To remedy this issue, we expose the parameter g—a factor to
+the evaluated density volume—to the user, enabling to strengthen
+the influence of the particles to the spatial density. Our empiric
+observations showed that even g = 1 yields good results and that
+tweaking this parameter is not really necessary at all. In addition
+the density volume is implicitly clamped to the range of [0,1] (from
+completely transparent to completely opaque).
+
+The third problem is that the term p ∈Vbounds in equation 5 does
+not explain what happens to spheres being partially inside the vox-
+els’ bounds. We can define that a particle always contributes with
+its complete volume to one density voxel. This is done by evaluat-
+ing p ∈Vbounds based on the mid-point of the particles sphere. This
+seems like an oversimplification but it is acceptable since our den-
+sity volume is coarse. Thus virtually moving a particle to be com-
+pletely inside a voxel does only introduce an error smaller than the
+
+
+
+Figure 4: Zoomed in view of the exp2mill data set rendered with different density volume resolutions: (from left to right) 4× 32× 4, 8× 64× 8,
+16×128×16 (optimal setting, which is used in all other figures showing this data set), 32×256×32, and 64×512×64. Smaller caves, like in the
+upper bulk, are not captured by too coarse volumes, while with volumes with a too high resolution have too few atoms contributing to a density
+cell, rendering the argumentation of low frequencies in section 3 invalid and resulting in visual clutter.
+
+imprecision we accept from the volume resolution. The tri-linear
+interpolation in the volume lessens the effect even more.
+
+CPU Implementation
+
+The CPU implementation of the density volume generation is rather
+straightforward. The volume texture is generated at scene setup
+with the correct resolution. In addition, a linear float array of corre-
+sponding size is allocated to represent the volume in main memory.
+
+For each frame the float array representing the volume is cleared
+to zero and completely rebuilt. To utilize the full power of multi-
+core CPUs we parallelized our approach using OpenMP. Avoiding
+the need for explicit synchronization of data access, we split the
+calculation. First, a parallelized loop over all particles of the data
+set calculates the volume corresponding to equation 5. Each thread
+builds up its own volume in a designated float array, only stor-
+ing the information of a subset of the data set. Since the created
+volumes are very small the additional memory is not an issue. A
+second loop over all voxels—again automatically parallelized by
+OpenMP—summarizes the values of all volumes into a single one.
+The array of this final volume is then loaded to the graphics card.
+
+GLSL-Splatting
+
+The GLSL implementation uses a common splatting approach to
+sort the particles into a volume texture. The texture is filled slice by
+slice along the Z axis using OpenGL’s render to texture functional-
+ity. For each slice, the corresponding extent in the bounding box is
+computed and all particles are rendered. A vertex shader program
+evaluates the voxel position of the current particle. If the particle
+does not belong to the current slice, it is rejected. Otherwise, the
+X and Y coordinates of the particle are set to the corresponding
+voxel coordinates. The fragment shader program then sets the color
+with respect to the volume of the particle. The contributions of all
+particles are summed up by using an additive blending function.
+
+In the naı̈ve implementation described above, all particles are
+rendered for each slice. The particles are transferred using a ver-
+tex array for fast rendering. This algorithm can be accelerated by
+sorting the particles along the Z axis and adjusting the renderings
+as follows: For a volume texture with m slices, m vertex arrays are
+created and the particles belonging to each slice are stored in the
+respective vertex array. This can be done in O(n), where n is the
+number of particles. Afterwards, only the vertex array containing
+the particles which are relevant for the current slice is rendered.
+Consequently, all particles are rendered only once for the correct
+slice and the vertex shader test whether the particle belongs to the
+current slice is unnecessary in this case. Note that we use vertex
+arrays instead of vertex buffer objects (VBO), since they are signif-
+icantly faster than VBOs if the data is rendered only once, as shown
+in [8].
+
+CUDA Implementation
+The CUDA implementation follows the idea used for the Particles
+demo from the NVIDIA GPU Computing SDK [6]. That is, all par-
+ticles are sorted into a grid by means of spatial hashing. The algo-
+rithm can be outlined as follows: A uniform grid with the desired
+dimensions of the volume texture is used as the spatial subdivision.
+Each grid cell has a unique hash value according to its position.
+The first CUDA kernel computes the grid cell hash value for each
+particle in parallel based on its center point and stores it. In the
+next step, the particles are sorted using a parallel CUDA radix sort
+according to their hash value. The result is a particle list where all
+particles which are situated in the same grid cell are listed succes-
+sively. The next CUDA kernel stores the start and end indices of the
+particles for each grid cell. In the final step, the contribution of the
+respective particles is summed up for each grid cell and stored in
+another list. The last two steps are executed simultaneously for all
+grid cells. The resulting list comprises the density values per voxel
+and is copied to the volume texture.
+
+A major benefit for the computation speed of the original imple-
+mentation by NVIDIA for the particles demo was that the particle
+positions had to be transferred only once to the graphics memory
+and then the GPU simulation is started. In our case, the particle
+positions have to be updated every frame. Therefore, the parti-
+cles are copied to a vertex buffer object, which allows the access
+from CUDA and fast rendering. For the buffer data, the usage pat-
+tern GL DYNAMIC DRAW was chosen, since it is optimal for fre-
+quent write access. For the data transfer, the buffer is mapped
+via glMapBuffer and the particle positions are copied using
+memcpy. To be accessible for CUDA kernels, the vertex buffer ob-
+ject is mapped for reading using cudaGLMapBufferObject.
+That way, the particle data has to be transferred only once to the
+GPU for both, computation and rendering. For the volume texture
+data written by the last CUDA kernel, a pixel buffer object is used.
+Hence, the density values are copied to the volume texture directly
+on the GPU without the need for a detour through the main memory.
+
+5 AMBIENT OCCLUSION FACTOR RETRIEVAL
+To create the final image we need to evaluate an ambient occlusion
+factor Ap for each surface point p, or at least for the visible surface
+points. As equation 4 in section 3 shows, in our approach this is
+possible by fetching an interpolated voxel from the data sets den-
+sity volume representation detailed in section 4, utilizing the built-
+in tri-linear interpolation of the graphics hardware. The following
+subsections will detail the two implemented approaches.
+
+Vertex-Shader-based Retrieval
+Following the original idea of ambient occlusion we can subdivide
+each of our spheres into several patches and retrieve the ambient
+occlusion factors for each patch. For the surface fragments we can
+then interpolate between the retrieved values. We decided for a
+
+
+
+rather crude subdivision of the sphere into six patches along the
+world-space main axes, which is inspired by environment mapping.
+
+We implemented the factor retrieval in the vertex shader of the
+GLSL shader ray casting the sphere glyphs. Based on the particle
+position we fetch values from our density volume texture in dis-
+tance λ in the positive and negative direction of each of the main
+axes. These six values are then transferred to the fragment shader,
+like all other attributes used for ray casting, for evaluation on the
+surface of the glyph.
+
+For the interpolation between these values we can use the sur-
+face normal vector n = (nx ny nz)T , available after calculating the
+surface hit point through ray casting, as the squares of its com-
+ponents form a partition of 1. Evaluating the signs of the com-
+ponents of the normal vector we choose the correct three values
+Ax = D(p±λ (1 0 0)T ), Ay, and Az from the six values fetch in the
+vertex shader.The final ambient occlusion value A f (for fragment)
+can then be calculated: A f = n2xAx +n
+
+2
+yAy +n
+
+2
+z Az.
+
+Fragment-Shader-based Retrieval
+The second implementation to fetch ambient occlusion factors is
+based on the idea to subdivide the sphere further into patches, so
+that each fragment is treated as a patch of its own. We implemented
+this approach in the fragment shader stage of the GLSL shader for
+glyph ray casting, directly after the surface hit point was calculated.
+For each fragment we retrieve the density value at distance λ from
+the hit surface p in direction of the surface normal n: A f = D(p+
+λn). There is no need for further interpolation, apart from the built-
+in tri-linear interpolation when fetching the voxel value, as the data
+is directly sampled at screen resolution.
+
+The break-even point for both approaches, considering the num-
+ber of texture fetches, obviously is given when a sphere has an
+image-space footprint of six fragments. When visualizing large
+data sets the individual particles are likely to be much smaller and
+thus this method is favorable. A detailed comparison will follow in
+the results section 6.
+
+6 RESULTS & DISCUSSION
+We measured the performance of our method with various data sets
+of different sizes from real-world molecular dynamics simulations.
+Our test system was an Intel Core i7 x980 (6×3.3 GHz) with 12 GB
+RAM and a NVIDIA GeForce GTX 580 (1.5 GB VRAM). The res-
+olution was set to 1280× 720 pixels for all measurements and the
+data sets were maximally zoomed while still being entirely visible.
+The results are given in table 1 together with the used density vol-
+ume resolutions. These volume resolutions are used for all images
+(except Fig. 4) of the corresponding data sets throughout the whole
+paper. All data sets, except for 1AF6, are time dependent with sev-
+eral hundred time steps. However, since we want to focus on ren-
+dering performance, we assume that the whole data set has already
+been completely loaded into main memory, thus excluding transfer
+times from secondary storage. All ambient occlusion calculations
+described are performed for every frame anew.
+
+All three implementations of volume generation are able to
+maintain interactive frame rates for data sets with up to two mil-
+lion particles. However, it is clearly visible that the GLSL imple-
+mentation has much lower performance than the CPU and CUDA
+implementations. We assume that this is mainly due to the fact that
+the slice-based particle rendering antagonizes the fast large block
+transfer to the GPU, resulting in high latencies. In addition, the
+multiple changes of OpenGL states and render targets further de-
+crease the performance. When using CUDA it is possible to use
+the efficient large block transfer and, nevertheless, fully exploit the
+parallelism of the GPU for the volume generation. However, in
+comparison with the multi-core CPU implementation, running on
+12 logical cores, the CUDA algorithm introduces additional opera-
+tions like sorting the particles. Even though these operations are all
+
+running in parallel, a relevant overhead is generated. A further rea-
+son might be that we cannot fully utilize the whole GPU with the
+rather small sizes of our density volumes. Therefore, the CUDA
+implementation, albeit being quite fast, is significantly slower than
+our parallelized CPU implementation. For the largest data set used
+in our tests (Fig. 7) only the CPU and CUDA implementation are
+able to maintain frame rates above 5 FPS.
+
+As observable in table 1, the choice of the ambient occlusion
+factor retrieval method has a small but noticeable impact on the
+frame rate (compare rows vertex and fragment). When using the
+vertex-shader-based method, six texture fetches are executed for
+each sphere. For the fragment-shader-based method, the number of
+fragments equals the number of texture fetches. When using larger
+data sets, it is to be expected that each particle will cover less than
+six pixels on the screen. Our measurements given in table 1 con-
+firm that this results in higher frame rates for the fragment-based
+method, since less texture fetches are executed. The difference in
+performance is no issue, since it only occurs for small data sets (be-
+low 1 million particles), which can be rendered at very high frame
+rates anyway. Apart of this, the fragment-based method produces
+slightly better looking images.
+
+Our method is designed to emphasize structures in particle data
+sets from molecular dynamics. Figure 2 shows the smallest of our
+test data sets, a transmembrane protein forming three channels, ren-
+dered using our object space ambient occlusion and depth darken-
+ing [16]. Depth darkening manages to accentuate the channels but
+does not show the more shallow structures on top of the protein.
+With our method, however, the structure and shape of the protein
+are clearly emphasized. The same is true for the molecular dynam-
+ics simulation shown in figure 1, where the visibility of the holes in
+the gas layer is greatly enhanced by our object-space technique.
+
+Table 1: The performance of our ambient occlusion method, includ-
+ing generation of the density volume and rendering in each frame. All
+values are in frames per second. The rendering mode no AO refers
+to a renderer without any ambient occlusion calculations, only ray
+casting spheres (i. e. no density volume is generated). The render-
+ing mode none describes the test without rendering where only the
+density volume is calculated and transferred to the graphics card.
+
+data set (name/ rendering volume generation
+# of particles/vol. res./fig.) mode CPU GLSL CUDA
+
+1AF6
+10 000
+8×8×8
+Fig. 2
+
+no AO 716 — —
+vertex 630 559 422
+
+fragment 626 563 417
+none 2140 983 1000
+
+NiAl
+36 500
+32×32×32
+Fig. 6
+
+no AO 821 — —
+vertex 786 379 492
+
+fragment 797 373 488
+none 981 411 759
+
+CCMV
+220 000
+18×18×18
+Fig. 5
+
+no AO 254 — —
+vertex 212 72.8 147
+
+fragment 214 72.7 152
+none 700 91.8 430
+
+laser cross
+560 000
+16×16×16
+Fig. 5
+
+no AO 114 — —
+vertex 104 33.0 71.8
+
+fragment 104 33.3 71.8
+none 340 37.6 221
+
+exp2mill
+2 000 000
+16×128×16
+Fig.1
+
+no AO 72.8 — —
+vertex 57.8 9.91 41.9
+
+fragment 59.9 10.0 41.9
+none 144 10.6 73.0
+
+laser big
+11 800 000
+128×32×32
+Fig. 7
+
+no AO 14.3 — —
+vertex 7.43 1.10 6.15
+
+fragment 7.67 1.11 6.30
+none 27.0 1.36 14.11
+
+
+
+(a) (b) (c) (d)
+
+(e) (f) (g) (h)
+
+Figure 5: Comparison between local lighting (a, e), ray tracing (b, f), screen-space ambient occlusion (c, g), and our object-space ambient
+occlusion method (d, h); The ray traced images were created by Tachyon [24] as ground truth. For the screen-space ambient occlusion we
+implemented the method presented by Kajalin [13]. As observable, our object-space ambient occlusion technique creates comparable results to
+the ray tracing while maintaining interactive frame rates.
+
+Figure 6: The nickel-aluminum data set (NiAl) exposes visual arti-
+facts with our method. While the overall structure is clearly empha-
+sized (as shown in the zoomed-in views on the left), the flat planes
+formed by the crystal lattice are not aligned with our density volume,
+which results in visual artifacts. The right zoomed-in view shows the
+artifacts (we increased the density volume influence to make the ar-
+tifacts better perceivable).
+
+Figure 5 shows a comparison of image quality between full ray
+tracing including ambient occlusion, screen-space ambient occlu-
+sion, and our method. We also included images only using local
+lighting to show the effectiveness of the different ambient occlusion
+techniques. We adjusted the parameters for all techniques accord-
+ingly to produce the best possible visual results to reach a trade-off
+between shadowing effects and visible artifacts. The ray-traced im-
+ages were generated by VMD [12] using Tachyon [24] and serve as
+ground truth for the other methods. Unfortunately, we were not able
+to deactivate the drop shadows and to use only ambient occlusion.
+For example, the expelled particles on the right side of figure 5(f)
+
+cast shadows not generated by the alternative techniques. How-
+ever, this does not conceal the ambient occlusion effects we want to
+compare. Figures 5(c) and 5(g) show the results from screen-space
+ambient occlusion [13]. For the CCMV virus data set (cf. Fig. 5c),
+compared to the naı̈ve shading (cf. Fig. 5a), the substructure of the
+surface is visible but not as clearly as in the ray tracing. In contrast,
+with our method (cf. Fig. 5d) these substructures are strongly em-
+phasized and closely resemble the ray tracing result. Slight over-
+shadowing effects, not present in the ray tracing, can be seen but
+they do not create a false impression of the data set’s shape. For the
+laser cross data set the screen-space ambient occlusion (cf. Fig. 5g)
+does not create the desired results. The technique fails to enhance
+the deep perception in the cleft cut by the laser as our method and
+the ray casting do. Furthermore, it creates an undesired shadow im-
+pression on the surface of the material behind the floating particles.
+This effect is an inherent problem for screen-space approaches, as
+mentioned in section 2, because the empty space between the float-
+ing particles and the material in the background cannot be evaluated
+correctly.
+
+7 CONCLUSION & FUTURE WORK
+
+We presented a method to apply object-space ambient occlusion in
+visualizations for large time-dependent particle-based data sets to
+emphasis implicit spatial structures without any pre-computations.
+Our approach aggregates the particle data into a coarse resolution
+density volume to approximate information about occluding scene
+objects. Different methods of utilizing CPU and GPU for this ag-
+gregation have been presented and compared. Based on the built-in
+tri-linear interpolation the ambient occlusion factors are retrieved
+with only very few texture fetches. Thus, the method is applica-
+ble to rendering approaches utilizing further optimizations, deferred
+shading or object-space culling. In addition our method is combin-
+able with further visual cues, like halos, silhouettes, depth darken-
+ing or fogging, similar to the methods applied by Tarini et al. [26].
+
+
+
+Figure 7: A laser ablation data set of 11.8 million particles enhanced
+with our object space ambient occlusion technique. The shape of the
+crater’s brim is not emphasized because we only use short-range
+neighborhood information to determine the occlusion factors.
+
+We have shown that our approach has only minimal overhead and
+results in interactive frame rates for data sets with millions of parti-
+cles. Our approach is applicable to other graphical representations,
+including continuous representations like interfaces, iso-surfaces,
+or path lines, as long as the generation of the density volume is
+adapted accordingly.
+
+The simplifications we made in our method can result in visual
+artifacts in special cases (see Fig. 6) when the structure of the data
+set does not align with the density volume and thus the volume
+data does not create a continuous representation of the particles. As
+future work we would like to extend the density volume with den-
+sity gradient information to better adjust for these cases by optimiz-
+ing the sampling direction. The probably biggest drawback of our
+method, also not crucial for the presented application to molecu-
+lar dynamic data sets, is the implicit definition of the neighborhood
+evaluated for ambient occlusion factor given by the resolution of the
+density volume. As continuation of our work we, therefore, want to
+decouple these aspects, by extending the volume generation, either
+by smoothed kernel splatting, smooth filtering or stochastic scat-
+tering. Due to the simplified nature of our occlusion data, long-
+range neighborhood information is currently not available. Figure 7
+shows a laser ablation data set prone to this problem. The structure
+of the crater’s brim could be emphasized better using distant occlu-
+sion information. Ray marching or utilizing directional smoothed
+occlusion volumes might remedy this issue. This would require
+larger grid sizes for the density volume and advanced grid con-
+struction algorithms like [14]. However, this would also increase
+complexity and decrease performance of the method significantly.
+
+ACKNOWLEDGEMENTS
+This work was partially funded by German Research Foundation
+(DFG) as part of projects D.3 and D.4 of the Collaborative Research
+Centre SFB 716. The data set exp2mill was kindly provided by Jad-
+ran Vrabec, University of Paderborn, Germany. The laser ablation
+data sets, laser cross and laser big, were kindly provided by Steffen
+Sonntag (SFB 716, project B.5). The NiAl data set was provided by
+Christopher Kohler and Stephen Hocker (SFB 716, project B.2).
+The CCMV trajectory was kindly provided by J.R. Lopez Blanco
+and Pablo Chacón, Structural Bioinformatics Group, CSIC, Spain.
+
+REFERENCES
+[1] C. Bajaj, P. Djeu, V. Siddavanahalli, and A. Thane. TexMol: Inter-
+
+active Visual Exploration of Large Flexible Multi-Component Molec-
+
+ular Complexes. In Proceedings of the Conference on Visualization
+’04, pages 243–250, 2004.
+
+[2] L. Bavoil and M. Sainz. Image-Space Horizon-Based Ambient Occlu-
+sion. In W. Engel, editor, ShaderX7, chapter 6.2. Charles River Media,
+2009.
+
+[3] M. Bunnell. Dynamic Ambient Occlusion and Indirect Lighting. In
+M. Pharr and R. Fernando, editors, GPU Gems 2, chapter 14, pages
+223–233. Addison-Wesley, 2005.
+
+[4] F. C. Crow. Shadow Algorithms for Computer Graphics. SIGGRAPH
+Computer Graphics, 11:242–248, 1977.
+
+[5] M. Fox and S. Compton. Ambient Occlusive Crease Shading. Game
+Developer Magazine, pages 19–23, Mar 2008.
+
+[6] S. Green. CUDA Particles. Technical report, NVIDIA Corp., 2008.
+[7] S. Grottel, G. Reina, C. Dachsbacher, and T. Ertl. Coherent Culling
+
+and Shading for Large Molecular Dynamics Visualization. In Com-
+puter Graphics Forum, volume 29, pages 953–962, 2010.
+
+[8] S. Grottel, G. Reina, and T. Ertl. Optimized Data Transfer for Time-
+dependent, GPU-based Glyphs. In Proceedings of IEEE Pacific Visu-
+alization Symposium 2009, pages 65–72, 2009.
+
+[9] S. Gumhold. Splatting Illuminated Ellipsoids with Depth Correction.
+In Proceedings of VMV, pages 245 – 252, 2003.
+
+[10] F. Hernell, P. Ljung, and A. Ynnerman. Local Ambient Occlusion in
+Direct Volume Rendering. IEEE Transactions on Visualization and
+Computer Graphics, 16:548–559, 2010.
+
+[11] J. Hoberock and Y. Jia. High-Quality Ambient Occlusion. In
+H. Nguyen, editor, GPU Gems 3, chapter 14, pages 257–273.
+Addison-Wesley, 2007.
+
+[12] W. Humphrey, A. Dalke, and K. Schulten. VMD – Visual Molecular
+Dynamics. Journal of Molecular Graphics, 14:33–38, 1996.
+
+[13] V. Kajalin. Screen-Space Ambient Occlusion. In ShaderX7, pages
+413–424. Charles River Media, 2009.
+
+[14] J. Kalojanov and P. Slusallek. A Parallel Algorithm for Construction
+of Uniform Grids. In HPG ’09: Proceedings of the ACM Conference
+on High Performance Graphics, pages 23–28. ACM, 2009.
+
+[15] F. Lindemann and T. Ropinski. About the Influence of Illumination
+Models on Image Comprehension in Direct Volume Rendering. IEEE
+Trans. on Vis. and Comp. Graph., 17(12):1922–1931, 2011.
+
+[16] T. Luft, C. Colditz, and O. Deussen. Image Enhancement by Unsharp
+Masking the Depth Buffer. ACM Trans. Graph., 25(3):1206–1213,
+2006.
+
+[17] M. McGuire. Ambient Occlusion Volumes. In Proceedings of High
+Performance Graphics 2010, 2010.
+
+[18] M. Mittring. Finding Next Gen – Cryengine 2. In SIGGRAPH ’07:
+ACM SIGGRAPH 2007 courses, pages 97–121, 2007.
+
+[19] G. Papaioannou, M. L. Menexi, and C. Papadopoulos. Real-Time
+Volume-Based Ambient Occlusion. IEEE Transactions on Visualiza-
+tion and Computer Graphics, 16:752–762, September 2010.
+
+[20] M. Pharr and S. Green. Ambient Occlusion. In R. Fernando, editor,
+GPU Gems, pages 667–692. Addison-Wesley, 2004.
+
+[21] M. Sattler, R. Sarlette, G. Zachmann, and R. Klein. Hardware-
+Accelerated Ambient Occlusion Computation. In Vision, Modeling,
+and Visualization 2004, pages 331–338, 2004.
+
+[22] P. Shanmugam and O. Arikan. Hardware accelerated ambient occlu-
+sion techniques on GPUs. In I3D ’07: Proceedings of the 2007 Sym-
+posium on Interactive 3D Graphics and Games, pages 73–80, 2007.
+
+[23] J. Shopf, J. Barczak, T. Scheuermann, and C. Oat. Deferred Occlusion
+from Analytic Surfaces. In ShaderX7, pages 445–454. Charles River
+Media, 2009.
+
+[24] J. Stone. An Efficient Library for Parallel Ray Tracing and Animation.
+In Proceedings of Intel Supercomputer Users Group, 1995.
+
+[25] A. Stukowski and K. Albe. Extracting dislocations and non-
+dislocation crystal defects from atomistic simulation data. Modelling
+Simul. Mater. Sci. Eng., 18(8):85001–85013, 2010.
+
+[26] M. Tarini, P. Cignoni, and C. Montani. Ambient Occlusion and Edge
+Cueing for Enhancing Real Time Molecular Visualization. IEEE
+Transactions on Visualization and Computer Graphics, 12(5):1237 –
+1244, 2006.
+
+[27] S. Zhukov, A. Iones, and G. Kronin. An Ambient Light Illumina-
+tion Model. In Proceedings of Eurographics Rendering Workshop ’98,
+pages 45–56, 1998.
+
+

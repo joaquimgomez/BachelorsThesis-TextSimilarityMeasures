@@ -1,0 +1,1303 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Instant Construction and Visualization of Crowded Biological
+Environments
+
+Tobias Klein, Ludovic Autin, Barbora Kozlı́ková, David S. Goodsell, Arthur Olson, M. Eduard Gröller, and Ivan Viola
+
+Abstract— We present the first approach to integrative structural modeling of the biological mesoscale within an interactive visual
+environment. These complex models can comprise up to millions of molecules with defined atomic structures, locations, and interactions.
+Their construction has previously been attempted only within a non-visual and non-interactive environment. Our solution unites the
+modeling and visualization aspect, enabling interactive construction of atomic resolution mesoscale models of large portions of
+a cell. We present a novel set of GPU algorithms that build the basis for the rapid construction of complex biological structures.
+These structures consist of multiple membrane-enclosed compartments including both soluble molecules and fibrous structures. The
+compartments are defined using volume voxelization of triangulated meshes. For membranes, we present an extension of the Wang
+Tile concept that populates the bilayer with individual lipids. Soluble molecules are populated within compartments using the Halton
+sequence for their distribution. Fibrous structures, such as RNA or actin filaments, are created by self-avoiding random walks. Resulting
+overlaps of molecules are resolved by a forced-based system. Our approach opens new possibilities to the world of interactive
+construction of cellular compartments. We demonstrate its effectiveness by showcasing scenes of different scale and complexity that
+comprise blood plasma, mycoplasma, and HIV.
+
+Index Terms—Interactive modeling, population, biological data, interactive visualization
+
+1 INTRODUCTION
+
+Technological advances in structural biology, proteomics, and bio-
+physics, combined with the rapid advance of computational capabilities,
+have opened the door to studying increasingly large and complex bio-
+logical systems. Recently, we have seen a shift from studying individual
+proteins to modeling and analyzing functional protein assemblies and
+even larger systems, such as viruses, bacteria, and portions of eukary-
+
+• Tobias Klein, M. Eduard Gröller, and Ivan Viola are with TU Wien, Austria.
+E-mails: tklein@cg.tuwien.ac.at, viola@cg.tuwien.ac.at,
+groeller@cg.tuwien.ac.at.
+
+• Ludovic Autin, David S. Goodsell, and Arthur Olson are with The Scripps
+Research Institute, California, USA. E-mails: ludovic.autin@gmail.com,
+goodsell@scripps.edu, olson@scripps.edu.
+
+• Barbora Kozlı́ková is with Masaryk University, Brno, Czech Republic.
+E-mail: kozlikova@fi.muni.cz.
+
+Manuscript received xx xxx. 201x; accepted xx xxx. 201x. Date of Publication
+xx xxx. 201x; date of current version xx xxx. 201x. For information on
+obtaining reprints of this article, please send e-mail to: reprints@ieee.org.
+Digital Object Identifier: xx.xxxx/TVCG.201x.xxxxxxx
+
+otic cells. These are often denoted as biological mesoscale structures,
+representing an intermediate scale between molecular and cellular bi-
+ology. On the molecular (nanoscale) level, cells are built of proteins,
+nucleic acids, lipids, and polysaccharides. The mesoscale level reveals
+how these molecules are assembled into more complex subcellular en-
+vironments that orchestrate the processes of life. Given the complexity
+of these massive mesoscale environments, modeling must be tightly
+coupled with a proper visual representation. This provides intuitive
+feedback for their validation, tools for exploration of the models, and
+visual materials for public dissemination and to communicate findings
+to peers. In typical scenarios, these visualizations are created by sci-
+entific illustrators who traditionally produce images by hand drawing
+or by using 3D modeling tools. Examples include our illustrations
+of cellular environments [14], and a detailed 3D model of a synaptic
+bouton created in Maya [46]. This is a laborious process with limited
+interaction and exploration capabilities, which also requires non trivial
+domain knowledge about the depicted biological structures.
+
+An alternative solution is to describe the scene on a higher level of
+abstraction and use this description to automatically create the resulting
+scene. This approach has recently been implemented in cellPACK [23]
+to generate and visualize 3D models of complex biological environ-
+
+
+
+ments. CellPACK integrates data from multiple sources into a ’recipe’
+that describes the constitution of the desired environment. The envi-
+ronment is partitioned into membrane-bounded compartments, often
+arranged hierarchically. The compartments are defined by mesh sur-
+faces that represent the lipid-bilayer membranes. Each compartment,
+including membranes, can be populated by a different set of ingredients,
+which include soluble molecules inside the compartment and molecules
+embedded in the membranes. These ingredients can be fibrous com-
+ponents, such as RNA or carbohydrate chains, soluble components
+such as proteins and metabolites, or lipids in membranes. CellPACK
+combines the knowledge about membranes, compartments, and ingre-
+dients, and then assembles a mesoscale model with respect to mutual
+biologically-relevant interactions between them.
+
+The main drawback of this approach is the computation time for
+assembling the 3D mesoscale model from the input data and the recipe.
+Depending on the desired quality of the distribution of ingredients,
+this stage can span from minutes to hours. Therefore, it is often a
+lengthy process to, for example, change parameters like the number of
+ingredients (molarity) or their interactions and observe the impact of the
+change. Our aim is to overcome this limitation and to instantly provide
+distributions of various ingredients within biological compartments and
+on membranes. This will open new possibilities for biologists to gather
+domain-specific knowledge about mesoscale-level structures, integrate
+it into a model, and explore the consequences of gaps in knowledge or
+ranges of experimentally-observed parameters.
+
+Another irreplaceable part of the whole process is the visual represen-
+tation of the scene and its content. Molecular visualization techniques
+developed in the last decades have been focused predominantly on vi-
+sual depictions of molecules captured by X-ray crystallography, NMR
+spectroscopy, and more recently, electron microscopy. Due to the nature
+of this structural data, the molecules may be visualized at atomic reso-
+lution. However, the mesoscale level poses new challenges. Mesoscale
+models are larger, with millions of atoms, taxing existing visualization
+hardware and software. They are also more complex, often integrat-
+ing multiple types of data at different resolutions, and with complex
+hierarchical relationships that span from individual molecules to entire
+cells. Visual representations must provide the user with an overview
+of the structures as well as with means to explore their details. To
+address this challenge, our state-of-the art tool cellVIEW [35] enables
+a seamless transition between visual representations of structures on
+different levels of detail. CellVIEW integrates the latest GPU-based
+algorithms from computer graphics and visualization to interactively
+render large biological scenes.
+
+The approach described here incorporates the instant modeling as-
+pect into cellVIEW to provide a unified visual framework for modeling
+and for visualization. The main contributions include:
+
+• New algorithms for instant modeling of different types of compart-
+ments and membranes of biological structures on the mesoscale
+level.
+
+• An interactive visual environment enabling to change the popula-
+tion parameters and instantly explore the resulting scene on both
+nanoscale and mesoscale levels.
+
+• Enhancing the process of creating models of mesoscale structures
+by shifting it from a non-visual and non-interactive environment
+to a fully interactive and visually-supported one.
+
+We demonstrate the approach with mesoscale models of different
+scale and complexity, including blood plasma, HIV, and an entire
+mycoplasma bacterium.
+
+2 RELATED WORK
+Experimental methods for determination of mesoscale structures are
+extending to larger and larger subjects, but currently fall short of being
+able to determine the atomic structure of living cells. For instance, cryo-
+EM microscopy can give a detailed structure of the regular envelope
+of the Zika virus, but the more randomly arranged genome inside
+is still largely inaccessible to experiments [39]. Similarly, cryo-EM
+
+tomography is currently yielding detailed views of complex enveloped
+viruses, bacteria, and eukaryotic cells, but are typically able to resolve
+only large molecules such as ribosomes, cytoskeletal elements, and
+membranes [2].
+
+Many groups are attempting the structural modeling of the mesoscale
+with atomic detail, using computation to combine information from
+mesoscale experimental techniques with atomic structural informa-
+tion on the components (reviewed in [21, 37]). Much of the work
+in structural mesoscale modeling has focused on the soluble compo-
+nents of bacterial cytoplasm, using models to explore diffusion in
+crowded environments (see, for example, [34]). More recently, sev-
+eral groups are building tools for full structural models that include
+cellular infrastructure, including our own work with cellPACK [23] and
+LIFEEXPLORER [20, 42].
+
+Procedural Modeling. The mesoscale structure of cells is similar to
+other natural phenomena with high geometric and visual complexity as
+well as with requirements for explicit control of details. Other examples
+include the modeling of clouds and meadows covered by grass. The
+general approach to modeling these types of phenomena is to first define
+the overall shape of the environment, then fill it in with detailed objects
+using a stochastic process. This approach, called procedural modeling,
+has a long tradition in computer graphics. The first works that proposed
+an on-the-fly generation of a scenery targeted infinite cities [15] or
+forests [7], mainly aiming at providing rich game content. Currently
+the focus is rather on parallelization and scheduling optimizations,
+so that the procedural content generation is efficiently realized on
+graphics hardware [4, 40]. Wonka et al. [48] presented a method for
+automatic modeling of architecture. Recently, a novel technique was
+proposed for viewpoint-guided generation of high geometric details on
+facades [29]. These techniques usually use certain plans or grammars,
+which provide structural rules for the generation of shapes. In our work,
+we focus rather on the distribution of objects where the space is already
+constrained by membranes and divided into compartments.
+
+Visualization of Large Biological Scenes. Driven by the wealth of
+structural information available through sources like the Protein Data
+Bank [3], highly effective software is currently available for visualiza-
+tion of biomolecules and assemblies (for recent reviews, see Kozlikova
+et al. [28] and Johnson and Hertig [26]). However, these methods
+typically fail when faced with the large number of mesoscale molecules.
+Mesoscale structures require specialized, highly-optimized solutions.
+Currently, there are two publicly-available open-source systems where
+large numbers of atoms can be rendered efficiently by leveraging the
+graphics hardware capabilities. One system is MegaMol [16], which is
+useful for various atomic representations, not only biomolecules. The
+other one is cellVIEW [35], a tool for illustrative multiscale visualiza-
+tion of large biomolecular datasets. An alternative approach, published
+by Waltermate et al. [44], introduces an interactive tool combining
+mesoscopic and molecular scale visualization. They reach this by using
+a magnifier tool that enables the user to select a region on the cell
+membrane and map a pre-computed membrane patch with atomistic
+resolution onto it. However, this approach is able to populate only a
+very limited area of the cell surface.
+
+Mesoscale scenes are also often produced by scientific illustrators
+using general-purpose 3D modeling tools. To ease their tasks, several
+extensions specific to molecular modeling have been introduced. For
+example, our ePMV plugin [24] allows users to run molecular model-
+ing software directly inside of professional 3D animation applications.
+SketchBio [43] is another example of a 3D interface for molecular mod-
+eling and animation. Lv et al. [32] explored the possibility to use game
+technology in biomolecular visualization, using the Unity3D game
+engine to develop and prototype a molecular visualization application
+for subsequent use in research or education.
+
+Texture Synthesis. Our approach to populating large biological
+membranes with lipids is based on a tiling approach, commonly used in
+seamless 2D texture synthesis. We follow one of the well-known tiling
+techniques, Wang Tiles [45], which utilizes square tiles to generate a
+plane tiling. The positioning of tiles onto a plane is done according
+to their face-color rules to compose the desired pattern. Recently,
+several extensions of this basic approach have been published. Most
+
+
+
+of them were designed for synthesizing 2D textures that are mapped
+onto 3D surfaces. Fu and Leung [12] made Wang Tiles applicable
+to arbitrary topological surfaces. Our case differs in the necessity to
+synthesize tiles containing 3D objects, such as lipids. Therefore, the
+detection and handling of overlaps has to take these objects into account.
+Here we were inspired by the solution provided by LipidWrapper [9].
+However, LipidWrapper solves the collisions for each triangle on the
+3D mesh, making it inapplicable to large membranes. Neyret and
+Cani [36] presented another strategy to tiling, using triangles with
+homogeneous textures to tile surfaces. Culik and Kari [5] introduced
+Wang Cubes which extend the Wang Tile approach and are able to
+create non-periodic illustrative 3D patterns and textures. Lu et al. [31]
+presented a framework for volume illustration utilizing Wang Cubes.
+They extend the original idea and modify it for multipurpose tiling. The
+Wang Cubes are not applicable to our case because even when dealing
+with 3D tiles representing the lipid bilayer, the tiles are still defined
+by a 2D plane. Fleischer et al. [11] presented an approach to texturing
+surfaces with so called cellular textures. These are textures represented
+by more complex geometry which can cover the surface with more
+complex objects, such as feathers or thorns. This is very close to our
+situation with lipid bilayers. However, this approach cannot be applied
+in our case because of the regularity of the produced surfaces and the
+algorithm speed.
+
+Population with Fibrous Structures. Algorithms for self-avoiding
+walks may be used to populate a compartment with a fibrous structure.
+Fan et al. [10] published an extension of the definition of Manhattan
+lattice, used for solving this problem, going from 2D to 3D space.
+Procedural building of fibrous structures, which we follow in our ap-
+proach, is similar to the polymerization process addressed by Kolesar
+et al. [27]. Their illustrative approach is a fusion of three different
+modeling techniques, L-systems, agent-based systems, and systems of
+densities. Positioning of new building blocks to the existing polymer is
+based on attraction forces. Gruenert et al. [17] presented an approach
+to rule-based spatial modeling of chemical reaction systems. Their
+technique is also suitable for simulating the polymerization process,
+showcased on the growth of filaments. The growth is driven by pa-
+rameters, such as torsion and bending, that control the pathways and
+structures of formed complexes.
+
+The problem of procedural constructing of paths is common in other
+areas as well. As an example, Galin et al. [13] presented an automatic
+method for generating roads between two given points, based on a
+weighted anisotropic shortest path algorithm. The trajectory minimizes
+a cost function consisting of different parameters of the scene, such as
+terrain shape and obstacles.
+
+3 OVERVIEW
+When modeling scenes containing complex mesoscale biological struc-
+tures, the workflow consists of the following basic steps:
+
+1. Scene organization, to define the shapes of each membrane-
+bounded compartment.
+
+2. Recipe definition, to determine the molecular composition of each
+compartment and membrane.
+
+3. Population of the model, to fill the soluble spaces and membranes
+with ingredients defined in the recipe.
+
+The organization of the scene is defined by closed 3D meshes that
+represent the lipid bilayer membranes. The membranes define the sep-
+arate compartments of the scene. For example, Figure 1 a) shows a
+scene with two concentric closed membranes defining two intracellular
+environments (labeled 1 and 2) and a surrounding environment (labeled
+3). The following step is to compile a recipe that defines the molecu-
+lar composition of these compartments and membranes (Figure 1 b)).
+This recipe includes the structures of the molecules, their concentra-
+tion (molarity), and constraints related to their position in membranes,
+specific interactions with other molecules, etc. The last step takes the
+recipe and populates the compartments and membranes accordingly
+(see Figure 1 c)). This population step is typically stochastic, so it may
+
+(a) (b) (c)
+
+Fig. 1: The scene hierarchy is provided by compartments that organize
+the scene (here marked as 1, 2, and 3), (b) For each individual com-
+partment, their composition is defined including the type and number
+of ingredients. (c) Our algorithms automatically populate the compart-
+ments and its surfaces with the information about the ingredients.
+
+be repeated to provide an ensemble of similar models that are each
+consistent with the scene organization and recipe.
+
+With currently available approaches, such as cellPACK [23], the
+process of transforming the scene definition and recipe to the final
+model can take from minutes to hours, depending on the complexity
+of the scene. This makes the modeling process non-interactive as the
+user cannot immediately see the consequences of parameter changes.
+We overcome this by applying parallel processing, to improve compu-
+tational bottlenecks of the workflow.
+
+As can be seen in Figure 1 b), the individual compartments and
+membranes can be populated in several ways. We can distinguish
+between three basic cases:
+
+• Membranes represent a semi-permeable barrier between two
+compartments. They often consist of a lipid bilayer with em-
+bedded proteins used in the communication and transport of
+molecules and ions across the membrane. In order to model
+membranes, we have implemented a solution based on texture
+tiling.
+
+• Soluble components occupy the free space in each compartment.
+They consist of ingredients (molecules) of different shape and
+complexity, which influences the difficulty of the population step
+within each predefined space. Our approach for positioning in-
+gredients in compartments consists of two steps. The first step
+populates the ingredients without considering overlaps between
+them, and collisions are resolved in the second step.
+
+• Fibrous structures such as DNA, RNA, or actin filaments, are
+long strands folded inside specific compartments. We use a self-
+avoiding random walk to construct fibers within the allowable
+space of compartments.
+
+Algorithms for populating each of these types of ingredients, and
+the advantages of populating them in a specific order, are described in
+detail in the following sections.
+
+4 MEMBRANE POPULATION
+Biological membranes are built around a continuous fluid sheet contain-
+ing two opposed layers of lipids. Lipids are small molecules consisting
+of several dozen atoms, with a characteristic chemical character. They
+are composed of a head group that is soluble in water, and one or more
+tails that are insoluble. In water, they spontaneously associate to hide
+the insoluble tails, forming some of the largest structures in cells. These
+membranes form a semi-permeable boundary that surrounds cells, as
+well as a boundary of inner compartments such as the nucleus or mi-
+tochondria. Different types of lipids may be distributed unequally to
+create an asymmetry between the outer and inner surfaces which is
+important for cell function. For each biological structure, such as HIV
+virion or red blood cell, the bilayer has a unique lipid composition. But
+the common property is that lipids are densely packed on the membrane
+and are oriented roughly perpendicular to it.
+
+
+
+The modeling of lipid bilayers is a complex and laborious task,
+because of the dense packing and the large number of lipids com-
+pared to other surrounding molecules. The main challenge, in terms
+of modeling, is to incorporate the known structural information and
+to avoid repetitive patterns on the surface. Several bilayer-modeling
+programs are available, such as CHARMM-GUI [22], Packmol [33],
+or cellPACK [23]. These tools position individual lipids one-by-one
+into the membrane, which leads to unacceptable computational costs.
+A more sophisticated solution is provided by LipidWrapper [9]. It
+extracts whole patches from a pre-equilibrated planar membrane model.
+These patches contain the detailed structural information about the
+lipids. In order to produce the membrane surface, LipidWrapper uses a
+triangulated mesh as an input, where for each triangle patch is randomly
+cut out from the provided membrane model. However, the edges of
+adjacent patches on the surface do not fit together and lipids potentially
+overlap at these regions. Therefore, LipidWrapper deletes overlapping
+lipids and fills the resulting holes with new lipids. This is an expensive
+process since it must be done for every triangle edge on the surface. Due
+to this reason, the computational cost of LipidWrapper is significant
+and not applicable to instant modeling.
+
+To allow for interactive population of membranes, our solution uses
+a tiling approach for texture synthesis to cover the membrane mesh
+with lipids. In our approach, we require the mesh to be defined as
+a quad-based surface map. In general, any method can be used that
+resamples a given mesh into a quad-based surface if the resulting
+surface map is conformal and has low area distortions. An example
+can be PolyCubeMaps introduced by Tarini et al. [41]. The mesh
+generated by this approach is only marginally affected by distortions,
+which makes it suitable for our tiling approach.
+
+To cover the mesh with lipids, we have to use only a small number of
+tiles. These tiles are pre-populated by lipids and here we use the basic
+principle of LipidWrapper. However, our solution is significantly faster
+because we generate the content for only a limited set of tiles instead of
+applying it onto the whole mesh geometry. The tiles are subsequently
+used for covering the membrane. They have to be placed in such a way
+that their edges fit together and that the tiling will not result in periodic
+patterns. As the repetition pattern should not be visible, we use the
+concept of Wang Tiles [45].
+
+In the following, we describe individual steps of our approach in
+detail. We start with the description of the concept and principle
+of Wang Tiles. Then we present our adaptation of this concept to
+membrane meshes.
+
+4.1 Wang Tiles and their Extension to Membranes
+The Wang tiling concept was introduced in the early ’60s and is well-
+known in texture synthesis. A Wang Tile is defined as a square with
+color-encoded edges. A set of Wang Tiles can be used to cover a 2D
+plane without periodic patterns. The colors of edges restrict how the
+tiles can be placed during the tiling process. The tiling is valid only if
+all shared edges have the same color. at least four colors are required
+to tile a plane non-periodically.
+
+There are several approaches that extend the concept of Wang Tiles to
+3D space. In our solution, we follow the approach of Fu and Leun [12],
+which applies the tiling concept of Wang Tiles to arbitrary topological
+surfaces. They generate each tile from four different diamond-shaped
+input patches that are positioned west, east, north, and south around the
+tile center, respectively. These patches are combined to generate a set
+of tiles with different colors on edges. We adapt this approach for use
+in membrane modeling by synthesizing a collection of lipid-textured
+tiles and then mapping them onto the membrane mesh.
+
+4.1.1 Tile Synthesis for Lipid Bilayer Models
+Synthesis of the tiles is the major challenge of this approach to generat-
+ing 3D models of biological membranes. First, we have to extract the
+content for the tiles from an input texture. For biological membranes,
+this input texture is a planar representation of the lipid bilayer contain-
+ing non-overlapping, tightly-packed lipid molecules. Atomic coordi-
+nates for the lipid bilayer can be generated, for example, by molecular
+dynamics simulation using the Amber force field for lipids [8]. The
+
+(a) (b)
+
+(c) (d)
+
+Fig. 2: Overview of the Wang Tile synthesis. (a) Four small patches are
+extracted from the input texture. (b) A large patch is assembled from
+four small patches, and then the tile is extracted from the center of the
+patch. (c) Bordering lipids with collisions are removed, leaving holes
+in the tile. (d) Holes are filled by positioning new lipids.
+
+tiles are generated in several steps. First, four small diamond-shaped
+patches are extracted from the large bilayer texture. When extracting
+these patches (Figure 2 a)), we include only lipids whose center is
+within the bounds of the specified patch, where the center of a lipid
+is defined as the center of its bounding box. A large diamond-shaped
+patch is then created by positioning four of these tiles together. Finally,
+we extract a rectangular tile from the large diamond-shaped patch (see
+Figure 2 b)). Note that the different tiles needed for Wang Tiling may
+be generated by different arrangements of the small patches into the
+large patch. The tile has to be further processed to resolve overlaps and
+fill gaps.
+
+Detection of Overlapping Lipids The assembly of a tile from
+multiple input patches inherently leads to overlapping lipids in areas
+where the input patches meet. Collisions are evaluated in a two step
+process to improve performance, first testing the overlap between their
+bounding boxes, then testing for individual lipid atoms if appropriate.
+The lipid with the highest number of collisions is removed from the tile
+(if multiple lipids have the same number of collisions, one is chosen
+randomly for removal). The number of collisions is then updated for
+all neighbors of the removed lipid, and the procedure is repeated until
+all collisions are solved. This leaves the tile with undesirable holes
+(Figure 2 c)), which are filled in the final step.
+
+Hole Filling The holes in a tile are filled by non-colliding lipids
+(Figure 2 d)). Individual lipids are extracted from the same input
+membrane bilayer that was used to generate patches for tiles.
+
+For each side of the bilayer, a plane is defined that intersects the hy-
+drophilic head groups of the lipids in the tile. Trial lipids are randomly
+chosen from the input texture and placed at regular intervals along the
+diagonals of the tile, aligning their head groups within these planes. If
+there are no collisions, the lipid is added to the tile, otherwise, the lipid
+is rotated about an axis perpendicular to the plane and tested for col-
+lisions. If no acceptable orientations are found, the process continues
+with another lipid from the input texture. Additionally, we reduce the
+number of possible candidates by rejecting those that already intersect
+with the lipids from the tile.
+
+The result of the hole filling process depends on three parameters
+– how many lipids we have in the testing set, how many rotations of
+
+
+
+Fig. 3: Example of lipid-bilayer membrane populated by lipid tiles.
+This cross-sectional view is visualized using a cutting plane.
+
+lipids we test, and how many times we repeat the entire hole filling
+procedure. These parameters can be adjusted according to user needs.
+However, as we apply the process only on the tiles and not on every
+quad of the mesh, the parameter setting is not a critical aspect.
+
+4.2 Tile Mapping
+Finally, the generated tiles are mapped onto the membrane mesh con-
+sisting of quads. Since we are using data from a bilayer lipid membrane
+instead of textures, the 3D coordinates are mapped onto the quads
+instead of 2D texture coordinates. For this reason, we use quadrilateral
+coordinates to map lipid centers (λ ,µ) to the vertices (v0,v1,v2,v3) of
+the quad with the following equation, where p is the resulting vertex in
+3D space.
+
+p = (1−λ )∗ (1−µ)∗ v0 +λ ∗ (1−µ)∗ v1
++λ ∗µ ∗ v2 +(1−λ )∗µ ∗ v3
+
+(1)
+
+At each resulting position, the corresponding lipid is instantiated.
+The orientation of the lipids on the quad has to be adjusted as well. As
+the main axis of the lipids is always perpendicular to the plane of the
+tile, we determine their orientation by computing the rotation angle
+between the original tile and its position on the quad. This rotation
+is applied to all lipids of a given tile. Figure 3 shows the result after
+positioning the tiles with lipids onto the membrane mesh.
+
+5 SOLUBLE AND MEMBRANE-BOUNDED COMPONENTS
+Cells are typically crowded with proteins, nucleic acids and other
+molecules, with soluble components and assemblies filling the com-
+partments and membrane-bound components embedded in the lipid
+bilayers. The recipe for a mesoscale scene specifies the quantity of
+these ingredients, their locations and orientations (if appropriate), and
+their mutual interactions. The task of population boils down to a prob-
+lem of a non-overlapping spatial distribution of these ingredients within
+the appropriate space. Currently available solutions, are capable of
+positioning soluble ingredients into compartments, however, only in
+a sequential manner. This means that they position ingredients one
+by one, and after positioning each ingredient the surrounding space is
+updated so it is aware of the distance to the closest ingredient. The
+next ingredient can only be positioned to points at a sufficient distance
+from the nearby ingredients. The computational cost of this approach is
+not feasible for interactive environments. Therefore, our solution uses
+parallel processing to speed up the performance.
+
+To make the procedure applicable to GPU, we divide our approach
+into three consecutive steps (see Figure 4):
+
+• Step 1 – compartment space organization using voxelization.
+
+• Step 2 – populating the space by given ingredients.
+
+• Step 3 – detecting and resolving collisions between ingredients.
+
+The major advantage of this approach is that the processing of the
+individual ingredients becomes mostly independent. In the rest of this
+section we describe these steps in more detail.
+
+(a) (b) (c)
+
+Fig. 4: The three steps of our approach to populate compartments with
+soluble components. (a) Voxelization of the space and definition of
+inner (purple and grey), surface (dark purple and dark blue), and outer
+(light blue) grids. (b) Positioning of individual ingredients into the
+inner compartments. Collisions between ingredients are highlighted.
+(c) Scene after resolving collisions using a force-based approach.
+
+5.1 Step 1 – Space Partitioning using Voxelization
+The first step is to partition the scene into a set of compartments,
+delimited by membrane meshes. Our approach is based on the state-
+of-the-art method of GPU voxelization by Schwarz and Seidel [38].
+The voxelization process starts with the classification of voxels that
+intersect with the compartment. In one of the grid axes, a scanline
+algorithm is applied to all voxels to determine if they belong to cellular
+compartments, membranes, or to the surrounding environment. We
+assign a negative value to cellular compartment voxels, a positive value
+to surface voxels, and zero to outside voxels. We repeat this process
+for all compartments within the scene. The resulting structure, which
+we call a compartment grid, identifies the compartment or membrane
+associated with each voxel, for use in rapid population in the following
+step. Moreover, we can sort the voxels per compartment and estimate
+the volume for each of them. Thus, given a molarity we can calculate
+the proper count for the given protein.
+
+In addition to the compartment grid, we define an occupancy grid
+that helps to resolve some of the overlaps between ingredients. The
+occupancy grid is of the same size and resolution as the compartment
+grid, but it holds negative values for free voxels or the corresponding
+ID of the ingredient when the voxel is occupied. This is especially
+important when the size of ingredients differs significantly, e.g., when
+surface ingredients protrude from the compartment surface. For this
+reason, we start the population process by distributing the large surface
+ingredients and then use the remaining space for the interior ones by
+employing the updated occupancy grid. This will divide the population
+into two passes, but prevent small ingredients from being completely
+overlapped by larger ingredients coming from a different compartment.
+
+5.2 Step 2 – Population
+In this step we populate a given compartment with individual ingredi-
+ents defined in the recipe, using compartment grid and occupancy grid
+generated in the previous step. Here we distinguish between two types
+of ingredients to be populated. The first type is represented by ingredi-
+ents which occupy the inner part of a compartment but are bounded to
+the compartment membrane. The second type of ingredients populates
+the soluble space of the compartment. In order to avoid additional
+overlaps, we first populate the surface of the compartment and then its
+inner part.
+
+5.2.1 Population of Compartment Surface
+
+Cell membranes typically include a diverse collection of membrane-
+bounded proteins, which may interact on one face of the membrane
+or span through the membrane. This poses several challenges: the
+proteins must be oriented correctly and face the proper direction and
+with membrane-spanning portions embedded in the membrane. These
+proteins often have large portions extending from one or both sides
+of the membrane, which must be evaluated for collisions with other
+membrane-bound proteins and soluble components. We implement the
+spatial distribution of ingredients within a given membrane in several
+
+
+
+(a) (b)
+
+(c) (d)
+
+Fig. 5: (a) Ingredients distributed on the surface of the compartment. (b)
+Occupancy grid containing information about the voxels occupied by
+these ingredients (green for outside, yellow for inside). (c) Positioning
+ingredients inside the compartment (new ingredients have red and
+orange color). (d) Occupancy grid update.
+
+steps. Briefly, we need the information about the ingredient type, its
+molarity, ID of the membrane, and the principal vector and offset of the
+ingredients (Figure 5 a)). In the last step, we update the information
+stored in the occupancy grid (Figure 5 b)).
+
+First, we sample the triangular mesh representing the compartment
+surface to determine the locations of proteins. Uniform sampling can
+be done instantly by positioning samples at triangle vertices or centers.
+However, this is not suitable because most ingredients are irregularly
+distributed on the surface and differ in size and shape. To solve this
+issue, Willmott previously used the property of the Halton sequence to
+distribute in real time non-overlapping objects on a plane [47]. However,
+his method relies on a sequence to determine the size of the distributed
+object. In our current scenario all object sizes are predefined and cannot
+be scaled. In order to reach the irregular distribution with minimal
+possible overlaps with other ingredients on the surface, we use a Halton
+sequence to select a triangle to position the ingredient.
+
+The Halton sequence [18] provides a way to produce points with
+low discrepancy, i.e., it produces well-spaced samples. The sequence is
+constructed using a prime number that defines the number of divisions
+of a unit interval into sub-intervals. These are subsequently divided
+using the same prime number until we reach a desired length of the
+sequence. The sequence is then ordered in such a way that it produces
+subsets that evenly cover the entire domain. Halton sequences are
+often used for numeric methods like Monte Carlo simulations [6].
+Another advantage of the Halton sequence is that it never contains the
+same number twice so that we do not choose the same grid point for
+multiple ingredients. This approach provides an efficient and rapid way
+of distributing ingredients on the compartment surface with sufficient
+randomness and minimizing possible overlaps. When a suitable triangle
+is selected, we generate a random point inside this triangle and use it
+for positioning the corresponding ingredient.
+
+The orientation of the ingredient is then described as the principal
+vector defining the orientation of the ingredient with respect to the
+membrane, and an offset vector that places the ingredient at the proper
+position relative to the surface of the membrane, as depicted in Figure 6.
+This information is usually computed using the OPM webserver [30].
+Note that this method does not test for overlaps between different
+
+(a) (b)
+
+Fig. 6: (a) Example of surface ingredient with proper principal vector
+(black), and offset vector (white), heading from the center of mass to
+the anchor position at the surface. (b) Positioning of the ingredient
+onto the surface using correct orientation and offset aligned to surface
+normal (top). Grid occupancy update (bottom).
+
+ingredients – in cases where the count of objects to be placed is larger
+than the number of triangles, or that object sizes are larger than the
+triangles, that the end result will present overlaps.
+
+5.2.2 Population of Compartment Inner Area
+
+When populating the soluble space of compartments, we use the infor-
+mation stored in the compartment grid and the occupancy grid to find
+an appropriate position for ingredients. It means that the membrane-
+bounded ingredients positioned in the previous step are considered as
+non-moving obstacles, i.e., they are handled as static objects when
+resolving collisions.
+
+The population works as follows. For each instance of the ingredient
+defined in the recipe, we place the ingredient at a voxel marked with
+the appropriate value in the compartment grid, and with an empty
+value in the occupancy grid. The occupancy grid is then updated
+with the identity of the ingredient, and these steps are repeated until
+all ingredients are positioned (Figure 5 c, d). The occupancy grid is
+updated even after positioning of all ingredients is completed, so that
+the grid may be used in the population of this compartment with fibrous
+structures (see Section 6).
+
+As the size of the ingredients can be substantially larger than the
+voxel size, this will ultimately result in intersecting ingredients if they
+are placed in a close proximity. The population step does not necessarily
+need to take overlapping into consideration, although the less overlap-
+ping is produced, the less computation is required in the following step
+that resolves the overlapping. The most straightforward approach to
+reduce overlaps is to uniformly distribute ingredients. However, this
+leads to an undesired visual appearance since the grid structure becomes
+clearly visible. In order to introduce a certain degree of randomness and
+still reduce overlaps, we again utilize the Halton sequence to choose
+potential grid points for population. In practice the compartment popu-
+lated using the Halton sequence can still suffer from visible regularities.
+Therefore, we additionally introduce jittering by a random vector in
+each grid position and we apply a random rotation to each ingredient.
+With the Halton sequence, we can significantly reduce the number of
+overlapping molecules but it does not completely reduce them to zero.
+The following step detects and resolves these remaining overlaps.
+
+5.3 Step 3 – Detecting and Resolving Collisions
+Ideally, we would want to detect collisions by evaluating contacts
+between all atoms in the molecules. However, this is not practicable
+in terms of performance, so for every molecule type, we compute a
+two-level proxy geometry that approximates its shape. The higher-level
+proxy is simply the bounding sphere of the molecule. The lower-
+level proxy approximates the molecule with a small number of spheres
+
+
+
+(a)
+
+(b)
+
+Fig. 7: (a): Proxy geometry of ingredients. Overlapping geometries are
+marked with red, non-overlapping in green, and static ones in grey. (b)
+The same scene populated by ingredients.
+
+(preset is 16 spheres) calculated with a GPU-based K-means clustering
+algorithm. It provides the centers for the spheres and the sizes which
+correspond to the cluster size. This ensures that all atoms are covered
+by the proxy geometry. The collision-detection process first uses the
+higher level proxy geometry to detect potential collisions between
+two molecules, which are then verified with the lower-level proxy
+geometries using the finer approximation of the shape. Figure 7 shows
+the lower-level of the proxy geometries (a) and the scene populated
+by ingredients (b). The proxy geometry slightly overestimates the
+actual shape of the molecule to ensure that a certain distance is created
+between molecules after the collision is resolved. From a perceptual
+point of view, the molecules are easier to distinguish if their shape
+boundaries are not in direct contact.
+
+The resolving of collisions is loosely based on standard rigid body
+dynamics [1]. However, usually the exact point of contact between
+two bodies is detected and then corresponding forces are computed.
+Since our molecules are already in a colliding state, we simply compute
+forces that resolve these collisions. We use the information about
+collisions from the lower-level of the proxy geometry as a basis for
+the computation. For each intersecting pair of molecules we determine
+the overlapping sphere pairs and consider this as one collision. Each
+molecule accumulates a linear and angular force that is updated for
+every collision. The linear force is defined by a direction and strength.
+The direction is derived from the vector between the centers of the
+two spheres. The distance between the two sphere centers determines
+the strength of the force. As in rigid body dynamics, we compute the
+angular force by taking into account the vector between the center of
+the molecule and the collision, as well as the direction vector. After the
+forces for all collisions are computed, they are used to determine the
+new position and rotation of molecules, as in a standard physics-based
+systems. This is denoted as one integration step. During the collision-
+resolving process, it can happen that a molecule temporarily leaves its
+compartment. Then we apply a force to this molecule, that will steer
+it back into the compartment. This process is repeated for a certain
+number of integration steps until all collisions are resolved or a stop
+criterion is reached. This criterion can be set by the user and specifies
+a certain number of acceptable remaining collisions. This makes the
+system flexible for less powerful hardware systems as well. Both the
+collision detection and the subsequent resolving is computed on the
+GPU.
+
+(a) (b)
+
+Fig. 8: Fibrous structures are modeled using a self-avoiding random
+walk. (a) The walk starts with a random point inside of a certain
+compartment. A random direction within the hemisphere of this point
+is then chosen. If there is no intersection with the existing structures or
+compartment surfaces, the direction is chosen and the segment is added
+to the fiber. This process is repeated until the desired length of the fiber
+is reached. (b) A very long DNA (yellow) with long persistence length
+is combined with shorter RNA (red) with small persistence length.
+
+6 FIBROUS STRUCTURES
+
+Fibrous ingredients are linear or branched polymers of repeated units,
+found in many places in cells. They include protein filaments that form
+infrastructure, polysaccharides that provide protection or store energy,
+and nucleic acids that encode genetic information. They are usually
+modeled using a procedural growing algorithm, such as self-avoiding
+random walks. Angle and length are constrained to maintain the persis-
+tent length of the processed fiber. The process of building the fibrous
+structure is sequential by nature as we have to be aware of the previous
+state of the fiber. However, this process can be greatly improved by
+using the grid information. For every incremental step of the walk, the
+corresponding grid can be checked if it belongs to the compartment
+(compartment grid) and if it is occupied by some other protein (occu-
+pancy grid). This improves the computational cost by restraining the
+growing fiber to allowed space and minimizing intersections with pre-
+viously positioned ingredients, including self-intersections. For large
+systems, such as genomes, the fiber can contain millions of subunits,
+so the complete fiber-growing process will not be interactive. Here, we
+provide the possibility for the user to observe the current progress of
+the fiber growth, to remain interactive.
+
+The self-avoiding random walk in our approach works as follows.
+In the target compartment, a starting point is randomly chosen and the
+following protocol is iterated until the required length of the fiber is
+reached. In each step, a random direction is selected from the hemi-
+sphere that is oriented and positioned according to the previous direc-
+tion, as illustrated in Figure 8 a). Possible intersections with mem-
+branes, soluble molecules or itself are tested by using the occupancy
+and compartment grids, and if there are no intersections, the segment
+is added and the grids are updated. Otherwise, a different random
+direction is chosen. A dead-end is reached when the walk has been
+rejected after a given number of attempts. In our experience, the or-
+der in which molecules are distributed strongly influences the success
+of the population step. We have obtained the best results by placing
+membrane-bound proteins first, followed by fibers, and finishing with
+soluble ingredients. This sequence addresses two significant potential
+problems: (i) membrane-bound proteins often protrude into compart-
+ments, so the fiber must avoid them, and (ii) typical soluble components
+are highly crowded into compartments, lead to few free grid points and
+no options for fiber growth. Figure 8 b) shows examples of positioning
+fibrous structures in different types of compartments (outside, inside,
+surface).
+
+This method provides interactive performance for small fibers, such
+as the lipopolysaccharides extending from the mycoplasma surface or
+small RNA molecules in the cytoplasm. Long genomic DNA molecules,
+however, require several minutes to generate. We provide two methods
+to allow the user more interaction for these large structures: a premade
+DNA model may be preloaded, or we grow the walk in real-time to
+
+
+
+show the progress, allowing the user to stop and restart if the growing
+model shows problems.
+
+7 RESULTS AND DISCUSSION
+The approach described here is flexible, allowing modeling of a variety
+of biological systems. This ability is due, in part, to the relationship of
+all living things on Earth. Similar membranes surround all cells and
+define their inner organelles, and similar proteins orchestrate the traffic
+of molecules and information across the membranes. Similar proteins
+and nucleic acids are used for the many metabolic and genetic tasks
+required for energy production, biosynthesis, and reproduction, which
+are packaged in very similar compartments within cells. Viruses, since
+they rely on cells for reproduction, are also built from a subset of this
+machinery. Thus, with a limited set of structural modeling tools, we
+are able to build a variety of different cellular scenes.
+
+Building mesoscale models is always an iterative process, where the
+recipe, ultrastructure and other parameters are tuned to reflect and lend
+insight to the available experimental results. This is a laborious process
+with methods such as cellPACK, where single models require minutes
+to hours to generate, followed by significant effort to visualize the
+results. Our approach tightens this research cycle, allowing researchers
+to generate models or ensembles of models rapidly in an intrinsically
+visual environment. This allows interactive optimization of recipes to
+identify and correct any errors or bugs, and rapid incorporation of new
+data as it becomes available.
+
+We demonstrate the capabilities and advantages of this new approach
+in three test systems. In a mesoscale model of blood plasma, the ef-
+ficiency of the current method allows us to create a very large scene
+containing millions of molecules, which required a prohibitive com-
+putational effort with previous methods. With HIV, the interactive
+capability allows us to generate multiple models from a single recipe,
+and explore stochastic variations of a structurally complex subject. In
+a model of an entire mycoplasma bacterium, we are able to tune the
+recipe and modeling parameters interactively to achieve a particular
+goal: creating a 3D version of an existing 2D rendering of the cell. In
+the following sections, we describe these cases as well as the achieved
+results. The performance was measured using the computer with an
+Intel Core i7-6700K CPU 4.00GHz and NVIDIA GeForce GTX 1080
+graphics card with 8 GB memory.
+
+Blood Plasma. Blood plasma is largely homogeneous and relatively
+sparsely occupied by proteins and short fibrous components. These
+proteins have a variety of functions, including molecules of the immune
+system, blood clotting factors, transport molecules, and hormones. It is
+a perfect system for early tests of methods for populating mesoscale
+scenes, because the proteins have a variety of sizes and shapes, includ-
+ing several with very large aspect ratios. When creating the model
+using cellPACK, a scene containing nearly 30,000 molecules was cre-
+ated in 116 seconds. With our approach we have tested a scene with
+blood plasma containing more than 33,000 molecules. The population
+step takes in average 100 ms and the consecutive overlap resolving in
+average 2000 ms. Our system is also capable of populating significantly
+larger scenes. As shown in Figure 9, we have populated a scene with
+a volume of two cubic microns with blood plasma. Given accurate
+molarity, our approach produces over 4.6 million soluble protein ingre-
+dients in 0.6 seconds. In our current implementation, this is beyond
+the capabilities of our force-based system to resolve potential overlaps.
+The main bottleneck here is the collision detection. However, this is
+not a conceptual limitation. Current research [19] has shown that it
+is already possible to interactively solve the collisions of millions of
+particles.
+
+HIV. We have used HIV as a convenient test system for mesoscale
+modeling since the inception of the cellPACK project. It has several
+advantages: it is relatively small, but still taxes most methods and it is
+one of the most-studied organisms, so there is abundant information
+available. However, there are still significant gray areas in the available
+data, so this leaves room for experimentation in the parameters of the
+recipe.
+
+The recipe used here was described by Johnson et al. [25], and
+consists in 5 types of surface proteins, 19 types of interior proteins
+
+Fig. 9: A cubic space two microns wide filled with blood plasma, with
+over 4.6 million soluble protein ingredients, populated in ∼ 0.6 sec.
+
+(a) (b) (c)
+
+(d) (e) (f)
+
+Fig. 10: Overview of the interactive modeling of the mature HIV virion
+based on the cellPACK recipe. (a) Build the membrane (magenta) based
+on a spherical mesh, and preload the capsid (blue) from a cryo-EM
+structure (PDB entry 3J3Q). (b) Solid voxelization of compartments.
+(c) Update the occupancy grid. (d) Populate the surface ingredients
+(envelope protein in green, matrix protein in yellow). (e) Build two
+copies of the RNA (red) using the fiber growth method and attach HIV
+NC protein at every control points. (f) Resulting model.
+
+and 2 RNA copies (9,200 bases, roughly 30,000 Ångströms long).
+A membrane envelope surrounds the virion, with several copies of
+the viral envelope protein embedded in the membrane and extending
+outwards. Inside, a protein-enclosed capsid protects two copies of
+the viral genome. A variety of proteins, including the viral enzymes
+and several accessory proteins, are found in the space between the
+membrane and the capsid.
+
+Figure 10 depicts the different steps of our procedural approach to
+modeling HIV. The final model consists of 11,790 protein ingredients.
+The entire model requires 0.07 seconds to generate without the RNA,
+and requires ∼ 3 seconds to generate the two copies of RNA. It takes
+up to one hour to generate this model using cellPACK.
+
+Mycoplasma Bacterium. The ultimate goal of this work is to create
+computational models of entire cells, for use interpretation of exper-
+imental results, and modeling of structure/function relationships in
+healthy and diseased states. To approach this challenge, we have fo-
+cused on one of the simplest cells, a mycoplasma bacterium. These
+cells have a very simple structure, with a single cellular membrane
+and a small genome. The membrane is filled with pumps and chan-
+nels, and decorated on the outer surface with lipopolysaccharides that
+form a protective coat around the cell. The detailed organization of
+molecules inside the cell is only now beginning to be explored by cry-
+
+
+
+(a) (b) (c)
+
+Fig. 11: Cross-sections of Mycoplasma mycoides. (a) A hand-drawn illustration. (b) 3D model generated with the draft recipe. (c) 3D model
+generated by interactively tuning the recipe to match general characteristics of the illustration. In the 3D models, the membrane is in green, with
+membrane-embedded proteins in orange and lipopolysaccharides in green. Inside, DNA is in yellow, soluble proteins in blue and magenta, and
+RNA in red.
+
+oEM microscopy, given the small size of the cells. We have modeled
+a random tangle of DNA surrounded by the soluble protein and RNA
+components.
+
+The draft recipe for the current model (Figure 11) includes the mem-
+brane, one strand of DNA (1,211,703 bp), 1500 lipopolysaccharides,
+and a collection of 18 of the most prevalent proteins and nucleic acids.
+The model required ∼ 100 sec for generation of all the fibers in the
+model (DNA, mRNA, peptides, lipopolysaccharides) and 0.1 sec to
+fill the remaining space with soluble components. Using cellPACK,
+the creation of the mycoplasma model takes several hours. We used
+the interactive capabilities of the method to tune the recipe, based on
+previous research used to create a hand-drawn illustration of the cell.
+Figure 11 includes the illustration, a 3D model using the draft recipe,
+and a 3D model generated after interactively tuning the recipe to better
+match the illustration.
+
+7.1 Performance and Interactive Capabilities
+Creation of these types of models has previously been a laborious
+process, forming a bottleneck in study. For instance, the micron-sized
+blood plasma scene previously required hours of computation time,
+and is modeled with the new method in less than a second. Currently,
+the method is able to populate soluble compartments interactively,
+allowing on-the-fly experimentation of recipes and their effects on
+the resultant scenes. The performance of modeling of fibrous and
+membrane components has also been significantly improved when
+comparing with previous approaches, taking seconds to generate a
+cell-sized membrane and about a minute to calculate a genome-sized
+object.
+
+One of the great advantages of our presented methods is the ability to
+test hypotheses interactively. Biological research is an ongoing process,
+and there are many gray areas in the body of knowledge about the struc-
+ture and function of cells at the mesoscale level. In many cases, it is
+useful to test the emergent mesoscale consequences of different proper-
+ties at the molecular level. In the current implementation, many useful
+parameters are tunable at runtime. The user imports ultrastructural
+meshes and descriptions of ingredients, and then creates and visualizes
+the model based on the recipe on the fly. Tunable parameters in the
+recipe currently include the location, the molarity, the orientation (as
+defined by principal vector and offset), and fiber-generation parame-
+ters. Once the basic geometry is loaded, everything may be changed
+interactively.
+
+For example, in Figure 12, we tested two assumptions for DNA
+persistence length in a model of a small genome packed into a spherical
+bacterium. A longer persistence length leads to DNA strands that wrap
+around the periphery of the cell, whereas a shorter persistence length
+leads to a trajectory that is more reminiscent of a 3D random walk.
+The reality is probably a combination of these two assumptions, since
+
+(a) (b)
+
+Fig. 12: Two models for DNA in a bacterial cells, using (a) a long
+persistence length and (b) a short persistence length (∼ 30 kb, 7 sec to
+generate)
+
+DNA-binding proteins often form kinks that mimic the short persistence
+length, and free strands of DNA show a longer persistence length.
+
+8 CONCLUSION AND FUTURE WORK
+
+In this work we have presented the first interactive approach to an
+integrative structural modeling of the biological mesocale. The interac-
+tive performance of the method provides several significant advantages
+in scientific and educational applications. With the ability to create
+interactive models, domain experts are now able to tune parameters
+and explore the mesoscale properties that emerge. In addition it is
+now possible to create an ensemble of models from a single recipe,
+allowing researchers to explore the stochastic variations in mesoscale
+properties and compare them with experiments. In education, inter-
+active capabilities allow curriculum developers to tune their models
+and representations to optimize the clarity of the resultant imagery.
+A long tradition of scientific illustration has proven the pedagogical
+utility of introducing small artistic changes to a subject to improve the
+interpretability of what is shown.
+
+The next major enhancement of the method will be the incorporation
+of a more interactive and intuitive approach to modeling interactions
+between the ingredients. For instance, modeling of the interaction of
+ribosomes with messenger RNA to form a polysome, or crosslinking
+of DNA by DNA-binding proteins, is currently not feasible. We are
+currently exploring particle simulation methods such as NVidia Flex
+to add this capability. In addition, we will continue to optimize the
+generation of fibrous components, which is currently the rate-limiting
+step of model generation with the new approach.
+
+
+
+REFERENCES
+
+[1] D. Baraff. An introduction to physically based modeling: rigid body
+simulation I-unconstrained rigid body dynamics. SIGGRAPH Course
+Notes, pp. D31–D68, 1997.
+
+[2] M. Beck and W. Baumeister. Cryo-electron tomography: Can it reveal
+the molecular sociology of cells in atomic detail? Trends in Cell Biology,
+26(11):825–837, 2016. Special Issue: Future of Cell Biology. doi: 10.
+1016/j.tcb.2016.08.006
+
+[3] H. M. Berman, J. Westbrook, Z. Feng, G. Gilliland, T. N. Bhat, H. Weissig,
+I. N. Shindyalov, and P. E. Bourne. The Protein Data Bank. Nucleic Acids
+Research, 28(1):235–242, 2000.
+
+[4] P. Boechat, M. Dokter, M. Kenzel, H.-P. Seidel, D. Schmalstieg, and
+M. Steinberger. Representing and scheduling procedural generation using
+operator graphs. ACM Transactions on Graphics, 35(6):183:1–183:12,
+2016. doi: 10.1145/2980179.2980227
+
+[5] K. Culik and J. Kari. An aperiodic set of Wang Cubes. Journal of Universal
+Computer Science, 1(10):675–686, 1996.
+
+[6] I. L. Dalal, D. Stefan, and J. Harwayne-Gidansky. Low discrepancy
+sequences for monte carlo simulations on reconfigurable platforms. In
+Application-Specific Systems, Architectures and Processors, 2008. ASAP
+2008. International Conference on, pp. 108–113. IEEE, 2008.
+
+[7] P. Decaudin and F. Neyret. Rendering forest scenes in real-time. In
+Proceedings of the Fifteenth Eurographics Conference on Rendering Tech-
+niques, EGSR’04, pp. 93–102. Eurographics Association, 2004. doi: 10.
+2312/EGWR/EGSR04/093-102
+
+[8] C. J. Dickson, B. D. Madej, A. A. Skjevik, R. M. Betz, K. Teigen, I. R.
+Gould, and R. C. Walker. Lipid14: The Amber lipid force field. Journal
+of Chemical Theory and Computation, 10(2):865–879, 2014. PMID:
+24803855. doi: 10.1021/ct4010307
+
+[9] J. D. Durrant and R. E. Amaro. LipidWrapper: an algorithm for generating
+large-scale membrane models of arbitrary geometry. PLOS Computational
+Biology, 10(7):e1003720, 2014.
+
+[10] K. Fan, X.-Y. Li, and D.-C. Wu. Self-avoiding walk on a three-dimensional
+Manhattan lattice. Journal of Physics A: Mathematical and General,
+33(22):3971, 2000.
+
+[11] K. W. Fleischer, D. H. Laidlaw, B. L. Currin, and A. H. Barr. Cellular
+texture generation. In Proceedings of the 22nd Annual Conference on
+Computer Graphics and Interactive Techniques, pp. 239–248. ACM, New
+York, NY, USA, 1995. doi: 10.1145/218380.218447
+
+[12] C.-W. Fu and M.-K. Leung. Texture tiling on arbitrary topological surfaces
+using wang tiles. In Rendering Techniques, pp. 99–104, 2005.
+
+[13] E. Galin, A. Peytavie, N. Maréchal, and E. Guérin. Procedural Generation
+of Roads. Computer Graphics Forum (Proceedings of Eurographics),
+29(2):429–438, 2010.
+
+[14] D. S. Goodsell. Inside a living cell. Trends in Biochemical Sciences,
+16:203–206, 1991. doi: 10.1016/0968-0004(91)90083-8
+
+[15] S. Greuter, J. Parker, N. Stewart, and G. Leach. Real-time procedural
+generation of ‘pseudo infinite’ cities. In Proceedings of the 1st Interna-
+tional Conference on Computer Graphics and Interactive Techniques in
+Australasia and South East Asia, GRAPHITE ’03, pp. 87–ff. ACM, New
+York, NY, USA, 2003. doi: 10.1145/604471.604490
+
+[16] S. Grottel, M. Krone, C. Müller, G. Reina, and T. Ertl. MegaMol – a
+prototyping framework for particle-based visualization. Visualization and
+Computer Graphics, IEEE Transactions on, 21(2):201–214, 2015. doi: 10.
+1109/TVCG.2014.2350479
+
+[17] G. Gruenert, B. Ibrahim, T. Lenser, M. Lohel, T. Hinze, and P. Dittrich.
+Rule-based spatial modeling with diffusing, geometrically constrained
+molecules. BMC Bioinformatics, 11(1):307, 2010. doi: 10.1186/1471
+-2105-11-307
+
+[18] J. Halton. On the efficiency of certain quasi-random sequences of points in
+evaluating multi-dimensional integrals. Numerische Mathematik, 2:84–90,
+1960.
+
+[19] R. Hoetzlein. Fast fixed-radius nearest neighbors: interactive million-
+particle fluids. In GPU Technology Conference, p. 18, 2014.
+
+[20] S. Hornus, B. Lévy, D. Lariviére, and E. Fourmentin. Easy DNA modeling
+and more with GraphiteLifeExplorer. PLoS ONE, 8(1):1–12, 01 2013. doi:
+10.1371/journal.pone.0053609
+
+[21] W. Im, J. Liang, A. Olson, H.-X. Zhou, S. Vajda, and I. A. Vakser. Chal-
+lenges in structural approaches to cell modeling. Journal of Molecular
+Biology, 428(15):2943–2964, 2016. doi: 10.1016/j.jmb.2016.05.024
+
+[22] S. Jo, J. B. Lim, J. B. Klauda, and W. Im. CHARMM-GUI membrane
+builder for mixed bilayers and its application to yeast membranes. Bio-
+
+physical Journal, 97(1):50–58, 2009. doi: 10.1016/j.bpj.2009.04.013
+[23] G. T. Johnson, L. Autin, M. Al-Alusi, D. S. Goodsell, M. F. Sanner,
+
+and A. J. Olson. cellPACK: a virtual mesoscope to model and visualize
+structural systems biology. Nature methods, 12(1):85–91, 2015.
+
+[24] G. T. Johnson, L. Autin, D. S. Goodsell, M. F. Sanner, and A. J. Olson.
+ePMV embeds molecular modeling into professional animation software
+environments. Structure, 19(3):293–303, 2011.
+
+[25] G. T. Johnson, D. S. Goodsell, L. Autin, S. Forli, M. F. Sanner, and A. J.
+Olson. 3D molecular models of whole HIV-1 virions generated with
+cellPACK. Faraday Discussions, 169:23–44, 2014.
+
+[26] G. T. Johnson and S. Hertig. A guide to the visual analysis and commu-
+nication of biomolecular structural data. Nature Reviews Molecular Cell
+Biology, 15(10):690–698, 10 2014.
+
+[27] I. Kolesár, J. Parulek, I. Viola, S. Bruckner, A.-K. Stavrum, and H. Hauser.
+Interactively illustrating polymerization using three-level model fusion.
+BMC Bioinformatics, 15(1):345, 2014. doi: 10.1186/1471-2105-15-345
+
+[28] B. Kozlı́ková, M. Krone, M. Falk, N. Lindow, M. Baaden, D. Baum,
+I. Viola, J. Parulek, and H.-C. Hege. Visualization of biomolecular struc-
+tures: State of the art revisited. Computer Graphics Forum, 2016. doi: 10.
+1111/cgf.13072
+
+[29] L. Krecklau, J. Born, and L. Kobbelt. View-dependent realtime rendering
+of procedural facades with high geometric detail. Computer Graphics
+Forum, 32(2pt4):479–488, 2013. doi: 10.1111/cgf.12068
+
+[30] M. A. Lomize, A. L. Lomize, I. D. Pogozheva, and H. I. Mosberg. OPM:
+orientations of proteins in membranes database. Bioinformatics, 22(5):623–
+625, 2006.
+
+[31] A. Lu, D. S. Ebert, W. Qiao, M. Kraus, and B. Mora. Volume illustration
+using Wang Cubes. ACM Transactions on Graphics, 26(2):11, 2007. doi:
+10.1145/1243980.1243985
+
+[32] Z. Lv, A. Tek, F. Da Silva, C. Empereur-mot, M. Chavent, and M. Baaden.
+Game on, science - how video game technology may help biologists tackle
+visualization challenges. PLoS ONE, 8(3):e57990, 2013.
+
+[33] L. Martı́nez, R. Andrade, E. G. Birgin, and J. M. Martı́nez. PACKMOL:
+A package for building initial configurations for molecular dynamics
+simulations. Journal of Computational Chemistry, 30(13):2157–2164,
+2009. doi: 10.1002/jcc.21224
+
+[34] S. R. McGuffee and A. H. Elcock. Diffusion, crowding & protein stability
+in a dynamic molecular model of the bacterial cytoplasm. PLOS Compu-
+tational Biology, 6(3):1–18, 2010. doi: 10.1371/journal.pcbi.1000694
+
+[35] M. L. Muzic, L. Autin, J. Parulek, and I. Viola. cellVIEW: a tool for
+illustrative and multi-scale rendering of large biomolecular datasets. In
+Eurographics Workshop on Visual Computing for Biology and Medicine,
+pp. 61–70. EG Digital Library, The Eurographics Association, 2015.
+
+[36] F. Neyret and M.-P. Cani. Pattern-based texturing revisited. In Proceedings
+of the 26th Annual Conference on Computer Graphics and Interactive
+Techniques, SIGGRAPH ’99, pp. 235–242. ACM Press/Addison-Wesley
+Publishing Co., New York, NY, USA, 1999. doi: 10.1145/311535.311561
+
+[37] T. Reddy and M. S. Sansom. Computational virology: From the inside
+out. Biochimica et Biophysica Acta (BBA) - Biomembranes, 1858(7, Part
+B):1610–1618, 2016. doi: 10.1016/j.bbamem.2016.02.007
+
+[38] M. Schwarz and H.-P. Seidel. Fast parallel surface and solid voxelization
+on GPUs. ACM Transactions on Graphics, 29(6):179:1–179:10, 2010. doi:
+10.1145/1882261.1866201
+
+[39] D. Sirohi, Z. Chen, L. Sun, T. Klose, T. C. Pierson, M. G. Rossmann, and
+R. J. Kuhn. The 3.8 Å resolution cryo-EM structure of Zika virus. Science,
+352(6284):467–470, 2016. doi: 10.1126/science.aaf5316
+
+[40] M. Steinberger, M. Kenzel, B. Kainz, P. Wonka, and D. Schmalstieg. On-
+the-fly generation and rendering of infinite cities on the GPU. Computer
+Graphics Forum, 33(2):105–114, 2014. doi: 10.1111/cgf.12315
+
+[41] M. Tarini, K. Hormann, P. Cignoni, and C. Montani. Polycube-maps. ACM
+Transactions on Graphics, 23(3):853–860, 2004. doi: 10.1145/1015706.
+1015810
+
+[42] A. Vendeville, D. Lariviére, and E. Fourmentin. An inventory of the bac-
+terial macromolecular components and their spatial organization. FEMS
+Microbiology Reviews, 35(2):395–414, 2011. doi: 10.1111/j.1574-6976.
+2010.00254.x
+
+[43] S. M. Waldon, P. M. Thompson, P. J. Hahn, and R. M. Taylor. SketchBio:
+a scientist’s 3D interface for molecular modeling and animation. BMC
+Bioinformatics, 15(1):334, 2014. doi: 10.1186/1471-2105-15-334
+
+[44] T. Waltemate, B. Sommer, and M. Botsch. Membrane Mapping: Com-
+bining Mesoscopic and Molecular Cell Visualization. In Eurographics
+Workshop on Visual Computing for Biology and Medicine. The Eurograph-
+ics Association, 2014. doi: 10.2312/vcbm.20141187
+
+
+
+[45] H. Wang. Proving theorems by pattern recognition-II. Bell Labs Technical
+Journal, 40(1):1–41, 1961.
+
+[46] B. G. Wilhelm, S. Mandad, S. Truckenbrodt, K. Kröhnert, C. Schäfer,
+B. Rammner, S. J. Koo, G. A. Claßen, M. Krauss, V. Haucke, H. Urlaub,
+and S. O. Rizzoli. Composition of isolated synaptic boutons reveals the
+amounts of vesicle trafficking proteins. Science, 344(6187):1023–1028,
+2014. doi: 10.1126/science.1252884
+
+[47] A. Willmott. Fast object distribution. In SIGGRAPH sketches, p. 80, 2007.
+[48] P. Wonka, M. Wimmer, F. Sillion, and W. Ribarsky. Instant architecture.
+
+ACM Transactions on Graphics, 22(3):669–677, 2003. doi: 10.1145/
+882262.882324
+
+

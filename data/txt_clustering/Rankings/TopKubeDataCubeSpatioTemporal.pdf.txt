@@ -1,0 +1,2026 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<sc>TopKube</sc>: A Rank-Aware Data Cube for Real-Time Exploration of Spatiotemporal Data
+
+
+TOPKUBE: A Rank-Aware Data Cube for
+Real-Time Exploration of Spatiotemporal Data
+Fabio Miranda , Lauro Lins, James T. Klosowski,Member, IEEE, and Claudio T. Silva, Fellow, IEEE
+
+Abstract—From economics to sports to entertainment and social media, ranking objects according to some notion of importance is a
+
+fundamental tool we humans use all the time to better understand our world. With the ever-increasing amount of user-generated
+
+content found online, “what’s trending” is now a commonplace phrase that tries to capture the zeitgeist of the world by ranking the most
+
+popular microblogging hashtags in a given region and time. However, before we can understand what these rankings tell us about the
+
+world, we need to be able to more easily create and explore them, given the significant scale of today’s data. In this paper, we describe
+
+the computational challenges in building a real-time visual exploratory tool for finding top-ranked objects; build on the recent work
+
+involving in-memory and rank-aware data cubes to propose TOPKUBE: a data structure that answers top-k queries up to one order of
+
+magnitude faster than the previous state of the art; demonstrate the usefulness of our methods using a set of real-world, publicly
+
+available datasets; and provide a new set of benchmarks for other researchers to validate their methods and compare to our own.
+
+Index Terms—Interactive visualization, data cube, top-K queries, rank merging
+
+Ç
+
+1 INTRODUCTION
+
+RANKS and lists play a major role in human society. It isnatural for us to rank everything, from movies to appli-
+ances to sports teams to countries’ GDPs. It helps us under-
+stand a world that is increasingly more complex by only
+focusing on a subset of objects. There is probably no better
+way to describe a decade than by ranking its most popular
+songs or movies. One just needs to look at the Billboard Hot
+100 of any year to gain insight into how the majority of soci-
+ety used to think and behave. High Fidelity [1] describes a
+person obsessed with compiling top-five lists for every occa-
+sion; as summarized in the book, the act of ranking gives
+structure to life, by clarifying the past [2].
+
+With the ever-increasing amount of user-generated
+content found online, ranks have never been so popular to
+our cultural landscape. “What’s trending” has become a com-
+monplace phrase used to capture the spirit of a time by
+looking at the most popular microblogging hashtags. The
+same way that the most popular songs can be used to
+describe the zeitgeist of a year or a decade, what’s trending
+can be used to describe the spirit of a day or even an hour.
+
+In addition to the deluge of new user-generated data, the
+ubiquity of GPS-enabled devices provides further insight into
+the people creating this content by providing, in many cases,
+their locationwhenposting amessage to Facebook, uploading
+a picture to Flickr, checking into Foursquare at their favorite
+
+restaurant, or posting a review about a new product they just
+bought. The location information provides amuchmore inter-
+esting, and more complicated, version of the ranking prob-
+lem. Now, not only are we interested in what is trending over
+time, but also over space, which can range from the entire
+world all the way down to a city street. What might be trend-
+ing in one neighborhood of a city,may be completely different
+from other neighborhoods in other cities, and these may be
+completely different from the overall global trend across the
+country. Thus, the ability to explore these ranks at different
+spatial and temporal resolutions is important for understand-
+ing ourworld and the people in it.
+
+A system that can efficiently process large amounts of
+data and come up with answers in a few minutes or seconds
+can be applied to many important problems, including those
+described here. In recent years, though, with the explosion of
+data gathering capabilities, there is a growing demand for
+interactive tools with sub-second latencies. Problems for
+which no automatic procedure exists that can replace human
+investigation of multiple (visual) data patterns require
+exploratory tools that are driven by a low latency query solv-
+ing engine. Making an analyst wait too long for the query
+answer might mean breaking her flow of thought, and be the
+difference between capturing an idea or not.
+
+We have recently seen a growth in research revisiting
+previous techniques and proposing new variations for solv-
+ing exactly the problem of low latency queries for the pur-
+poses of driving visual interactive interfaces. From the
+perspective of enabling fast scanning of the data at query
+time, works like MapD [3] and imMens [4] use the parallel
+processing power of GPUs to answer queries at rates com-
+patible with interactive interfaces. From a complementary
+perspective, Nanocubes [5] describes how to pre-aggregate
+data in an efficient but memory intensive fashion to allow
+for light-weight processing of queries in real-time.
+
+� F. Miranda and C. Silva are with New York University, New York, NY
+10003. E-mail: {fmiranda, csilva}@nyu.edu.
+
+� L. Lins and J. Klosowski are with AT&T Labs, Florham Park, NJ 07932.
+E-mail: {llins, jklosow}@research.att.com.
+
+Manuscript received 7 Mar. 2016; revised 20 Dec. 2016; accepted 12 Feb.
+2017. Date of publication 17 Feb. 2017; date of current version 26 Jan. 2018.
+Recommended for acceptance by P. Lindstrom.
+For information on obtaining reprints of this article, please send e-mail to:
+reprints@ieee.org, and reference the Digital Object Identifier below.
+Digital Object Identifier no. 10.1109/TVCG.2017.2671341
+
+1394 IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS, VOL. 24, NO. 3, MARCH 2018
+
+1077-2626� 2017 IEEE. Personal use is permitted, but republication/redistribution requires IEEE permission.
+See ht _tp://www.ieee.org/publications_standards/publications/rights/index.html for more information.
+
+Authorized licensed use limited to: UNIVERSITAT POLITECNICA DE CATALUNYA. Downloaded on October 05,2020 at 06:59:46 UTC from IEEE Xplore.  Restrictions apply. 
+
+https://orcid.org/0000-0001-8612-5805
+https://orcid.org/0000-0001-8612-5805
+https://orcid.org/0000-0001-8612-5805
+https://orcid.org/0000-0001-8612-5805
+https://orcid.org/0000-0001-8612-5805
+mailto:
+mailto:
+
+
+In this paper, we also follow this path of describing tech-
+niques for low-latency querying of large data for explor-
+atory visualization purposes. We propose an extension to
+the efficient pre-aggregation scheme described in Nano-
+cubes [5] to cover an important use case that was not dis-
+cussed: interactively ranking top objects from a large data
+collection incident to an arbitrary multi-dimensional selec-
+tion. For example, we would like to answer queries such as:
+“What are the top Flickr tags?” for manually selected spatial
+regions such as Europe, California, Chicago, or Times
+Square. Furthermore, we want to be able to determine how
+the popularity of these tags evolves over time, as dictated
+by the end-user’s interests, all at interactive rates.
+
+We show that the state of the art is not able to compute
+such queries fast enough to allow for interactive explora-
+tion. TOPKUBE however, is a rank-aware data structure that
+is able to compute top-k queries with sufficiently low
+latency to allow for interactive exploration. Through a set of
+benchmarks which we make available publicly, we show
+that our proposal is up to an order of magnitude faster than
+the previous state of the art. More specifically, we can sum-
+marize our contributions as the following:
+
+� A rank-aware data structure that allows for interactive
+visual exploration of top-k queries, with results up to
+one order ofmagnitude faster than previouswork.
+
+� A set of case studies that demonstrate the utility of our
+method using real-world, publicly available datasets,
+ranging in size up to hundreds ofmillions of records.
+
+� Anew set of publicly available benchmarks for others
+to validate their methods and compare to our own.
+
+2 RELATED WORK
+
+The challenge of visualizing large datasets has been exten-
+sively studied over the years. Most techniques usually pro-
+pose some form of data reduction: they try to aggregate a
+large number of points into as few points as possible, and
+then visualize that smaller aggregation. The original dataset
+is reduced to a smaller, sometimes bounded, version. Such
+reductions try to convey most, if not all, of the properties of
+the original dataset while still being suitable for interactive
+visualization. Perceptually approximate techniques [6], [7],
+which utilize data reduction, maintain interactivity while
+returning visual approximations that approach the exact
+results. Sampling [8], filtering [9] and binned aggrega-
+tion [10] are among the most popular reduction techniques.
+Even though sampling and filtering reduce the number of
+items, it comes at the price of missing certain aspects of the
+data, including outliers. As pointed out by Rousseeuw and
+Leroy [11], data outliers are an important aspect of any data
+analysis tool. Binned aggregation, however, does not have
+such limitations. The spatial domain is divided into bins,
+and each data point is placed into one of those bins. As
+such, binning does not remove outliers and also preserves
+the underlying density behavior of the data.
+
+The visual exploration of large datasets, however, adds
+another layer of complexity to the visualization problem.
+Now, one needs to query the dataset based on a set of user
+inputs, and provide a visual response as quickly as possible,
+in order not to impact the outcome of the visual exploration.
+In Liu and Heer [12], the authors present general evidence
+
+for the importance of low latency visualizations, citing that
+even a half second delay in response time can significantly
+impact observation, generalization, and hypothesis rates.
+Systems such as imMens [4], Nanocubes [5], and DICE [13]
+leveraged a data cube to reduce the latency between user
+input and visualization response. Data cubes have been
+explored in the database community for a long time [14], but
+in the visualization community, theywere first introduced in
+2002 by Stolte et al. [15], [16]. All of these techniques, how-
+ever, are limited to simple data types, such as counts. They
+were designed to answer queries such as: “Howmany pictures
+were uploaded from Paris during New Year’s Eve?” or “How
+many GitHub commits happened on the West Coast?”. Our data
+structure goes beyond that. We aim to answer more detailed
+queries, such as “What were the most popular image tags for all
+the pictures uploaded from Paris?” or “What are the GitHub proj-
+ects with most commits in theWest Coast?”.
+
+The notions of ranking and top-k queries were also first
+introduced by the database community. Chen et al. [17]
+presents a survey of the state of the art in spatial keyword
+querying. The schemes can be classified as spatial-first, text-
+first or a combination. Spatial-first structures create hierar-
+chical spatial structures (e.g.,grids [18], or R-trees [19]), and
+insert textual data into the leaf nodes. Text-first structures
+organize the data by considering the textual elements, and
+then linking a spatial data structure to it, keeping track of its
+occurrence in the space [18], [20]. Combined structures cre-
+ate data structures that handle both spatial and textual ele-
+ments simultaneously [21]. The previous data structures,
+however, focus on building indexing schemes suitable for
+queries where the universe of keywords is restricted. In
+other words, given a set of keywords, rank them according
+to their popularity in a region. If there is no keyword restric-
+tion or the number of restricted keywords is too large, then
+such proposals become infeasible. Our proposal is much
+broader: we are able to compute the rank of most popular
+keywords even if there is no keyword restriction.
+
+Rank-aware data cubes were also proposed in the data-
+base community. Xin et al. [22] defined the ranking cube, a
+rank-aware data cube for the computation of top-k queries.
+Wu et al. [23] introduced the ARCube, also a rank-aware
+data cube, but one that supports partial materialization.
+Our proposal differs from them in two major ways: we spe-
+cialize our data structure to better suit spatiotemporal data-
+sets, and we demonstrate how our structure provides low
+latency, real-time visual exploration of large datasets.
+
+Another related database research area is top-k query
+processing: given a set of lists, where each element is a tuple
+with key and value, compute the top-k aggregated values.
+Severalmemory access scenarios led to the creation of a num-
+ber of algorithms [24]. The NRA (no random access) algo-
+rithm [25] considers that all lists are sorted and that the only
+possible memory access method is through sorted access
+(i.e.,read from the top of each list). The TA (threshold algo-
+rithm) [25] considers random access to calculate the top-k.
+More recently, Shmueli-Scheuer [26] presented a budget-
+aware query processing algorithm that assumed the number
+of memory reads is limited. We propose a different top-k
+query processing algorithm, suitable for our low latency sce-
+nario. We show that, due to the high sparsity of the merged
+ranks, past proposals are not suitable.
+
+MIRANDA ETAL.: TOPKUBE: A RANK-AWARE DATA CUBE FOR REAL-TIME EXPLORATION OF SPATIOTEMPORAL DATA 1395
+
+Authorized licensed use limited to: UNIVERSITAT POLITECNICA DE CATALUNYA. Downloaded on October 05,2020 at 06:59:46 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+
+Similar to what we are trying to accomplish, Birdvis [27]
+displays the top words in a given region; however, the tech-
+nique does not scale to more than a few hundred words.
+Wood et al. [28] also present a visual exploration of tags in
+maps, using a standard MySQL database; but they are lim-
+ited to less than 2 millions words and they do not present
+any time measurements.
+
+Although orthogonal to the core investigation done here,
+we lastly mention some of the visualization techniques used
+strictly for display purposes of ranked objects. Ran-
+kExplorer [29] proposes a modified theme river to better
+visualize ranking changes over time. Lineup [30] presents a
+visualization technique for multi-attribute rankings, based
+on stacked bars. A Table [31] proposes an enhanced soccer
+ranking table, with interactions that enable the exploration
+of the data along the time dimension. Our work enables
+these types of visualizations to be driven at interactive rates,
+rather than competes with them by offering a new visualiza-
+tion method.
+
+3 MOTIVATION
+
+We begin with a simple example. Assume a data analyst is
+studying shots in National Basketball Association (NBA)
+games from a table similar to Table 1 (only three rows shown).
+Every row represents a shot in a game. The first row indicates
+that LeBron James from Cleveland took a shot in the 5th min-
+ute of a game from the court coordinates x ¼ 13, and y ¼ 28;
+the shot missed the basket and he scored 0 points with that
+shot. The second row represents a successful two point shot
+by Rajon Rondo from Boston, and the third row represents a
+successful three point shot by LeBron James.
+
+3.1 Generality versus Speed
+
+With such data and a SQL-like interface, an analyst could
+generate many insightful aggregations for this data. The
+query: “SELECT player,count(*) AS shots FROM
+table GROUP BY player ORDER BY shots DESC LIMIT
+
+50” would generate a ranked list of the 50 players that took
+the most shots, while the following query would rank the
+top 50 players by points made: “SELECT player,sum
+(pts) AS points FROM table GROUP BY player ORDER
+
+BY points DESC LIMIT 50”.
+Although a SQL engine provides a lot of power and flexi-
+
+bility, these characteristics come with a cost: solving certain
+queries may require scanning all records stored in a poten-
+tially large database. Such an expensive computation may
+result in an analyst wasting precious time, or worse, breaking
+a flow of ideas and losing a potential insight. To solve these
+expensive queriesmore quickly, there are two alternatives: (1)
+expand the raw computational power of the query engine
+(e.g.,using more CPU or GPU cores); or (2) anticipate impor-
+tant use cases and precompute information from the data so
+that query solutions can be composed more cheaply during
+data exploration. The idea of a data cube is essentially that of
+(2): make an explicit encoding of multiple aggregations a user
+might query later (e.g.,store all possible group-by queries on a
+table using SUM). Note that we can think of solution (2) as
+being implemented by first running a big scanning query like
+in (1), but with a goal of storing enough information to allow
+for a fluid experience later.
+
+In theNanocubes paper [5], the authors follow this second
+approach, and observe that for spatiotemporal datasets with
+a few categorical dimensions, by carefully encoding the
+aggregations in a sparse, pointer-based data structure, they
+could represent, or materialize, entire data cubes efficiently.
+They report on multiple interesting use cases where these
+data cube materializations of relatively large datasets could
+fit into the main memory of commodity laptops, enabling
+aggregations (of the pre-defined measure of interest), at any
+scale and dimension (from city blocks to whole countries,
+fromminutes to years), to be computed at interactive rates.
+
+From a very high level, the Nanocubes approach is all
+about binning and counting. Each dimension in a Nanocube
+is associated with a pre-defined set of bins, and the tech-
+nique consists essentially of pre-computing a mapping
+between every combination of bins (from the different
+dimensions) into some measure of all the records incident to
+that combination of bins. In the simple NBA example, the
+measure of interest could be the number of shots taken, but
+in other datasets this could be the number of lines of code,
+cell phone calls, hashtags, miles driven, or any other simple
+data value. Thus, the Nanocubes approach trades off flexi-
+bility (by requiring the measure of interest and binning
+scheme to be determined ahead of time) for interactivity (by
+providing rapid query responses during visual exploration
+of the data). It should also be noted that the original data
+records are not stored in the bins (just the counts) and there-
+fore are not available as part of the Nanocube data structure.
+
+The main drawback of in-memory data cubes as proposed
+by [5] is clear: even a minimal representation of a data cube
+tends to grow exponentially with the addition of new dimen-
+sions. In other words, there is no miracle solution to the curse
+of dimensionality. On the other hand, from a practical per-
+spective, there seems to exist a sweet spot in terms of comput-
+ing resource utilization where the application of in-memory
+data cubes can really be the driving engine of interactive
+exploratory experiences that would otherwise require prohib-
+itively larger amounts of infrastructure.
+
+With this context in mind, in this work we want to inves-
+tigate the use of in-memory data cubes to drive an impor-
+tant use case for visualization that was not efficiently solved
+by Nanocubes. Namely, if we perform a multi-dimensional
+selection that contains millions of objects, how can we effi-
+ciently obtain a list of only the top-k most relevant objects
+with respect to our measure of interest. For example, con-
+sider the selections we made on the basketball court exam-
+ple in Fig. 1. We want to compare the top-20 players that
+take shots on the left 3-point corner (orange) versus players
+that take shots from the right 3-point corner (blue). In this
+case, knowing that there are only a few hundred players in
+the NBA each year, it would not be computationally expen-
+sive to scan all players to figure out the top 20, but there are
+many other cases such as GitHub projects, Flickr images,
+and Microblog hashtags, where having to scan millions of
+objects can result in unacceptable latencies.
+
+TABLE 1
+
+team player time pts x y
+
+CLE L. James 5 0 13 28
+BOS R. Rondo 5 2 38 26
+CLE L. James 7 3 42 35
+
+1396 IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS, VOL. 24, NO. 3, MARCH 2018
+
+Authorized licensed use limited to: UNIVERSITAT POLITECNICA DE CATALUNYA. Downloaded on October 05,2020 at 06:59:46 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+
+4 MULTI-DIMENSIONAL BINNING MODEL
+
+In the following, we establish our own notations for well-
+known concepts in the database literature so that we can
+have a minimal, self-contained, and precise language to
+refer to when presenting the various data structures.
+
+The core abstraction used by Nanocubes [5], and shared
+by our proposal of TOPKUBE, is that of associating records
+with bins in multiple dimensions: a multi-dimensional bin-
+ning model. For example, it is natural to associate the NBA
+shot records in Table 1 with dimensions team, player,
+time, points, and location (note we chose here to com-
+bine columns x and y into a single location dimension).
+Each player possibility can be associated with its own bin in
+the player dimension. Team and points are handled simi-
+larly. For time, we could choose a one minute resolution
+and have each minute of the game be a bin in the time
+dimension; for location, we could have a 1ft. � 1ft. grid
+model of the court area and have each cell in this grid be a
+bin in the location dimension. Note that, in this model-
+ing, each record is associated to one and only one bin in
+each dimension. More abstractly, in our formalism, we
+assume each dimension i has a set of finest bins, denoted by
+B0i, and a record is always associated to a single finest bin in
+each dimension.
+
+In addition to the set of finest bins B0i associated with
+dimension i, we define the notion of coarser bins, or bins
+that “contain” multiple finer bins. For example, in the loca-
+tion dimension, we could group adjacent finest grid cells
+into 2x2 groups and make each of these groups a coarser
+bin cell in the location dimension. The interpretation of
+coarser bins is simply that if a record is associated with a
+finer bin b then it is also associated with a coarser bin that
+“contains” b. In the binning model we define here, we
+assume that the set of all bins Bi associated with dimension i
+forms a hierarchy Hi ¼ ðBi;piÞ where its leaves are a parti-
+tion of finest bins B0i. The containment function,
+pi : Bi ! Bi associates every bin b to another bin piðbÞ
+which is either the smallest (i.e., finest) bin in Hi that con-
+tains b (in case b 6¼ piðbÞ) or it is the coarsest (or root) bin in
+Hi (in case b ¼ piðbÞ).
+
+An n-dimensional binning schema S is defined as an
+n-ordered list of hierarchies: S ¼ ðH1; . . . ; HnÞ. In order to
+extend the finest sets of bins for the player dimension,
+B0player, into a valid bin hierarchyHplayer ¼ ðBplayer;pplayerÞ,
+
+we could include an additional coarse bin that serves as
+the root of this 1-level hierarchy by making all bins in
+B0player its direct children. This is indeed the natural way
+to model categorical dimensions with few classes. For
+dimensions where the number of finest bins is not small,
+it is best to use multi-level hierarchies so that data
+can later be accessed more efficiently in a level-of-detail
+fashion. For example, a natural way to model spatial
+dimensions is by using a quadtree bin-hierarchy; for a
+temporal dimension, in TopKube, we use a binary-tree
+bin-hierarchy. Given an n-dimensional binning schema
+S, we say that the Cartesian product B ¼ B1 � � � � �Bn is
+the product-bin set of S, and that an element b 2 B of this
+set is a product-bin of S.
+
+To define a multi-dimensional binning model, it remains
+to formalize the notion of which records in a dataset are
+associated to which bins and product-bins. Let R be a
+set of records and S a binning schema. If we provide an
+association function ai : R ! B0i for each dimension i that
+assigns a unique finest bin in B0i for every record, we can
+naturally and uniquely define an association relation
+A � R� B between records and product-bins. Here is
+how: (1) we say a general bin bi 2 Bi is associated with
+record r if either bi ¼ aiðrÞ or bi is an ancestor of aiðrÞ in
+Hi; (2) a product-bin b ¼ ðb1; . . . ; bnÞ is associated with
+record r, denoted by ðr;bÞ 2 A if bi is associated with
+record r for 1 � i � n.
+
+A multi-dimensional binning model is thus a triple
+M ¼ ðS;R;AÞ, where S is a binning schema, R is dataset of
+records, and A is an association relation between records
+and product-bins B from schema S. Given a product-bin b
+we use AðbÞ to denote its associated set of records in model
+M (i.e.,AðbÞ ¼ fr 2 R : ðr; bÞ 2 A;b 2 Bg). Analogously, we
+use AðrÞ for a record r to denote its associated set of product
+bins (i.e.,AðrÞ ¼ fb 2 B : ðr; bÞ 2 Ag).
+
+4.1 Measure on a Multi-Dimensional Binning Model
+
+The notion of product-bins in our model provides a way to
+refer to groups of records through their multi-dimensional
+characteristics. In our running NBA example, all shots of
+LeBron James would be specified by AðbLJÞ, where the
+product-bin bLJ 2 B consists of the coarsest (root) bin in the
+bin-hierarchy of all dimensions, except on the player dimen-
+sion where we would have the bin for LeBron James. If
+instead we want to refer to LeBron James’ shots in the first
+
+Fig. 1. Ranking NBA players by number of shots from the left 3-point corner (orange) and right 3-point corner (blue) for the 2009-2010 season. The
+left image is a heatmap of all shots: Brighter colors indicate more shots were taken from that location. The hotspot clearly identifies the basket.
+
+MIRANDA ETAL.: TOPKUBE: A RANK-AWARE DATA CUBE FOR REAL-TIME EXPLORATION OF SPATIOTEMPORAL DATA 1397
+
+Authorized licensed use limited to: UNIVERSITAT POLITECNICA DE CATALUNYA. Downloaded on October 05,2020 at 06:59:46 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+
+minute of a game, we would replace the root bin in the time
+dimension of bLJ with the bin for minute 1 of the game.
+
+One natural approach to analyzing a set of records
+through their multi-dimensional characteristics is through
+some notion of “size”. For example, instead of listing all
+NBA shots from the 3-pt left corner, we could simply be
+interested in how many shots happened in that region, or
+what the average or median distance from the basket was
+for all of those shots. A measure for a multi-dimensional bin-
+ning model M is simply a real function m : B ! R that asso-
+ciates a number to any product-bin b of M, which captures
+some notion of “size” for the set of incident records AðbÞ. In
+the target applications we are interested in, we want to
+access measure values not for just one product-bin at a time,
+but for sets of product-bins that are semantically meaning-
+ful together. For example we might be interested in the
+spatial region on the left of Fig. 2 that consists of multiple
+bins. In general, one cannot derive the measure value of the
+union of a set of product-bins by combining the measure
+values of the individual product-bins. The median distance
+of an NBA shot is such an example: we cannot derive the
+median of the union of two sets of values by knowing
+the median of each individual set. We avoid this problem
+here by restricting our universe to those of additive meas-
+ures only. We start with a real function m : R ! R that
+associates a number to each record from model M and
+extend this function to the whole set of product-bins by
+using additivity mðbÞ ¼ Pr2AðbÞ mðrÞ: Additive measures
+can naturally count occurrences (e.g., how many records)
+by making mðrÞ ¼ 1, or measure weight sums by making
+mðrÞ ¼ wr. In addition to scalars, we can also generalize
+additive measure to produce real vectors. For example, by
+making mðrÞ ¼ ð1; wr; w2rÞ additivity will yield a 3d vector
+on any product-bin and union of product-bins (just sum
+the vectors). In this 3d measure example, it is possible to
+post-process the vector entries to derive mean and variance
+of weights for any set of product-bins (mean: divide sec-
+ond entry by first entry). Correlations can also be derived
+by post-processing an additive measure [32]. In the remain-
+der of this paper we assume simple additive scalar meas-
+ures. We do not deal with post-processed ones.
+
+We refer to the combination of a multi-dimensional bin-
+ning model M with a measure m to its product-bins as a
+measure model M½m�. The idea of precomputing and repre-
+senting a measure model M½m� so that we can quickly access
+mðbÞ for any product-bin b is essentially the well-known
+notion of a cube relational operator (if all hierarchies in the
+model are all 1-level) or the more general roll up cube
+
+relational operator (if some hierarchies have 2 or more levels).
+Note that in practice, when precomputing such measure
+models, one does not expect to be able to retrieve the origi-
+nal records AðbÞ, but only its measure mðbÞ.
+
+4.2 Nanocubes
+
+In Nanocubes [5], the authors propose an efficient encoding
+of a measure model M½m� with an additional special encod-
+ing for one temporal dimension. Nanocubes uses a pointer-
+based sparse data structure to represent the product-bins b
+that have at least one record associated with it, and tries to
+make every product-bin that yields the same set of records
+refer to the same memory location encoding its measure
+value. Conceptually, we can think of Nanocubes as an
+encoding to a mapping fb 7!mðbÞ : b 2 B; AðbÞ 6¼ ?g: For the
+temporal dimension, the particular m values are stored in
+Nanocubes as summed area tables
+
+b 7!ððt1; v1Þ; ðt2; v1 þ v2Þ; . . . ; ðtp; v1 þ . . .þ vpÞÞ; (1)
+where ti’s are all the finest temporal bins associated to the
+records in AðbÞ, they are sorted ti < tiþ1, and vi is the mea-
+sure of mðb; btime¼tiÞ, i.e.,product-bin with the added con-
+straint in the time dimension. Note that by taking
+differences of values from two different indices of a
+summed area table one can quickly find the value of any
+query ðb; ½ta; tb�Þ, where b is a product-bin (without the time
+dimension) and ½ta; tb� is the time interval of interest.
+
+5 TOPKUBE
+
+A Nanocubes-like approach can efficiently retrieve a mea-
+sure of interest for any pre-defined “bucket” (i.e.,a product-
+bin plus a time interval). This capability can be handy for
+many applications, but is especially useful for interactive
+visualizations where each element presented on a screen
+(e.g.,bar in a barchart, pixel in a heatmap) is associated with
+one of these “buckets” and encoded (e.g.,bar length, pixel
+color) based on its value. However, suppose that, instead of
+simply accessing the measure associated with specific buck-
+ets, we are actually interested in identifying the top-k val-
+ued objects from a potentially large set of buckets. For
+example, “Who are the top-20 players that make the most
+shots from the right-hand 3-point corner of the basketball
+court?” (blue selection and ranking shown in Fig. 1).
+
+Since there is no ranking information encoded in a Nano-
+cube, the only way to obtain such a top-20 rank is to find
+out, for each player associated with a shot in the selection,
+their total number of shots and report the top-20 players
+found. This computation takes time proportional to at least
+the number of players associated with the shots in the selec-
+tion. While this computation in the case of NBA shots is not
+very expensive (only a few thousand players ever played in
+the NBA), there are interesting use cases, analogous to the
+player-shot case, where the number of “players” can be quite
+large. For instance, project-commit in GitHub (a cloud based
+project repository), tag-photo in Flickr (a cloud based photo
+repository), or hashtag-post in a microblog website. In these
+cases the number of projects, tags, and hashtags are counted
+in millions instead of in thousands. The need to scan mil-
+lions of objects to solve a single top-k query can be a hard
+hit in the latency budget of a fluid interactive experience.
+
+Fig. 2. Dimensions of space and time are represented as bin hierarchies.
+(left) Bspace is a quad-tree hierarchy: Here we show a 624 bin selection
+around Madison Square Garden, NY; (right) Btime is a binary hierarchy;
+in red we show 3 bins corresponding to the interval ½3; 6�.
+
+1398 IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS, VOL. 24, NO. 3, MARCH 2018
+
+Authorized licensed use limited to: UNIVERSITAT POLITECNICA DE CATALUNYA. Downloaded on October 05,2020 at 06:59:46 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+
+TOPKUBE is a data structure similar to a Nanocube: it enc-
+odes a measure in a multi-dimensional binning model, and,
+with this encoding, it allows the quick access of the meas-
+ure’s value of any product-bin in the model. The main addi-
+tion of a TOPKUBE when compared to a Nanocube is that, in
+order to speed up top-k queries on one of its dimensions
+(e.g.,top players by number of shots, top projects by number
+of commits), a TOPKUBE also includes ranking information in
+the encoding of that dimension.
+
+The special dimension in a TOPKUBE is one that could be
+modeled as yet another 1-level bin hierarchy, but that con-
+tains lots of bins (e.g.,players in the NBA example, or proj-
+ects in GitHub, or tags in Flickr) and that we are interested
+in quickly accessing the top valued bins from this dimen-
+sion with respect to the additive measure of interest on any
+multi-dimensional selection. We refer to this special dimen-
+sion of a TOPKUBE as its key dimension, and the bins in this
+dimension as keys. Note that efficiently retrieving ranks of
+top-k keys (and their respective values) for an arbitrary
+selection of product-bins is the main goal of our TOPKUBE-
+data structure. All dimensions in a TOPKUBE, except for its
+key dimension, are represented in the same way as the
+(non-special) dimensions of a Nanocube: as nested bin-
+hierarchies. Nodes in the bin-hierarchy of a previous
+dimension point to a root bin of a bin-hierarchy in the next
+dimension until we get to the last special dimension (see
+Fig. 2 of [5]). A path through the nested hierarchies down to
+the last and special dimension of a TOPKUBE corresponds to
+a product-bin b on all dimensions except the key dimension.
+
+To represent the key dimension information associated
+with a product-bin b, TOPKUBE uses the following data:
+
+b 7! q; v; s;
+X
+
+vi
+
+n o
+; (2)
+
+where q ¼ q1 . . . qp, v ¼ v1 . . . vp, and s ¼ s1 . . . sp are arrays
+of equal length obeying the following semantics: qi is the ith
+smallest key that appears in b; vi is the value of the measure
+of interest (e.g.,occurrences) for key qi in b; and si repre-
+sents index of the key with the ith largest value in b. For
+example, the third highest values key in a specific b is given
+vs3 and corresponds to key qs3 . In addition to arrays q; v; s,
+in order to quickly solve queries that contain no key con-
+straints, we also store the measure of all records in b regard-
+less of keys, i.e.,mðAðbÞÞ. Since in all our applications we
+always assume linearity of our measures, this aggregate
+reduces to the sum of the values v in b.
+
+In Fig. 3, we show a concrete TOPKUBE corresponding
+to the model shown on the top left part of the display.
+This TOPKUBE consists of one spatial dimension (two level
+quad-tree hierarchy) and a key dimension. In this toy
+example, the keys of the key dimension are the letters A,
+B, and C and the measure is simply the number of occur-
+rences of a letter in the corresponding product-bin. Note
+that since there is only one dimension outside of the key
+dimension in this example, a product-bin b corresponds
+exactly to one spatial bin. The TOPKUBE data structure
+with the keys, counts, rank and total count are shown as
+tables in the bottom part of the figure. Note, for example,
+that the top valued key in the whole model is given by
+qs1 ¼ C and vs1 ¼ 6 in the right-most table which corre-
+sponds to the coarsest spatial bin.
+
+With this encoding for the key dimension information of
+a product-bin, to find out if a given key exists in a product-
+bin, we can perform a binary search in the q array (logarith-
+mic time in the length of the array), and to access the ith top
+ranked key we perform two random accesses: first we
+retrieve si and then qsi or vsi (both constant time).
+
+As in a Nanocube, the size of a TOPKUBE is proportional to
+its number of product-bins b plus the size of the encodings
+of the special dimension information associated with each
+of its product-bins. In the case of a Nanocube, this extra size
+per product-bin is the size of the summed area data from
+Eq. (1), while in the case of TOPKUBE, it is given by the size of
+the rank aware data-structure of Eq. (2). Note that if a Nano-
+cube and a TOPKUBE have the same set of product-bins b and
+the number of time stamps and keys encoded in their
+respective special dimensions are comparable, the extra size
+cost of a TOPKUBE compared to the similar Nanocube will be
+the rank arrays s. This extra size cost of a TOPKUBE repre-
+sents a good trade-off if queries for interactive top-k keys
+are important for a given application. Another important
+remark with respect to the sizes of Nanocubes and TOPKUBE
+is that in order to represent a Nanocube special temporal
+dimension into a TOPKUBE dimension, we have to convert it
+into a conventional TOPKUBE dimension (e.g.,a binary tree
+where the leaves are timestamps: right side of Fig. 2). This
+adds a multiplicative logarithmic term to the size of that
+dimension: while OðnÞ in a Nanocube, it becomes Oðn lognÞ
+in a TOPKUBE. The advantage here is that now multiple tem-
+poral dimensions can be supported.
+
+5.1 Top-K from Ranked Lists
+
+The easiest top-k query for a TOPKUBE happens when a sin-
+gle product-bin b in involved. Suppose a user wants the top
+ranked keys in a multi-dimensional selection without any
+constraints. This query boils down to the single coarsest
+product-bin b in the cube (formed by root bins in all dimen-
+sions). In this case, obtaining the top-k keys is the same as
+generating from b the list ðqs1 ; vs1Þ; . . . ; ðqsk ; vskÞ, and,
+clearly, it can be done in OðkÞ steps. In general, though, this
+task is not that easy. The number of product-bins involved
+in the answer of a multi-dimensional selection is not one.
+For common spatial brushes, time intervals, categorical
+
+Fig. 3. Concrete example of a TOPKUBEwith one spatial dimension and
+the special key-dimension for counting and ranking the event types: A, B,
+or C. The additional ranking information (q; v; sigma) from Eq. (2) is
+shown in the tables associated with each product-bin.
+
+MIRANDA ETAL.: TOPKUBE: A RANK-AWARE DATA CUBE FOR REAL-TIME EXPLORATION OF SPATIOTEMPORAL DATA 1399
+
+Authorized licensed use limited to: UNIVERSITAT POLITECNICA DE CATALUNYA. Downloaded on October 05,2020 at 06:59:46 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+
+selections, the typical number of product-bins involved in a
+query ranges from tens up to a few thousand. For example,
+in Fig. 2, we show a 624 bin selection in space and 3 bins in
+time which potentially means a 1,872 product-bin selection.
+In this case, the pre-stored ranks, or s, we have for each
+product-bin should help speed up the top-k query, but is
+not as trivial as collecting top-k keys and values in OðkÞ
+steps. Due to the lack of a consistent name in the literature,
+we refer to this problem as Top-k from Ranked Lists or TKR.
+
+5.2 Sweep Algorithm
+
+Let us step back a bit. Suppose we do not store the ranking
+information, s, in each product-bin. In other words, if we go
+back to a rank-unaware data structure, how can we solve
+the top-k keys problem? One way, which we refer to as the
+NAIVE ALGORITHM, is to traverse the key and value arrays (q
+and v in Eq. (2)) of all the product-bins in the selection, and
+keep updating a dictionary structure of key-value pairs. We
+would increment the value of a key qi already in the dictio-
+nary with the current value vi found for that key in the cur-
+rent product-bin. Once we finish traversing all product-
+bins, we would sort the keys by their values and report the
+top-k ones. The NAIVE ALGORITHM is correct, but inefficient. It
+uses memory proportional to all the keys present in all lists
+of all product-bins in the selection, and this number might
+be much larger than k.
+
+A more efficient way to find the top-k keys in the union
+of multiple product-bins b1 . . .bm is shown in the pseudo-
+code listed in Fig. 4. Assume in the pseudo-code descrip-
+tions that L is a list of m key-value-rank data structures cor-
+responding to Eq. (2) of the m input product-bins. The idea
+
+is to create, from L, a heap/priority queue where the prod-
+uct-bin with a current smallest key is on the top of the heap
+(Lines 3-5). If we keep popping the next smallest key
+(Line 10) and its value from all the lists, we will sweep all
+key-value pairs in key increasing order, and every time we
+get a larger key (Line 11), we can be sure that the total mea-
+sure of the previous key was complete. Using this approach,
+we can maintain a result buffer of size k (Line 23) instead of
+a dictionary with all keys in the all lists. We will refer to this
+approach as the SWEEP ALGORITHM. Note that this algorithm
+scans all keys of the product-bins b in the selection, as does
+the NAIVE ALGORITHM, but it does not need a potentially large
+buffer to solve the top-k problem. If we assume N is the
+sum of the number of keys in each input product-bin, it is
+easy to see that the worst case complexity of the SWEEP ALGO-
+RITHM is Oðm log mþN log kþN log mÞ.
+
+Although the top-k problem was not discussed in the
+original Nanocubes paper [5], the SWEEP ALGORITHM can also
+be used to solve top-k queries there. Note also that SWEEP
+ALGORITHM is a natural way to solve unique count queries in
+both TOPKUBE and Nanocubes (how many unique keys are
+present in multi-dimensional selection).
+
+5.3 Threshold Algorithm
+
+The idea for adding the ranking information, s, into a TOP-
+KUBE is that it can potentially reduce the number of steps
+needed to find the top-k keys compared to the number of
+steps SWEEP ALGORITHM does. Instead of scanning all entries
+in all product-bins in our selection in key order, we would
+like to use the ranking information to scan first those keys
+with a higher chance of being in the top-k keys (i.e.,larger
+partial values). The hope is that, by using such a strategy, a
+small partial scan and some bookkeeping would be enough
+to identify the top-k keys without a full scan. In fact, this
+outline of an algorithm is well-known in the computer sci-
+ence community (see pseudo-code in Fig. 5): the famous
+THRESHOLD ALGORITHM (TA) was described in [25]. Further-
+more, TA was proven to be optimal in a strong sense: no
+other algorithm can access less data than it does and still
+obtain the correct answer. It essentially rotates through all
+ranked input lists (loop on Line 11) popping the highest
+value key in each of the lists (Line 13). For each popped
+key qi, it goes through all the other lists (loop on Line 23)
+binary searching for other key bins containing key qi. Once
+the aggregated value of qi is found, it inserts qi and its final
+value into a running top-k result set (Line 27). Once the
+algorithm figures out that no other key can have a higher
+value than the current top-k keys, the computation is
+done (Line 29). The worst case complexity of the THRESHOLD
+ALGORITHM is given by OðmþNmþN log kÞ. Note that the
+Nm term dominates this complexity and makes this worse
+than the one for SWEEP ALGORITHM.
+
+5.4 Hybrid Algorithm
+
+Although THRESHOLD ALGORITHM has the theoretical guaran-
+tees one would want, in practice we have observed that the
+instances of the TKR problem that show up in our use cases
+do not have the same characteristics as assumed in the
+explanations of TA that we reviewed. In those explanations,
+there was an implicit assumption that all m input lists in L
+contained the same set of keys. This is a natural assumption
+
+Fig. 4. Pseudo-code for the SWEEPALGORITHM.
+
+1400 IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS, VOL. 24, NO. 3, MARCH 2018
+
+Authorized licensed use limited to: UNIVERSITAT POLITECNICA DE CATALUNYA. Downloaded on October 05,2020 at 06:59:46 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+
+given the implicit application usually associated with TA:
+the m lists corresponded to m attribute-columns of a table
+with (mostly) non-zero entries. However, the instances of
+the TKR problem we observed in our use cases were sparse:
+one key qi is present in only a small fraction of the m lists in
+the query selection. This sparseness introduces a wasteful
+step in the THRESHOLD ALGORITHM: the loop on Line 23. Most
+of the binary searches in that loop will fail to find the key
+that we are searching for. A typical case we see in our
+instances of the TKR problem is that on average each key is
+present in less than 3 percent of the m lists in our query
+selections.
+
+While the THRESHOLD ALGORITHM can have wasted cycles
+trying to access entries for keys that do not exist, the
+SWEEP ALGORITHM wastes no such cycles: all entries it
+accesses are present in the input lists. In order to get the
+best results in our experiments, we combined the strengths
+of TA (early termination using rank information) and the
+SWEEP ALGORITHM (no wasted accesses on sparse instances)
+into a combined algorithm: the HYBRID ALGORITHM (pseudo-
+code shown in Fig. 6).
+
+The idea of the HYBRID ALGORITHM is simple: (1) raise the
+density of the input problem by running the SWEEP ALGO-
+RITHM on the smallest (easiest) input lists, and (2) run the
+THRESHOLD ALGORITHM on this denser equivalent problem. To
+make things more concrete, think about the 624 spatial bins
+in Fig. 2. We typically expect the smaller squares in that spa-
+tial selection to have less data than larger squares. The idea
+would be to merge all the lists of the smaller squares to
+make the problem instance dense for the THRESHOLD ALGO-
+RITHM. We formalize this process below.
+
+The input parameter u in the HYBRID ALGORITHM controls
+the density level of the input problem in order to be consid-
+ered ready for the THRESHOLD ALGORITHM. In other words, if,
+based on u, our original input problem is too sparse for the
+THRESHOLD ALGORITHM, we would like to merge the smaller
+isplit lists using the SWEEP ALGORITHM (Line 19 of the HYBRID
+ALGORITHM), and then run an equivalent input denser prob-
+lem through the THRESHOLD ALGORITHM (Line 21 of the HYBRID
+ALGORITHM). We define the density of a TKR instance to be N
+(i.e.,sum of length of the q arrays in all product-bins of the
+selection) number of entries in all input lists, divided by the
+actual number of distinct keys (if we do the union of all m
+sets of keys) multiplied by m (the length of L). Obviously,
+to compute this density one needs to find the number of
+keys after merging all the keys in arrays q for all m lists,
+which is an inefficient process that requires scanning all
+entries in all lists. To keep things computationally simple,
+and still correlated with the density notion, we define the
+density level u as an upper bound for the actual density
+where we replace number of keys in the union of all
+m arrays by the length of the largest array q from the m
+product-bins (Lines 7-13).
+
+6 EXPERIMENTAL RESULTS
+
+Our system was implemented using a distributed client-
+server architecture. The TOPKUBE server program was imple-
+mented in C++ and provides a query API through HTTP.
+This enables flexibility: it can serve various client types
+ranging from desktop to mobile applications. All rendering
+in this work was done on client programs. We implemented
+a portable browser based client using HTML5, D3, and
+WebGL as well as an OpenGL based C++ client for more
+native performance. The timing experiments relative to
+back-end performance in this paper ran on a 64 core AMD
+Opteron with 2.3 GHZ CPU and 512 GB of RAM.
+
+The datasets used in our case studies are freely available
+and allow the extraction of geotagged keywords: articles on
+Wikipedia, tags on Flickr, projects on GitHub, and hashtags
+on Microblogs. The number of records (in millions) for these
+four datasets are respectively: 112, 84, 58, and 40 M. The
+number of keywords (in millions) are respectively: 3.0, 1.6,
+
+Fig. 6. Pseudo-code for the HYBRID ALGORITHM.
+
+Fig. 5. Pseudo-code for the THRESHOLD ALGORITHM. VALUEBYRANK uses s to
+retrieve the pth largest value of L½i� in constant time. VALUEBYKEY runs a
+binary search to access the value of a given key.
+
+MIRANDA ETAL.: TOPKUBE: A RANK-AWARE DATA CUBE FOR REAL-TIME EXPLORATION OF SPATIOTEMPORAL DATA 1401
+
+Authorized licensed use limited to: UNIVERSITAT POLITECNICA DE CATALUNYA. Downloaded on October 05,2020 at 06:59:46 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+
+1.5, and 4.7 M; thus although Wikipedia has the most
+records, Microblogs has the most unique keywords. The
+keywords were then used as keys in the construction of our
+TOPKUBE data structure.
+
+6.1 Use Cases
+
+Wikipedia. The Wikipedia English dump datasets [33] con-
+tains edit history for every article since its creation in 2005.
+Anonymous edits contain the IP information of the user,
+which we used to trace their location. The final dataset, with
+geographical information, contains more than 112 million
+edits of over three million articles. Fig. 7 presents a visualiza-
+tion of the dataset using TOPKUBE. It is interesting to see that
+even though Nevada is not considered a state with a high
+percentage of religious people, religious articles are among
+the highest ranked. On the other hand, Mississippi, consid-
+ered one of the most religious states in the U.S., does not
+have a single article related to religion among the top-20.
+
+Flickr. The Yahoo! Flickr Creative Commons dataset [34]
+contains 100 million public Flickr photos and videos, with
+each record containing a set of user tags and geographical
+information. The dataset contains 84 million geolocated tags
+(1.57 million unique ones). Fig. 8 shows how exploration
+can be used to gain insight of unusual patterns in the data
+along the West Coast of Africa. By highlighting the region,
+we can see that there were an unusual spike of activity dur-
+ing a few days in January. We create two different brushes
+in the timeseries: a blue one covering the low activity days,
+and an orange one covering the high activity days. We can
+see that the high activity spike is mostly due to photos
+tagged with freewheely.com and bicycle, which were taken by
+a Flickr user during his bike trip.
+
+Microblogging. This dataset is comprised of publicly
+available geotagged microblog entries. From each post, we
+
+extracted the latitude, longitude, and hashtags from the
+blog. We can use TOPKUBE to explore the most popular hash-
+tags in order to understand how trending topics vary over
+time and in a given region. Fig. 9 presents a sequence of
+exploration steps within January 2015 records. First we
+select a geographical area around Paris and find out an
+unusual Wednesday peak (Jan. 7) in the volume of hashtags.
+By selecting this peak we quickly find evidence of the event
+that caused the volume spike by inspecting the top-10 hash-
+tags in the current selection (i.e.,Paris and Jan 7). The event
+in question was the terrorist attack at the Charlie Hebdo
+headquarters. To understand how the hashtags created for
+this event at the day of the attack faded in time, we further
+constrain our selection to just the hashtags related to the
+terrorist attack and see that those fade almost completely
+(relative to event day) after one week of the attack.
+
+GitHub. The GitHub dataset was first made available by
+Gousios [35] and contains all events from the GitHub public
+event time line. We were able to obtain information on
+more than 58 million commits for roughly 1.5 million proj-
+ects. Each commit was geolocated based on the location of
+the user responsible for the action. Fig. 10 presents a visuali-
+zation with the top-k projects of three large urban centers.
+The only common project among all three regions is dotfiles,
+a project for sharing customized environment files on Unix-
+based operating systems. It is also interesting to notice how
+llvm and related projects (such as clang), are very popular in
+California, but not elsewhere. This shows a highly diversi-
+fied open source community across the United States.
+
+6.2 Performance
+
+To determine which of the previously described algorithms
+works best when solving top-k queries, we conducted an
+
+Fig. 8. Geolocated Flickr tags in Africa: The unusual activity on the west
+coast are from photos taken during a bike trip.
+
+Fig. 7. Comparing the top edited articles in Nevada and Mississippi.
+
+Fig. 9. Microblog exploration using TOPKUBE: A temporal perspective of
+the top hashtags related to the Charlie Hebdo terrorist attack in Paris.
+
+Fig. 10. GitHub projects with most commits in three large urban centers.
+
+1402 IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS, VOL. 24, NO. 3, MARCH 2018
+
+Authorized licensed use limited to: UNIVERSITAT POLITECNICA DE CATALUNYA. Downloaded on October 05,2020 at 06:59:46 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+
+initial evaluation using the Microblogs dataset, which is the
+most challenging because it has the most keys (4.7 M). The
+first experiment consisted of collecting 100 spatiotemporal
+selections ranging from large geospatial areas (continents)
+to smaller regions (cities) combined with time interval selec-
+tions ranging from multiple weeks to a few hours. Next, we
+retrieved the top-32 valued keys in each of the 100 selections
+with the different methods we describe in Section 5. In addi-
+tion to SWEEP, THRESHOLD, and HYBRID, we also included Post-
+GIS in this experiment. PostGIS is the most popular open
+source GIS package that can solve the problem that we were
+targeting in this work. It is the de facto spatial database in
+our opinion, which is why we chose to compare our techni-
+ques to it. We configured PostGIS according to its official
+documentation for a dataset containing key, latitude, longi-
+tude, and timestamp.
+
+In Fig. 11 we present the results of our first experiment in
+the form of cumulative distributions: what percentage of the
+100 spatiotemporal queries we could retrieve the top-32 keys
+in less than t time units. All results were exactly the same for
+all the methods tested including PostGIS. We are able to see
+that the HYBRID ALGORITHM with varying u thresholds had
+query times consistently smaller than both TA and SWEEP.
+This fact confirmed our hypothesis that we can accelerate top-
+k queries by adding rank information to the index. Although
+this fact seems obvious, this study shows that a natural use of
+rank information as done by TA does not yield a speedup.
+Only a combination of the strengths of TA and SWEEP illus-
+trated by the HYBRID approach gave the speedupwe expected.
+It is worth noting, however, that there was a steep increase in
+query times for HYBRID on the most difficult problems (as
+cumulative probability approached 1), which suggests that a
+better balance between SWEEP and TA was possible. In
+Section 7 we perform a more thorough experiment to under-
+stand the behavior of our top-kmethods.
+
+7 TOPKUBE-BENCHMARK
+
+As illustrated in the previous examples, the main use case
+that drove the development of TOPKUBE was to provide an
+interactive visualization front-end to quickly access top-k
+“terms” for arbitrary spatiotemporal selections. Although
+we observe significant speedups using the HYBRID ALGO-
+RITHM(e.g., u ¼ 0:25 in Fig. 11) compared to other techniques,
+we believe in further improvements. To assess how
+
+different top-k algorithms (the ones shown here and future
+ones) perform in rank merging problems on datasets
+similar to the ones we collected for this work, we created
+the TOPKUBE-BENCHMARK and made it publicly available:
+github.com/laurolins/topkube_benchmark.
+
+7.1 Benchmark Characteristics
+
+The TOPKUBE-BENCHMARK consists of one thousand TKR
+problems. Each problem consists of a list of ranks, where
+each rank is defined by a list of key-value pairs and the asso-
+ciated ordering information, s, as shown in Eq. (2). The goal
+is to, given a value k, find the top-k keys and their aggre-
+gated value from a consolidated rank of the multiple input
+ranks (note that this problem does not require explicitly
+finding the total consolidated rank). Each of the four data-
+sets (i.e.,Flickr, GitHub, Microblog, and Wikipedia) contrib-
+uted equally with two hundred and fifty problems for the
+the TOPKUBE-BENCHMARK. These problems were collected
+during interactive exploratory sessions using these four
+datasets. In Fig. 12, we present the distribution of four char-
+acteristics of the problems in the benchmark: (1) number of
+keys; (2) number of ranks; (3) number of entries; and (4)
+density. The number of keys of a problem is simply the
+union of the keys present in each rank. The number of ranks
+is the number of lists (of key values) from the selection. The
+number of entries is the sum of the sizes of the ranks (i.e.,
+the total number of keys in all ranks). Note that number of
+entries should be larger than the number of keys since the
+same key is usually present in more than one rank. Finally,
+the density is simply the number of entries divided by the
+product of number of ranks and number of keys. If a prob-
+lem has density one, each key is present in all ranks.
+
+If we follow the overall thick solid gray line in the keys
+plot (Fig. 12, top left), we notice that fewer than 40 percent of
+the problems involved fewer than 100 k keys, which means
+that most problems (more than 60 percent) involved 100 k
+keys or more. If we check the table entry in row keys/all and
+column 90 percent from the table in that figure, we see that
+more than 10 percent of the problems involved 1.1 million
+keys or more. So, given that these problem instances were
+collected from natural visual interactions with the data, it is
+clear that large TKR problems can show up at exploration
+time: a challenging problem for interactivity. In terms of the
+number of ranks, we see that more than 50 percent of the
+problems have 170 ormore ranks to be processed (row num_-
+ranks/all, column 50 percent), and in 10 percent of the cases we
+had 860 ranks or more (lots of non-empty product-bins being
+hit by the multi-dimensional selection). In terms of number
+of entries, we see that 20 percent of the problems had more
+than 1million entries (row entries/all, column 80 percent). Per-
+haps the most important observation of the problems in the
+TOPKUBE-BENCHMARK comes from their density: the problems
+are really sparse (worst-case scenario for TA). If we consider
+100 ranks in a problem and a density of 0.051 (90 percent of
+the problems have density 0.051 or less: see row density/all,
+column 90 percent), on average we will have one key present
+in only 5.1 of the 100 ranks. These real-world, interactive
+explorations clearly demonstrate the sparsity of our inputs
+to the TKR problem, and that the binary searches on Line 23
+in TA are largelywasted effort.
+
+From the characteristics of the four datasets, we know
+that spatially the Microblog and Flickr datasets involve
+
+Fig. 11. Empirical cumulative distributions of the time to retrieve the top-
+32 valued keys for 100 spatiotemporal queries on the microblog dataset.
+Speedup potential of Hybrid versus Sweep, Threshold, and PostGIS.
+
+MIRANDA ETAL.: TOPKUBE: A RANK-AWARE DATA CUBE FOR REAL-TIME EXPLORATION OF SPATIOTEMPORAL DATA 1403
+
+Authorized licensed use limited to: UNIVERSITAT POLITECNICA DE CATALUNYA. Downloaded on October 05,2020 at 06:59:46 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+
+more spatial bins than the Wikipedia and GitHub datasets.
+The reason for this is simply that both Wikipedia and
+GitHub datasets were obtained by geocoding the IP
+address of the device associated with an article edit or proj-
+ect commit which induces a more constrained set of locates
+when compared to GPS locations from devices used for
+posts in Flickr and a Microblog service. This fact explains
+the distribution shown in the number of ranks plot in
+Fig. 12: more product-bins are involved in the spatiotem-
+poral selections for Flickr and Microblogs than Wikipedia
+and GitHub. Given the similar sparse nature of the TKR
+problems that we see on these four datasets (see x-axis of
+the density plot in Fig. 12), we focus the rest of our analy-
+sis here on the entire set of one thousand problems without
+splitting them by source.
+
+7.2 Benchmark Performance
+
+To assess the performance of the SWEEPALGORITHM, the THRESH-
+OLD ALGORITHM, and the HYBRID ALGORITHM, we ran each of the
+algorithms on the one thousand problems of the TOPKUBE-
+BENCHMARK for k ¼ 5; 10; 20; 40; 80; 160; 320, for a total of seven
+thousand runs for each algorithm. We ran the HYBRID ALGO-
+RITHM with the threshold u varying from 0.05 to 0.95 by incre-
+ments of 0.05. So, for each problem and each k, we ran the
+SWEEP ALGORITHM and the THRESHOLD ALGORITHM each once,
+and the HYBRID ALGORITHM nineteen times (one for each u): a
+total of 21 different algorithmic recipes to find the top-k terms.
+The (percentiles of the) distributions of the latency (i.e.,time to
+solve) for each of the seven thousand TKR instances by each
+of the 21 strategies are shown in Fig. 13.
+
+We assume that less than 0.1 seconds latency is the
+appropriate level for fluid interactivity: blue color tones in
+Fig. 13 correspond to latencies that are less than 0.1 sec-
+onds, while red tones represent high latencies (� 0:1 s.).
+This table contains clear evidence that the HYBRID strategy
+can improve on the latency of the two extreme strategies:
+sweep (which consolidates a full rank before generating
+top-k) and the threshold strategy which chases a proof of
+
+the top-k terms directly from all ranks of the input prob-
+lem. Note that for values of u between 0.15 and 0.45, the
+shades of blue have the widest reach: 70 percent of the
+problems had less than 100 ms latency, while for the sweep
+strategy 40 percent of the problems had 128 ms latency or
+more (column 60 percent).
+
+To more deeply explore the speedup of the HYBRID ALGO-
+RITHM over the SWEEP ALGORITHM on the TOPKUBE-BENCHMARK
+problems, we divide the query times (i.e.,latency) for each
+problem instance i: speedupui=sweep_timei=hybrid_time
+
+u
+i .
+
+If it takes two times more for the sweep strategy to solve an
+instance compared to the hybrid strategy, we say there was
+2� speedup. On the other hand, if the sweep strategy takes
+half the time, we say there was 1=2� speedup or, equiva-
+lently, a 2� slow down.
+
+Fig. 13. Latency distribution (percentiles) of twenty one different strate-
+gies (1 x TA, 19 x Hybrid, 1 x Sweep) when solving the one thousand
+TOPKUBE-BENCHMARK problems for seven different values of k ¼ 5; 10; 20;
+40; 80; 160; 320. Darker blue shades indicate smaller latencies; darker
+red shades indicate larger latencies.
+
+Fig. 12. Characteristics of the TKR problems in the TOPKUBE-BENCHMARK. Left: We plot the cumulative distributions for the number of keys, ranks,
+entries, and density up to the 0.8 quantile (or 80th percentile). Right: We list the actual values of the percentiles for these distributions.
+
+1404 IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS, VOL. 24, NO. 3, MARCH 2018
+
+Authorized licensed use limited to: UNIVERSITAT POLITECNICA DE CATALUNYA. Downloaded on October 05,2020 at 06:59:46 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+
+We consider SWEEP as the baseline approach, and we
+want to understand how THRESHOLD and HYBRID compare to
+it. Fig. 14 shows the cumulative distribution of the speed-up
+(or slow-down if less than 1.0) for different runs of HYBRID
+with threshold u varying by 0.05 from 0 to 0.95. Note that
+THRESHOLD is simply HYBRID with u ¼ 0. Slow downs of
+10 percent or more are colored in shades of red, and speed
+ups of 10 percent or more are colored in shades of blue. For
+u ¼ 0:25, 80 percent of the problems had a speed up of
+37 percent or more (column 20 percent); 70 percent of the
+instances had a speed up of 76 percent or more (column
+30 percent); and 10 percent of the instances had a speedup
+of an order of magnitude (at least 19:3�).
+
+It is also clear that our choice of u impacts how well the
+HYBRID ALGORITHM performs. For u ¼ 0:95, 50 percent of the
+latencies were 10 percent worse than the sweep strategy. In
+general, u ¼ 0:25 performs very well overall and tends to be
+our default selection; however, u ¼ 0:20 is arguably just as
+efficient and even beats u ¼ 0:25 between 40-90 percent.
+
+As can be seen in Fig. 12, we explicitly included some
+extreme problem instances into TOPKUBE-BENCHMARK: prob-
+
+lems with a single rank and very few entries/keys, or con-
+versely thousands of ranks and millions of entries/keys.
+These problems show up in the 0 and 100 percentile col-
+umns of that table, as well as the 100 percentile column of
+the colored distribution tables shown. We do not place
+undue emphasis on those columns: a speed up of one
+hundred thousand times (u ¼ 0:25 column 100 percent) is
+not representative of the typical cases, while the speedups
+up to 90 percent are more typical.
+
+7.3 Speedup Relative to k
+
+In Fig. 15, we present the speedup over SWEEP by HYBRID
+with u ¼ 0:25, for the different values of k. The blue and
+red shading follows the same speedup encoding as in
+Fig. 14. As expected, a higher value of k demands more
+computation to find the top-k terms in the consolidated
+rank. For k ¼ 5, 90 percent of the instances were solved at
+least 52 percent faster than the sweep approach (row 5, col-
+umn 10 percent); for k <¼ 20, 80 percent had a 2�
+speedup; and for k ¼ 320, 60 percent of the instances had a
+24 percent speed up. We argue that a value of k � 100 is
+
+Fig. 14. Speedup distribution of the threshold and hybrid algorithms (0 < u < 1) over sweep algorithm for all problems in the TOPKUBE-BENCHMARK.
+
+Fig. 15. Distribution of the speedup of the hybrid algorithm (u ¼ 0:25) over the SWEEPALGORITHM broken down by k.
+
+MIRANDA ETAL.: TOPKUBE: A RANK-AWARE DATA CUBE FOR REAL-TIME EXPLORATION OF SPATIOTEMPORAL DATA 1405
+
+Authorized licensed use limited to: UNIVERSITAT POLITECNICA DE CATALUNYA. Downloaded on October 05,2020 at 06:59:46 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+
+appropriate for exploration of top terms at interactive rates.
+Going deeper (i.e.,larger k’s) on an investigation could use
+more computational resources and a full sweep based con-
+solidated rank could be used there.
+
+7.4 Speedup Relative to Keys
+
+We expect that as the TKR problems become larger (i.e.,more
+keys), the speedups of our approach over the Sweep
+approachwill increase. In the top plot of Fig. 16, we show the
+distribution of the speedups of HYBRID with u ¼ 0:25 on four
+equally sized groups of problems obtained from the TOP-
+KUBE-BENCHMARK. Again we ran each of these problems with
+k ¼ 5; 10; 20; 40; 80; 160; 320. The first group has the first
+quarter of problems with the fewest keys, the second group
+has the next quarter of problems with next fewest keys, and
+so on up to the fourth quarter of problems with the most
+keys. From the plot, we observe the expected pattern: as
+problems become harder, the distribution is shifted to the
+right of the cumulative distribution plot, indicating larger
+speedup values. For example, on the intersection of the verti-
+cal line at 1� (same speed), we already have more than
+30 percent of the problems in group one (the easiest group),
+while this number is around 5 percent for the problems in
+group 4 (the hardest group). This is encouraging and sup-
+ports using TOPKUBE with HYBRID on even larger problems.
+
+7.5 Speedup Relative to Ranks
+
+We partitioned the problems in TOPKUBE-BENCHMARK in four
+groups based on which quartile of the distribution of the
+number of ranks they fall into. In the bottom plot of Fig. 16,
+we see an exact inversion of the pattern observed when we
+broke down the problems by the number of keys. The
+speedup is greater when fewer ranks are involved in a TKR
+problem. This is explained by the fact that more ranks yield
+larger values for isplit in the HYBRID ALGORITHM, and thus a
+longer sweep phase (Fig. 6, Line 19).
+
+8 POTENTIAL IMPROVEMENTS
+
+With the availability of the TOPKUBE-BENCHMARK problems
+and the C++ reference implementation for the algorithms
+presented in this paper, we would like to motivate new
+studies to improve on our results. One issue with HYBRID is
+its dependency on the parameter u. Although u ¼ 0:25
+works very well, we see in Fig. 14 that is not the fastest in
+every case. This suggests the need for an adaptive way to
+find isplit in HYBRID that is not based simply on a fixed u.
+
+The main focus of this work has always been computing
+top-k queries interactively; thus TOPKUBE construction
+times and memory utilization were never optimized, but
+both can be greatly improved. The construction times (in
+hours) for the four datasets using a single CPU thread
+were respectively: 5.3, 3.9, 3.4, and 1.7 h. This yields inser-
+tion rates ranging from 4.7 to 6.5 thousand records per sec-
+ond. Preliminary experiments have shown that by using a
+multi-threaded build, these insertion rates can increase
+close to linearly with the number of threads. The memory
+(in gigabytes) used by TOPKUBE for the datasets was respec-
+tively: 114, 20, 14, and 53 GB. These numbers are signifi-
+cant, but again can be greatly reduced with an optimized
+implementation. We note that by utilizing path compres-
+sion on sparse hierarchies (i.e.,deep hierarchies with few
+branches) we can reduce the reported memory usage by
+more than an order of magnitude.
+
+9 CONCLUSION
+
+As user-generated online data continues to grow at incredi-
+ble rates, ranking objects and information has never played
+such an important role in understanding our culture and
+the world. Although previous techniques have been able to
+create such rankings, they are inefficient and unable to be
+used effectively during an interactive exploration of the
+ranked data. We have introduced TOPKUBE, an enhanced
+in-memory data cube that is able to generate ranked lists
+up to an order of magnitude faster than previous techni-
+ques. A careful evaluation of our techniques with public
+datasets has demonstrated its value. We have also made
+our benchmarks available for others to make direct com-
+parisons to our work.
+
+ACKNOWLEDGMENTS
+
+This work was supported in part by the Moore-Sloan Data
+Science Environment at NYU, NYU Tandon School of Engi-
+neering, NYU Center for Urban Science and Progress,
+AT&T, IBM Faculty Award, NSF awards CNS-1229185,
+CCF-1533564 and CNS-1544753.
+
+Fig. 16. Cumulative distribution of the speedup of HYBRID with u ¼ 0:25
+when partitioning the benchmark problems into four (equally sized)
+groups based on which quartile in the distribution of the number of keys
+(top) or ranks (bottom) each problem falls into. On top, the groups with
+greater number of keys (harder problems) observe greater speedups.
+On the bottom, groups with fewer ranks observer greater speedups.
+
+1406 IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS, VOL. 24, NO. 3, MARCH 2018
+
+Authorized licensed use limited to: UNIVERSITAT POLITECNICA DE CATALUNYA. Downloaded on October 05,2020 at 06:59:46 UTC from IEEE Xplore.  Restrictions apply. 
+
+
+
+REFERENCES
+[1] N. Hornby, High Fidelity. England, UK: Penguin, 2000.
+[2] B. J. Faulk, “Love and lists in nick hornby’s high fidelity,” Cultural
+
+Critique, vol. 66, no. 1, pp. 153–176, 2007.
+[3] T. Mostak, “An overview of mapd (massively parallel database),”
+
+inWhite Paper. Massachusetts Institute of Technology, 2013.
+[4] Z. Liu, B. Jiang, and J. Heer, “imMens: Real-time visual querying of
+
+big data,”Comput. Graph. Forum, vol. 32, no. 3, pp. 421–430, 2013.
+[5] L. Lins, J. T. Klosowski, and C. Scheidegger, “Nanocubes for real-
+
+time exploration of spatiotemporal datasets,” IEEE Trans. Vis.
+Comput. Graph., vol. 19, no. 12, pp. 2456–2465, Dec. 2013.
+
+[6] L. Battle, M. Stonebraker, and R. Chang, “Dynamic reduction of
+query result sets for interactive visualizaton,” in Proc. IEEE Int.
+Conf. Big Data, Oct. 2013, pp. 1–8.
+
+[7] J. F. Im, F. G. Villegas, and M. J. McGuffin, “VisReduce: Fast and
+responsive incremental information visualization of large data-
+sets,” in Proc. IEEE Int. Conf. Big Data, Oct. 2013, pp. 25–32.
+
+[8] A. Dix and G. Ellis, “By chance-enhancing interaction with large
+data sets through statistical sampling,” in Proc. Working Conf. Adv.
+Visual Interfaces, 2002, pp. 167–176.
+
+[9] B. Shneiderman, “Dynamic queries for visual information
+seeking,” IEEE Software, vol. 11, no. 6, pp. 70–77, Nov. 1994.
+
+[10] D. B. Carr, R. J. Littlefield, W. Nicholson, and J. Littlefield,
+“Scatterplot matrix techniques for large N,” J. Amer. Statist. Assoc.,
+vol. 82, no. 398, pp. 424–436, 1987.
+
+[11] P. J. Rousseeuw and A. M. Leroy, Robust Regression and Outlier
+Detection, vol. 589. Hoboken, NJ, USA: Wiley, 2005.
+
+[12] Z. Liu and J. Heer, “The effects of interactive latency on explor-
+atory visual analysis,” IEEE Trans. Vis. Comput. Graph., vol. 20,
+no. 12, pp. 2122–2131, Dec. 2014.
+
+[13] N. Kamat, P. Jayachandran, K. Tunga, and A. Nandi, “Distributed
+and interactive cube exploration,” in Proc. IEEE 30th Int. Conf.
+Data Eng., Mar. 2014, pp. 472–483.
+
+[14] J. Gray, et al., “Data cube: A relational aggregation operator gener-
+alizing group-by, cross-tab, and sub-totals,” Data Mining Knowl.
+Discovery, vol. 1, no. 1, pp. 29–53, 1997.
+
+[15] C. Stolte, D. Tang, and P. Hanrahan, “Polaris: A system for query,
+analysis, and visualization of multidimensional relational data-
+bases,” IEEE Trans. Vis. Comput. Graph., vol. 8, no. 1, pp. 52–65,
+Jan. 2002.
+
+[16] C. Stolte, D. Tang, and P. Hanrahan, “Multiscale visualization
+using data cubes,” IEEE Trans. Vis. Comput. Graph., vol. 9, no. 2,
+pp. 176–187, Apr. 2003.
+
+[17] L. Chen, G. Cong, C. S. Jensen, and D. Wu, “Spatial keyword
+query processing: An experimental evaluation,” in Proc. 39th Int.
+Conf. Very Large Data Bases, 2013, pp. 217–228.
+
+[18] S. Vaid, C. B. Jones, H. Joho, and M. Sanderson, “Spatio-textual
+indexing for geographical search on the web,” in Advances in Spatial
+and TemporalDatabases. Berlin, Germany: Springer, 2005, pp. 218–235.
+
+[19] A. Cary, O. Wolfson, and N. Rishe, “Efficient and scalable method
+for processing top-k spatial boolean queries,” in Scientific and Statisti-
+cal DatabaseManagement. Berlin, Germany: Springer, 2010, pp. 87–95.
+
+[20] J. B. Rocha-Junior, O. Gkorgkas, S. Jonassen, and K. Nørva
+	
+g,
+
+“Efficient processing of top-k spatial keyword queries,” in Advan-
+ces in Spatial and Temporal Databases. Berlin, Germany: Springer,
+2011, pp. 205–222.
+
+[21] D. Zhang, K.-L. Tan, and A. K. Tung, “Scalable top-k spatial key-
+word search,” in Proc. 16th Int. Conf. Extending Database Technol.,
+2013, pp. 359–370.
+
+[22] D. Xin, J. Han, H. Cheng, and X. Li, “Answering top-k queries
+with multi-dimensional selections: The ranking cube approach,”
+in Proc. 32nd Int. Conf. Very Large Data Bases, 2006, pp. 463–474.
+
+[23] T. Wu, D. Xin, and J. Han, “ARCube: Supporting ranking aggre-
+gate queries in partially materialized data cubes,” in Proc. ACM
+SIGMOD Int. Conf. Manage. Data, 2008, pp. 79–92.
+
+[24] I. F. Ilyas, G. Beskales, and M. A. Soliman, “A survey of top-k
+query processing techniques in relational database systems,”
+ACM Comput. Surveys, vol. 40, no. 4, 2008, Art. no. 11.
+
+[25] R. Fagin, A. Lotem, and M. Naor, “Optimal aggregation algo-
+rithms for middleware,” J. Comput. Syst. Sci., vol. 66, no. 4,
+pp. 614–656, 2003.
+
+[26] M. Shmueli-Scheuer, C. Li, Y. Mass, H. Roitman, R. Schenkel, and
+G. Weikum, “Best-effort top-k query processing under budgetary
+constraints,” in Proc. IEEE Int. Conf. Data Eng., 2009, pp. 928–939.
+
+[27] N. Ferreira, et al., “BirdVis: Visualizing and understanding bird
+populations,” IEEE Trans. Vis. Comput. Graph., vol. 17, no. 12,
+pp. 2374–2383, Dec. 2011.
+
+[28] J. Wood, J. Dykes, A. Slingsby, and K. Clarke, “Interactive visual
+exploration of a large spatio-temporal dataset: Reflections on a
+geovisualization mashup,” IEEE Trans. Vis. Comput. Graph.,
+vol. 13, no. 6, pp. 1176–1183, Nov. 2007.
+
+[29] C. Shi, W. Cui, S. Liu, P. Xu, W. Chen, and H. Qu, “RankExplorer:
+Visualization of ranking changes in large time series data,” IEEE
+Trans. Vis. Comput. Graph., vol. 18, no. 12, pp. 2669–2678, Dec.
+2012.
+
+[30] S. Gratzl, A. Lex, N. Gehlenborg, H. Pfister, and M. Streit,
+“LineUp: Visual analysis of multi-attribute rankings,” IEEE Trans.
+Vis. Comput. Graph., vol. 19, no. 12, pp. 2277–2286, Dec. 2013.
+
+[31] C. Perin, R. Vuillemot, and J.-D. Fekete, “A table!: Improving tem-
+poral navigation in soccer ranking tables,” in Proc. SIGCHI Conf.
+Human Factors Comput. Syst., 2014, pp. 887–896.
+
+[32] Z. Wang, N. Ferreira, Y. Wei, A. S. Bhaskar, and C. Scheidegger,
+“Gaussian cubes: Real-time modeling for visual exploration of
+large multidimensional datasets,” IEEE Trans. Vis. Comput. Graph.,
+vol. 23, no. 1, pp. 681–690, Jan. 2017.
+
+[33] Wikimedia downloads. (2015). [Online]. Available: https://
+dumps.wikimedia.org/, Accessed on: Mar. 31, 2015.
+
+[34] B. Thomee, D. A. Shamma, G. Friedland, B. Elizalde, K. Ni,
+D. Poland, D. Borth, and L.-J. Li, “Yfcc100m: The new data inmulti-
+media research,”Commun. ACM, vol. 59, no. 2, pp. 64–73, Jan. 2016.
+
+[35] G. Gousios, “The GHTorrent dataset and tool suite,” in Proc. 10th
+Working Conf. Mining Software Repositories, 2013, pp. 233–236.
+
+Fabio Miranda received the MSc degree in com-
+puter science from PUC-Rio. During this period, he
+worked as a researcher and software engineer
+developing visualization tools for the oil industry.
+He is working towards the PhD degree in the Com-
+puter Science and Engineering Department, NYU
+Tandon School of Engineering. His research
+focuses on large scale data analysis, data struc-
+tures, and urban data visualization.
+
+Lauro Lins received the BSc and MSc degrees in
+computer science and the PhD degree in computa-
+tional mathematics from the Universidade Federal
+de Pernambuco, Brazil. He is a researcher in the
+Information Visualization Department, AT&T Labs.
+He has also worked as a post-doc in the SCI Insti-
+tute (Utah) and as an assistant research professor
+withNYU-Poly. His research focuses onalgorithms,
+data structures, and systems for enabling intuitive,
+and scalable data visualization.
+
+James T. Klosowski is the director of the Informa-
+tion Visualization Research Department, AT&T
+Labs. Prior to joining AT&T, in 2009, he worked on
+interactive computer graphics and scalable visuali-
+zation systems with IBM T. J. Watson Research
+Center. His current research focuses on all aspects
+of information visualization and analysis, but in par-
+ticular working with large geospatial, temporal, and
+network datasets. He is amember of the IEEE.
+
+Claudio T. Silva is a professor of computer sci-
+ence and engineering and data science with NYU.
+His research lies in the intersection of visualization,
+data analysis, and geometric computing, and
+recently has focused on urban and sports data. He
+has received a number of awards: IEEE fellow,
+IEEE Visualization Technical Achievement Award,
+and elected chair of the IEEE Technical Committee
+onVisualization andComputer Graphics.
+
+" For more information on this or any other computing topic,
+please visit our Digital Library at www.computer.org/publications/dlib.
+
+MIRANDA ETAL.: TOPKUBE: A RANK-AWARE DATA CUBE FOR REAL-TIME EXPLORATION OF SPATIOTEMPORAL DATA 1407
+
+Authorized licensed use limited to: UNIVERSITAT POLITECNICA DE CATALUNYA. Downloaded on October 05,2020 at 06:59:46 UTC from IEEE Xplore.  Restrictions apply. 
+
+https://dumps.wikimedia.org/
+https://dumps.wikimedia.org/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<<
+  /ASCII85EncodePages false
+  /AllowTransparency false
+  /AutoPositionEPSFiles true
+  /AutoRotatePages /None
+  /Binding /Left
+  /CalGrayProfile (Gray Gamma 2.2)
+  /CalRGBProfile (sRGB IEC61966-2.1)
+  /CalCMYKProfile (U.S. Web Coated \050SWOP\051 v2)
+  /sRGBProfile (sRGB IEC61966-2.1)
+  /CannotEmbedFontPolicy /Warning
+  /CompatibilityLevel 1.4
+  /CompressObjects /Off
+  /CompressPages true
+  /ConvertImagesToIndexed true
+  /PassThroughJPEGImages true
+  /CreateJobTicket false
+  /DefaultRenderingIntent /Default
+  /DetectBlends true
+  /DetectCurves 0.0000
+  /ColorConversionStrategy /sRGB
+  /DoThumbnails true
+  /EmbedAllFonts true
+  /EmbedOpenType false
+  /ParseICCProfilesInComments true
+  /EmbedJobOptions true
+  /DSCReportingLevel 0
+  /EmitDSCWarnings false
+  /EndPage -1
+  /ImageMemory 1048576
+  /LockDistillerParams true
+  /MaxSubsetPct 100
+  /Optimize true
+  /OPM 0
+  /ParseDSCComments false
+  /ParseDSCCommentsForDocInfo true
+  /PreserveCopyPage true
+  /PreserveDICMYKValues true
+  /PreserveEPSInfo false
+  /PreserveFlatness true
+  /PreserveHalftoneInfo true
+  /PreserveOPIComments false
+  /PreserveOverprintSettings true
+  /StartPage 1
+  /SubsetFonts false
+  /TransferFunctionInfo /Remove
+  /UCRandBGInfo /Preserve
+  /UsePrologue false
+  /ColorSettingsFile ()
+  /AlwaysEmbed [ true
+    /Algerian
+    /Arial-Black
+    /Arial-BlackItalic
+    /Arial-BoldItalicMT
+    /Arial-BoldMT
+    /Arial-ItalicMT
+    /ArialMT
+    /ArialNarrow
+    /ArialNarrow-Bold
+    /ArialNarrow-BoldItalic
+    /ArialNarrow-Italic
+    /ArialUnicodeMS
+    /BaskOldFace
+    /Batang
+    /Bauhaus93
+    /BellMT
+    /BellMTBold
+    /BellMTItalic
+    /BerlinSansFB-Bold
+    /BerlinSansFBDemi-Bold
+    /BerlinSansFB-Reg
+    /BernardMT-Condensed
+    /BodoniMTPosterCompressed
+    /BookAntiqua
+    /BookAntiqua-Bold
+    /BookAntiqua-BoldItalic
+    /BookAntiqua-Italic
+    /BookmanOldStyle
+    /BookmanOldStyle-Bold
+    /BookmanOldStyle-BoldItalic
+    /BookmanOldStyle-Italic
+    /BookshelfSymbolSeven
+    /BritannicBold
+    /Broadway
+    /BrushScriptMT
+    /CalifornianFB-Bold
+    /CalifornianFB-Italic
+    /CalifornianFB-Reg
+    /Centaur
+    /Century
+    /CenturyGothic
+    /CenturyGothic-Bold
+    /CenturyGothic-BoldItalic
+    /CenturyGothic-Italic
+    /CenturySchoolbook
+    /CenturySchoolbook-Bold
+    /CenturySchoolbook-BoldItalic
+    /CenturySchoolbook-Italic
+    /Chiller-Regular
+    /ColonnaMT
+    /ComicSansMS
+    /ComicSansMS-Bold
+    /CooperBlack
+    /CourierNewPS-BoldItalicMT
+    /CourierNewPS-BoldMT
+    /CourierNewPS-ItalicMT
+    /CourierNewPSMT
+    /EstrangeloEdessa
+    /FootlightMTLight
+    /FreestyleScript-Regular
+    /Garamond
+    /Garamond-Bold
+    /Garamond-Italic
+    /Georgia
+    /Georgia-Bold
+    /Georgia-BoldItalic
+    /Georgia-Italic
+    /Haettenschweiler
+    /HarlowSolid
+    /Harrington
+    /HighTowerText-Italic
+    /HighTowerText-Reg
+    /Impact
+    /InformalRoman-Regular
+    /Jokerman-Regular
+    /JuiceITC-Regular
+    /KristenITC-Regular
+    /KuenstlerScript-Black
+    /KuenstlerScript-Medium
+    /KuenstlerScript-TwoBold
+    /KunstlerScript
+    /LatinWide
+    /LetterGothicMT
+    /LetterGothicMT-Bold
+    /LetterGothicMT-BoldOblique
+    /LetterGothicMT-Oblique
+    /LucidaBright
+    /LucidaBright-Demi
+    /LucidaBright-DemiItalic
+    /LucidaBright-Italic
+    /LucidaCalligraphy-Italic
+    /LucidaConsole
+    /LucidaFax
+    /LucidaFax-Demi
+    /LucidaFax-DemiItalic
+    /LucidaFax-Italic
+    /LucidaHandwriting-Italic
+    /LucidaSansUnicode
+    /Magneto-Bold
+    /MaturaMTScriptCapitals
+    /MediciScriptLTStd
+    /MicrosoftSansSerif
+    /Mistral
+    /Modern-Regular
+    /MonotypeCorsiva
+    /MS-Mincho
+    /MSReferenceSansSerif
+    /MSReferenceSpecialty
+    /NiagaraEngraved-Reg
+    /NiagaraSolid-Reg
+    /NuptialScript
+    /OldEnglishTextMT
+    /Onyx
+    /PalatinoLinotype-Bold
+    /PalatinoLinotype-BoldItalic
+    /PalatinoLinotype-Italic
+    /PalatinoLinotype-Roman
+    /Parchment-Regular
+    /Playbill
+    /PMingLiU
+    /PoorRichard-Regular
+    /Ravie
+    /ShowcardGothic-Reg
+    /SimSun
+    /SnapITC-Regular
+    /Stencil
+    /SymbolMT
+    /Tahoma
+    /Tahoma-Bold
+    /TempusSansITC
+    /TimesNewRomanMT-ExtraBold
+    /TimesNewRomanMTStd
+    /TimesNewRomanMTStd-Bold
+    /TimesNewRomanMTStd-BoldCond
+    /TimesNewRomanMTStd-BoldIt
+    /TimesNewRomanMTStd-Cond
+    /TimesNewRomanMTStd-CondIt
+    /TimesNewRomanMTStd-Italic
+    /TimesNewRomanPS-BoldItalicMT
+    /TimesNewRomanPS-BoldMT
+    /TimesNewRomanPS-ItalicMT
+    /TimesNewRomanPSMT
+    /Times-Roman
+    /Trebuchet-BoldItalic
+    /TrebuchetMS
+    /TrebuchetMS-Bold
+    /TrebuchetMS-Italic
+    /Verdana
+    /Verdana-Bold
+    /Verdana-BoldItalic
+    /Verdana-Italic
+    /VinerHandITC
+    /Vivaldii
+    /VladimirScript
+    /Webdings
+    /Wingdings2
+    /Wingdings3
+    /Wingdings-Regular
+    /ZapfChanceryStd-Demi
+    /ZWAdobeF
+  ]
+  /NeverEmbed [ true
+  ]
+  /AntiAliasColorImages false
+  /CropColorImages true
+  /ColorImageMinResolution 150
+  /ColorImageMinResolutionPolicy /OK
+  /DownsampleColorImages true
+  /ColorImageDownsampleType /Bicubic
+  /ColorImageResolution 150
+  /ColorImageDepth -1
+  /ColorImageMinDownsampleDepth 1
+  /ColorImageDownsampleThreshold 1.50000
+  /EncodeColorImages true
+  /ColorImageFilter /DCTEncode
+  /AutoFilterColorImages false
+  /ColorImageAutoFilterStrategy /JPEG
+  /ColorACSImageDict <<
+    /QFactor 0.76
+    /HSamples [2 1 1 2] /VSamples [2 1 1 2]
+  >>
+  /ColorImageDict <<
+    /QFactor 0.40
+    /HSamples [1 1 1 1] /VSamples [1 1 1 1]
+  >>
+  /JPEG2000ColorACSImageDict <<
+    /TileWidth 256
+    /TileHeight 256
+    /Quality 15
+  >>
+  /JPEG2000ColorImageDict <<
+    /TileWidth 256
+    /TileHeight 256
+    /Quality 15
+  >>
+  /AntiAliasGrayImages false
+  /CropGrayImages true
+  /GrayImageMinResolution 150
+  /GrayImageMinResolutionPolicy /OK
+  /DownsampleGrayImages true
+  /GrayImageDownsampleType /Bicubic
+  /GrayImageResolution 300
+  /GrayImageDepth -1
+  /GrayImageMinDownsampleDepth 2
+  /GrayImageDownsampleThreshold 1.50000
+  /EncodeGrayImages true
+  /GrayImageFilter /DCTEncode
+  /AutoFilterGrayImages false
+  /GrayImageAutoFilterStrategy /JPEG
+  /GrayACSImageDict <<
+    /QFactor 0.76
+    /HSamples [2 1 1 2] /VSamples [2 1 1 2]
+  >>
+  /GrayImageDict <<
+    /QFactor 0.40
+    /HSamples [1 1 1 1] /VSamples [1 1 1 1]
+  >>
+  /JPEG2000GrayACSImageDict <<
+    /TileWidth 256
+    /TileHeight 256
+    /Quality 15
+  >>
+  /JPEG2000GrayImageDict <<
+    /TileWidth 256
+    /TileHeight 256
+    /Quality 15
+  >>
+  /AntiAliasMonoImages false
+  /CropMonoImages true
+  /MonoImageMinResolution 1200
+  /MonoImageMinResolutionPolicy /OK
+  /DownsampleMonoImages true
+  /MonoImageDownsampleType /Bicubic
+  /MonoImageResolution 600
+  /MonoImageDepth -1
+  /MonoImageDownsampleThreshold 1.50000
+  /EncodeMonoImages true
+  /MonoImageFilter /CCITTFaxEncode
+  /MonoImageDict <<
+    /K -1
+  >>
+  /AllowPSXObjects false
+  /CheckCompliance [
+    /None
+  ]
+  /PDFX1aCheck false
+  /PDFX3Check false
+  /PDFXCompliantPDFOnly false
+  /PDFXNoTrimBoxError true
+  /PDFXTrimBoxToMediaBoxOffset [
+    0.00000
+    0.00000
+    0.00000
+    0.00000
+  ]
+  /PDFXSetBleedBoxToMediaBox true
+  /PDFXBleedBoxToTrimBoxOffset [
+    0.00000
+    0.00000
+    0.00000
+    0.00000
+  ]
+  /PDFXOutputIntentProfile (None)
+  /PDFXOutputConditionIdentifier ()
+  /PDFXOutputCondition ()
+  /PDFXRegistryName ()
+  /PDFXTrapped /False
+
+  /CreateJDFFile false
+  /Description <<
+    /CHS <FEFF4f7f75288fd94e9b8bbe5b9a521b5efa7684002000410064006f006200650020005000440046002065876863900275284e8e55464e1a65876863768467e5770b548c62535370300260a853ef4ee54f7f75280020004100630072006f0062006100740020548c002000410064006f00620065002000520065006100640065007200200035002e003000204ee553ca66f49ad87248672c676562535f00521b5efa768400200050004400460020658768633002>
+    /CHT <FEFF4f7f752890194e9b8a2d7f6e5efa7acb7684002000410064006f006200650020005000440046002065874ef69069752865bc666e901a554652d965874ef6768467e5770b548c52175370300260a853ef4ee54f7f75280020004100630072006f0062006100740020548c002000410064006f00620065002000520065006100640065007200200035002e003000204ee553ca66f49ad87248672c4f86958b555f5df25efa7acb76840020005000440046002065874ef63002>
+    /DAN <FEFF004200720075006700200069006e0064007300740069006c006c0069006e006700650072006e0065002000740069006c0020006100740020006f007000720065007400740065002000410064006f006200650020005000440046002d0064006f006b0075006d0065006e007400650072002c0020006400650072002000650067006e006500720020007300690067002000740069006c00200064006500740061006c006a006500720065007400200073006b00e60072006d007600690073006e0069006e00670020006f00670020007500640073006b007200690076006e0069006e006700200061006600200066006f0072007200650074006e0069006e006700730064006f006b0075006d0065006e007400650072002e0020004400650020006f007000720065007400740065006400650020005000440046002d0064006f006b0075006d0065006e0074006500720020006b0061006e002000e50062006e00650073002000690020004100630072006f00620061007400200065006c006c006500720020004100630072006f006200610074002000520065006100640065007200200035002e00300020006f00670020006e0079006500720065002e>
+    /DEU <FEFF00560065007200770065006e00640065006e0020005300690065002000640069006500730065002000450069006e007300740065006c006c0075006e00670065006e0020007a0075006d002000450072007300740065006c006c0065006e00200076006f006e002000410064006f006200650020005000440046002d0044006f006b0075006d0065006e00740065006e002c00200075006d002000650069006e00650020007a0075007600650072006c00e40073007300690067006500200041006e007a006500690067006500200075006e00640020004100750073006700610062006500200076006f006e00200047006500730063006800e40066007400730064006f006b0075006d0065006e00740065006e0020007a0075002000650072007a00690065006c0065006e002e00200044006900650020005000440046002d0044006f006b0075006d0065006e007400650020006b00f6006e006e0065006e0020006d006900740020004100630072006f00620061007400200075006e0064002000520065006100640065007200200035002e003000200075006e00640020006800f600680065007200200067006500f600660066006e00650074002000770065007200640065006e002e>
+    /ESP <FEFF005500740069006c0069006300650020006500730074006100200063006f006e0066006900670075007200610063006900f3006e0020007000610072006100200063007200650061007200200064006f00630075006d0065006e0074006f0073002000640065002000410064006f00620065002000500044004600200061006400650063007500610064006f007300200070006100720061002000760069007300750061006c0069007a00610063006900f3006e0020006500200069006d0070007200650073006900f3006e00200064006500200063006f006e006600690061006e007a006100200064006500200064006f00630075006d0065006e0074006f007300200063006f006d00650072006300690061006c00650073002e002000530065002000700075006500640065006e00200061006200720069007200200064006f00630075006d0065006e0074006f00730020005000440046002000630072006500610064006f007300200063006f006e0020004100630072006f006200610074002c002000410064006f00620065002000520065006100640065007200200035002e003000200079002000760065007200730069006f006e0065007300200070006f00730074006500720069006f007200650073002e>
+    /FRA <FEFF005500740069006c006900730065007a00200063006500730020006f007000740069006f006e00730020006100660069006e00200064006500200063007200e900650072002000640065007300200064006f00630075006d0065006e00740073002000410064006f006200650020005000440046002000700072006f00660065007300730069006f006e006e0065006c007300200066006900610062006c0065007300200070006f007500720020006c0061002000760069007300750061006c00690073006100740069006f006e0020006500740020006c00270069006d007000720065007300730069006f006e002e0020004c0065007300200064006f00630075006d0065006e00740073002000500044004600200063007200e900e90073002000700065007500760065006e0074002000ea0074007200650020006f007500760065007200740073002000640061006e00730020004100630072006f006200610074002c002000610069006e00730069002000710075002700410064006f00620065002000520065006100640065007200200035002e0030002000650074002000760065007200730069006f006e007300200075006c007400e90072006900650075007200650073002e>
+    /ITA (Utilizzare queste impostazioni per creare documenti Adobe PDF adatti per visualizzare e stampare documenti aziendali in modo affidabile. I documenti PDF creati possono essere aperti con Acrobat e Adobe Reader 5.0 e versioni successive.)
+    /JPN <FEFF30d330b830cd30b9658766f8306e8868793a304a3088307353705237306b90693057305f002000410064006f0062006500200050004400460020658766f8306e4f5c6210306b4f7f75283057307e305930023053306e8a2d5b9a30674f5c62103055308c305f0020005000440046002030d530a130a430eb306f3001004100630072006f0062006100740020304a30883073002000410064006f00620065002000520065006100640065007200200035002e003000204ee5964d3067958b304f30533068304c3067304d307e305930023053306e8a2d5b9a3067306f30d530a930f330c8306e57cb30818fbc307f3092884c3044307e30593002>
+    /KOR <FEFFc7740020c124c815c7440020c0acc6a9d558c5ec0020be44c988b2c8c2a40020bb38c11cb97c0020c548c815c801c73cb85c0020bcf4ace00020c778c1c4d558b2940020b3700020ac00c7a50020c801d569d55c002000410064006f0062006500200050004400460020bb38c11cb97c0020c791c131d569b2c8b2e4002e0020c774b807ac8c0020c791c131b41c00200050004400460020bb38c11cb2940020004100630072006f0062006100740020bc0f002000410064006f00620065002000520065006100640065007200200035002e00300020c774c0c1c5d0c11c0020c5f40020c2180020c788c2b5b2c8b2e4002e>
+    /NLD (Gebruik deze instellingen om Adobe PDF-documenten te maken waarmee zakelijke documenten betrouwbaar kunnen worden weergegeven en afgedrukt. De gemaakte PDF-documenten kunnen worden geopend met Acrobat en Adobe Reader 5.0 en hoger.)
+    /NOR <FEFF004200720075006b00200064006900730073006500200069006e006e007300740069006c006c0069006e00670065006e0065002000740069006c002000e50020006f0070007000720065007400740065002000410064006f006200650020005000440046002d0064006f006b0075006d0065006e00740065007200200073006f006d002000650072002000650067006e0065007400200066006f00720020007000e5006c006900740065006c006900670020007600690073006e0069006e00670020006f00670020007500740073006b007200690066007400200061007600200066006f0072007200650074006e0069006e006700730064006f006b0075006d0065006e007400650072002e0020005000440046002d0064006f006b0075006d0065006e00740065006e00650020006b0061006e002000e50070006e00650073002000690020004100630072006f00620061007400200065006c006c00650072002000410064006f00620065002000520065006100640065007200200035002e003000200065006c006c00650072002e>
+    /PTB <FEFF005500740069006c0069007a006500200065007300730061007300200063006f006e00660069006700750072006100e700f50065007300200064006500200066006f0072006d00610020006100200063007200690061007200200064006f00630075006d0065006e0074006f0073002000410064006f00620065002000500044004600200061006400650071007500610064006f00730020007000610072006100200061002000760069007300750061006c0069007a006100e700e3006f002000650020006100200069006d0070007200650073007300e3006f00200063006f006e0066006900e1007600650069007300200064006500200064006f00630075006d0065006e0074006f007300200063006f006d0065007200630069006100690073002e0020004f007300200064006f00630075006d0065006e0074006f00730020005000440046002000630072006900610064006f007300200070006f00640065006d0020007300650072002000610062006500720074006f007300200063006f006d0020006f0020004100630072006f006200610074002000650020006f002000410064006f00620065002000520065006100640065007200200035002e0030002000650020007600650072007300f50065007300200070006f00730074006500720069006f007200650073002e>
+    /SUO <FEFF004b00e40079007400e40020006e00e40069007400e4002000610073006500740075006b007300690061002c0020006b0075006e0020006c0075006f0074002000410064006f0062006500200050004400460020002d0064006f006b0075006d0065006e007400740065006a0061002c0020006a006f0074006b006100200073006f0070006900760061007400200079007200690074007900730061007300690061006b00690072006a006f006a0065006e0020006c0075006f00740065007400740061007600610061006e0020006e00e400790074007400e4006d0069007300650065006e0020006a0061002000740075006c006f007300740061006d0069007300650065006e002e0020004c0075006f0064007500740020005000440046002d0064006f006b0075006d0065006e00740069007400200076006f0069006400610061006e0020006100760061007400610020004100630072006f0062006100740069006c006c00610020006a0061002000410064006f00620065002000520065006100640065007200200035002e0030003a006c006c00610020006a006100200075007500640065006d006d0069006c006c0061002e>
+    /SVE <FEFF0041006e007600e4006e00640020006400650020006800e4007200200069006e0073007400e4006c006c006e0069006e006700610072006e00610020006f006d002000640075002000760069006c006c00200073006b006100700061002000410064006f006200650020005000440046002d0064006f006b0075006d0065006e007400200073006f006d00200070006100730073006100720020006600f60072002000740069006c006c006600f60072006c00690074006c006900670020007600690073006e0069006e00670020006f006300680020007500740073006b007200690066007400650072002000610076002000610066006600e4007200730064006f006b0075006d0065006e0074002e002000200053006b006100700061006400650020005000440046002d0064006f006b0075006d0065006e00740020006b0061006e002000f600700070006e00610073002000690020004100630072006f0062006100740020006f00630068002000410064006f00620065002000520065006100640065007200200035002e00300020006f00630068002000730065006e006100720065002e>
+    /ENU (Use these settings to create PDFs that match the "Suggested"  settings for PDF Specification 4.0)
+  >>
+>> setdistillerparams
+<<
+  /HWResolution [600 600]
+  /PageSize [612.000 792.000]
+>> setpagedevice
+

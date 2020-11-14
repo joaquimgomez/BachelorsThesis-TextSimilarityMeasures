@@ -1,0 +1,1767 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+Victhor S. Sartório
+Instituto de Matemática
+
+Universidade Federal do Rio de Janeiro
+Rio de Janeiro, Brazil
+
+victhor@dme.ufrj.br
+
+Thais C. O. Fonseca
+Departamento de Métodos Estatísticos
+Universidade Federal do Rio de Janeiro
+
+Rio de Janeiro, Brazil
+thais@im.ufrj.br
+
+Abstract
+
+We propose a new method for clustering multivariate time-series data based on Dynamic Linear
+Models. Whereas usual time-series clustering methods obtain static membership parameters, our
+proposal allows each time-series to dynamically change their cluster memberships over time. In this
+context, a mixture model is assumed for the time series and a flexible Dirichlet evolution for mixture
+weights allows for smooth membership changes over time. Posterior estimates and predictions can
+be obtained through Gibbs sampling, but a more efficient method for obtaining point estimates is
+presented, based on Stochastic Expectation-Maximization and Gradient Descent. Finally, two ap-
+plications illustrate the usefulness of our proposed model to model both univariate and multivariate
+time-series: World Bank indicators for renewable energy consumption of EU nations and the famous
+Gapminder dataset containing life-expectancy and GDP per capita for various countries.
+
+Keywords Time-series · Clusterization ·Mixture Models · Dynamic Models
+
+1 Introduction
+
+Clusterization is the process grouping data into different sets, called clusters, that are heterogeneous
+
+from each other, but such that members of the same cluster are relatively similar among themselves. This
+
+approach is used for identifying structure in unlabeled datasets and has become increasingly popular for
+
+both exploratory analysis and automatic segmentation of data points.
+
+Historically, most clustering techniques concern themselves with static data. With the rise of routine
+
+collection of data, however, attention has been increasingly turned to clustering time-varying obser-
+
+vations. Although the number of developments in this field for the past few decades can seem over-
+
+whelming, Liao (2005) and Aghabozorgi et al. (2015) serve as good summaries for the most significant
+
+publications.
+
+Of particular interest for time-series clustering are Hidden Markov Models (HMMs). They make
+
+up a general framework of probabilistic time-series models that rely on abstracting away temporal de-
+
+pendencies into unobserved states whose evolution follow the Markov property. The idea of clustering
+
+time-series with HMMs was initially presented by Juang and Rabiner (1985) and made significant impact
+
+in fields such as speech recognition (Juang and Rabiner, 1991), protein modelling (Krogh et al., 1994),
+
+and genetics (Schliep et al., 2003), among others.
+
+When clustering time-series data that span long windows of time, however, it may be inappropriate
+
+to assume that every single observation will follow the behavior of the same cluster for the whole period.
+
+Consider Figure 1 for an illustrative example of what this behavior would look like.
+
+Page 1
+
+ar
+X
+
+iv
+:2
+
+00
+2.
+
+01
+89
+
+0v
+1 
+
+ [
+st
+
+at
+.A
+
+P
+] 
+
+ 2
+8 
+
+Ja
+n 
+
+20
+20
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+Figure 1: Illustrative example of time-series spread across two clusters where two of the time-series,
+colored in orange, change their cluster membership halfway through the time window.
+
+Evidently, one could argue that such behaviour is that of a new, third, cluster. However, as more
+
+observational units start presenting this behavior at different time-points, one would require a big number
+
+of clusters with very few members in each of them to capture these changes, which, in a way, goes against
+
+the very purpose of clustering.
+
+For a model to succesfully acommodate such behavior, it would need to account for the possibility of
+
+time-series changing their cluster memberships through time, and little work has been done in this regard
+
+in existing literature.
+
+There have been two particularly relevant publications with this approach. First, Punzo and Maruotti
+
+(2016) proposed a Markov chain dictating the transition probabilities between clusters across each lon-
+
+gitudinal observation. There are two downsides to this approach: first, the cluster membership changes
+
+can be too abrupt; and second, assuming that all observations have the same transition probabilities can
+
+be too strict.
+
+On the other hand, Maruotti and Vichi (2017) did not use a hidden Markov structure and proposed a
+
+model which takes the idea of k-means clustering (MacQueen et al., 1967) and adapts it so that each clus-
+
+ter’s centroid is ruled by a Vector Autoregressive model. Although a considerably more ideal approach
+
+for longer time-series data, the cluster membership itself does not incorporate time-dependence, which
+
+can allow for some clear missclassifications of outlier observations as is shown in the Appendix A.
+
+In this paper, we present clusterization of time-series based on Dynamic Linear Models (West and
+
+Harrison, 1996) which are a particular class of HMMs. Then, we further extend this initial model to
+
+take into account dynamic mixture coefficients and assume their evolution is ruled by an Evolutional
+
+Dirichlet Process (Fonseca and Ferreira, 2017), allowing cluster memberships to shift smoothly through
+
+time. Two estimation approaches are considered: Markov Chain Monte Carlo inference, which has a
+
+considerable higher computational cost but allows for any probabilistic inference to be made for the
+
+posterior distributions, and pontual estimation methods based on Stochastic Expectation Maximization
+
+and Gradient Descent, providing results much more quickly, but restricting analysis to simple point
+
+estimates for model parameters. An accompanying Python library named dynmix1 was developed.
+1Acessible from the PyPI repositories.
+
+Page 2
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+In Section 2, we present our model for simple mixtures of DLMs, where the pontual estimation
+
+procedure may prove useful in regular HMM applications, and in Section 3 we present its extension for
+
+dynamic mixtures of DLMs,. In Section 4 we showcase an application for univariate series regarding
+
+renewable energy consumption of EU member states, and a multivariate application considering Life
+
+Expectancy and GDP per capta data for European and African countries. In Section 5 we present some
+
+final remarks.
+
+2 Mixtures of Dynamic Linear Models
+
+Consider that one has observed n different m-variate time series across the same T time instants,
+
+denoted each by yi = (yi1, . . . ,yiT ), i = 1, . . . , n. Let’s then assume that there are k different
+
+clusters, indexed by j = 1, . . . , k, each with a behavior determined by pj-variate time-varying states
+
+θj = (θj1, . . . ,θjT ) and cluster specific parameters Φj . Finally, assume that all the dependence in the
+
+observed data, across time and across different observations, is captured by these states.
+
+Thus, we can consider the following observational model for each of the n conditionally independent
+
+observations
+
+f(yi|ηi,θ1, . . . ,θk,Φ1, . . . ,Φk) =
+k∑
+j=1
+
+ηij
+
+T∏
+t=1
+
+fj(yit|t,θjt,Φj) (1)
+
+where ηi = (ηi1, . . . , ηik) is the cluster membership vector (or mixture weights) for the i-th observation
+
+and fj is the appropriate observational probability density function (p.d.f.) for the j-th cluster.
+
+The assumptions made, and consequently equation (1), specify an observational model for a general
+
+time-series clusterization approach based on Hidden Markov Models, which Juang and Rabiner (1985)
+
+first proposed.
+
+We now proceed with our choice of Dynamic Linear Models, or DLMs for short, to serve as the
+
+specific framework of Hidden Markov Models to be used for modelling the states of each of the clusters.
+
+DLMs provide powerful and convenient set tools for flexibly modeling various behaviours.
+
+In particular, a DLM for the states θj with observationsx1, . . . ,xT is modelled through the equations
+
+xt = Fjtθjt + νjt νjt ∼ N(0m,Vjt)
+
+θjt = Gjtθj,t−1 + ω
+(j)
+t ω
+
+(j)
+t ∼ N(0pj ,Wjt)
+
+where Fj is called the observational matrix,Gj is called the evolutional matrix, Vjt is the observational
+
+error covariance matrix andWjt is the evolutional error covariance matrix.
+
+For the remainder of the paper, to lighten the notation, the time index of the observational and evo-
+
+lutional matrices will be dropped whenever they are not explicitly assumed to be time-varying.
+
+Different specifications of the pair (Fj ,Gj) can be made to take into account various interesting
+
+properties from the data, such as different forms of trend, seasonality or dependence on time-varying
+
+covariates. See West and Harrison (1996) for a thorough overview of Dynamic Linear Models.
+
+We will also consider indirect modelling of theWt through discount factor modelling (Harrison and
+
+West, 1987). The use of discount factors turn out to be essential for the success of this proposal as this
+
+Page 3
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+will allow the maximum a posteriori procedure to be well defined for Dynamic Linear Models. This is
+
+better detailed in Section 2.2. In summary, the idea of discount modelling is to impose a (known) rate
+
+of loss of information regarding the states at each time-step which will lead to a Wt that is function
+
+of all the other parameters and observations. This strategy for modelling the evolutional variance is
+
+also commonly used in practice; see Lamon et al. (1998) and Lopes and Carvalho (2007) for interesting
+
+examples.
+
+Now, with the added assumption that the states for each cluster can be modelled through a DLM,
+
+we have that the only cluster specific parameter is Ψj = {Vj} and the observational equation from (1)
+becomes
+
+f(yi|ηi,θ1, . . . ,θk,V1, . . . ,Vk) =
+k∑
+j=1
+
+ηij
+
+T∏
+t=1
+
+Nm(yit;Fjθjt,Vj) (2)
+
+where Np(·;m,C) is the probability density function of the p-variate normal distribution with mean m
+and covariance matrix C.
+
+Although equation (2) fully reflects the observational model of interest, when estimation is concerned
+
+it is useful to perform a commonly used model augmentation (Tanner and Wong, 1987). In particular,
+
+we introduce a dummy variable Zi for each observation such that Pr(Zi = j|ηi) = ηij . By doing this,
+the observational equation simplifies to
+
+f(yi|Zi,θ1, . . . ,θk,V1, . . . ,Vk) =
+T∏
+t=1
+
+Nm(yit;FZiθZit,VZi). (3)
+
+Although the models presented here will assume that the number of clusters k is known, specially
+
+because of the focus on imposing meaningful structures for each cluster DLM, works such as Richardson
+
+and Green (1997) and Nobile and Fearnside (2007) pave the way for future extensions which could also
+
+estimate k. Another approach is to perform model comparison for different values of k, using metrics
+
+such as the modified BIC proposed by Fraley and Raftery (2007).
+
+Now that we have specified a model, we’ll go into estimation of the model parameters, for which
+
+we present two options: a fully Bayesian approach in which we obtain samples from the posterior dis-
+
+tribution by using Markov Chain Monte Carlo (MCMC) methods, and a maximum a posteriori approach
+
+which will provide point estimates in a very efficient manner by using the Expectation Maximization
+
+(EM) algorithm.
+
+2.1 Gibbs sampling
+
+An MCMC estimation approach for this model is made very easy thanks to its dependence struc-
+
+ture, which leads to various conditional independences, and also thanks to the analytical tractability of
+
+Dynamic Linear Models.
+
+The Gibbs algorithm (Geman and Geman, 1987) involves separating all random variables of interest
+
+into different blocks and sampling from the full conditional distribution of each block, one at a time, at
+
+each iteration. The resulting stochastic process is guaranteed to converge to the joint posterior distribu-
+
+tion of the random variables of interest.
+
+Page 4
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+Firstly, assuming ηi ∼ Dirichlet(c0) as the prior, the conditional distribution of each ηi given all
+other information can be easily found to be ηi|· ∼ Dirichlet(c0 + eZi) where c0 comes from the prior
+and ej is the j-th canonical vector of Rk.
+
+Then, we obtain the conditional distribution of each Zi, which is given by
+
+P (Zi = j|ηi,θ1, . . . ,θk,V1, . . . ,Vk,yi) =
+ηij
+∏T
+t=1Nm(yit;Fjθjt,Vj)∑k
+
+l=1 ηil
+∏T
+t=1Nm(yit;Flθlt,Vl)
+
+(4)
+
+which, although intuitive and simple to obtain algebrically, may lead to serious computational problems
+
+arrising from underflow, specially for higher values of T .
+
+A strategy for dealing with this problem is, for each i, evaluating all Nm(yit;Fjθjt,Vj), for all j
+
+and t, and obtaining the mean order of magnitude
+
+Ōij =
+1
+
+T
+
+T∑
+t=1
+
+log10Nm(yit;Fjθjt,Vj)
+
+for each of the clusters. Then, we define a new quantity as Ōi = maxj=1,...,k Ōj .
+
+Given this value, computing the expression
+
+P (Zi = j|ηi,θ1, . . . ,θk,V1, . . . ,Vk,yi) =
+ηij
+∏T
+t=1 10
+
+−ŌiNm(yit;Fjθjt,Vj)∑k
+l=1 ηil
+
+∏T
+t=1 10
+
+−ŌiNm(yit;Flθlt,Vl)
+, (5)
+
+obviously should lead to the same mathematical result but avoids underflow by keeping the terms of the
+
+products of the most relevant clusters around 1.
+
+Conditional on Z1, . . . , Zn, let Ij = {i : Zi = j} be the set of observational indexes belonging to
+the j-th cluster and nj the number of elements of this set.
+
+For each of the m observational dimensions there will generally be state components associated
+
+with their behaviour, e.g. their level. By using discount factors, systematic correlations between these
+
+dimensions will be captured through the states, and it becomes reasonable to assume that the independent
+
+observational discrepancies from the mean at each time-point will be independent from each other. As
+
+such, we will assume throughout the paper that Vj is diagonal, such that Vj = diag(φ
+−1
+j1 , . . . , φ
+
+−1
+jm).
+
+Thus, we have that the conditional distribution for each of these elements is
+
+φjl|· ∼ Gamma
+
+
+njT
+
+2
+,
+
+∑
+i∈Ij
+
+∑T
+t=1
+
+(
+(Fjθtj)l − yitl
+
+)2
+2
+
+
+
+
+where (Fjθtj)l denotes the l-th element of the resulting vector from the product Fjθtj . Note that if one
+
+desires to consider observational correlations, the conditional distribution for Vj still holds analytical
+
+form as an Inverse Wishart distribution.
+
+As for the states, for each cluster j we have a specification which involves an m-variate observation
+
+and a pj-variate state dimension. However, given Ij , we know we have nj replicates of that m-variate
+observation.
+
+This is equivalent to considering an njm-variate observation vector Y
+(j)
+t at each time instant, where
+
+Y
+(j)
+t is a vertical concatenation of the nj vectors yi, i ∈ Ij . Then, we create a new observational
+
+Page 5
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+matrix which is a vertical tiling of nj replicates of the original matrix Fj and a new observational error
+
+covariance matrix which is given by Inj ⊗ Vj where In is the n × n identity matrix and ⊗ denotes the
+Kronecker product. Then, one can proceed to perform usual forward filtering and backwards sampling
+
+for Dynamic Linear Models using these quantities for each cluster l, thus, obtaining samples from the
+
+conditional distribution of θj .
+
+2.2 Expectation Maximization
+
+Obtaining point estimates for finite mixture models is a very common application of the Expectation-
+
+Maximization algorithm (Dempster et al., 1977) due to its convergence properties and computational
+
+efficiency.
+
+Considering both y1, . . . ,yn and Z1, . . . , Zn to be observations, our log-likelihood function is
+
+l(·|y1, . . . ,yn, Z1, . . . , Zn) =
+n∑
+i=1
+
+k∑
+j=1
+
+δ(Zi − j) (ln ηij + lnNm(yit;Fjθjt,Vj)) +
+
+n∑
+j=1
+
+T∑
+t=2
+
+lnNpj (θjt;Gθj,t−1,Wjt)
+
+(6)
+
+where δ(·) is the Dirac delta function.
+Applying the E-step, which is to take the expected value of the log-likelihood in (6), with respect to
+
+the complete conditional distribution of each Zi, we obtain
+
+Q(·|y1, . . . ,yn) =
+n∑
+i=1
+
+k∑
+j=1
+
+γij (ln ηij + lnNm(yit;Fjθjt,Vj)) +
+
+n∑
+j=1
+
+T∑
+t=2
+
+lnNpj (θjt;Gθj,t−1,Wjt)
+
+(7)
+
+where γij equals exactly the equation in (4), but evaluated with the parameter values computed in the
+
+previous iteration of the algorithm. Note that by having the same form, it presents the same numerical
+
+problems as equation (4); thus, the same care must be taken.
+
+Then, the M-step revolves around maximizing the function in (7). Given that function (7) presents
+
+linearly independent terms, we can break down the optimization step into seperate blocks.
+
+Firstly, the maximization for each ηi is linearly independent of everything else, with an expression
+
+of the form
+k∑
+j=1
+
+γij ln ηij
+
+for which the optimum is, unsurprisingly, exactly at ηij = γij .
+
+The optimization for the parameters of each cluster can also be performed independently from the
+
+parameters of all other clusters, each with an expression of the form
+
+n∑
+i=1
+
+γij lnNm(yit;Fjθjt,Vj) +
+
+T∑
+t=2
+
+lnNpj (θjt;Gθj,t−1,Wjt) (8)
+
+which is the weighted log-likelihood of an usual Dynamic Linear Model.
+
+Page 6
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+This is the time note why the use of discount factors is so important for this model. We essentially
+
+have that the log-likelihood for a DLM is a weighting of two types of errors:
+
+1. The observational error, given by the first term of (8) and weighted by its precision terms V −1j ,
+
+and;
+
+2. The evolutional error, given by the second term of (8), weighted by its precision termsW−1j .
+
+As far as maximum likelihood (or maximum a posteriori) estimates are concerned, assuming a con-
+
+stantWj which is not a function of anything else leads to a divergent optimization problem. Essentially,
+
+the optimum will be found when minimizing one of the errors while throwing the respective variance
+
+to near zero while setting the other variance to a very high value, tending to infinity. More concretely,
+
+either the θl will overfit the data with an estimation of Vj going to zero, or the θl are going to overfit the
+
+evolutional equation with an estimation ofWj going to zero.
+
+By using discount factors, each Wjt becomes a function of the values of Vj in such a way to guar-
+
+antee a certain level of smoothness to the evolution of θj , with the level of smoothness being dictated by
+
+the discount factor itself. Because of the imposition of this relation, the optimum no longer lies in the
+
+previously detailed edge cases, and useful estimations can be obtained.
+
+We still need, however, to be able to optimize the weighted DLM. For this, we use coordinate descent
+
+(Wright, 2015) for the optimization of each individual DLM. This allows us to iteratively optimize θj
+given Vj and Vj given θj . This is useful because we are able to obtain analytical solutions for each of
+
+these steps, and consequently this will run much more efficiently than a usual gradient descent approach,
+
+for example.
+
+The optimization of θj given Vj can be done by tiling all of the observations as mentioned before,
+
+considering observations yt which are a vertical concatenation of all yit and considering an observa-
+
+tional matrix which is a vertical tiling of n replicates of the original Fj . The difference is that here the
+
+observational error covariance matrix is given by I(j)⊗Vj where, instead of using the identity matrix we
+use, I(j) = diag(γ−11j , . . . , γ
+
+−1
+nj ). This form for the observational covariance matrix takes into account
+
+the weights of the observations by inflating the variances for entries with low weights. Then, instead of
+
+running the standard Forward Filtering Backwards Sampling procude we perform Forward Filtering and
+
+in the backwards steps, instead of obtaining samples we obtain the modes.
+
+When the weight of some observations are exceedingly small for a certain cluster, the matrix I(j)
+
+becomes numerically unstable. To avoid this, we recommend setting a small value �w and discarding
+
+all observations with a weight lower than for that estimation step. This avoids numerical instability and,
+
+since the removed observations had small weights, the resulting value should not be significantly affected
+
+regardless of their inclusion.
+
+The optimization of Vj given θj reduces itself to a classic weighted estimator of the variance of
+
+normal observations.
+
+In conclusion, the E-step is direct and the M-step is mostly analytical, with a very efficient subpro-
+
+cedure to optimize θj and Vj for each cluster. All in all, this is a very quick and theoretically robust way
+
+to obtain point estimates for the model parameters and states.
+
+Page 7
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+2.3 Algorithm Initialization
+
+Both the Expectation Maximization and Gibbs sampling algorithms are iterative and require us to
+
+initialize them with starting values for the parameters. Although both methods have proven theoretical
+
+properties indicating that the initial value is of small importance2, smart initialization can avoid compu-
+
+tational problems and speed up convergence.
+
+Here, we propose an algorithm combining the clever idea of Smyth (1997) of picking individual time-
+
+series to initialize each cluster, but we both reduce considerably the computational cost of doing so and
+
+introduce some robustness to the method by using the k-means++ algorithm (Arthur and Vassilvitskii,
+
+2007) for the selection of the candidates.
+
+The k-means++ algorithm is traditionally used to initialize parameters which lie in the same space
+
+as the observations, which is not our case since for an m-dimensional observation, we have an arbitrary
+
+pj-dimension space for each of the j = 1, . . . , k clusters.
+
+It works as follows: at first, an observation is randomly (and uniformly) chosen to be the first centroid.
+
+Then, a new centroid is chosen randomly with probabilities proportional to the distance between each
+
+candidate and the existing centroids. This is done until k centroids are found.
+
+A common first impression from this algorithm is that it will have a tendency to place the initial
+
+centroids together with outlier observations. In practice, outliers will have the highest distances to most
+
+other points, and therefore are indeed the most likely individual points to be chosen, however regions with
+
+a lot of points that are moderately distant from the existing centroids will present higher probabilities of
+
+being picked. This way, unless the specified value of k is too high, it’s always probable that the new
+
+centroid will be chosen within a different cluster. For detailed properties and discussion regarding this
+
+method, refer to the original paper.
+
+An important difference between our model and the original context in which the algorithm was
+
+proposed is that, unlike in the k-means case where the ordering of the clusters is always irrelevant, in our
+
+model this may be relevant whenever the specifications of the pair (Fj ,Gj) differ from each other.
+
+Consider, for example, three well-defined clusters: two where series have a random walk behaviour
+
+and one where series have a linear trend behaviour. It would then be desirable to have one of the observed
+
+series with a linear trend to initialize the linear growth model, and two of the observed series with the
+
+random walk behaviour to initialize the random walk models.
+
+The proposal from Smyth (1997) tackles exatcly this problem. It revolves around estimating all k
+
+models for all n observations, and picking the highest likelihood observation to initialize each of the k
+
+clusters.
+
+Our combined approach is as follows: we separate the k different DLM models into l ≤ k different
+sets, where DLMs from each set present the exact same pair (Fj ,Gj). In the example above there would
+
+be two sets for the three clusters: the random walk set and the linear growth set.
+
+Then, we perform the k-means++ algorithm for picking k obsevations to be the initial representatives
+
+for each of the k clusters. Then, we estimate only l different models for each of the k observations, first
+2True for the EM algorithm only for unimodal likelihoods since it’s only able to arrive at local maxima.
+
+Page 8
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+reducing the number of model estimates from k × n to k × k, and further removing the redundancy
+of estimating equivalent models, i.e. models with the same specification of (Fj ,Gj), multiple times,
+
+reducing the number of model estimates to l × k.
+The estimations of single DLM observations are done following the computationally efficient gra-
+
+dient descent procedure already detailed previously, and given the initialized values of each cluster, the
+
+initialization of each ηij can be performed by applying equation (5) without the ηij terms.
+
+2.4 The label switching problem
+
+Performing MCMC sampling while working with mixture models can lead to various problems re-
+
+garding identifiability of the ordering of the clusters. See Diebolt and Robert (1994) and Frühwirth-
+
+Schnatter (2001) for detailed explanations.
+
+For our model, as already mentioned, whenever DLMs have the same pair (Fj ,Gj) there is no
+
+observational information regarding an ideal order. Thus, a simple ordering restriction like the one
+
+detailed by Frühwirth-Schnatter (2001) needs to be imposed.
+
+However time-series may have, for example, the exact same overall means but different shapes;
+
+consider, for example, the series in Figure 2. Assum they’re the means for two clusters in a bigger
+
+modelling problem. If we tried to specify an ordering for the clusters through their overall mean, these
+
+two different behaviours would not differ from each other.
+
+A practical solution that proved successfull is imposing the ordering restriction using as reference
+
+a single time instant. For the example pictured in Figure 2, one could simply impose an ordering at,
+
+say, t = 0. Although theoretically one could always construct examples where there is no single time
+
+instant t in which all k clusters present a different level, this has proven to be a very successful strategy
+
+in practice.
+
+Figure 2: An example of two time-series with the same overall mean but wildly different shapes.
+
+3 Dynamic Mixtures of Dynamic Linear Models
+
+When the time window of observations is too long, it may be inappropriate to assume that an obser-
+
+vation remains in the same cluster throughout all of it. An alternative is to allow observations to shift
+
+Page 9
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+cluster memberships through time.
+
+As far as the observational model is concerned the modifications are simple; we simply add a time
+
+index to the cluster membership parameters equation and equation (2) becomes
+
+f(yi|ηi,θ1, . . . ,θk,V1, . . . ,Vk) =
+k∑
+j=1
+
+T∏
+t=1
+
+ηitjNm(yit;Fjθjt,Vj),
+
+with the dummy variables also time-indexed so that Zi = (Zi1, . . . , ZiT ), where, analogously, Pr(Zit =
+
+j|ηit) = ηitj . Thus, equation (3) becomes
+
+f(yi|Zi,θ1, . . . ,θk,V1, . . . ,Vk) =
+T∏
+t=1
+
+Nm(yit;FZitθZitt,VZit). (9)
+
+This, in of itself, is a completely valid model for which estimation is trivially done with a small
+
+extension on the methodology specified in the previous section. As a matter of fact, there exists a spe-
+
+cific pair of (Fj ,Gj) such that, if applied to every cluster, would result in a model equivalent to that
+
+of Maruotti and Vichi (2017). This, this proposal is more general by allowing each cluster to possibly
+
+have a different DLM.
+
+However, if no time-dependence is included between each ηit and ηi,t−1, we will essentially have
+
+an independent clusterization at each time-point, which can lead to undesired effects such as having
+
+observations wildly switching cluster memberships because of single outlier observations3.
+
+To avoid such problems we include temporal dependence between the weights by assuming that a
+
+Dirichlet Evolutional Model, as proposed by Fonseca and Ferreira (2017), determines the evolutional
+
+behavior of ηit.
+
+Noe that a consequence of P (Zit|ηit) = ηitj is that eZit |ηit ∼ Multinomial(1,ηit). Considering
+these vectors as the latent observations for the Dirichlet evolution, we have from Fonseca and Ferreira
+
+(2017) the following results.
+
+Definition 1 (Evolutional Dirichlet Process). Let ψit = (ψit1, . . . , ψitk)′ where the ψit1, . . . , ψitk
+are independent with ψitj ∼ Beta(δici,t−1,j , (1 − δi)ci,t−1,j), where δi ∈ (0, 1] is a discount factor
+and ci,t−1,j > 0, j = 1, . . . , k. Let Sit = ψ′tηi,t−1 and let � denote the entrywise product. Then, the
+Evolutional Dirichlet Process for ηit is defined by
+
+ηit =
+1
+
+Sit
+ψit � ηi,t−1. (10)
+
+The value of δi determines how volatile the cluster membership of the i-th observation is through
+
+time. Specifically, if δi → 0, ∀i it would be the same as not considering temporal dependence, and if
+δi → 1, ∀i it would be same the same as considering the static mixture from the previous section. Interest
+obviously lies on values of δi within the unit interval.
+
+Let Di0 be the prior information about ηi0 and Dit = {Di,t−1, eZit} for t > 0.
+Theorem 1 (EDP Forward Filter). Assume a prior distribution for the process of the form ηi0|Di0 ∼
+
+Dirichlet(ci0), consider eZit |ηit ∼ Multinomial(1,ηit) and the EDP given by (10). Then, for
+3Again, an example of this will be shown in the applications
+
+Page 10
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+t = 1, . . . , T , given ηi,t−1|δi,Di,t−1 ∼ Dirichlet(ci,t−1), we have a prior distribution ηit|δi,Di,t−1 ∼
+Dirichlet(δici,t−1) and a posterior distribution ηit|δi,Dit ∼ Dirichlet(cit) where cit = δci,t−1 +eZit .
+
+It follows from Theorem 1 thatE[ηit|δi,Di,t−1] = E[ηi,t−1|δi,Di,t−1]. Hence, it’s important to note
+that the EDP implies a locally constant model.
+
+Theorem 2. (EDP Backwards Sampler) To sample from f(ηi1, . . . ,ηiT |δi,DiT ) we can first re-
+cursively compute the filtering distributions ηit|δi,Dit ∼ Dirichlet(cit) as given in Theorem 1 and
+sample from ηiT |δi,DiT ∼ Dirichlet(ciT ) directly. Then, for t from T to 2, recursively sample
+ηi,t−1 given {δi,DiT ,ηit, Sit} which can be done as follows: sample Sit given {DiT ,ηit, δi} which
+follows aBeta(δi1′kci,t−1, (1−δi)1
+
+′
+kci,t−1), sample u fromDirichlet((1−δi)ci,t−1), and set ηi,t−1 =
+
+Sitηit + (1− Sit)u.
+Note that even for high dimensional time-series, the parameter etai is a k-variate series, with its
+
+trajectory over time is serving as a useful summary indicating the series’ membership to each cluster
+
+thorough time, regardless of how high m is.
+
+3.1 Gibbs sampling
+
+Firstly, sampling from the process ηi = {ηi1, . . . ,ηiT } for each i = 1, . . . , n, given all the other
+parameters, particularly the dummy observations Zit, can easily be performed through Forward Filtering
+
+Backwards Sampling as given by Theorems 1 and 2, respectively.
+
+Sampling from the dummy variables Zit is done similarly to the way it was done in the previous
+
+section, except that now the weights are computed for only one time-instant at a time, removing the
+
+numerical problems regarding the large product of small values. Specifically, Equation (4) becomes
+
+P (Zit = j|ηit,θ1, . . . ,θk,V1, . . . ,Vk,yi) =
+ηitjNm(yit;Fjθjt,Vj)∑k
+l=1 ηitlNm(yit;Flθlt,Vl)
+
+.
+
+Sampling from each of the DLM’s specific parameters is also done in a very similar way. The only
+
+difference is that instead of each cluster having a fixed number of replications nj , now it has a different
+
+number of replicates njt at each time point. This is trivially solved by performing the tiling techniques
+
+for F and V at each time instant.
+
+As for the δi parameter, which determine how volatile the evolution of the weights is for a single
+
+observational unit i, and therefore control how much an observational unit may switch clusters, can
+
+either be modelled or simply initialized.
+
+As far as modelling is concerned, we can find that the marginal likelihood of δi given the dummy
+
+variables Zi,1:T , is given by
+
+p(Zi,1:T |Di,0, δi) =
+T∏
+t=1
+
+δt−1i ci,0,Zit +
+∑t−2
+
+l=0 δ
+l
+iδ(Zi,t−1−l − Zi,t)
+
+δt−1i
+∑k
+
+j=1 ci,0,j +
+1−δt−1i
+
+1−δi
+
+.
+
+Since this is a function with a domain within the unit interval, a Sampling Importance Resampling
+
+approach can be used to generate from this conditional distribution, using an uniform distribution, for
+
+example, as a proposal.
+
+Page 11
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+3.2 Point Estimates
+
+The Expectation-Maximization algorithm has the property of effectively removing the dummy vari-
+
+ables from the optimization through the Expectation step, substituting them with their expected value.
+
+Although useful for the static model, this property is not valuable in the dynamical case because the
+
+big advantage of using the Evolutional Dirichlet Process is the analytical Forward Filtering Backwards
+
+Sampling procedure, which relies on the presence of these latent observations.
+
+Specifically, given the dummy variables, instead of Foward Filtering Backwards Sampling we can
+
+perform the aforementioned maximization procedure: performing usual Forward Filtering following
+
+Theorem 1 and, from Theorem 2, instead of sampling from the given distributions, simply obtaining the
+
+modes in a backwards fashion.
+
+Inclusion of these non-continuous variables directly into the maximization procedure, however, is
+
+also unfeasiable. Optimization within continuous spaces are much simpler and efficient.
+
+To solve this, we use the Stochastic Expectation-Maximization algorithm (Nielsen et al., 2000). Es-
+
+sentially, in the step of maximizing the weights, we marginalize the dummy variables through a Monte
+
+Carlo approach using the same conditional distribution we would normally use to perform the expecta-
+
+tion step in a traditional EM application. By doing this we guarantee the existence of the discrete values
+
+operationally when performing FFBS, but, at the same time, remove the necessity to directly include
+
+their estimation in the procedure.
+
+As far as cluster specific estimation, we perform the same weighted DLM optimization, only now at
+
+each time-instant there is a different observational error covariance matrix since the membership weights
+
+change through time.
+
+The iterative algorithm implemented is as follows, described as in an arbitrary iteration step:
+
+1. For each i:
+
+(a) Simulate M different {Zi1, . . . ,Zit} from its conditional distribution evaluated with the last
+iteration’s parameters.
+
+(b) Take the mean of the M different results as the Monte Carlo estimator for the result of
+
+maximizing the weights marginally on the dummy variables.
+
+2. For each j, perform direct maximization of the weighted DLM by coordinate descent.
+
+If one wishes to perform joint estimation of δ, then after step 1.(a), the function presented in (3.1)
+
+can be be easily be optimized, for example, through a grid method.
+
+3.3 Initialization
+
+Initialization for these methods are done using the same philosophy from the previous section. First,
+
+we initialize the DLM states and precisions following the exact same approach. Then, to initialize the
+
+weights given the initialized cluster parameters, we set
+
+ηitj =
+Nm(yit;Fjθjt,Vj)∑k
+l=1Nm(yit;Flθlt,Vl)
+
+.
+
+Page 12
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+Although Bayesian estimation of the Evolutional Dirichlet Evolution discount factors δi can be per-
+
+formed as mentioned in Fonseca and Ferreira (2017), we are using an intuitive algorithm to initialize
+
+them.
+
+The basic idea involves quickly estimating the dynamic mixture model, considering no time-dependencies
+
+between the weights, which is computationally very fast to do. With the results, it is easy to check through
+
+the computed weights if a time-series is likely to change clusters. If it is, δi is set to a moderate value
+
+and if the time-series, even in the independent weights model, generally stayed in the same cluster, δi is
+
+set to a value close to 1.
+
+4 Applications
+
+Two applications are presented to illustrate how the model performs in a real dataset with univariate
+
+and multivariate time-series. Firstly, for the univariate example, World Bank indicators regarding the
+
+usage of renewable energy by EU countries was considered. For the second example, the popular Gap-
+
+minder dataset was used, providing life-expectancy and GDP per capta for various countries, from which
+
+European and African ones were selected to better illustrate dynamic cluster memberships of certain
+
+nations.
+
+4.1 Renewable energy consumption in the EU
+
+One of the big topics of discussion of the European Comission (EC) relates to usage of Renewable
+
+energy from the member states. This is an important topic to them not only because of the gain in
+
+sustainability and the technological advances that result from investments in renewable energy sources,
+
+but it also presents the strategic and economic benefit of relying less on the imports of natural gas and oil.
+
+In 2017, 55.1% of the gross available energy resources in the EU came from imported sources (European
+
+Comission, 2019).
+
+As such, in 2004 the EU Directive on Electricity Production from Renewable Energy Sources (2001/77/EC),
+
+popularly known as the RES directive, came into effect, setting national targets for renewable energy pro-
+
+duction from individual member states, setting targets for 2010 and 2020.
+
+In 2009, the RES directive was superseded by the ongoing Renewable Energy Directive (2009/28/EC),
+
+which sets more extensive targets, with the aim that in 2020, 20% of total energy consumption within the
+
+EU will come from renewable resources. This directive obliged countries to present, by 2010, a National
+
+Renewable Energy Action Plan, explaining the country’s road map to achieving its goal. In 2015, the Eu-
+
+ropean Comission published that they are on track to achieve the directive’s goals (European Comission,
+
+2015).
+
+The World Bank publishes indicator for various nations, including ones from the European Union,
+
+regarding renewable energy consumption as a percentage of the country’s total final energy consumption
+
+(The World Bank, 2019). This data is available for all EU countries between 1990 and 2015, with an
+
+yearly resolution. Due to Malta’s relative unimportance to the overall goals because of its size, and
+
+because until 2002 it had no renewable energy consumption, it has been excluded from the analysis.
+
+Page 13
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+This data is shown in Figure 3.
+
+Figure 3: In 2001 renewabe targets were set and in 2009 they were revised. We can see that regardless
+of the country, shortly after 2005 renewable energy usage started to grow.
+
+We can see that there is a large group of countries with very low rates of Renewable Energy Usage
+
+(REU), a smaller group with higher REU and a few countries that showed some growth during this time-
+
+period, moving from the lower group to the higher one between 1995 and 2010. These countries are
+
+highlighted in Figure 4.
+
+Figure 4: Estonia, Lithuania and Romania had growing rates of renewable energy usage since the start
+of the time-window at 1996, whereas Denmark started a more rapid growth at around 1999.
+
+Denmark, by 2015, was already the EU country with the fifth-highest REU. Its growth was mainly
+
+due to Denmark effecient use of wind energy production. According to Denmark’s own Energinet, in
+
+2017 81,4% of its energy came from renewable resources, up from 8.7% in 1997. In 2017, an astounding
+
+Page 14
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+50.2% of its energy production came solely from wind (Energinet, 2018).
+
+Lithuania’s growth has been largely due to its extensive use of biomass resources (LSD, 2012),
+
+Estonia has relied more heavily on wind (EREA, 2019) and Romania has relied morsly hydro-energy
+
+(19% of total energy in February, 2019) but with significant shares of wind and solar (9% and 8% of
+
+total, respectively, in February, 2019) (Export.gov, 2019).
+
+We fitted the model presented in Section 3 to this data considering k = 2 clusters and assuming
+
+a random-walk behavior for each of them. The resulting means for each of the clusters are shown in
+
+Figure 5.
+
+Figure 5: Modelled means for each of the clusters, with dashed lines indicating two standard deviations.
+
+Figure 6: Classification for the countries with growth behavior.
+
+We can see that the model successfully captures the general behavior of both clusters. Not only that,
+
+Page 15
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+but we can see the series for the growing countries in Figure 6, highlighted with a color reflecting their
+
+membership weights at each time-instant.
+
+From the model results, we have that Estonia, the earliest grower, had uncertain membership weights
+
+around 1995 and 1996, whereas Romania and Estonia switched cluster behaviour at about 1997 and
+
+1998, respectively. Denmark, the latest grower, changed cluster behaviour between 2002 and 2004, soon
+
+after the RES directive. Note that the proposed model allows for identifying the change points in time
+
+for the series moving from one cluster to another.
+
+From Figure 7 we can see that other countries were statically assigned to each of their clusters, with
+
+no significant changes in their memberships throughout the entire time-window, as expected.
+
+Figure 7: Classification for the countries with static behavior.
+
+4.2 Life-expectancy and GDP per capta in Europe and Africa
+
+For this second analysis, we considered the famous Gapminder dataset informing GDP per capta and
+
+Life Expectancy from various nations which was used to create the popular presentation “How Does
+
+Income Relate to Life Expectancy?” (Gapminder, 2015).
+
+To better illustrate and visualize cluster-changing behavior, we only selected nations classified as
+
+either African or European from the original 142 countries, resulting in a selection of 82 bivariate time-
+
+series from both continents. The dataset presents information for every five years between 1952 and
+
+2007. We can visualize the data in Figure 8.
+
+We can see from Figure 8 that, in general, all countries showed significant improvements in life
+
+expectancy, and most countries had considerable increase in GDP per capta, though with a number of
+
+exceptions. We can further see that, unsurprisingly, European countries tend to have much higher Life
+
+Expectancy and GDP per capta than African counterparts.
+
+It’s evident that there are two groups of behavior: the European group and the African group. How-
+
+ever, paying close attention to the graph, we can see that there are exceptions to this rule.
+
+The two orange curves in the Life Expectancy graph which are clearly among the European group
+
+Page 16
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+refer to Réunion, which is an overseas department and region of France, and the Republic of Mauritius,
+
+which is another island nation near Réunion. In the same graph, the blue line which starts out among the
+
+African group refers to Turkey, which showed significant growth.
+
+Figure 8: Gapminder data for Life Expectancy (above) and log-GDP per capta (below). European coun-
+tries in blue and African countries in orange.
+
+As far as GDP per capta is concerned, the group divisions are less clear. However we have three
+
+African curves which, specially between 1962 and 1987, stay closely related to the European group;
+
+these refer to South Africa, which is a very rich African nation, and Lybia and Gabon, which are nations
+
+that rely strongly on natural resource extraction, most of that being oil. European countries with low
+
+GDP are Albania, Bosnia and Herzegovina, and Turkey, which shows a similar behavior for GDP per
+
+capta as it does for Life Expectancy.
+
+Most interestingly, however, are the North African nations, along with Turkey, which showed con-
+
+siderable growth in Life Expectancy and very subtle growth of GDP per capta, as highlighted in Figure 9.
+
+Out of these countries, Morroco showed the least improvements in both Life Expectancy and GDP per
+
+capta.
+
+Two countries showed strong improvement in GDP per capta, as highlighted in Figure 10: Botswana,
+
+which presented steady growth since around 1970, and more evidently Equatorial Guinea, which had a
+
+significant jump from 1992 to 1997 due to the major economic development resulting from the discovery
+
+of large oil reserves in 1996 (OPEC, 2019).
+
+Page 17
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+Figure 9: Gapminder data for Life Expectancy (above) and log-GDP per capta (below) for North African
+nations and Turkey.
+
+Figure 10: Gapminder data for Life Expectancy (above) and log-GDP per capta (below) for Botswana
+and Equatorial Guinea.
+
+Page 18
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+We can see that Botswana after around 1990, along with various other sub-saharan nations, presented
+
+a very large drop in Life Expectancy, which only started to recover around 2000. This decade was marked
+
+by a large and deadly HIV epidemic in Africa, from which some countries have not been able to fully
+
+recover to this day, as highlighted by their Life Expectancies.
+
+In a consumer-grade notebook, pontual estimation for this dataset with n = 82 different m = 2
+
+dimesional time-series accross T = 12 time-instants took about 2 minutes, whereas the MCMC approach
+
+took about ten times as long. Assuming the existance of k = 2 different clusters we obtained means
+
+which are shown below in Figure 11.
+
+Figure 11: Estimated means for each of the clusters with an interval of two standard deviations.
+
+Figure 12: Cluster classifications for North African countries and Turkey.
+
+Page 19
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+Due to this being a bivariate application, classifications are considerably more interesting since the
+
+model has to weight changes in behavior for two different variables. As it happens, only the North
+
+African nations and Turkey actually presented a change in their classification, with the exception of
+
+Morrocco, as shown below in Figure 12, which had its cluster membership to the European group esti-
+
+mated at 45% in 2017.
+
+We can see that although Lybia had a strong GDP per capta, in 1967 it only had an estimated 45%
+
+membership to the European group due to the low Life Expectancy. However in 1977 it already had an
+
+88% membership, being classified as en European-level country before the other North African nations
+
+due to the help of its GDP per capta.
+
+Although Equitorial Guinea and Botswana had strong GDP per capta by 2007, their very low Life
+
+Expectancies kept them strongly within the African group, with estimated memberships nearing 100%.
+
+Of note, a few countries that were mostly classified as part of the European group had uncertain
+
+classifications in the first few data-points. These are: Albania, Bosnia and Herzegovina, Mauritius and
+
+Réunion. They are highlighted in Figure 13.
+
+Figure 13: Cluster classifications for North African countries and Turkey.
+
+Their memberships in the 1952 are estimated around 50%, meaning that for these time-points, as far
+
+as the model is concerned, they could be classified as a member of either of the groups, but these rates
+
+quickly go up and they end up being generally classified as European countries.
+
+Every other nation not specifically mentioned received a static classification in the expected cluster
+
+as expected.
+
+Page 20
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+5 Concluding remarks
+
+The Static Mixture of Dynamic Linear Models, although not the main result from this research,
+
+presents itself as an extremely efficient and flexible way to statically cluster time-series data, in the form
+
+of the EM-algorithm, whenever dynamix mixtures are found to be unecessary.
+
+The Dynamic Mixture of Dynamic Linear Models has proven to be able to capture change of behavior
+
+from time-series while also correctly classifying time-series which clearly belong to the same cluster
+
+throughout the entire time-window. In particular, it is a demonstrable improvement over existing methods
+
+in that it avoids missclassification of outliers by employing an Evolutional Dirichlet Process to capture
+
+time-dependence of the cluster membership parameters.
+
+This is also useful for dealing with a high number of high-dimensional time-series which can be
+
+segmented into a few different clusters. The general behavior of these series get summarised into the
+
+k-dimensional membership parameters η, which can be used for monitoring the series behaviour along
+
+with the k different means, instead of going through the effort of analysing the actual m-variate time
+
+series when m is very large.
+
+A natural next step for development of this model is to attempt to incorporate not only a method for
+
+deciding on number of clusters, k, automatically, but also to allow k to evolve over time, to encompass,
+
+for example, a set of observations which all present the same behaviour until at a time-instant when they
+
+separate themselves into a few different clusters.
+
+References
+
+Aghabozorgi, S., Shirkhorshidi, A. S., and Wah, T. Y. (2015). Time-series clustering–a decade review.
+
+Information Systems, 53:16–38.
+
+Arthur, D. and Vassilvitskii, S. (2007). k-means++: The advantages of careful seeding. In Proceedings
+
+of the eighteenth annual ACM-SIAM symposium on Discrete algorithms, pages 1027–1035. Society
+
+for Industrial and Applied Mathematics.
+
+Dempster, A. P., Laird, N. M., and Rubin, D. B. (1977). Maximum likelihood from incomplete data via
+
+the em algorithm. Journal of the Royal Statistical Society: Series B (Methodological), 39(1):1–22.
+
+Diebolt, J. and Robert, C. P. (1994). Estimation of finite mixture distributions through bayesian sampling.
+
+Journal of the Royal Statistical Society: Series B (Methodological), 56(2):363–375.
+
+Energinet (2018). Environmental report 2018.
+
+EREA (2019). Renewable energy in estonia. http://www.taastuvenergeetika.ee/en/
+
+renewable-energy-estonia/. Accessed: 2019-10-30.
+
+European Comission (2015). Eu on track to meeting 20 https://ec.europa.eu/energy/en/
+
+news/eu-track-meeting-20-renewable-energy-target. Accessed: 2019-10-30.
+
+Page 21
+
+http://www.taastuvenergeetika.ee/en/renewable-energy-estonia/
+http://www.taastuvenergeetika.ee/en/renewable-energy-estonia/
+https://ec.europa.eu/energy/en/news/eu-track-meeting-20-renewable-energy-target
+https://ec.europa.eu/energy/en/news/eu-track-meeting-20-renewable-energy-target
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+European Comission (2019). Energy production and imports. https://ec.europa.eu/
+
+eurostat/statistics-explained/index.php/Energy_production_and_
+
+imports. Accessed: 2019-10-30.
+
+Export.gov (2019). Romania - energy. https://www.export.gov/article?id=
+
+Romania-Energy. Accessed: 2019-10-30.
+
+Fonseca, T. C. and Ferreira, M. A. (2017). Dynamic multiscale spatiotemporal models for poisson data.
+
+Journal of the American Statistical Association, 112(517):215–234.
+
+Fraley, C. and Raftery, A. E. (2007). Bayesian regularization for normal mixture estimation and model-
+
+based clustering. Journal of classification, 24(2):155–181.
+
+Frühwirth-Schnatter, S. (2001). Markov chain monte carlo estimation of classical and dynamic switching
+
+and mixture models. Journal of the American Statistical Association, 96(453):194–209.
+
+Gapminder (2015). How does income relate to life expectancy? https://www.gapminder.org/
+
+answers/how-does-income-relate-to-life-expectancy/. Accessed: 2019-11-01.
+
+Geman, S. and Geman, D. (1987). Stochastic relaxation, gibbs distributions, and the bayesian restoration
+
+of images. In Readings in computer vision, pages 564–584. Elsevier.
+
+Harrison, J. and West, M. (1987). Practical bayesian forecasting. Journal of the Royal Statistical Society:
+
+Series D (The Statistician), 36(2-3):115–125.
+
+Juang, B.-H. and Rabiner, L. R. (1985). A probabilistic distance measure for hidden markov models.
+
+AT&T technical journal, 64(2):391–408.
+
+Juang, B. H. and Rabiner, L. R. (1991). Hidden markov models for speech recognition. Technometrics,
+
+33(3):251–272.
+
+Krogh, A., Brown, M., Mian, I. S., Sjölander, K., and Haussler, D. (1994). Hidden markov models in
+
+computational biology: Applications to protein modeling. Journal of molecular biology, 235(5):1501–
+
+1531.
+
+Lamon, E. C., Carpenter, S. R., and Stow, C. A. (1998). Forecasting pcb concentrations in lake michigan
+
+salmonids: a dynamic linear model approach. Ecological Applications, 8(3):659–668.
+
+Liao, T. W. (2005). Clustering of time series data—a survey. Pattern recognition, 38(11):1857–1874.
+
+Lopes, H. F. and Carvalho, C. M. (2007). Factor stochastic volatility with time varying loadings and
+
+markov switching regimes. Journal of Statistical Planning and Inference, 137(10):3082–3091.
+
+LSD (2012). Energetikos statistika. https://archive.is/20120805220102/http://www.
+
+stat.gov.lt/lt/news/view#selection-238.0-240.1.
+
+Page 22
+
+https://ec.europa.eu/eurostat/statistics-explained/index.php/Energy_production_and_imports
+https://ec.europa.eu/eurostat/statistics-explained/index.php/Energy_production_and_imports
+https://ec.europa.eu/eurostat/statistics-explained/index.php/Energy_production_and_imports
+https://www.export.gov/article?id=Romania-Energy
+https://www.export.gov/article?id=Romania-Energy
+https://www.gapminder.org/answers/how-does-income-relate-to-life-expectancy/
+https://www.gapminder.org/answers/how-does-income-relate-to-life-expectancy/
+https://archive.is/20120805220102/http://www.stat.gov.lt/lt/news/view#selection-238.0-240.1
+https://archive.is/20120805220102/http://www.stat.gov.lt/lt/news/view#selection-238.0-240.1
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+MacQueen, J. et al. (1967). Some methods for classification and analysis of multivariate observations.
+
+In Proceedings of the fifth Berkeley symposium on mathematical statistics and probability, volume 1,
+
+pages 281–297. Oakland, CA, USA.
+
+Maruotti, A. and Vichi, M. (2017). Time-varying clustering of multivariate longitudinal observations.
+
+Communications in Statistics-Theory and Methods, 45(2):430–443.
+
+Nielsen, S. F. et al. (2000). The stochastic em algorithm: estimation and asymptotic results. Bernoulli,
+
+6(3):457–489.
+
+Nobile, A. and Fearnside, A. T. (2007). Bayesian finite mixtures with an unknown number of compo-
+
+nents: The allocation sampler. Statistics and Computing, 17(2):147–162.
+
+OPEC (2019). Equatorial guinea facts and figures. https://www.opec.org/opec_web/en/
+
+about_us/4319.htm. Accessed: 2019-11-01.
+
+Punzo, A. and Maruotti, A. (2016). Clustering multivariate longitudinal observations: The contaminated
+
+gaussian hidden markov model. Journal of Computational and Graphical Statistics, 25(4):1097–1098.
+
+Richardson, S. and Green, P. J. (1997). On bayesian analysis of mixtures with an unknown number of
+
+components (with discussion). Journal of the Royal Statistical Society: series B (statistical methodol-
+
+ogy), 59(4):731–792.
+
+Schliep, A., Schönhuth, A., and Steinhoff, C. (2003). Using hidden markov models to analyze gene
+
+expression time course data. Bioinformatics, 19(suppl_1):i255–i263.
+
+Smyth, P. (1997). Clustering sequences with hidden markov models. In Advances in neural information
+
+processing systems, pages 648–654.
+
+Tanner, M. A. and Wong, W. H. (1987). The calculation of posterior distributions by data augmentation.
+
+Journal of the American statistical Association, 82(398):528–540.
+
+The World Bank (2019). Renewable energy consumption ( https://data.worldbank.org/
+
+indicator/EG.FEC.RNEW.ZS?view=chart. Accessed: 2019-10-30.
+
+West, M. and Harrison, J. (1996). Bayesian forecasting. Encyclopedia of Statistical Sciences.
+
+Wright, S. J. (2015). Coordinate descent algorithms. Mathematical Programming, 151(1):3–34.
+
+Page 23
+
+https://www.opec.org/opec_web/en/about_us/4319.htm
+https://www.opec.org/opec_web/en/about_us/4319.htm
+https://data.worldbank.org/indicator/EG.FEC.RNEW.ZS?view=chart
+https://data.worldbank.org/indicator/EG.FEC.RNEW.ZS?view=chart
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+A Application to Artificial Data
+
+Consider the dataset presented in Figure 14. In it, there are a total of 20 time-series which can be
+
+clearly differentiated into two different behaviours.
+
+The initialization algorithm described in Subsection 2.3 chose initial time-series to represent each of
+
+the clusters as indicated in Figure 15. The initialization then led to the states and classifications shown
+
+also in Figure 15. We can see that the initialization algorithm performs wonderfully, and in effect the
+
+estimation procedure will serve only to smooth out the estimates for the states and possibly correct small
+
+missclassifications.
+
+Figure 14: An artificial dataset for static clusterization of time-series.
+
+Figure 15: The two time-series selected to initialize the two different clusters are shown in green (left)
+and the result of the initialization procedure, where the color of a time-series represents its classification
+(right).
+
+Running in a regular consumer-grade notebook, the pontual estimation took 5 seconds to run whereas
+
+the Gibbs sampler took 9 minutes and 38 seconds. The results from both are shown in Figure 16, where
+
+it can be seen that the estimates from both methods are essentially the same, as one would expect.
+
+Page 24
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+Figure 16: The result of estimation by the Gibbs sampler (left) and EM algorithm (right). The color of
+the time-series represent its classification.
+
+Consider now the dataset shown in Figure 17, where two time-series were added in such a way that
+
+they follow the behavior from the first cluster up until the point where the two clusters nearly meet, at
+
+which point they change their membership to the second cluster.
+
+Figure 17: The artificial dataset for dynamic clusterization of time-series. The two time-series in orange
+were added to the dataset to represent the membership changing behaviour.
+
+The proposed algorithm for picking discount factors returned a value of 0.95 for all of the original
+
+observations, and a discount factor of 0.5 for the new membership-changing time-series.
+
+The pontual estimation implementation took 1 minute and 18 seconds to run and the Gibbs sampler
+
+took 14 minutes and 23 seconds to run. In Figure 18 we can see the estimation result for the states from
+
+both algorithms. In Figure 19 we can see the classification results from both algorithms.
+
+Page 25
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+Figure 18: Estimation result of the Gibbs sampler (left) and pontual estimation algorithm (right) for the
+states.
+
+Figure 19: Classification results for the original 20 observations (left) and the two new observations
+(right) from the Gibbs algorithm (top) and the pontual estimation algorithm (bottom).
+
+As expected, both algorithms give approximately the same results, the original 20 observations are
+
+still fully classified into one of the two clusters, and the two new additions have their cluster membership
+
+changing along with their behaviour.
+
+We can visualize the classification uncertainty by looking at the posterior distribution for the η pa-
+
+rameter for one of the cluster changing time-series around t = 39, when the cluster change actually took
+
+place. The distributions are highlighted in Figure 20.
+
+Page 26
+
+
+
+DYNAMIC CLUSTERING OF TIME SERIES DATA
+
+Figure 20: Posterior distribution for the η parameter of one of the time-series that changed clusters, from
+t = 37 to t = 42.
+
+One important thing to note is the importance of including the Evolutional Dirichlet Process. The
+
+developed package also implements the case mentioned in Equation (9), where the cluster membership
+
+is independent through time.
+
+Figure 21: Higher-valued cluster time-series classification from the model with Evolutional Dirichlet
+Process for the weights (left) and indendent weights (right).
+
+In Figure 21 are examples of misclassifications resulting from the lack of dependence between time
+
+instants, where single outliers get incorrectly classified as members of the lower cluster because they
+
+don’t have access to neighboring information about the time-series.
+
+According to the Raftery diagnostic, the chains converged almost immedietaly, thanks to the initial-
+
+ization procedures, and the sampled values were only very lightly correlated.
+
+Page 27
+
+
+	1 Introduction
+	2 Mixtures of Dynamic Linear Models
+	2.1 Gibbs sampling
+	2.2 Expectation Maximization
+	2.3 Algorithm Initialization
+	2.4 The label switching problem
+
+	3 Dynamic Mixtures of Dynamic Linear Models
+	3.1 Gibbs sampling
+	3.2 Point Estimates
+	3.3 Initialization
+
+	4 Applications
+	4.1 Renewable energy consumption in the EU
+	4.2 Life-expectancy and GDP per capta in Europe and Africa
+
+	5 Concluding remarks
+	A Application to Artificial Data
+

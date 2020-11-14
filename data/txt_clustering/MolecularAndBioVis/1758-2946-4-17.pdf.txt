@@ -1,0 +1,1958 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Hanwell et al. Journal of Cheminformatics 2012, 4:17
+http://www.jcheminf.com/content/4/1/17
+
+SOFTWARE Open Access
+
+Avogadro: an advanced semantic chemical
+editor, visualization, and analysis platform
+Marcus D Hanwell1,2*, Donald E Curtis3, David C Lonie4, Tim Vandermeersch5,
+Eva Zurek4 and Geoffrey R Hutchison1
+
+Abstract
+
+Background: The Avogadro project has developed an advanced molecule editor and visualizer designed for
+cross-platform use in computational chemistry, molecular modeling, bioinformatics, materials science, and related
+areas. It offers flexible, high quality rendering, and a powerful plugin architecture. Typical uses include building
+molecular structures, formatting input files, and analyzing output of a wide variety of computational chemistry
+packages. By using the CML file format as its native document type, Avogadro seeks to enhance the semantic
+accessibility of chemical data types.
+
+Results: The work presented here details the Avogadro library, which is a framework providing a code library and
+application programming interface (API) with three-dimensional visualization capabilities; and has direct applications
+to research and education in the fields of chemistry, physics, materials science, and biology. The Avogadro application
+provides a rich graphical interface using dynamically loaded plugins through the library itself. The application and
+library can each be extended by implementing a plugin module in C++ or Python to explore different visualization
+techniques, build/manipulate molecular structures, and interact with other programs. We describe some example
+extensions, one which uses a genetic algorithm to find stable crystal structures, and one which interfaces with the
+PackMol program to create packed, solvated structures for molecular dynamics simulations. The 1.0 release series of
+Avogadro is the main focus of the results discussed here.
+
+Conclusions: Avogadro offers a semantic chemical builder and platform for visualization and analysis. For users, it
+offers an easy-to-use builder, integrated support for downloading from common databases such as PubChem and the
+Protein Data Bank, extracting chemical data from a wide variety of formats, including computational chemistry output,
+and native, semantic support for the CML file format. For developers, it can be easily extended via a powerful plugin
+mechanism to support new features in organic chemistry, inorganic complexes, drug design, materials, biomolecules,
+and simulations. Avogadro is freely available under an open-source license from http://avogadro.openmolecules.net.
+
+Background
+Many fields such as chemistry, materials science, physics,
+and biology, need efficient computer programs to both
+build and visualize molecular structures. The field of
+molecular graphics is dominated by viewers with lit-
+tle or no editing capabilities, such as RasMol [1], Jmol
+[2], PyMOL [3], VMD [4], QuteMol [5], BALLView [6],
+VESTA [7], and XCrySDen [8,9], among many others. The
+
+*Correspondence: marcus.hanwell@kitware.com
+1Department of Chemistry, University of Pittsburgh, 219 Parkman Avenue,
+Pittsburgh, PA, 15260, USA
+2Department of Scientific Computing, Kitware, Inc., 28 Corporate Drive, Clifton
+Park, NY, 12065, USA
+Full list of author information is available at the end of the article
+
+aforementioned viewers are all freely available, and most
+of them are available under open-source licenses and work
+on the most common operating systems (Linux, Apple
+Mac OS X, Microsoft Windows, and BSD).
+
+The choice of software capable of building chemical
+structures in three dimensions is far smaller. There are
+existing commercial packages, such as CAChe/Scigress
+[10], ChemBio3D [11], GaussView [12], HyperChem [13],
+CrystalMaker [14], Materials Studio [15], and Spartan
+[16], which are polished and capable of constructing many
+different types of molecular structures. They are, however,
+not available for all operating systems (most of them only
+run on Microsoft Windows), and are not easily extensi-
+ble, customized, or integrated into automated workflows.
+
+© 2012 Hanwell et al.; licensee Chemistry Central Ltd. This is an Open Access article distributed under the terms of the Creative
+Commons Attribution License (http://creativecommons.org/licenses/by/2.0), which permits unrestricted use, distribution, and
+reproduction in any medium, provided the original work is properly cited.
+
+http://avogadro.openmolecules.net
+
+
+Hanwell et al. Journal of Cheminformatics 2012, 4:17 Page 2 of 17
+http://www.jcheminf.com/content/4/1/17
+
+Licensing costs can be prohibitive. If the company were to
+change its direction or focus, this can lead to a loss of a
+significant research investment in a commercial product.
+Furthermore, in most cases, these programs use custom,
+proprietary file formats, and semantic and chemical data
+can be lost in conversion to other data formats.
+
+The selection of free, open-source, cross-platform,
+three-dimensional, molecular builders was quite limited
+when the Avogadro project was founded in late 2006.
+Ghemical [17] was one of the only projects satisfying these
+needs at the time. Two of the authors (Hutchison and
+Curtis) contributed to Ghemical previously, but had found
+that it was not easily extensible. This led them to found
+a new project to address the issues they had observed in
+Ghemical and other packages. The Molden [18] applica-
+tion was also available, able to build up small molecules
+and analyze output from several quantum codes. How-
+ever, it suffers from a restrictive license and it uses an
+antiquated graphical toolkit, which is not native on most
+modern operating systems.
+
+Broad goals for the design of a molecular editor were
+identified following a case study of the available appli-
+cations. One of the main issues with both commercial
+and open-source applications is a lack of extensibility;
+many of the applications also only work on one or two
+operating systems. The creation of an open and exten-
+sible framework that implements many of the necessary
+foundations for a molecular builder and visualizer would
+facilitate more effective research in this area. Further, the
+open, standardized Chemical Markup Language (CML)
+file format [19,20] would be used, to secure semantic and
+chemical data and allow easy interoperability with other
+chemistry software.
+
+At the time of writing, it is apparent that other
+researchers have perceived similar needs. Several new
+applications are available today that focus on both build-
+ing and visualizing molecular structure. These include
+CCP1GUI [21], Gabedit [22] and some highly specific edi-
+tors such as MacMolPlt [23] which focus on particular
+computational packages (i.e., GAMESS-US for MacMol-
+Plt). Whilst offering many interesting and useful fea-
+tures, these projects suffer from the same issues centering
+around effective reuse of existing code, well commented
+and documented code, and easy extension to add new
+features and adapt for specialized areas.
+
+Implementation
+The Avogadro project was started in earnest in 2007, and
+over the first 5 years of development has been downloaded
+over 270,000 times [24], been translated into over 20 lan-
+guages [25], and has over 20 contributors [26]. So far, it
+has been cited over 100 times [27], including applications
+in spectroscopy, catalysis, materials chemistry, theoretical
+
+chemistry, biochemistry, and molecular dynamics, among
+many others [28-47].
+
+From the beginning, the project has strived to make a
+robust, flexible framework for both building and visual-
+izing molecular structures. Much of the initial focus has
+been placed on preparing input and analyzing output from
+quantum calculations. Other applications such as prepar-
+ing input for MD simulations and visualizing periodic
+structures will also be presented, demonstrating the flex-
+ibility of the Avogadro platform. The development team
+has also been members of the Blue Obelisk movement, fol-
+lowing the three pillars outlined by the group: Open Data,
+Open Standards, and Open Source [48,49].
+
+Software architecture
+One area that seems to suffer in many code bases in
+chemistry is software architecture. This can lead to less
+maintainable code, poor code reuse, and a much higher
+barrier to entry. Problems were identified in other projects
+with a view to minimize their impact when developing
+Avogadro. Modern software design processes were used
+in the initial planning stages of Avogadro, along with the
+choice of modern programming languages and libraries.
+
+Avogadro has close ties to several other free, cross-
+platform, open-source projects to reuse as much code
+as is practical. These projects include Qt [50] to pro-
+vide a free, cross-platform graphical toolkit; Open Babel
+[51] for chemical file input/output, geometry optimiza-
+tion, and other chemical perception; Eigen [52] for matrix
+and vector mathematics; OpenGL/GLSL for real-time,
+three-dimensional rendering; and POV-Ray for ray-traced
+rendering.
+
+Based on the previous experience of the authors and
+a review of available programs at the time, several fun-
+damental choices were made. The C++ programming
+language; the Qt graphical toolkit; OpenGL for 3D visu-
+alization; CMake as the build system; and Open Babel as
+the chemical library. Using this combination of languages
+and libraries requires the project to be licensed under the
+GNU GPLv2 [53] license and made openly available to all.
+
+The core of Avogadro is written in portable C++ code
+with platform-specific differences abstracted away by Qt,
+OpenGL, and Open Babel. The CMake build system
+makes the build process relatively simple on all supported
+platforms. Avogadro has been successfully built and tested
+on Linux, Apple Mac OS X, and Microsoft Windows in
+common 32 and 64 bit hardware architectures.
+
+The Avogadro framework uses the model, view, con-
+troller paradigm. The model is comprised of the core data
+classes such as Molecule, Atom, and Bond, views are
+made up of the engine/display plugins, and controllers
+are the tools (interactive mouse) and extensions (non-
+interactive, form based/menu based). Every plugin has full
+access to the core data model, but view and controller
+
+
+
+Hanwell et al. Journal of Cheminformatics 2012, 4:17 Page 3 of 17
+http://www.jcheminf.com/content/4/1/17
+
+plugins are conceptually different; views are responsible
+for displaying data and controllers are responsible for
+modifying/changing data.
+
+Plugins rely on Avogadro’s set of programming inter-
+faces and almost all functionality is implemented in self
+contained plugins that are loaded at runtime. The major-
+ity of plugins distributed with Avogadro are written in
+C++, but the API is also available in the Python script-
+ing language. This allows for a great deal of choice in how
+plugins are implemented. Each plugin is a singleton class
+that implements a particular set of functions–depending
+on the type of plugin–which allows for features to be
+implemented in a very modular way.
+
+Over the last few years Avogadro development has
+started to use nightly builds of the latest version of the
+code in order to automatically flag issues introduced in
+new commits. Code review was also introduced in order
+to add a review step before new code is merged, along with
+softening the line between someone with commit rights
+and someone without (anyone can propose and upload a
+patch, but a small group can choose if/when the patch will
+be merged). Some automated testing has been added, but
+coverage at this point remains relatively low. API docu-
+mentation is automatically generated from comments in
+the code using Doxygen.
+
+Plugin interface
+Avogadro plugins are divided into four different types
+corresponding to four main classes that derive from this
+common base class, specializing their interface for specific
+
+activities (Figure 1). The Avogadro::Color base class
+defines the virtual interface for applying colors to atoms,
+bonds, and other properties. Avogadro::Engine
+defines the common interface for all display types
+in Avogadro: simple ball and stick, Van der Waals
+visualizations, surfaces, and force visualizations. The
+Avogadro::Tool base class provides the interface for
+all interactive tools, focusing principally on mouse and
+keyboard interaction with Avogadro. Examples of tool
+plugins include the draw tool used to draw molecules
+atom by atom, and the navigation tool used to pan, rotate,
+and scale the view of the molecule. There are also several
+specialized tools such as the alignment tool.
+
+Finally there is the Avogadro::Extension class,
+which defines the interface for dialog based plugins.
+These extensions can interact with the molecule, and
+are used for a variety of purposes from molecule prop-
+erties dialogs to input file generation dialogs for many
+quantum codes including NWChem, Gaussian, GAMESS,
+and others. This class of plugin is also applied to
+file import, and network aware extensions querying
+web databases for structures given their common name
+for example.
+
+At start up, several standard directories, which may
+be customized, are searched for plugins. The Qt plugin
+framework is used to check that the plugins have a recent
+enough version to be loaded, and the plugin type can be
+deduced once loaded. The user interface is then populated
+with appropriate entries; tools are added to the main tool-
+bar using their embedded icons, display types are added
+
+Extensions
+
+ToolsPainters
+
+Engines
+
+Open Babel Qt Eigen
+
+Force 
+Fields
+
+Manipulate 
+Tool
+
+Balls & 
+Sticks
+
+POV-RayOpenGL
+
+Scripting
+Python
+Tools
+
+Colors
+
+Elements
+
+Figure 1 General code architecture of Avogadro. General code architecture of Avogadro, indicating major plugin interfaces for colors, display
+engines, tools, and extensions. Red boxes indicate code dependencies of Avogadro, blue boxes indicate plugin API classes, and green boxes
+inidicate examples of each plugin type.
+
+
+
+Hanwell et al. Journal of Cheminformatics 2012, 4:17 Page 4 of 17
+http://www.jcheminf.com/content/4/1/17
+
+to the display type list, and menu entries are added for all
+loaded extensions.
+
+The tool and display type plugins can both (option-
+ally) provide a dialog for configuring the plugin. Dialogs
+are specific to each plugin and integrated into the user
+interface.
+
+Display types
+Display plugins are referred to as “engines” internally.
+Their primary focus is rendering graphics to the screen.
+As is the case with most molecular graphics, a large por-
+tion of the geometric primitives are spheres and cylinders,
+typically used to represent atoms and bonds. There are
+many other properties that can be rendered using the dis-
+play type plugins, for example, some of the engines also
+convey information about the underlying data the geomet-
+ric primitives represent to allow for the molecule to be
+edited. Table 1 shows a summary of the display plugins
+distributed with Avogadro.
+
+Engines are performance critical as the render functions
+are called each time a frame is requested for display. Effi-
+cient rendering is also critical since multiple display types
+
+Table 1 List of default display type (engine) plugins
+
+Name Description
+
+Axes Renders x, y, z Cartesian axes from the origin
+
+Ball and Stick Standard ball and stick representation
+
+Cartoon Secondary biological structure (α helix and β sheet)
+
+Dipole Render direction/magnitude of dipole
+
+moment if present
+
+Force Renders arrows showing forces on atoms from
+
+force field
+
+Hydrogen Bond Renders hydrogen bonds as dotted lines
+
+Label Shows labels on atoms and bonds, configurable
+
+Overlay Overlay of color gradient used for electrostatic
+
+properties
+
+Polygon Renders closed polygons of metallic centers
+
+Ribbon Basic secondary structure ribbon rendering
+
+Ring Renders rings in structure, different colors
+
+depending on ring size
+
+Simple Wireframe Very simple wireframe display
+
+Sticks Stick or liquorice rendering style for atoms
+
+and bonds
+
+Surface Renders triangular isosurface meshes
+
+Van der Waals Van der Waals sphere rendering (no bonds,
+
+Spheres space-filling)
+
+Wireframe Wireframe with more features such as bond order
+
+rendering
+
+can be combined to form a composite display. For exam-
+ple, ball and stick display overlaid with a transparent Van
+der Waals space-filling display and ring rendering to high-
+light all rings in the structure. Figure 2 (d) and (f ) show
+two such combinations of multiple display types.
+
+Tools
+The tools are responsible for virtually all mouse and key-
+board interaction with the molecule. A list of all tools is
+given in Table 2.
+
+The navigation tool provides basic scene navigation,
+implementing rotation,panning, tilting, and zooming sup-
+port. The initial point of interaction (where the click
+occurs) changes the anchor point for navigation; navi-
+gation takes place about the center of molecule when
+clicking in empty space or about the center of any clicked
+atom. During interaction, the navigation tool provides
+visual cues to show what type of navigation is taking place.
+The navigation tool is also used as the default tool if the
+currently active tool does not handle the mouse event
+passed to it.
+
+One of the other central tools is the draw tool, which
+implements a free-hand molecule drawing input method
+supporting keyboard shortcuts, combo boxes, and a peri-
+odic table view to select elements. The user can use the left
+mouse button to add new atoms or bonds, or click on the
+bonds to change their order. The right mouse button can
+be used to delete atoms or bonds, and the directional keys
+can be used in combination with the mouse to quickly
+rotate/pan the molecule.
+
+There are also two tools for adjustment of structures
+(atom or bond centric), a selection tool supporting stan-
+dard selection interactions, and an auto-rotate tool that
+allows users to set the speed and angles about which
+to rotate the molecule. The interactive auto-optimization
+tool provides a sculpting interaction, where the user can
+begin a continuous geometry optimization and switch
+back to the draw or adjustment tools and change the shape
+and structure of the molecule while observing the new
+structure being optimized. This can also be combined
+with the measurement tool to interactively observe bond
+lengths and angles evolve as the structure is updated and
+the geometry minimized. If the optimization tool is turned
+off, the measurement tool also allows the user to precisely
+adjust bond lengths and/or angles using the adjustment
+tools.
+
+Extensions
+Extensions represent quite a diverse range of plugins
+including input generation dialogs for various quantum
+chemistry codes such as GAMESS, Molpro, NWChem,
+etc., animation of the molecule, and visualization of
+molecular orbitals and electron density. Network aware
+extensions allow the user to click on a menu item to fetch
+
+
+
+Hanwell et al. Journal of Cheminformatics 2012, 4:17 Page 5 of 17
+http://www.jcheminf.com/content/4/1/17
+
+Figure 2 Standard molecular structure representations. Several molecular representations of thiophene, (a) wireframe, (b) stick/licorice, (c) ball
+and stick, (d) ball and stick with ring, (e) Van der Waals/CPK and (f) transparent Van der Waal’s with stick.
+
+by chemical name and search for “tnt” or “propanol” and
+have structures returned by the NIH CACTUS Chem-
+ical Structure Resolver service [54]. A summary of the
+extensions distributed with Avogadro is shown in Table 3.
+
+Other extensions translate the entire scene to POV-
+Ray input, and call POV-Ray to render the molecule
+using ray tracing techniques to provide higher quality
+renderings for publication. Various molecular property
+dialogs are also implemented as plugins, drawing largely
+on Open Babel functionality to provide an overview of
+the molecule. Cartesian editors, addition and removal
+of hydrogens, fragment, SMILES, and peptide insertion
+
+Table 2 List of default mouse tool plugins
+
+Name Description
+
+Draw Tool Build and edit atoms
+
+Navigate Tool Move the camera, rotate, pan, and zoom
+
+Bond Centric Alter bond lengths, angles, and torsions
+
+Manipulate Tool Move atoms and selected fragments
+
+Select Tool Select individual atoms, bonds, or fragments
+
+Auto Rotate Tool Continuously rotate a molecule for presentations
+
+Auto Optimize Tool Continuously optimize molecular geometry using
+
+molecular mechanics
+
+Measure Tool Determine bond lengths, angles, and dihedrals
+
+Align Tool Rotate and translate to a specified frame of
+
+reference
+
+are all implemented as extensions showing up in Avo-
+gadro menus. More recently a crystallography extension
+was added, giving access to a much wider range to func-
+tionality useful to practitioners in that area, including
+Miller Plane visualization, slab and surface generation.
+New builders for nanotubes, nanoparticles, and DNA are
+also planned for upcoming releases.
+
+Colors
+The color plugins primarily take either double precision
+numbers or integer values and return an RGB value.
+The plugins range from the standard color plugin that
+takes atomic number and returns the standard RGB value
+for that element through to mapping things like partial
+change and index to more easily view various aspects of
+the molecule’s structure.
+
+By defining a plugin interface for coloring atoms, bonds,
+or residues, developers can easily offer flexible render-
+ing options to highlight important information without
+requiring a user to tediously set colors on specific atoms
+or functional groups. Default color plugins are listed in
+Table 4, illustrating the variety of options. Each plugin is
+usually only 40-50 lines of C++ code.
+
+Python scripting
+Python bindings are provided for all of the core API.
+Python code can be used in two ways: the first is the inter-
+active Python terminal, and the second is to write Python
+plugins; extensions, tools, or display types. Writing a
+
+
+
+Hanwell et al. Journal of Cheminformatics 2012, 4:17 Page 6 of 17
+http://www.jcheminf.com/content/4/1/17
+
+Table 3 List of default extension commands
+
+Name Description
+
+Create Surfaces Create surface meshes from molecular orbital/
+
+electron density data
+
+GAMESS Prepare input files for GAMESS-US, featuring
+
+syntax highlighting, advanced properties
+
+Insert Fragment Insert molecular fragments from a library of
+
+common fragments
+
+Insert Peptide Build up and insert peptide fragments
+
+Molecular Mechanics Use Open Babel’s force fields for geometry
+
+optimization and conformer searches
+
+MOPAC Prepare input for and run MOPAC200x
+
+POV-Ray Ray-trace the displayed structure using POV-Ray
+
+Properties
+
+Angle Properties Table of all bond angles (editable)
+
+Atom Properties Table of all atoms with common properties
+
+Bond Properties Table of all bonds with common properties
+
+Molecule Properties Common properties of the molecule (including
+
+molecular weight, etc.)
+
+Torsion Properties Table of all dihedral angles (editable)
+
+Spectra Visualize spectra from output files
+
+Super Cell Builder Expand atoms with space group, replicate
+
+specified repeats and perform simple bonding
+
+Unit Cell Change crystallographic unit cell display and
+
+parameters
+
+Vibrations Show and animate molecular vibrations
+
+Python plugin requires the same functionality to be imple-
+mented as a native C++ plugin [55]. The advantage of
+Python plugins is that it’s easier to make prototypes since
+no compilation is required. Python plugins can also easily
+be shared with other users.
+
+The Python bindings interface with the PyQt python
+bindings for the Qt toolkit, which enables Python code to
+use all of Qt’s features when writing a plugin. For example,
+a short Python script can present a window using Qt and
+render molecules using Avogadro [56-58].
+
+Avogadro also includes an interactive Python console
+(Figure 3, which allows users to directly script and manip-
+ulate the Avogadro environment [59].
+
+Results and discussion
+The graphical user interface
+The first thing most people will see is the main Avo-
+gadro application window, as shown in Figure 4. Binary
+installers are provided for Apple Mac OS X and Microsoft
+Windows, along with packages for all of the major Linux
+distributions. This means that Avogadro can be installed
+quite easily on most operating systems. Easy to follow
+
+instructions on how to compile the latest source code are
+also provided on the main Avogadro web site [60,61] for
+the more adventurous, or those using an operating system
+that is not yet supported.
+
+The Qt toolkit gives Avogadro a native look and feel
+on the three major supported operating systems—Linux,
+Apple Mac OS X, and Microsoft Windows. The basic
+functionality expected in a molecular builder and viewer
+has been implemented, along with several less common
+features. It is very easy for new users to install Avogadro
+and build their first molecules within minutes. Thanks to
+the Open Babel library [51], Avogadro supports a large
+portion of the chemical file formats that are in common
+use. The vast majority of this functionality has been writ-
+ten using the interface made available to plugin writers,
+and is loaded at runtime. We will discuss these plugin
+interfaces and descriptions of the plugin types later.
+
+Semantic chemistry
+Avogadro has used CML [19,20] as its default file format
+from a very early stage; this was chosen over other file
+formats because of the extensible, semantic structure pro-
+vided by CML, and the support available in Open Babel
+[51]. The CML format offers a number of advantages over
+others in common use, including the ability to extend the
+format. This allows Avogadro and other programs to be
+future-proof, adding new information and features neces-
+sary for an advanced semantically-aware editor at a later
+time, while still remaining readable in older versions of
+Avogadro.
+
+Through the use of Open Babel [51], a large array of
+file formats can be interpreted. When extending Avogadro
+to read in larger amounts of the output from quantum
+codes, it was necessary to devote significant develop-
+ment resources to understanding and adding semantic
+meaning to the quantum code output. This work was
+developed in a plugin, which was later split out into
+
+Table 4 List of default color plugins
+
+Name Description
+
+Atom Index Color Color based on atom ID (from atom 1, 2, etc.)
+
+Charge Color Color based on predicted electrostatic partial charge
+
+Custom Color Color all atoms a specific, custom color
+
+Distance Color Color based on distance from one end of the
+
+molecule
+
+Element Color Standard color scheme, giving each atom a color
+
+(Default) defined by its element
+
+Residue Color Color based on amino acid or nucleic acid residue
+
+(i.e., glycine, histidine, etc.)
+
+SMARTS Color Color atoms matching a specific SMARTS pattern
+
+with a custom color
+
+
+
+Hanwell et al. Journal of Cheminformatics 2012, 4:17 Page 7 of 17
+http://www.jcheminf.com/content/4/1/17
+
+Figure 3 Python scripting terminal, printing atomic numbers.
+
+a small independent library called OpenQube [62,63].
+More recently a large amount of work has been done
+by the Quixote project [64], JUMBO-Converters, and the
+Semantic Physical Science workshop to augment quantum
+codes to output more of this data directly from the code.
+Since CML can be extended, it is possible to reuse exist-
+ing conventions for molecular structure data, and add new
+conventions for the additional quantum data.
+
+Building a molecule: atom by atom
+After opening Avogadro a window such as that shown in
+Figure 4 is presented. By default, the draw tool is selected.
+
+Simply left-clicking on the black part of the display allows
+the user to draw a carbon atom. If the user pushes the left
+mouse button down and drags, a bonded carbon atom is
+drawn between the start point and the final position where
+the mouse is released.
+
+A large amount of effort has been expended to create
+an intuitive tool for drawing small molecules. Common
+chemical elements can be selected from a drop down list,
+or a periodic table can be displayed to select less com-
+mon elements. Clicking on an existing atom changes it
+to the currently selected element, dragging changes the
+atom back to its previous element and draws a new atom
+
+Figure 4 The Avogadro graphical user interface. Taken on Mac OS X, showing the editing interface for a molecule.
+
+
+
+Hanwell et al. Journal of Cheminformatics 2012, 4:17 Page 8 of 17
+http://www.jcheminf.com/content/4/1/17
+
+bonded to the original. If the bonds are left-clicked then
+the bond order cycles between single, double, and triple.
+Shortcut keys are also available, e.g., typing the atomic
+symbol (e.g., “C-o” for cobalt) changes the selected ele-
+ment, or typing the numbers “1,” “2,” and “3” changes the
+bond order.
+
+Right clicking on atoms or bonds deletes them. If the
+“Adjust Hydrogens” box is checked, the number of hydro-
+gens bonded to each atom is automatically adjusted to
+satisfy valency. Alternatively, this can also be done at the
+end of an editing session by using the “Add hydrogens”
+extension in the build menu.
+
+In addition to the draw tool, there are two tools for
+adjusting the position of atoms in existing molecules. The
+“atom centric manipulate” tool can be used to move an
+atom or a group of selected atoms. The “bond centric
+manipulate” tool can be used to select a bond, and then
+adjust all atoms positions relative to the selected bond in
+various ways (e.g., altering the bond length, bond angles,
+or dihedral angles). These three tools allow for a great
+deal of flexibility in building small molecules interactively
+on screen.
+
+Once the molecular structure is complete, the force
+field extension can be used to perform a geometry opti-
+mization. By clicking on “Extensions” and “Optimize
+Geometry” a fast geometry optimization is performed on
+the molecule. The force field and calculation parameters
+can be adjusted, but the defaults are adequate for most
+molecules. This workflow is typical when building up a
+small molecular structures for use as input to quantum
+calculations, or publication quality figures.
+
+An alternative is to combine the “Auto Optimization”
+tool with the drawing tool. This presents a unique way of
+sculpting the molecule while the geometry is constantly
+minimized in the background. The geometry optimiza-
+tion is animated, and the effect of changing bond orders,
+
+adding new groups, or removing groups can be observed
+interactively.
+
+Several dialogs are implemented to provide information
+on molecule properties and to precisely change parame-
+ters, such as the cartesian coordinates of the atoms in the
+molecule.
+
+Building a molecule: from fragments
+In addition to building molecules atom-by-atom, users
+can insert pre-built fragments of common molecules,
+ligands, or amino-acid sequences, as shown in Figure 5. In
+all cases, after inserting the fragment, the atom-centered
+manipulate tool is selected, allowing the fragment to be
+moved or rotated into position easily.
+
+Users can also insert a SMILES [65,66] string for a
+molecule. In this case, a rough 3D geometry is generated
+using Open Babel and a quick force field optimization.
+
+Preparing input for quantum codes
+Several extensions were developed for Avogadro that
+assist the user in preparing input files for popular
+quantum codes such as GAMESS-US, [67] NWChem,
+[68] Gaussian, [69] Q-Chem, [70] Molpro, [71] and
+MOPAC200x [72]. The graphical dialogs present the fea-
+tures required to run basic quantum calculations; some
+examples are shown in Figure 6.
+
+The preview of the input file at the bottom of each
+dialog is updated as options are changed. This approach
+helps new users of quantum codes to learn the syntax of
+input files for different codes, and to quickly generate use-
+ful input files as they learn. The input can also be edited
+by hand in the dialog before the file is saved and sub-
+mitted to the quantum code. The MOPAC extension can
+also run the MOPAC200x program directly if it is avail-
+able on the user’s computer, and then reload the output
+
+Figure 5 Dialogs for inserting pre-built fragments. The left shows molecules, and the right amino-acid sequences.
+
+
+
+Hanwell et al. Journal of Cheminformatics 2012, 4:17 Page 9 of 17
+http://www.jcheminf.com/content/4/1/17
+
+Figure 6 Dialog for generating input for quantum codes. Dialogs for generating input for Q-Chem, NWChem, Molpro and MOPAC200x. Note
+that the dialogs are similar in interface, allowing users to use multiple computational chemistry packages.
+
+file into Avogadro once the calculation is complete. This
+feature will be extended to other quantum codes in future
+versions of Avogadro.
+
+The GAMESS-US plugin is one of the most highly
+developed, featuring a basic dialog present in most of the
+other input deck generators, as well as an advanced dialog
+exposing many of the more unusual and complex calcula-
+tion types. In addition to the advanced dialog, the input
+deck can be edited inline and features syntax highlight-
+ing (Figure 7) as used in many popular editors aimed
+at software developers. This can indicate simple typing
+errors in keywords, as well as harder to spot whitespace
+errors that would otherwise cause the hand-edited input
+deck to fail when being read by GAMESS-US.
+
+Alignment and measurements
+One of the specialized tools included in the standard Avo-
+gadro distribution is the alignment tool. This mouse tool
+facilitates the alignment of a molecular structure with
+
+the coordinate origin if one atom is selected, and along
+the specified axis if two atoms are selected. The align-
+ment tool can be combined with the measure, select,
+and manipulate tools to create inputs for quantum codes
+where the position and orientation of the molecule is
+important. One example of this is calculations where an
+external electric field is applied to the molecule. In these
+types of calculations, the alignment of the molecule can
+have a large effect. Figure 8 shows the measurement tool in
+action with the alignment tool configuration dialog visible
+in the lower-left corner.
+
+More complex alignment tools for specific tasks could
+be created. The alignment tool was created in just a few
+hours for a specific research project. This is a prime exam-
+ple where extensibility was very important for performing
+research using a graphical computational chemistry tool.
+It would not be worth the investment to create a new
+application just to align molecular structures to an axis,
+but creating a plugin for an extensible project is not
+unreasonable.
+
+
+
+Hanwell et al. Journal of Cheminformatics 2012, 4:17 Page 10 of 17
+http://www.jcheminf.com/content/4/1/17
+
+Figure 7 The GAMESS-US input deck generator. This input generator has an advanced panel and syntax highlighting.
+
+Visualization
+The Avogadro application uses OpenGL to render molec-
+ular representations to the screen interactively. OpenGL
+offers a high-level, cross-platform API for rendering
+three-dimensional images using hardware accelerated
+graphics. OpenGL 1.1 and below is used in most of the
+rendering code, and so Avogadro can be used even on
+older computer systems, or those without more modern
+accelerated graphics. It is capable of taking advantage of
+some of the newer features available in OpenGL 2.0 as
+described below, but this has been kept as an optional
+extra feature when working on novel visualizations of
+molecular structure.
+
+Standard representations
+In chemistry, there are several standard representations of
+molecular structure, originally based upon those possible
+with physical models. The Avogadro application imple-
+ments each of these representations shown in Figure 2 as
+a plugin. These range from the simple wireframe repre-
+sentation, stick/licorice, ball and stick, and Van der Waals
+spheres.
+
+It is also possible to combine several representations,
+such as ball and stick with ring rendering (Figure 2 (d)),
+and a semi-transparent Van der Waals space-filling repre-
+sentation with a stick representation to elucidate molecu-
+lar backbone (Figure 2 (f )).
+
+Quantum calculations and electronic structure
+Quantum codes were originally developed for line print-
+ers, and unfortunately little has changed since then in the
+standard log files. There are several formats developed for
+use in other codes and specifically for visualization and
+analysis, but there is little agreement on any standard file
+format in the computational quantum chemistry commu-
+nity. A plugin was developed in Avogadro to visualize the
+output of various quantum codes, and get the data into the
+right format for further visualization and analysis.
+
+Initially support was added and extended in Open Babel
+for Gaussian cube files. This format provides atomic coor-
+dinates and one or more regularly spaced grids of scalar
+values. This can be read in, and techniques such as the
+marching cubes algorithm can be used to compute trian-
+gular meshes of isosurfaces at values of electron density
+for example. Once the code has been developed to visu-
+alize these isosurfaces, it became clear that it would be
+useful to be able to calculate these cubes on the fly, and at
+different levels of detail depending upon the intended use.
+
+The first format, which was somewhat documented at
+the time it was developed, is the Gaussian formatted
+checkpoint format. This format is much easier to parse
+than the log files generated as the program runs, and
+provides all of the detail needed to calculate scalar val-
+ues of the molecular orbital or electron density at any
+point in space. Once a class structure had been developed
+
+
+
+Hanwell et al. Journal of Cheminformatics 2012, 4:17 Page 11 of 17
+http://www.jcheminf.com/content/4/1/17
+
+Figure 8 The measurement tool. The measurement tool being used to measure bond angles and lengths (on Linux with KDE 4).
+
+for Gaussian type orbitals, the approach was extended
+to read in several other popular output file formats
+including Q-Chem, GAMESS-US, NWChem, and Mol-
+pro. MOPAC200x support was added later, along with
+support for the AUX format and Slater type orbitals used
+in that code. All of these codes output their final config-
+urations using the standard linear combination of atomic
+orbitals, meaning that parallelization is extremely simple.
+
+The plugin was developed to take advantage of the map-
+reduce approach offered by QtConcurrent in order to
+use all available processor cores. This offers almost lin-
+ear scaling as each point in the grid can be calculated
+
+independently of all other points, the results of which can
+be seen in Figure 9. An alternate approach to calculating
+the molecular orbitals was developed in a second plu-
+gin that has since been split off into a separate project
+named “OpenQube”. The “OpenQube” library has also
+been added as an optional backend in VTK during the
+2011 Google Summer of Code, bringing support for sev-
+eral output file formats and calculation of cube files that
+can later be fed into more advanced data pipelines.
+
+A class hierarchy with a standard API is provided for
+quantum output. Adding support for new codes involved
+developing a new parser and ensuring the Gaussian or
+
+Figure 9 Molecular orbitals and surfaces. Rendering of a molecular orbital isosurface (left) and an electrostatic surface potential mapped onto
+the electron density (right).
+
+
+
+Hanwell et al. Journal of Cheminformatics 2012, 4:17 Page 12 of 17
+http://www.jcheminf.com/content/4/1/17
+
+Slater set is populated with the correct ordering and the
+expected normalization scheme. The s, p, and d-type
+Gaussian orbitals are supported, with f and g support
+planned in order to support the increasing number of
+calculations using these higher-order orbitals. The Basis
+Set Exchange hosted by EMSL provides access to the
+basis sets in common use, although at present these basis
+sets are normally read in directly from the output files.
+There are several related projects for adding semantic
+meaning to this type of output, including the JUMBO-
+Converters project and Quixote. It is hoped that more
+codes will adopt semantic output in the future, using a
+common format so that data exchange, validation, and
+analysis become easier across several codes. This was
+the subject of a recent meeting with several computa-
+tional chemistry codes beginning to use FoX in order to
+output CML. Development has begun on code to read
+in CML output, either directly from the codes or from
+conversion of other formats using Open Babel or the
+JUMBO-Converters. If enough semantic structure can
+be added to CML, and the converters support a large
+enough range of the output, this could replace most of
+the parsing code present in OpenQube. Semantic mean-
+ing is one of the most difficult to extract from log files,
+and coming together as a community will help projects
+like Avogadro to derive more meaning from the outputs of
+these codes.
+
+Secondary biological structure
+Avogadro uses the PDB reader from Open Babel to read
+in the secondary biological structure. Two plugins exist
+to process and render this information. The first is a plu-
+gin which renders a simple tube between the biomolecule
+backbone atoms. A second more advanced plugin calcu-
+lates meshes for the alpha helices and beta sheets. While
+the first plugin is much faster, the advanced plugin more
+accurately produces output expected in the field. This
+allows users flexibility for rendering secondary biological
+structures.
+
+GLSL, novel visualization
+GLSL, or OpenGL Shader Language, is a C-like syntax
+that can be used to develop code that will run on graphics
+cards and included in the OpenGL 2.0 specification. It has
+been used to great effect by the games industry, as well as
+in many areas of data visualization. Several recent papers
+highlight the potential in chemistry, such as QuteMol [5]
+in adding support for features such as ambient occlusion
+to add depth to images.
+
+Avogadro has support for vertex and fragment shader
+programs, and several examples are bundled with the
+package. If the user’s graphics card is capable, these pro-
+grams can be loaded at runtime and used to great effect
+to visualize structure. Some of these include summariza-
+tion techniques such as isosurface rendering where only
+the edges orthogonal to the view plane are visible, giv-
+ing a much better rendering of both the molecular and
+electronic structure (Figure 10).
+
+Ray tracing
+Avogadro uses a painter abstraction that makes it much
+easier for developers to add new display types. It also
+abstracts away the renderer, making it possible to add
+support for alternative backends. Currently only OpenGL
+and POV-Ray are supported. Due to the abstraction, we
+are able to use the implicit surfaces available in ray trac-
+ers to render molecular structure at very high levels of
+clarity and with none of the triangle artifacts present in
+standard OpenGL rendered images. Much higher quality
+transparency and reflection also allow for the images to be
+used in poster and oral presentations as well as research
+articles (Figure 11).
+
+This feature is implemented in an extension, with an
+additional painter class deriving from the base class and
+a dialog allowing the user to edit the basic rendering
+controls. The POV-Ray input file can also be retained
+and edited to produce more complex images, or to
+allow for much finer control of the rendering process if
+desired.
+
+Figure 10 Molecular orbitals rendering using GLSL shaders. Rendering of a molecular orbital isosurface using two GLSL shaders to highlight the
+edges of the surfaces. The X-ray effect (left) and red and blue (right) showing the positive and negative molecular orbital shapes.
+
+
+
+Hanwell et al. Journal of Cheminformatics 2012, 4:17 Page 13 of 17
+http://www.jcheminf.com/content/4/1/17
+
+Figure 11 Ray-traced HOMO isosurfaces of varying cube density. Rendering of a molecular orbital isosurface using POV-Ray with cubes of low
+(left) and high (right) density.
+
+Avogadro library in use
+The Avogadro library’s first use was the Avogadro appli-
+cation, closely followed by the Kalzium periodic table
+program that is part of the KDE software collection. This
+initial work was funded in part by the Google Summer
+of Code program in 2007, and also resulted in the addi-
+tion of several other features in the Avogadro library to
+support Kalzium and general visualization and editing of
+molecular structure (Figure 12).
+
+The Q-Chem package [70] has developed “QUI - The
+Q-Chem User Interface” [73] around Avogadro, originally
+as an Avogadro extension. This is a more advanced ver-
+sion of the input generator developed in Avogadro, with
+much tighter integration. Molpro [71] has also published
+
+some results from their development of a Molpro interface
+using the Avogadro library [74].
+
+Packmol
+Packmol is a third-party package designed to create ini-
+tial “packed” configurations of molecules for molecular
+dynamics or other simulations [75,76]. Examples include
+surrounding a protein with solvent, solvent mixtures, lipid
+bilayers, spherical micelles, placing counterions, adding
+ligands to nanoparticles, etc. Typically, users may have
+equilibrated “solvent boxes” which have been run for long
+simulations to ensure proper density, and both short and
+long-range interactions between solvent molecules. Using
+such solvent boxes allows placing solute molecules, such
+
+Figure 12 The Kalzium application in KDE using Avogadro to render molecular structures.
+
+
+
+Hanwell et al. Journal of Cheminformatics 2012, 4:17 Page 14 of 17
+http://www.jcheminf.com/content/4/1/17
+
+Figure 13 The PackMol lipid layer as produced by the PackMol extension.
+
+as proteins, in an approximately correct initial structure,
+such as that shown in Figure 13. The solute is added into
+the box, and solvent molecules with overlapping atoms are
+removed. While these utilities are often enough, creating
+complex input files is not always easy. For more compli-
+cated systems, Packmol can create an initial configuration
+based on defined densities, geometries (e.g., sphere, box,
+etc.), and the molecules to be placed. An Avogadro devel-
+oper wrote an external plugin to facilitate use of Packmol,
+
+including estimating the number of molecules in a given
+volume.
+
+The plugin is not currently distributed with Avogadro as
+a standard feature, although it is planned for some future
+version. It serves as an example of how Avogadro can facil-
+itate a workflow with a text-oriented package (Packmol),
+including saving files in the PDB format required by Pack-
+mol, generating an input file, and reading the output for
+visualization, analysis, and further simulations.
+
+Figure 14 The XtalOpt extension. XtalOpt extension showing a plot of stability vs. search progress for a TiO2 supercell.
+
+
+
+Hanwell et al. Journal of Cheminformatics 2012, 4:17 Page 15 of 17
+http://www.jcheminf.com/content/4/1/17
+
+XtalOpt
+The XtalOpt [77,78] software package is implemented as a
+third-party C++ extension to Avogadro and makes heavy
+use of the libavogadro API. The extension implements
+an evolutionary algorithm tailored for crystal structure
+prediction. The XtalOpt development team chose Avo-
+gadro as a platform because of its open-source license,
+well-designed API, powerful visualization tools, and intu-
+itive user-interface. XtalOpt exists as a dialog window
+(Figure 14) and uses the main Avogadro window for visu-
+alizing candidate structures as they evolve. The API is well
+suited for XtalOpt’s needs, providing a simple mechanism
+to allow the user to view, edit, and export the struc-
+tures generated during the search. Taking advantage of the
+cross-platform capabilities of Avogadro and its dependen-
+cies, XtalOpt is available for Linux, Windows, and Mac.
+
+Conclusions
+Avogadro has grown over its first six years to become an
+important tool for building, editing, visualizing, and ana-
+lyzing chemical and molecular data. With over 270,000
+downloads, language translations and localizations, and
+over 100 citations, it has become an integral part of the
+chemical software toolbox. Through use of the native
+CML file format and a wide variety of chemical data
+import, Avogadro can provide semantic chemical data
+editing and conversion. We seek to provide an inte-
+grated environment in the simulation and cheminfor-
+matics workflow. While more must be done, particularly
+in regards to documentation, tutorials, ease-of-use, and
+automation, we aim to improve the quality and feature set
+with each new release.
+
+Currently, two upcoming versions of Avogadro are
+under development. The first is Avogadro version 1.1,
+which adds additional features and refinement, par-
+ticularly including crystallography support developed
+through the XtalOpt project. The second is a more sub-
+stantial development for Avogadro version 2.0, where
+many of the core data structures are being rewritten
+in order to offer greater flexibility and scalability. Our
+goal is to support an increasing scope of chemical sys-
+tems, including biomolecules (DNA, RNA, saccarides,
+etc.), materials (crystallography, polymers, surfaces),
+nanoscience (nanoparticles, nanotubes, graphene, etc.)
+with improved speed, intuitive ease-of-use and simpler
+non-reciprocal licensing terms.
+
+Avogadro is freely available from http://avogadro.
+openmolecules.net/, and new contributors are welcome in
+all areas (users, developers, testers, translators, educators,
+students, researchers, dreamers).
+
+Availability and requirements
+Project Name: Avogadro
+Project home page: http://avogadro.openmolecules.net/
+
+Operating system(s): Cross-platform
+Programming language: C++, bindings to Python
+Other requirements (if compiling): CMake 2.6+, Open
+
+Babel, Qt 4.6+, Eigen 2
+License: GNU GPL v2
+Any restrictions to use by non-academics: None addi-
+
+tional
+
+Competing interests
+The authors declare that they have no competing interests.
+
+Authors’ contributions
+GRH and DEC are the founders of the Avogadro project. MDH is the current
+lead developer and maintainer of Avogadro. GRH, DL and TV are active
+developers. DL and EZ are founders of the XtalOpt project which is discussed
+in this work. TV developed the PackMol plugin. All authors read and approved
+the final manuscript.
+
+Acknowledgements
+We wish to thank the many contributors to the Avogadro project, including
+developers, testers, translators, and users. We thank SourceForge for providing
+resources for issue tracking and managing releases, Launchpad for hosting
+language translations, and Kitware for additional dashboard resources. MDH
+and GRH thank the University of Pittsburgh for support. DEC would like to
+thank Jan Halborg Jensen for designing the GAMESS-US interface and
+supporting Avogadro in its infancy; believing Avogadro could be better than
+what was available. MDH acknowledges the Engineering Research
+Development Center (W912HZ-11-P-0019) for financial support. EZ and DL
+acknowledge the NSF (DMR-1005413) for financial support.
+
+Author details
+1Department of Chemistry, University of Pittsburgh, 219 Parkman Avenue,
+Pittsburgh, PA, 15260, USA. 2Department of Scientific Computing, Kitware, Inc.,
+28 Corporate Drive, Clifton Park, NY, 12065, USA. 3Department of Computer
+Science, Coe College, 1220 First Avenue NE, Cedar Rapids, Iowa 52402, USA.
+4Department of Chemistry, State University of New York at Buffalo, Buffalo,
+New York 14260-3000, USA. 5Avogadro development team.
+
+Received: 25 June 2012 Accepted: 31 July 2012
+Published: 13 August 2012
+
+References
+1. Sayle R, Milner-White EJ: RasMol: Biomolecular graphics for all. Trends
+
+Biochem Sci(TIBS) 1995, 20(9):374.
+2. Hanson RM, Howard MT, Willighagen EL, et al.: Jmol: an open-source
+
+Java viewer for chemical structures in 3D. 2012. [http://www.jmol.org]
+3. DeLano WL: The PyMOL Molecular Graphics System. 2002. [http://
+
+www.pymol.org]
+4. Humphrey W, Dalke A, Schulten K: VMD - Visual Molecular Dynamics.
+
+J Molec Graphics 1996, 14:33–38.
+5. Tarini M, Cignoni P, Montani C: Ambient Occlusion and Edge Cueing
+
+for Enhancing Real Time Molecular Visualization. IEEE Trans
+Visualization and Comput Graphics 2006, 12(5):1237–1244.
+
+6. Mehlhorn K, Lenhof HP, Kholbacher O, Hildebrandt A: BALLView. 2012.
+[http://www.ballview.org]
+
+7. Momma K, Izuma F: VESTA 3 for three-dimensional visualization of
+crystal, volumetric and morphology data. J Appl Cryst 2011,
+44:1272–1276.
+
+8. Kokalj A: XCrySDen—a new program for displaying crystalline
+structures and electron densities. J Mol Graphics and Model 1999,
+17(3–4):176–179.
+
+9. Kokalj A: Computer graphics and graphical user interfaces as tools in
+simulations of matter at the atomic scale. Comput Mater Sci 2003,
+28(2):155–168.
+
+10. SCIGRESS 2012. [http://www.fujitsu.com/global/services/solutions/tc/
+hpc/app/scigress]
+
+11. ChemBio3D 2012. [http://www.cambridgesoft.com/software/
+chembio3d]
+
+12. GaussView 5 2012. [http://gaussian.com/g prod/gv5.htm]
+
+http://avogadro.openmolecules.net/
+http://avogadro.openmolecules.net/
+http://www.jmol.org
+http://www.pymol.org
+http://www.pymol.org
+http://www.ballview.org
+http://www.fujitsu.com/global/services/solutions/tc/hpc/app/scigress
+http://www.fujitsu.com/global/services/solutions/tc/hpc/app/scigress
+http://www.cambridgesoft.com/software/chembio3d
+http://www.cambridgesoft.com/software/chembio3d
+http://gaussian.com/g_prod/gv5.htm
+
+
+Hanwell et al. Journal of Cheminformatics 2012, 4:17 Page 16 of 17
+http://www.jcheminf.com/content/4/1/17
+
+13. HyperChem 2012. [http://www.hyper.com/]
+14. CrystalMaker 2012. [http://www.crystalmaker.com]
+15. Materials Studio 2001–2007. [http://accelrys.com/products/materials-
+
+studio]
+16. Spartan 2012. [http://www.wavefun.com]
+17. Hassinen T, et al.: Ghemical. 2012. [http://www.uku.fi/thassine/projects/
+
+ghemical]
+18. Schaftenaar G, Noordik JH: Molden: a pre- and post-processing
+
+program for molecular and electronic structures. J Comput-Aided Mol
+Des 2000, 14:123–134.
+
+19. Murray-Rust P, Townsend J, Adams S, Phadungsukanan W, Thomas J: The
+semantics of Chemical Markup Language (CML): dictionaries and
+conventions. J Cheminformatics 2011, 3:43.
+
+20. Murray-Rust P, Rzepa H: CML: Evolution and Design. J Cheminformatics
+2011, 3:44.
+
+21. Thomas J, Sherwood P: The CCP1 GUI Project. 2009. [http://www.cse.
+scitech.ac.uk/ccg/software/ccp1gui]
+
+22. Allouche AR: Gabedit. 2012. [http://gabedit.sourceforge.net]
+23. Bode BM, Gordon MS: Macmolplt: a graphical user interface for
+
+GAMESS. J Mol Graphics Model 1998, 16(3):133–138.
+24. Avogadro Downloads 2012. [http://sourceforge.net/projects/avogadro/
+
+files/stats/timeline?dates=2006-04-14+to+2012-03-29]
+25. Avogadro Translations 2012. [https://translations.launchpad.net/
+
+avogadro/trunk/+translations]
+26. Avogadro Contributors 2012. [http://www.ohloh.net/p/avogadro/
+
+contributors]
+27. Avogadro Citations from Google Scholar 2012. [http://scholar.google.
+
+com/scholar?&amp;q=22http://avogadro.openmolecules.net/22]
+28. Mera-Adasme R, Mendizábal F, Olea-Azar C, Miranda-Rojas S, Fuentealba
+
+P: A Computationally Efficient and Reliable Bond Order Measure.
+J Phys Chem A 2011, 115(17):4397–4405.
+
+29. Closser KD, Head-Gordon M: Ab Initio Calculations on the
+Electronically Excited States of Small Helium Clusters. J Phys Chem A
+2010, 114(31):8023–8032.
+
+30. Ide T, Takeuchi D, Osakada K, Sato T, Higuchi M: Aromatic Macrocycle
+Containing Amine and Imine Groups: Intramolecular
+Charge-Transfer and Multiple Redox Behavior. J Org Chem 2011,
+76(22):9504–9506.
+
+31. Menegazzo N, Zou Q, Booksh KS: Characterization of electrografted
+4-aminophenylalanine layers for low non-specific binding of
+proteins. New J Chem 2012, 36(4):963–970.
+
+32. Patel DGD, Ohnishi Yy, Yang Y, Eom SH, Farley RT, Graham KR, Xue J,
+Hirata S, Schanze KS, Reynolds JR: Conjugated polymers for pure UV
+light emission: Poly(meta-phenylenes). J Polym Sci Part B-Polym Phys
+2011, 49(8):557–565.
+
+33. Popov AV, Gould EA, Salvitti MA, Hernandez R, Solntsev KM: Diffusional
+effects on the reversible excited-state proton transfer. From
+experiments to Brownian dynamics simulations. Phys Chem Chem
+Phys 2011, 13(33):14914.
+
+34. Hu W, Webb LJ: Direct Measurement of the Membrane Dipole Field in
+Bicelles Using Vibrational Stark Effect Spectroscopy. J PhysChem Lett
+2011, 2(15):1925–1930.
+
+35. Bingöl B, Durrell AC, Keller GE, Palmer JH, Grubbs RH, Gray HB: Electron
+Transfer Triggered by Optical Excitation of Phenothiazine-tris(meta-
+phenylene-ethynylene)-(tricarbonyl)(bpy)(py)rhenium(I). J Phys
+Chem B 2012:120503135353007 .
+
+36. Yao CJ, Sui LZ, Xie HY, Xiao WJ, Zhong YW, Yao J: Electronic Coupling
+between Two Cyclometalated Ruthenium Centers Bridged by
+1,3,6,8-Tetra(2-pyridyl)pyrene (tppyr). Inorg Chem 2010,
+49(18):8347–8350.
+
+37. Fleisher A, Morgan P, Pratt D: High-Resolution Electronic Spectroscopy
+Studies of meta-Aminobenzoic Acid in the Gas Phase Reveal the
+Origins of its Solvatochromic Behavior. Chem Phys Chem 2011,
+12(10):1808–1815.
+
+38. Mayorkas N, Malka I, Bar I: Ionization-loss stimulated Raman
+spectroscopy for conformational probing of flexible molecules. Phys
+Chem Chem Phys 2011, 13(15):6808–6815.
+
+39. Tian H, Bora I, Jiang X, Gabrielsson E, Karlsson KM, Hagfeldt A, Sun L:
+Modifying organic phenoxazine dyes for efficient dye-sensitized
+solar cells. J Mater Chem 2011, 21(33):12462.
+
+40. Kapla J, Stevensson B, Dahlberg M, Maliniak A: Molecular Dynamics
+Simulations of Membranes Composed of Glycolipids and
+Phospholipids. J Phys Chem B 2012, 116:244–252.
+
+41. Mandal D, Mondal B, Das AK: Nucleophilic Degradation of
+Fenitrothion Insecticide and Performance of Nucleophiles:
+a Computational Study. J Phys Chem A 2012, 116(10):2536–2546.
+
+42. Bernstein N, Kulp III JL, Cato Jr MA, Clark TD: Simulations of
+Nanocylinders Self-Assembled from Cyclic β-Tripeptides. J Phys
+Chem A 2010, 114(44):11948–11952.
+
+43. Hlawacek G, Khokhar FS, van Gastel R, Poelsema B, Teichert C: Smooth
+Growth of Organic Semiconductor Films on Graphene for
+High-Efficiency Electronics. Nano Lett 2011, 11(2):333–337.
+
+44. Förster S, Hahn T, Loose C, Röder C, Liebing S, Seichter W, Eißmann F,
+Kortus J, Weber E: Synthesis and characterization of new derivatives
+of azulene, including experimental and theoretical studies of
+electronic and spectroscopic behavior. J Phys Org Chem 2012: . [http://
+onlinelibrary.wiley.com/doi/10.1002/poc.2934/abstract?
+deniedAccessCustomisedMessage=&amp;userIsAuthenticated=false]
+
+45. Burkhardt SE, Rodŕıguez-Calero GG, Lowe MA, Kiya Y, Hennig RG, Abruña
+HD: Theoretical and Electrochemical Analysis of Poly(3,4-
+alkylenedioxythiophenes): Electron-Donating Effects and Onset of
+p-Doped Conductivity. J Phys Chem C 2010, 114(39):16776–16784.
+
+46. Burkhardt SE, Conte S, Rodŕıguez-Calero GG, Lowe MA, Qian H, Zhou W,
+Gao J, Hennig RG, Abruña HD: Towards organic energy storage:
+characterization of 2,5-bis(methylthio)thieno[3,2-b]thiophene.
+J Mater Chem 2011, 21(26):9553.
+
+47. Madison TA, Hutchison GR: Effects of Charge Localization on the
+Orbital Energies of Bithiophene Clusters. J Phys Chem C 2011,
+115(35):17558–17563.
+
+48. Guha R, Howard MT, Hutchison GR, Murray-Rust P, Rzepa H, Steinbeck C,
+Wegner J, Willighagen EL: The Blue Obelisk - Interoperability in
+Chemical Informatics. J Chem Inf and Model 2006, 46(3):991–998.
+
+49. O’Boyle N, Guha R, Willighagen E, Adams S, Alvarsson J, Bradley JC,
+Filippov I, Hanson R, Hanwell M, Hutchison G, James C, Jeliazkova N, Lang
+A, Langner K, Lonie D, Lowe D, Pansanel J, Pavlov D, Spjuth O, Steinbeck
+C, Tenderholt A, Theisen K, Murray-Rust P: Open Data, Open Source and
+Open Standards in chemistry: the Blue Obelisk five years on.
+J Cheminformatics 2011, 3:37.
+
+50. Qt Framework 2012. [http://qt-project.org/]
+51. O’Boyle NM, Banck M, James CA, Morley C, Vandermeersch T, Hutchison
+
+GR: Open Babel: an open chemical toolbox. J Cheminf 2011, 3:33.
+52. Guennebaud G, Jacob B, et al.: Eigen v2. 2010. [http://eigen.tuxfamily.org]
+53. GNU General Public License v2.0 2012. [http://www.gnu.org/licenses/
+
+gpl-2.0.html]
+54. Sitzmann M, Filippov IV, Nicklaus MC: Internet resources integrating
+
+many small-molecule databases. SAR QSAR Environ Res 2008,
+19(1–2):1–9.
+
+55. Python Extensions - Avogadro wiki 2012. [http://avogadro.
+openmolecules.net/wiki/Python Extensions]
+
+56. Vandermeersch T: Python Example. 2009. [http://timvdm.blogspot.
+com/2009/05/using-avogadro-library-from-python.html]
+
+57. Python Scripting in Avogadro 2012. [http://avogadro.openmolecules.
+net/wiki/Category:Scripting]
+
+58. PyQt Scripting Example 2012. [https://gist.github.com/3194164]
+59. Vandermeersch T: Avogadro Python Terminal Tutorial 2012. [http://
+
+avogadro.openmolecules.net/wiki/Tutorials:Console]
+60. Compiling Avogadro on Windows 2012. [http://avogadro.
+
+openmolecules.net/wiki/Compiling on Windows]
+61. Compiling Avogadro on Linux 2012. [ http://avogadro.openmolecules.
+
+net/wiki/Compiling on Linux and Mac OS X]
+62. Hanwell MD: OpenQube. 2012. [http://www.openchemistry.org]
+63. OpenQube Source 2012. [http://github.com/OpenChemistry/
+
+openqube]
+64. Adams S, de Castro, P, Echenique P, Estrada J, Hanwell MD, Murray-Rust P,
+
+Sherwood P, Thomas J, Townsend JA: The Quixote project:
+Collaborative and Open Quantum Chemistry data management in
+the Internet age. J Cheminformatics 2011, 3:38.
+
+65. Weininger D: SMILES, a chemical language and information system. 1
+Introduction to methodology and encoding rules. J Chem Inf Comp Sci
+1988, 28:31–36.
+
+http://www.hyper.com/
+http://www.crystalmaker.com
+http://accelrys.com/products/materials-studio
+http://accelrys.com/products/materials-studio
+http://www.wavefun.com
+http://www.uku.fi/ thassine/projects/ghemical
+http://www.uku.fi/ thassine/projects/ghemical
+http://www.cse.scitech.ac.uk/ccg/software/ccp1gui
+http://www.cse.scitech.ac.uk/ccg/software/ccp1gui
+http://gabedit.sourceforge.net
+http://sourceforge.net/projects/avogadro/files/stats/timeline?dates=2006-04-14+to+2012-03-29
+http://sourceforge.net/projects/avogadro/files/stats/timeline?dates=2006-04-14+to+2012-03-29
+https://translations.launchpad.net/avogadro/trunk/+translations
+https://translations.launchpad.net/avogadro/trunk/+translations
+http://www.ohloh.net/p/avogadro/contributors
+http://www.ohloh.net/p/avogadro/contributors
+http://scholar.google.com/scholar?&amp;q=22http://avogadro.openmolecules.net/22
+http://scholar.google.com/scholar?&amp;q=22http://avogadro.openmolecules.net/22
+http://onlinelibrary.wiley.com/doi/10.1002/poc.2934/abstract?deniedAccessCustomisedMessage=&amp;use rIsAuthenticated=false
+http://onlinelibrary.wiley.com/doi/10.1002/poc.2934/abstract?deniedAccessCustomisedMessage=&amp;use rIsAuthenticated=false
+http://onlinelibrary.wiley.com/doi/10.1002/poc.2934/abstract?deniedAccessCustomisedMessage=&amp;use rIsAuthenticated=false
+http://qt-project.org/
+http://eigen.tuxfamily.org
+http://www.gnu.org/licenses/gpl-2.0.html
+http://www.gnu.org/licenses/gpl-2.0.html
+http://avogadro.openmolecules.net/wiki/Python_Extensions
+http://avogadro.openmolecules.net/wiki/Python_Extensions
+http://timvdm.blogspot.com/2009/05/using-avogadro-library-from-python.html
+http://timvdm.blogspot.com/2009/05/using-avogadro-library-from-python.html
+http://avogadro.openmolecules.net/wiki/Category:Scripting
+http://avogadro.openmolecules.net/wiki/Category:Scripting
+https://gist.github.com/3194164
+http://avogadro.openmolecules.net/wiki/Tutorials:Console
+http://avogadro.openmolecules.net/wiki/Tutorials:Console
+http://avogadro.openmolecules.net/wiki/Compiling_on_Windows
+http://avogadro.openmolecules.net/wiki/Compiling_on_Windows
+http://avogadro.openmolecules.net/wiki/Compiling_on_Linux_and_Mac_OS_X
+http://avogadro.openmolecules.net/wiki/Compiling_on_Linux_and_Mac_OS_X
+http://www.openchemistry.org
+http://github.com/OpenChemistry/openqube
+http://github.com/OpenChemistry/openqube
+
+
+Hanwell et al. Journal of Cheminformatics 2012, 4:17 Page 17 of 17
+http://www.jcheminf.com/content/4/1/17
+
+66. James CA, Willighagen EL, Dalke A, Landrum G, Apodaca R, Morley C:
+OpenSMILES. 2012. [http://opensmiles.org]
+
+67. Schmidt M, Baldridge K, Boatz J, Elbert S, Gordon M, Jensen J, Koseki S,
+Matsunaga N, Nguyen K, Su S, Windus T, Dupuis M, Montgomery J:
+General Atomic and Molecular Electronic-Structure System.
+J Comput Chem 1993, 14(11):1347–1363.
+
+68. Valiev M, Bylaska EJ, Govind N, Kowalski K, Straatsma TP, Van Dam HJJ,
+Wang D, Nieplocha J, Apra E, Windus TL, de Jong W: NWChem: a
+comprehensive and scalable open-source solution for large scale
+molecular simulations. Comput Phys Commun 2010, 181(9):1477–1489.
+
+69. Frisch MJ, Trucks GW, Schlegel HB, Scuseria GE, Robb MA, Cheeseman JR,
+Scalmani G, Barone V, Mennucci B, Petersson GA, Nakatsuji H, Caricato M,
+Li X, Hratchian HP, Izmaylov AF, Bloino J, Zheng G, Sonnenberg JL, Hada
+M, Ehara M, Toyota K, Fukuda R, Hasegawa J, Ishida M, Nakajima T, Honda
+Y, Kitao O, Nakai H, Vreven T, Montgomery JJA, et al.: Gaussian 09 Revision
+A.1. Wallingford CT: Gaussian Inc.; 2009.
+
+70. Shao Y, Molnar LF, Jung Y, Kussmann Jr, Ochsenfeld C, Brown ST, Gilbert
+ATB, Slipchenko LV, Levchenko SV, O Neill DP, DiStasio Jr RA, Lochan RC,
+Wang T, Beran GJO, Besley NA, Herbert JM, Yeh Lin C, Van Voorhis T, Hung
+Chien S, Sodt A, Steele RP, Rassolov VA, Maslen PE, Korambath PP,
+Adamson RD, Austin B, Baker J, Byrd EFC, Dachsel H, Doerksen R J, et al.:
+Advances in methods and algorithms in a modern quantum
+chemistry program package. Phys Chem Chem Phys 2006,
+8(27):3172–3191.
+
+71. Werner HJ, Knowles PJ, Knizia G, Manby FR, Schütz M, Celani P, Korona T,
+Lindh R, Mitrushenkov A, Rauhut G, Shamasundar KR, Adler TB, Amos RD,
+Bernhardsson A, Berning A, Cooper DL, Deegan MJO, Dobbyn AJ, Eckert F,
+Goll E, Hampel C, Hesselmann A, Hetzer G, Hrenar T, Jansen G, Köppl C,
+Liu Y, Lloyd AW, Mata RA, May AJ, et al.: MOLPRO, version 2010.1, a package
+of ab initio programs. Cardiff, UK ; 2010. See http://www.molpro.net
+
+72. Stewart JJP: MOPAC2009. Internet. USA: Colorado Springs CO; 2008.
+[http://openmopac.net]
+
+73. Gilbert ATB: QUI - The Q-Chem User Interface 2008. [http://rsc.anu.edu.
+au/agilbert/gilbertspace/qui.php]
+
+74. Werner HJ, Knowles PJ, Knizia G, Manby FR, Schütz M: Molpro: a
+general-purpose quantum chemistry program package. Wiley
+Interdisciplinary Rev: Comput Mol Sci 2012, 2(2):242–253. [http://dx.doi.org/
+10.1002/wcms.82]
+
+75. Mart́ınez L, Andrade R, Birgin EG, Mart́ınez JM: Packmol: a package for
+building initial configurations for molecular dynamics simulations.
+J Comp Chem 2009, 30(13):2157–2164.
+
+76. Mart́ınez JM, Martı́nez L: Packing optimization for automated
+generation of complex system’s initial configurations for molecular
+dynamics and docking. J Comp Chem 2003, 24(7):819–825.
+
+77. Lonie D, Zurek E: XtalOpt. 2011. [http://xtalopt.openmolecules.net]
+78. Lonie D, Zurek E: XtalOpt: an Open-Source Evolutionary Algorithm for
+
+Crystal Structure Prediction. Comput Phys Commun 2011, 182:372–387.
+
+doi:10.1186/1758-2946-4-17
+Cite this article as: Hanwell et al.: Avogadro: an advanced semantic chem-
+ical editor, visualization, and analysis platform. Journal of Cheminformatics
+2012 4:17.
+
+Open access provides opportunities to our 
+colleagues in other parts of the globe, by allowing 
+
+anyone to view the content free of charge.
+
+Publish with ChemistryCentral and every
+scientist can read your work free of charge
+
+W. Jeffery Hurst, The Hershey Company.
+
+available free of charge to the entire scientific community
+peer reviewed and published immediately upon acceptance
+cited in PubMed and archived on PubMed Central
+yours     you keep the copyright
+
+Submit your manuscript here:
+http://www.chemistrycentral.com/manuscript/
+
+http://opensmiles.org
+http://www.molpro.net
+http://openmopac.net
+http://rsc.anu.edu.au/ agilbert/gilbertspace/qui.php
+http://rsc.anu.edu.au/ agilbert/gilbertspace/qui.php
+http://dx.doi.org/10.1002/wcms.82
+http://dx.doi.org/10.1002/wcms.82
+http://xtalopt.openmolecules.net
+
+	Abstract
+	Background
+	Results
+	Conclusions
+
+	Background
+	Implementation
+	Software architecture
+	Plugin interface
+	Display types
+	Tools
+	Extensions
+	Colors
+	Python scripting
+
+	Results and discussion
+	The graphical user interface
+	Semantic chemistry
+	Building a molecule: atom by atom
+	Building a molecule: from fragments
+	Preparing input for quantum codes
+	Alignment and measurements
+	Visualization
+	Standard representations
+	Quantum calculations and electronic structure
+	Secondary biological structure
+	GLSL, novel visualization
+	Ray tracing
+
+	Avogadro library in use
+	Packmol
+	XtalOpt
+
+
+	Conclusions
+	Availability and requirements
+	Competing interests
+	Authors' contributions
+	Acknowledgements
+	Author details
+	References
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<<
+  /ASCII85EncodePages false
+  /AllowTransparency false
+  /AutoPositionEPSFiles true
+  /AutoRotatePages /PageByPage
+  /Binding /Left
+  /CalGrayProfile (Dot Gain 20%)
+  /CalRGBProfile (sRGB IEC61966-2.1)
+  /CalCMYKProfile (U.S. Web Coated \050SWOP\051 v2)
+  /sRGBProfile (sRGB IEC61966-2.1)
+  /CannotEmbedFontPolicy /Error
+  /CompatibilityLevel 1.4
+  /CompressObjects /Tags
+  /CompressPages true
+  /ConvertImagesToIndexed true
+  /PassThroughJPEGImages true
+  /CreateJobTicket false
+  /DefaultRenderingIntent /Default
+  /DetectBlends true
+  /DetectCurves 0.0000
+  /ColorConversionStrategy /LeaveColorUnchanged
+  /DoThumbnails true
+  /EmbedAllFonts true
+  /EmbedOpenType false
+  /ParseICCProfilesInComments true
+  /EmbedJobOptions true
+  /DSCReportingLevel 0
+  /EmitDSCWarnings false
+  /EndPage -1
+  /ImageMemory 1048576
+  /LockDistillerParams true
+  /MaxSubsetPct 100
+  /Optimize true
+  /OPM 1
+  /ParseDSCComments true
+  /ParseDSCCommentsForDocInfo true
+  /PreserveCopyPage true
+  /PreserveDICMYKValues true
+  /PreserveEPSInfo true
+  /PreserveFlatness true
+  /PreserveHalftoneInfo false
+  /PreserveOPIComments false
+  /PreserveOverprintSettings true
+  /StartPage 1
+  /SubsetFonts true
+  /TransferFunctionInfo /Apply
+  /UCRandBGInfo /Preserve
+  /UsePrologue false
+  /ColorSettingsFile ()
+  /AlwaysEmbed [ true
+  ]
+  /NeverEmbed [ true
+  ]
+  /AntiAliasColorImages false
+  /CropColorImages true
+  /ColorImageMinResolution 300
+  /ColorImageMinResolutionPolicy /OK
+  /DownsampleColorImages true
+  /ColorImageDownsampleType /Bicubic
+  /ColorImageResolution 300
+  /ColorImageDepth -1
+  /ColorImageMinDownsampleDepth 1
+  /ColorImageDownsampleThreshold 1.50000
+  /EncodeColorImages true
+  /ColorImageFilter /DCTEncode
+  /AutoFilterColorImages true
+  /ColorImageAutoFilterStrategy /JPEG
+  /ColorACSImageDict <<
+    /QFactor 0.15
+    /HSamples [1 1 1 1] /VSamples [1 1 1 1]
+  >>
+  /ColorImageDict <<
+    /QFactor 0.15
+    /HSamples [1 1 1 1] /VSamples [1 1 1 1]
+  >>
+  /JPEG2000ColorACSImageDict <<
+    /TileWidth 256
+    /TileHeight 256
+    /Quality 30
+  >>
+  /JPEG2000ColorImageDict <<
+    /TileWidth 256
+    /TileHeight 256
+    /Quality 30
+  >>
+  /AntiAliasGrayImages false
+  /CropGrayImages true
+  /GrayImageMinResolution 300
+  /GrayImageMinResolutionPolicy /OK
+  /DownsampleGrayImages true
+  /GrayImageDownsampleType /Bicubic
+  /GrayImageResolution 300
+  /GrayImageDepth -1
+  /GrayImageMinDownsampleDepth 2
+  /GrayImageDownsampleThreshold 1.50000
+  /EncodeGrayImages true
+  /GrayImageFilter /DCTEncode
+  /AutoFilterGrayImages true
+  /GrayImageAutoFilterStrategy /JPEG
+  /GrayACSImageDict <<
+    /QFactor 0.15
+    /HSamples [1 1 1 1] /VSamples [1 1 1 1]
+  >>
+  /GrayImageDict <<
+    /QFactor 0.15
+    /HSamples [1 1 1 1] /VSamples [1 1 1 1]
+  >>
+  /JPEG2000GrayACSImageDict <<
+    /TileWidth 256
+    /TileHeight 256
+    /Quality 30
+  >>
+  /JPEG2000GrayImageDict <<
+    /TileWidth 256
+    /TileHeight 256
+    /Quality 30
+  >>
+  /AntiAliasMonoImages false
+  /CropMonoImages true
+  /MonoImageMinResolution 1200
+  /MonoImageMinResolutionPolicy /OK
+  /DownsampleMonoImages true
+  /MonoImageDownsampleType /Bicubic
+  /MonoImageResolution 1200
+  /MonoImageDepth -1
+  /MonoImageDownsampleThreshold 1.50000
+  /EncodeMonoImages true
+  /MonoImageFilter /CCITTFaxEncode
+  /MonoImageDict <<
+    /K -1
+  >>
+  /AllowPSXObjects false
+  /CheckCompliance [
+    /None
+  ]
+  /PDFX1aCheck false
+  /PDFX3Check false
+  /PDFXCompliantPDFOnly false
+  /PDFXNoTrimBoxError true
+  /PDFXTrimBoxToMediaBoxOffset [
+    0.00000
+    0.00000
+    0.00000
+    0.00000
+  ]
+  /PDFXSetBleedBoxToMediaBox true
+  /PDFXBleedBoxToTrimBoxOffset [
+    0.00000
+    0.00000
+    0.00000
+    0.00000
+  ]
+  /PDFXOutputIntentProfile (None)
+  /PDFXOutputConditionIdentifier ()
+  /PDFXOutputCondition ()
+  /PDFXRegistryName ()
+  /PDFXTrapped /False
+
+  /CreateJDFFile false
+  /Description <<
+    /ARA <FEFF06270633062A062E062F0645002006470630064700200627064406250639062F0627062F0627062A002006440625064606340627062100200648062B062706260642002000410064006F00620065002000500044004600200645062A0648062706410642062900200644064406370628062706390629002006300627062A002006270644062C0648062F0629002006270644063906270644064A06290020064506460020062E06440627064400200627064406370627062806390627062A00200627064406450643062A0628064A062900200623064800200623062C06470632062900200625062C06310627062100200627064406280631064806410627062A061B0020064A06450643064600200641062A062D00200648062B0627062606420020005000440046002006270644064506460634062306290020062806270633062A062E062F062706450020004100630072006F0062006100740020064800410064006F006200650020005200650061006400650072002006250635062F0627063100200035002E0030002006480627064406250635062F062706310627062A0020062706440623062D062F062B002E0020064506390020005000440046002F0041060C0020062706440631062C062706210020064506310627062C063906290020062F0644064A0644002006450633062A062E062F06450020004100630072006F006200610074061B0020064A06450643064600200641062A062D00200648062B0627062606420020005000440046002006270644064506460634062306290020062806270633062A062E062F062706450020004100630072006F0062006100740020064800410064006F006200650020005200650061006400650072002006250635062F0627063100200035002E0030002006480627064406250635062F062706310627062A0020062706440623062D062F062B002E>
+    /BGR <FEFF04180437043f043e043b043704320430043904420435002004420435043704380020043d0430044104420440043e0439043a0438002c00200437043000200434043000200441044a0437043404300432043004420435002000410064006f00620065002000500044004600200434043e043a0443043c0435043d044204380020043704300020043a0430044704350441044204320435043d0020043f04350447043004420020043d04300020043d043004410442043e043b043d04380020043f04400438043d04420435044004380020043800200443044104420440043e043904410442043204300020043704300020043f04350447043004420020043d04300020043f0440043e0431043d04380020044004300437043f0435044704300442043a0438002e002000200421044a04370434043004340435043d043804420435002000500044004600200434043e043a0443043c0435043d044204380020043c043e0433043004420020043404300020044104350020043e0442043204300440044f0442002004410020004100630072006f00620061007400200438002000410064006f00620065002000520065006100640065007200200035002e00300020043800200441043b0435043404320430044904380020043204350440044104380438002e>
+    /CHS <FEFF4f7f75288fd94e9b8bbe5b9a521b5efa7684002000500044004600206587686353ef901a8fc7684c976262535370673a548c002000700072006f006f00660065007200208fdb884c9ad88d2891cf62535370300260a853ef4ee54f7f75280020004100630072006f0062006100740020548c002000410064006f00620065002000520065006100640065007200200035002e003000204ee553ca66f49ad87248672c676562535f00521b5efa768400200050004400460020658768633002>
+    /CHT <FEFF4f7f752890194e9b8a2d7f6e5efa7acb7684002000410064006f006200650020005000440046002065874ef653ef5728684c9762537088686a5f548c002000700072006f006f00660065007200204e0a73725f979ad854c18cea7684521753706548679c300260a853ef4ee54f7f75280020004100630072006f0062006100740020548c002000410064006f00620065002000520065006100640065007200200035002e003000204ee553ca66f49ad87248672c4f86958b555f5df25efa7acb76840020005000440046002065874ef63002>
+    /CZE <FEFF005400610074006f0020006e006100730074006100760065006e00ed00200070006f0075017e0069006a007400650020006b0020007600790074007600e101590065006e00ed00200064006f006b0075006d0065006e0074016f002000410064006f006200650020005000440046002000700072006f0020006b00760061006c00690074006e00ed0020007400690073006b0020006e0061002000730074006f006c006e00ed006300680020007400690073006b00e10072006e00e100630068002000610020006e00e1007400690073006b006f007600fd006300680020007a0061015900ed007a0065006e00ed00630068002e002000200056007900740076006f01590065006e00e900200064006f006b0075006d0065006e007400790020005000440046002000620075006400650020006d006f017e006e00e90020006f007400650076015900ed007400200076002000700072006f006700720061006d0065006300680020004100630072006f00620061007400200061002000410064006f00620065002000520065006100640065007200200035002e0030002000610020006e006f0076011b006a016100ed00630068002e>
+    /DAN <FEFF004200720075006700200069006e0064007300740069006c006c0069006e006700650072006e0065002000740069006c0020006100740020006f007000720065007400740065002000410064006f006200650020005000440046002d0064006f006b0075006d0065006e007400650072002000740069006c0020006b00760061006c00690074006500740073007500640073006b007200690076006e0069006e006700200065006c006c006500720020006b006f007200720065006b007400750072006c00e60073006e0069006e0067002e0020004400650020006f007000720065007400740065006400650020005000440046002d0064006f006b0075006d0065006e0074006500720020006b0061006e002000e50062006e00650073002000690020004100630072006f00620061007400200065006c006c006500720020004100630072006f006200610074002000520065006100640065007200200035002e00300020006f00670020006e0079006500720065002e>
+    /DEU <FEFF00560065007200770065006e00640065006e0020005300690065002000640069006500730065002000450069006e007300740065006c006c0075006e00670065006e0020007a0075006d002000450072007300740065006c006c0065006e00200076006f006e002000410064006f006200650020005000440046002d0044006f006b0075006d0065006e00740065006e002c00200076006f006e002000640065006e0065006e002000530069006500200068006f00630068007700650072007400690067006500200044007200750063006b006500200061007500660020004400650073006b0074006f0070002d0044007200750063006b00650072006e00200075006e0064002000500072006f006f0066002d00470065007200e400740065006e002000650072007a0065007500670065006e0020006d00f60063006800740065006e002e002000450072007300740065006c006c007400650020005000440046002d0044006f006b0075006d0065006e007400650020006b00f6006e006e0065006e0020006d006900740020004100630072006f00620061007400200075006e0064002000410064006f00620065002000520065006100640065007200200035002e00300020006f0064006500720020006800f600680065007200200067006500f600660066006e00650074002000770065007200640065006e002e>
+    /ESP <FEFF005500740069006c0069006300650020006500730074006100200063006f006e0066006900670075007200610063006900f3006e0020007000610072006100200063007200650061007200200064006f00630075006d0065006e0074006f0073002000640065002000410064006f0062006500200050004400460020007000610072006100200063006f006e00730065006700750069007200200069006d0070007200650073006900f3006e002000640065002000630061006c006900640061006400200065006e00200069006d0070007200650073006f0072006100730020006400650020006500730063007200690074006f00720069006f00200079002000680065007200720061006d00690065006e00740061007300200064006500200063006f00720072006500630063006900f3006e002e002000530065002000700075006500640065006e00200061006200720069007200200064006f00630075006d0065006e0074006f00730020005000440046002000630072006500610064006f007300200063006f006e0020004100630072006f006200610074002c002000410064006f00620065002000520065006100640065007200200035002e003000200079002000760065007200730069006f006e0065007300200070006f00730074006500720069006f007200650073002e>
+    /ETI <FEFF004b00610073007500740061006700650020006e0065006900640020007300e4007400740065006900640020006c006100750061002d0020006a00610020006b006f006e00740072006f006c006c007400f5006d006d006900730065007000720069006e0074006500720069007400650020006a0061006f006b00730020006b00760061006c006900740065006500740073006500740065002000410064006f006200650020005000440046002d0064006f006b0075006d0065006e00740069006400650020006c006f006f006d006900730065006b0073002e002e00200020004c006f006f0064007500640020005000440046002d0064006f006b0075006d0065006e00740065002000730061006100740065002000610076006100640061002000700072006f006700720061006d006d006900640065006700610020004100630072006f0062006100740020006e0069006e0067002000410064006f00620065002000520065006100640065007200200035002e00300020006a00610020007500750065006d006100740065002000760065007200730069006f006f006e00690064006500670061002e000d000a>
+    /FRA <FEFF005500740069006c006900730065007a00200063006500730020006f007000740069006f006e00730020006100660069006e00200064006500200063007200e900650072002000640065007300200064006f00630075006d0065006e00740073002000410064006f00620065002000500044004600200070006f007500720020006400650073002000e90070007200650075007600650073002000650074002000640065007300200069006d007000720065007300730069006f006e00730020006400650020006800610075007400650020007100750061006c0069007400e90020007300750072002000640065007300200069006d007000720069006d0061006e0074006500730020006400650020006200750072006500610075002e0020004c0065007300200064006f00630075006d0065006e00740073002000500044004600200063007200e900e90073002000700065007500760065006e0074002000ea0074007200650020006f007500760065007200740073002000640061006e00730020004100630072006f006200610074002c002000610069006e00730069002000710075002700410064006f00620065002000520065006100640065007200200035002e0030002000650074002000760065007200730069006f006e007300200075006c007400e90072006900650075007200650073002e>
+    /GRE <FEFF03a703c103b703c303b903bc03bf03c003bf03b903ae03c303c403b5002003b103c503c403ad03c2002003c403b903c2002003c103c503b803bc03af03c303b503b903c2002003b303b903b1002003bd03b1002003b403b703bc03b903bf03c503c103b303ae03c303b503c403b5002003ad03b303b303c103b103c603b1002000410064006f006200650020005000440046002003b303b903b1002003b503ba03c403cd03c003c903c303b7002003c003bf03b903cc03c403b703c403b103c2002003c303b5002003b503ba03c403c503c003c903c403ad03c2002003b303c103b103c603b503af03bf03c5002003ba03b103b9002003b403bf03ba03b903bc03b103c303c403ad03c2002e0020002003a403b10020005000440046002003ad03b303b303c103b103c603b1002003c003bf03c5002003ad03c703b503c403b5002003b403b703bc03b903bf03c503c103b303ae03c303b503b9002003bc03c003bf03c103bf03cd03bd002003bd03b1002003b103bd03bf03b903c703c403bf03cd03bd002003bc03b5002003c403bf0020004100630072006f006200610074002c002003c403bf002000410064006f006200650020005200650061006400650072002000200035002e0030002003ba03b103b9002003bc03b503c403b103b303b503bd03ad03c303c403b503c103b503c2002003b503ba03b403cc03c303b503b903c2002e>
+    /HEB <FEFF05D405E905EA05DE05E905D5002005D105D405D205D305E805D505EA002005D005DC05D4002005DB05D305D9002005DC05D905E605D505E8002005DE05E105DE05DB05D9002000410064006F006200650020005000440046002005E205D105D505E8002005D405D305E405E105D4002005D005D905DB05D505EA05D905EA002005D105DE05D305E405E105D505EA002005E905D505DC05D705E005D905D505EA002005D505DB05DC05D9002005D405D205D405D4002E002005DE05E105DE05DB05D9002005D4002D005000440046002005E905E005D505E605E805D905DD002005E005D905EA05E005D905DD002005DC05E405EA05D905D705D4002005D105D005DE05E605E205D505EA0020004100630072006F006200610074002005D5002D00410064006F00620065002000520065006100640065007200200035002E0030002005D505D205E805E105D005D505EA002005DE05EA05E705D305DE05D505EA002005D905D505EA05E8002E>
+    /HRV <FEFF005a00610020007300740076006100720061006e006a0065002000410064006f00620065002000500044004600200064006f006b0075006d0065006e0061007400610020007a00610020006b00760061006c00690074006500740061006e0020006900730070006900730020006e006100200070006900730061010d0069006d006100200069006c0069002000700072006f006f006600650072002000750072006501110061006a0069006d0061002e00200020005300740076006f00720065006e0069002000500044004600200064006f006b0075006d0065006e007400690020006d006f006700750020007300650020006f00740076006f00720069007400690020004100630072006f00620061007400200069002000410064006f00620065002000520065006100640065007200200035002e0030002000690020006b00610073006e0069006a0069006d0020007600650072007a0069006a0061006d0061002e>
+    /HUN <FEFF004d0069006e0151007300e9006700690020006e0079006f006d00610074006f006b0020006b00e90073007a00ed007400e9007300e900680065007a002000610073007a00740061006c00690020006e0079006f006d00740061007400f3006b006f006e002000e9007300200070007200f300620061006e0079006f006d00f3006b006f006e00200065007a0065006b006b0065006c0020006100200062006500e1006c006c00ed007400e10073006f006b006b0061006c002c00200068006f007a007a006f006e0020006c00e9007400720065002000410064006f00620065002000500044004600200064006f006b0075006d0065006e00740075006d006f006b00610074002e0020002000410020006c00e90074007200650068006f007a006f00740074002000500044004600200064006f006b0075006d0065006e00740075006d006f006b00200061007a0020004100630072006f006200610074002c00200061007a002000410064006f00620065002000520065006100640065007200200035002e0030002000e9007300200061007a002000610074007400f3006c0020006b00e9007301510062006200690020007600650072007a006900f3006b006b0061006c00200020006e00790069007400680061007400f3006b0020006d00650067002e>
+    /ITA <FEFF005500740069006c0069007a007a006100720065002000710075006500730074006500200069006d0070006f007300740061007a0069006f006e00690020007000650072002000630072006500610072006500200064006f00630075006d0065006e00740069002000410064006f006200650020005000440046002000700065007200200075006e00610020007300740061006d007000610020006400690020007100750061006c0069007400e00020007300750020007300740061006d00700061006e0074006900200065002000700072006f006f0066006500720020006400650073006b0074006f0070002e0020004900200064006f00630075006d0065006e007400690020005000440046002000630072006500610074006900200070006f00730073006f006e006f0020006500730073006500720065002000610070006500720074006900200063006f006e0020004100630072006f00620061007400200065002000410064006f00620065002000520065006100640065007200200035002e003000200065002000760065007200730069006f006e006900200073007500630063006500730073006900760065002e>
+    /JPN <FEFF9ad854c18cea51fa529b7528002000410064006f0062006500200050004400460020658766f8306e4f5c6210306b4f7f75283057307e30593002537052376642306e753b8cea3092670059279650306b4fdd306430533068304c3067304d307e3059300230c730b930af30c830c330d730d730ea30f330bf3067306e53705237307e305f306f30d730eb30fc30d57528306b9069305730663044307e305930023053306e8a2d5b9a30674f5c62103055308c305f0020005000440046002030d530a130a430eb306f3001004100630072006f0062006100740020304a30883073002000410064006f00620065002000520065006100640065007200200035002e003000204ee5964d3067958b304f30533068304c3067304d307e30593002>
+    /KOR <FEFFc7740020c124c815c7440020c0acc6a9d558c5ec0020b370c2a4d06cd0d10020d504b9b0d1300020bc0f0020ad50c815ae30c5d0c11c0020ace0d488c9c8b85c0020c778c1c4d560002000410064006f0062006500200050004400460020bb38c11cb97c0020c791c131d569b2c8b2e4002e0020c774b807ac8c0020c791c131b41c00200050004400460020bb38c11cb2940020004100630072006f0062006100740020bc0f002000410064006f00620065002000520065006100640065007200200035002e00300020c774c0c1c5d0c11c0020c5f40020c2180020c788c2b5b2c8b2e4002e>
+    /LTH <FEFF004e006100750064006f006b0069007400650020016100690075006f007300200070006100720061006d006500740072007500730020006e006f0072011700640061006d00690020006b0075007200740069002000410064006f00620065002000500044004600200064006f006b0075006d0065006e007400750073002c0020006b007500720069006500200073006b00690072007400690020006b006f006b0079006200690161006b0061006900200073007000610075007300640069006e007400690020007300740061006c0069006e0069006100690073002000690072002000620061006e00640079006d006f00200073007000610075007300640069006e007400750076006100690073002e0020002000530075006b0075007200740069002000500044004600200064006f006b0075006d0065006e007400610069002000670061006c006900200062016b007400690020006100740069006400610072006f006d00690020004100630072006f006200610074002000690072002000410064006f00620065002000520065006100640065007200200035002e0030002000610072002000760117006c00650073006e0117006d00690073002000760065007200730069006a006f006d00690073002e>
+    /LVI <FEFF0049007a006d0061006e0074006f006a00690065007400200161006f00730020006900650073007400610074012b006a0075006d00750073002c0020006c0061006900200069007a0076006500690064006f00740075002000410064006f00620065002000500044004600200064006f006b0075006d0065006e0074007500730020006b00760061006c0069007400610074012b0076006100690020006400720075006b010101610061006e00610069002000610072002000670061006c006400610020007000720069006e00740065007200690065006d00200075006e0020007000610072006100750067006e006f00760069006c006b0075006d0075002000690065007300700069006500640113006a00690065006d002e00200049007a0076006500690064006f006a006900650074002000500044004600200064006f006b0075006d0065006e007400750073002c0020006b006f002000760061007200200061007400760113007200740020006100720020004100630072006f00620061007400200075006e002000410064006f00620065002000520065006100640065007200200035002e0030002c0020006b0101002000610072012b00200074006f0020006a00610075006e0101006b0101006d002000760065007200730069006a0101006d002e>
+    /NLD (Gebruik deze instellingen om Adobe PDF-documenten te maken voor kwaliteitsafdrukken op desktopprinters en proofers. De gemaakte PDF-documenten kunnen worden geopend met Acrobat en Adobe Reader 5.0 en hoger.)
+    /NOR <FEFF004200720075006b00200064006900730073006500200069006e006e007300740069006c006c0069006e00670065006e0065002000740069006c002000e50020006f0070007000720065007400740065002000410064006f006200650020005000440046002d0064006f006b0075006d0065006e00740065007200200066006f00720020007500740073006b00720069006600740020006100760020006800f800790020006b00760061006c00690074006500740020007000e500200062006f007200640073006b0072006900760065007200200065006c006c00650072002000700072006f006f006600650072002e0020005000440046002d0064006f006b0075006d0065006e00740065006e00650020006b0061006e002000e50070006e00650073002000690020004100630072006f00620061007400200065006c006c00650072002000410064006f00620065002000520065006100640065007200200035002e003000200065006c006c00650072002000730065006e006500720065002e>
+    /POL <FEFF0055007300740061007700690065006e0069006100200064006f002000740077006f0072007a0065006e0069006100200064006f006b0075006d0065006e007400f3007700200050004400460020007a002000770079017c0073007a010500200072006f007a0064007a00690065006c0063007a006f015b0063006901050020006f006200720061007a006b00f30077002c0020007a0061007000650077006e00690061006a0105006301050020006c006500700073007a01050020006a0061006b006f015b0107002000770079006400720075006b00f30077002e00200044006f006b0075006d0065006e0074007900200050004400460020006d006f017c006e00610020006f007400770069006500720061010700200077002000700072006f006700720061006d006900650020004100630072006f00620061007400200069002000410064006f00620065002000520065006100640065007200200035002e0030002000690020006e006f00770073007a0079006d002e>
+    /PTB <FEFF005500740069006c0069007a006500200065007300730061007300200063006f006e00660069006700750072006100e700f50065007300200064006500200066006f0072006d00610020006100200063007200690061007200200064006f00630075006d0065006e0074006f0073002000410064006f0062006500200050004400460020007000610072006100200069006d0070007200650073007300f5006500730020006400650020007100750061006c0069006400610064006500200065006d00200069006d00700072006500730073006f0072006100730020006400650073006b0074006f00700020006500200064006900730070006f00730069007400690076006f0073002000640065002000700072006f00760061002e0020004f007300200064006f00630075006d0065006e0074006f00730020005000440046002000630072006900610064006f007300200070006f00640065006d0020007300650072002000610062006500720074006f007300200063006f006d0020006f0020004100630072006f006200610074002000650020006f002000410064006f00620065002000520065006100640065007200200035002e0030002000650020007600650072007300f50065007300200070006f00730074006500720069006f007200650073002e>
+    /RUM <FEFF005500740069006c0069007a00610163006900200061006300650073007400650020007300650074010300720069002000700065006e007400720075002000610020006300720065006100200064006f00630075006d0065006e00740065002000410064006f006200650020005000440046002000700065006e007400720075002000740069007001030072006900720065002000640065002000630061006c006900740061007400650020006c006100200069006d007000720069006d0061006e007400650020006400650073006b0074006f00700020015f0069002000700065006e0074007200750020007600650072006900660069006300610074006f00720069002e002000200044006f00630075006d0065006e00740065006c00650020005000440046002000630072006500610074006500200070006f00740020006600690020006400650073006300680069007300650020006300750020004100630072006f006200610074002c002000410064006f00620065002000520065006100640065007200200035002e00300020015f00690020007600650072007300690075006e0069006c006500200075006c0074006500720069006f006100720065002e>
+    /RUS <FEFF04180441043f043e043b044c04370443043904420435002004340430043d043d044b04350020043d0430044104420440043e0439043a043800200434043b044f00200441043e043704340430043d0438044f00200434043e043a0443043c0435043d0442043e0432002000410064006f006200650020005000440046002c0020043f044004350434043d04300437043d043004470435043d043d044b044500200434043b044f0020043a0430044704350441044204320435043d043d043e04390020043f043504470430044204380020043d04300020043d043004410442043e043b044c043d044b04450020043f04400438043d044204350440043004450020043800200443044104420440043e04390441044204320430044500200434043b044f0020043f043e043b044304470435043d0438044f0020043f0440043e0431043d044b04450020043e0442044204380441043a043e0432002e002000200421043e043704340430043d043d044b04350020005000440046002d0434043e043a0443043c0435043d0442044b0020043c043e0436043d043e00200020043e0442043a0440044b043204300442044c002004410020043f043e043c043e0449044c044e0020004100630072006f00620061007400200438002000410064006f00620065002000520065006100640065007200200035002e00300020043800200431043e043b043504350020043f043e04370434043d043804450020043204350440044104380439002e>
+    /SKY <FEFF0054006900650074006f0020006e006100730074006100760065006e0069006100200070006f0075017e0069007400650020006e00610020007600790074007600e100720061006e0069006500200064006f006b0075006d0065006e0074006f0076002000410064006f00620065002000500044004600200070007200650020006b00760061006c00690074006e00fa00200074006c0061010d0020006e0061002000730074006f006c006e00fd0063006800200074006c0061010d00690061007201480061006300680020006100200074006c0061010d006f007600fd006300680020007a006100720069006100640065006e0069006100630068002e00200056007900740076006f00720065006e00e900200064006f006b0075006d0065006e007400790020005000440046002000620075006400650020006d006f017e006e00e90020006f00740076006f00720069016500200076002000700072006f006700720061006d006f006300680020004100630072006f00620061007400200061002000410064006f00620065002000520065006100640065007200200035002e0030002000610020006e006f0076016100ed00630068002e000d000a>
+    /SLV <FEFF005400650020006e006100730074006100760069007400760065002000750070006f0072006100620069007400650020007a00610020007500730074007600610072006a0061006e006a006500200064006f006b0075006d0065006e0074006f0076002000410064006f0062006500200050004400460020007a00610020006b0061006b006f0076006f00730074006e006f0020007400690073006b0061006e006a00650020006e00610020006e0061006d0069007a006e006900680020007400690073006b0061006c006e0069006b0069006800200069006e0020007000720065007600650072006a0061006c006e0069006b00690068002e00200020005500730074007600610072006a0065006e006500200064006f006b0075006d0065006e0074006500200050004400460020006a00650020006d006f0067006f010d00650020006f0064007000720065007400690020007a0020004100630072006f00620061007400200069006e002000410064006f00620065002000520065006100640065007200200035002e003000200069006e0020006e006f00760065006a01610069006d002e>
+    /SUO <FEFF004b00e40079007400e40020006e00e40069007400e4002000610073006500740075006b007300690061002c0020006b0075006e0020006c0075006f0074002000410064006f0062006500200050004400460020002d0064006f006b0075006d0065006e007400740065006a00610020006c0061006100640075006b006100730074006100200074007900f6007000f60079007400e400740075006c006f0073007400750073007400610020006a00610020007600650064006f007300740075007300740061002000760061007200740065006e002e00200020004c0075006f0064007500740020005000440046002d0064006f006b0075006d0065006e00740069007400200076006f0069006400610061006e0020006100760061007400610020004100630072006f0062006100740069006c006c00610020006a0061002000410064006f00620065002000520065006100640065007200200035002e0030003a006c006c00610020006a006100200075007500640065006d006d0069006c006c0061002e>
+    /SVE <FEFF0041006e007600e4006e00640020006400650020006800e4007200200069006e0073007400e4006c006c006e0069006e006700610072006e00610020006f006d002000640075002000760069006c006c00200073006b006100700061002000410064006f006200650020005000440046002d0064006f006b0075006d0065006e00740020006600f600720020006b00760061006c00690074006500740073007500740073006b0072006900660074006500720020007000e5002000760061006e006c00690067006100200073006b0072006900760061007200650020006f006300680020006600f600720020006b006f007200720065006b007400750072002e002000200053006b006100700061006400650020005000440046002d0064006f006b0075006d0065006e00740020006b0061006e002000f600700070006e00610073002000690020004100630072006f0062006100740020006f00630068002000410064006f00620065002000520065006100640065007200200035002e00300020006f00630068002000730065006e006100720065002e>
+    /TUR <FEFF004d00610073006100fc0073007400fc002000790061007a013100630131006c006100720020007600650020006200610073006b01310020006d0061006b0069006e0065006c006500720069006e006400650020006b0061006c006900740065006c00690020006200610073006b013100200061006d0061006301310079006c0061002000410064006f006200650020005000440046002000620065006c00670065006c0065007200690020006f006c0075015f007400750072006d0061006b0020006900e70069006e00200062007500200061007900610072006c0061007201310020006b0075006c006c0061006e0131006e002e00200020004f006c0075015f0074007500720075006c0061006e0020005000440046002000620065006c00670065006c0065007200690020004100630072006f006200610074002000760065002000410064006f00620065002000520065006100640065007200200035002e003000200076006500200073006f006e0072006100730131006e00640061006b00690020007300fc007200fc006d006c00650072006c00650020006100e70131006c006100620069006c00690072002e>
+    /UKR <FEFF04120438043a043e0440043804410442043e043204430439044204350020044604560020043f043004400430043c043504420440043800200434043b044f0020044104420432043e04400435043d043d044f00200434043e043a0443043c0435043d044204560432002000410064006f006200650020005000440046002c0020044f043a04560020043d04300439043a04400430044904350020043f045604340445043e0434044f0442044c00200434043b044f0020043204380441043e043a043e044f043a04560441043d043e0433043e0020043404400443043a04430020043d04300020043d0430044104420456043b044c043d043804450020043f04400438043d044204350440043004450020044204300020043f04400438044104420440043e044f044500200434043b044f0020043e044204400438043c0430043d043d044f0020043f0440043e0431043d0438044500200437043e04310440043004360435043d044c002e00200020042104420432043e04400435043d045600200434043e043a0443043c0435043d0442043800200050004400460020043c043e0436043d04300020043204560434043a0440043804420438002004430020004100630072006f006200610074002004420430002000410064006f00620065002000520065006100640065007200200035002e0030002004300431043e0020043f04560437043d04560448043e04570020043204350440044104560457002e>
+    /ENU (Use these settings to create Adobe PDF documents for quality printing on desktop printers and proofers.  Created PDF documents can be opened with Acrobat and Adobe Reader 5.0 and later.)
+  >>
+  /Namespace [
+    (Adobe)
+    (Common)
+    (1.0)
+  ]
+  /OtherNamespaces [
+    <<
+      /AsReaderSpreads false
+      /CropImagesToFrames true
+      /ErrorControl /WarnAndContinue
+      /FlattenerIgnoreSpreadOverrides false
+      /IncludeGuidesGrids false
+      /IncludeNonPrinting false
+      /IncludeSlug false
+      /Namespace [
+        (Adobe)
+        (InDesign)
+        (4.0)
+      ]
+      /OmitPlacedBitmaps false
+      /OmitPlacedEPS false
+      /OmitPlacedPDF false
+      /SimulateOverprint /Legacy
+    >>
+    <<
+      /AddBleedMarks false
+      /AddColorBars false
+      /AddCropMarks false
+      /AddPageInfo false
+      /AddRegMarks false
+      /ConvertColors /NoConversion
+      /DestinationProfileName ()
+      /DestinationProfileSelector /NA
+      /Downsample16BitImages true
+      /FlattenerPreset <<
+        /PresetSelector /MediumResolution
+      >>
+      /FormElements false
+      /GenerateStructure true
+      /IncludeBookmarks false
+      /IncludeHyperlinks false
+      /IncludeInteractive false
+      /IncludeLayers false
+      /IncludeProfiles true
+      /MultimediaHandling /UseObjectSettings
+      /Namespace [
+        (Adobe)
+        (CreativeSuite)
+        (2.0)
+      ]
+      /PDFXOutputIntentProfileSelector /NA
+      /PreserveEditing true
+      /UntaggedCMYKHandling /LeaveUntagged
+      /UntaggedRGBHandling /LeaveUntagged
+      /UseDocumentBleed false
+    >>
+  ]
+>> setdistillerparams
+<<
+  /HWResolution [2400 2400]
+  /PageSize [595.440 793.440]
+>> setpagedevice
+

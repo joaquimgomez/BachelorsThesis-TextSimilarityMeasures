@@ -1,0 +1,2525 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1
+
+From Clustering to Cluster Explanations
+via Neural Networks
+
+Jacob Kauffmann, Malte Esders, Grégoire Montavon, Wojciech Samek, Klaus-Robert Müller
+
+Abstract—A wealth of algorithms have been developed to extract natural cluster structure in data. Identifying this structure is desirable
+but not always sufficient: We may also want to understand why the data points have been assigned to a given cluster. Clustering
+algorithms do not offer a systematic answer to this simple question. Hence we propose a new framework that can, for the first time,
+explain cluster assignments in terms of input features in a comprehensive manner. It is based on the novel theoretical insight that
+clustering models can be rewritten as neural networks—or ‘neuralized’.—Predictions of the obtained networks can then be quickly and
+accurately attributed to the input features. Several showcases demonstrate the ability of our method to assess the quality of learned
+clusters and to extract novel insights from the analyzed data and representations.
+
+Index Terms—unsupervised learning, k-means clustering, neural networks, ‘neuralization’, explainable machine learning
+
+F
+
+1 INTRODUCTION
+Clustering is a successful unsupervised learning model that
+reflects the intrinsic heterogeneities of common data gener-
+ation processes [1], [2], [3], [4]. Natural clusters structures
+are observed in a variety of contexts from gene expression
+[5] and ecosystems composition [6] to textual data [7].
+Methods that can accurately identify the cluster structure
+have thus been the object of sustained research over the past
+decades [8]. Basic techniques such as k-means [9] have been
+extended to operate in kernel feature spaces [10], [11], or on
+the representations built by a deep neural network [12], [13],
+[14].
+
+In this paper, we bring a new ingredient to clustering:
+systematic and human-interpretable explanations for the
+cluster assignments. To this end, we leverage recent suc-
+cesses on interpreting the decisions of supervised machine
+learning models, that have shed light on the decisions made
+by complex deep neural network classifiers [15], [16], [17],
+[18], [19].
+
+Interpreting clusterings is desperately needed, consid-
+ering that one of the main motivations for performing a
+clustering in the first place is knowledge discovery. Espe-
+cially in high-dimensional feature space, a clustering for
+knowledge discovery can only provide a few prototypical
+data points for each cluster. Such prototypes, however, do
+not reveal which features made them prototypical. Instead,
+
+• J. Kauffmann is with the Berlin Institute of Technology (TU Berlin), 10587
+Berlin, Germany.
+
+• M. Esders is with the Berlin Institute of Technology (TU Berlin), 10587
+Berlin, Germany.
+
+• G. Montavon is with the Berlin Institute of Technology (TU Berlin), 10587
+Berlin, Germany. E-mail: gregoire.montavon@tu-berlin.de.
+
+• W. Samek is with Fraunhofer Heinrich Hertz Institute, 10587 Berlin,
+Germany.
+
+• K.-R. Müller is with the Berlin Institute of Technology (TU Berlin),
+10587 Berlin, Germany; the Department of Brain and Cognitive Engi-
+neering, Korea University, Seoul 136-713, Korea; and the Max Planck
+Institut für Informatik, 66123 Saarbrücken, Germany. E-mail: klaus-
+robert.mueller@tu-berlin.de.
+
+(Corresponding Authors: Grégoire Montavon, Klaus-Robert Müller)
+
+we would like to let the clustering model explain the cluster
+assignments it has made.
+
+To the best of our knowledge, our work it is the first ever
+attempt to systematically and comprehensively obtain such
+explanations.
+
+Specifically, we propose a framework for systematically
+explaining cluster assignments in terms of input variables.
+Our framework draws from the novel theoretical insight
+that general k-means clustering models can be rewritten
+as functionally equivalent neural networks with standard
+detection/pooling layers. The latter can then be used as
+a backbone to guide the explanation process. Technically,
+we suggest to apply the following two steps: First, the
+cluster model is ‘neuralized’ by rewriting it as a functionally
+equivalent neural network. Cluster assignments formed at
+the output are then propagated backwards through the
+neural network using an LRP-type procedure [16] until the
+input variables are reached. The outcome can be shown
+as a heatmap, highlighting input variables that explain
+respective cluster memberships.
+
+The resulting ‘neuralization-propagation’ procedure (or
+short, NEON), is tested on a number of showcases with
+various datasets and clustering models. Each time, NEON
+extracts useful insights on the cluster assignments. Exper-
+iments also demonstrate the practical value of our two-
+step approach compared to a potentially simpler one-step
+approach without neuralization. We stress that the pro-
+posed method requires neither to change nor to retrain the
+clustering model. This may prove useful in the future for
+shedding new light into existing cluster-based typologies
+used e.g. in computational biology [20], [21] or consumer
+data [22], which researchers and practitioners have started
+to use increasingly to support their scientific reasoning and
+to take decisions.
+
+1.1 Related Work
+So far, research on explanation methods has been over-
+whelmingly focused on the case of supervised learning. In
+
+ar
+X
+
+iv
+:1
+
+90
+6.
+
+07
+63
+
+3v
+1 
+
+ [
+cs
+
+.L
+G
+
+] 
+ 1
+
+8 
+Ju
+
+n 
+20
+
+19
+
+
+
+2
+
+particular, no methods exist for systematically explaining
+cluster assignments. Previous work falls into the following
+categories:
+
+Explaining Classification Decisions
+
+Multiple directions have been taken to explain nonlinear
+supervised models: Methods based on the gradient [23],
+[24], [25], local perturbations [15], [26], or surrogate func-
+tions [17] have been proposed to explain general machine
+learning predictions. Other methods exploit the layered
+structure of the machine learning model by designing a
+layer-wise propagation procedure [16], [27], [28], [29], [30]
+that produces accurate explanations at low computational
+cost. While most of the work has focused on explaining
+classifiers, recent work has sought to extend the principle
+to other types of models such as kernel one-class SVMs [31],
+or LSTM recurrent neural networks [32].
+
+Validating Clustering Models
+
+A first type of validation metrics are internal ones, for
+example, based on compactness or separation between clus-
+ters [33]. Other proposals look at cluster stability under
+resampling or perturbations [34], [35]. These metrics assess
+cluster quality under an implicit choice of clustering dis-
+tance metric. A second type of validation techniques make
+use of an external source (e.g. ground truth data labels) and
+measure cluster purity (e.g. absence of examples with differ-
+ent labels within a cluster) [36]. External validation assumes
+the availability of labeled data, specifically labels match-
+ing the true cluster structure. Further works include user
+interfaces developed to better navigate cluster structures,
+and motivated e.g. by applications in biology [37], [38], or
+the construction of cluster prototypes for visualizing deep
+clustering models of image data [14]. While these works
+help to guide the process of clustering data and produce
+useful visualizations, they do not answer the question why
+data points are assigned to a given cluster.
+
+2 A FRAMEWORK FOR EXPLAINING CLUSTERS
+We propose a new framework for addressing the (so
+far unsolved) problem of explaining cluster assignments.
+The framework is based on the concept of ‘neuralization-
+propagation’ (NEON) which we introduce later in detail.
+
+In this work, we will develop NEON for a broad class
+of k-means clustering models from simple [9] to complex
+[11], [12]. Extension of NEON to other successful clustering
+paradigms, e.g. DBSCAN [39], affinity propagation [40], or
+hierarchical clustering [41], is left for future work.
+
+The k-means algorithm partitions the data into simple
+convex regions represented by one prototype each. Data
+points are assigned to the cluster with the nearest prototype.
+More complex variants of k-means compute clusters not
+in the input space directly, but in some nonlinear and
+potentially high-dimensional feature space. The latter can
+be induced by a kernel [11] or by the mapping onto the
+activations of a deep neural network [12]. These nonlinear
+extensions to which we refer as “kernel k-means” and “deep
+k-means” provide flexibility for implementing complex non-
+convex cluster structures that occur in the real world.
+
+From now on, we assume an already trained standard /
+kernel / deep k-means model. We feed data into the cluster
+model, and each data point gets assigned a cluster. We
+would like to explain the cluster assignment in terms of
+input variables. The NEON approach applies consecutively
+the following two steps:
+
+Step 1 – Neuralizing the Cluster Model: Without retrain-
+ing, convert the k-means model (whose cluster assignments
+are given by the score fc) into a multilayer neural network.
+The network should produce exactly the same output as
+the k-means model, and moreover have a structure that is
+suitable for propagating the prediction fc towards the input
+variables.
+
+Step 2 – Propagating the Cluster Predictions: Apply for
+the constructed neural network a layer-wise relevance prop-
+agation (LRP) procedure [16] that allows to propagate clus-
+ter assignments backwards to arrive at the relevant input
+features. In order to produce meaningful explanations, the
+propagation mechanism will be derived from the deep
+Taylor decomposition framework [28].
+
+Here, we briefly motivate NEON’s two-step approach
+compared to a hypothetical one-step approach that would
+apply a ‘structure-agnostic’ method (e.g. [17], [23], [25]) to
+the k-means output directly. The two-step approach has
+the following advantages: First, converting k-means to a
+neural network gives access to propagation-based expla-
+nation methods. The latter were shown to deliver accurate
+explanations at low computational cost [42]. Second, neural
+networks support potentially more detailed explanations,
+e.g. by letting propagated quantities flow only through
+specific subsets of neurons [30].
+
+The procedure is summarized in Fig. 1 and will be
+developed in Sections 3 and 4.
+
+fc > 0
+
+K-Means Clustering
+
+x1
+
+x2
+
+.
+.
+.
+
+xd
+
+hk
+
+..
+. fc
+
+R1
+
+R2
+
+.
+.
+.
+
+Rd
+
+Rk
+
+..
+. fc
+
+1: Neuralizing the Cluster Model
+
+2: Propagating the Cluster Prediction
+
+Fig. 1. Overview of NEON’s two-step approach to cluster explanation.
+The cluster model is first transformed into a neural network. Then, the
+output of the neural network is explained in terms of input features by
+means of a reverse propagation procedure.
+
+3 NEURALIZING THE CLUSTER MODEL
+A neural network typically consists of a sequence of de-
+tection and pooling layers. These layers play a similar role
+
+
+
+3
+
+to ‘simple cells’ and ‘complex cells’ described in neuro-
+science [43], or ‘executive organs’ and ‘restoring organs’
+in automata theory [44]. Detection layers are of the type
+ak = ρ(
+
+∑
+j ajwjk), where ρ is a detection function (e.g.
+
+rectifier or identity). The learned parameters wk form dis-
+criminative directions in their input space. Pooling layers
+are parameterless and reduce neurons in a pooling re-
+gion into a single neuron through some pooling operation
+ak = P((aj)j). In object recognition tasks, we typically
+have max-pooling or sum-pooling operations. Certain tasks
+such as anomaly detection may instead make use of min-
+pooling [31]. Our goal is to map cluster assignment models
+into these standard layer structures. We first start with a
+basic soft-assignment model that we then extend to cover
+standard / kernel / deep k-means.
+
+3.1 Neuralizing Cluster Assignment Models
+
+Cluster assignment models map data points to membership
+probability scores via soft-assignment functions. A common
+one uses the exponential function:
+
+P (ωc |x) =
+exp(−β · oc(x))∑
+k exp(−β · ok(x))
+
+(1)
+
+where ok(x) is some measure of outlierness of input x from
+the cluster k (cf. Section 3.2). The parameter β is a “stiffness”
+hyperparameter, an inverse-temperature in neural networks
+literature [45] or fuzziness in the context of clustering [46],
+[47]. When β → ∞, Eq. (1) approaches the indicator func-
+tion for the nearest cluster and thus hard clustering. Soft
+cluster assignments may be used at training time to better
+account for cluster membership uncertainty, or a test time to
+produce smoother transitions between clusters.
+
+A quantity that is suitable for representing evidence for
+cluster membership is the logit function:
+
+fc(x) = log
+( P (ωc |x)
+
+1− P (ωc |x)
+)
+
+(2)
+
+In particular, when there is as much positive evidence for
+cluster membership as there is against (i.e. when P (ωc |x) =
+0.5), we get the neutral score fc(x) = 0. Conversely, when
+there is overwhelming evidence for cluster membership,
+fc(x) is allowed to grow to a large value, whereas the
+cluster probability saturates at 1.0. A similar argument in
+favor of log-quantities was made in the context of one-class
+SVMs [31].
+
+Proposition 1. The logit that quantifies cluster membership can
+be written as a soft min-pooling layer
+
+fc(x) = β ·min
+k 6=c
+
+β{ok(x)− oc(x)}, (3)
+
+where we define minβ{·} = −β−1 log
+∑
+
+exp(−β(·)). A proof
+is given in the Supplement (Appendix A).
+
+This neuralization of the logit functions lends the follow-
+ing interpretation of cluster assignment: The data point x is
+member of cluster c if the outlierness to this cluster is inferior to
+the outlierness to all competing clusters k 6= c. In other words,
+it is a member of cluster c if all hypotheses of membership
+to another cluster must be rejected.
+
+3.2 Neuralizing Standard K-Means
+
+The k-means algorithm finds a set of centroids (µk)k mini-
+mizing the objective function
+
+min
+∑
+ik δik ‖xi − µk‖2, (4)
+
+where δik indicates whether data point i is member of
+cluster k. The model of cluster outlierness used by k-means
+is
+
+ok(x) = ‖x− µk‖2
+
+the squared distance from the centroid. Injecting this mea-
+sure of outlierness in Eq. (3) gives a two-layer detection-
+pooling neural network
+
+Standard k-means
+
+hk = w
+>
+k x+ bk (layer 1)
+
+fc = β ·min
+k 6=c
+
+β{hk} (layer 2)
+
+where the first layer is a linear detection layer with param-
+eters wk = 2 · (µc − µk) and bk = ‖µk‖2 − ‖µc‖2, and the
+second layer is the same min-pooling as in Proposition 1.
+The architecture is illustrated in Fig. 2 (left).
+
+3.3 Neuralizing Kernel K-Means
+
+The kernel clustering method described in [11] performs
+k-means in some feature space Φ(x) induced by a kernel,
+i.e. 〈Φ(x),Φ(x′)〉 = K(x,x′). The approach is a variant of
+spectral clustering [48], [49], where we omit a normalization
+and dimensions reduction step. The kernel k-means opti-
+mization problem can be written as:
+
+min
+∑
+ik δik ‖Φ(xi)− µk‖2 (5)
+
+with (µk)k the set of centroids in the feature space. In
+the following, we restrict the discussion to the case of the
+Gaussian kernel
+
+K(‖x− x′‖2) = exp(−γ · ‖x− x′‖2).
+
+Because there is no explicit feature map for this kernel,
+the k-means problem must be rewritten in kernel form.
+Let µk = Z
+
+−1
+k
+
+∑
+j∈Ck Φ(xj) be the unit-norm centroid for
+
+cluster k, where Zk = (
+∑
+j,j′∈Ck K(‖xj−xj′‖
+
+2))0.5. Because
+both the norm of the data and clusters in feature space are
+now constant, the distance minimization of the original k-
+means formulation can be replaced by the maximization of
+the dot product 〈Φ(xi),µk〉. Specifically, the problem in Eq.
+(5) can be rewritten as:
+
+max
+∑
+ik δikik(xi)
+
+where ik(x) = 〈Φ(x),µk〉 = Z−1k
+∑
+j∈Ck K(‖x − xj‖
+
+2) is
+the dot product between data and centroid, which can also
+be interpreted as a Parzen window estimator measuring
+the inlierness of x with respect to the cluster k. Like in
+
+
+
+4
+
+competing
+contributors
+
+cluster
+contributors
+
+cluster
+
+competitors
+
+cluster
+
+Standard K-Means Kernel K-Means Deep K-Means
+
+competitors
+
+lin
+ea
+
+r
+
+m
+in
+
+-p
+oo
+
+l
+
+m
+ax
+
+-p
+oo
+
+l
+
+lin
+ea
+
+r
+
+m
+in
+
+-p
+oo
+
+l
+
+m
+in
+
+-p
+oo
+
+l
+
+po
+ol
+
+co
+nv
+
+lin
+ea
+
+r
+
+m
+in
+
+-p
+oo
+
+l
+
+po
+ol
+
+co
+nv...
+
+Fig. 2. Illustration of the neuralized k-means models. Each of them is composed of a succession of detection and pooling layers.
+
+[31], an outlierness function can be obtained from the inlier-
+ness function by application of the inverse kernel function.
+Specifically, we define and develop the outlier function as:
+
+ok(x) = K−1(ik(x))
+= −γ−1 log
+
+(
+Z−1k
+
+∑
+j∈Ck exp(−γ · ‖x− xj‖
+
+2)
+)
+
+= min
+j∈Ck
+
+γ
+{
+‖x− xj‖2 − γ−1 logZ−1k
+
+}
+(6)
+
+where minγ{·} is the reversed log-sum-exp pooling function
+which we have already introduced in Proposition 1. In other
+words, the point x is outlier to cluster k if it is distant from
+all points in that cluster. When injecting the outlier function
+ok(x) in the soft-assignment model of Eq. (1), the resulting
+cluster model can also be interpreted in feature space:
+
+Proposition 2. The soft-assignment model based on outlier scores
+is related to a power-based assignment model in kernel feature
+space.
+
+P (ωc |x) =
+exp(−β · oc(x))∑
+k exp(−β · ok(x))
+
+=
+ic(x)
+
+β/γ
+
+∑
+k ik(x)
+
+β/γ
+. (7)
+
+A proof is given in the Supplement (Appendix B). This last
+assignment is similar to the one proposed in [50], [51].
+
+We now focus on how to structure the sequence of
+computation from distances to logits as a neural network.
+Composing the outlierness of Eq. (6) into the logit computa-
+tion (Eq. (3)) gives a four-layer neural network:
+
+Kernel k-means (naive)
+
+djk = ‖x− xj‖2 + bk (layer 1)
+
+ok = min
+j∈Ck
+
+γ {djk} (layer 2)
+
+hk = ok − oc (layer 3)
+fc = β ·min
+
+k 6=c
+β{hk} (layer 4)
+
+where bk = −γ−1 logZ−1k . Unlike standard k-means, the
+first layer is not linear anymore, and consequently, neu-
+rons in that layer no longer detect for specific input space
+directions. However, the sequence of computations can be
+reorganized to deliver the desired neural network structure:
+
+Kernel k-means (improved)
+
+aijk = w
+>
+ijx+ bijk (layer 1)
+
+zjk = max
+i∈Cc
+
+γ {aijk} (layer 2)
+hk = min
+
+j∈Ck
+γ {zjk} (layer 3)
+
+fc = β ·min
+k 6=c
+
+β {hk} (layer 4)
+
+a linear layer with parameters wij = 2 · (xi − xj) and
+bijk = ‖xj‖2 − ‖xi‖2 + bk − bc, followed by a cascade of
+pooling layers. See Appendix C of the Supplement for how
+this is done exactly. This better structured model is shown
+graphically in Fig. 2 (middle).
+
+Compared to the naive architecture, the number of op-
+erations has however increased drastically: The size of the
+first layer is quadratic in the number examples per cluster,
+whereas it was linear for the naive architecture. To reduce
+the computational cost many tradeoffs are possible and
+reported in the literature, e.g. reduced sets [52], [53], or
+replacing the N data points by a smaller set of ‘support
+vectors’ obtained by vector quantization [54].
+
+In return, we gained a computational structure that more
+closely resembles the one obtained by standard k-means,
+and where the higher number of neurons may also allow
+for a more detailed analysis of cluster assignments.
+
+3.4 Neuralizing Deep K-Means
+
+Consider a deep neural network that we abstract as a
+sequence of layer-wise mappings Φ(x) = ΦL ◦ · · · ◦ Φ1(x).
+
+
+
+5
+
+Like in Section 3.3, we apply k-means in feature space:
+
+min
+∑
+ik δik ‖Φ(x)− µk‖2 (8)
+
+Unlike the kernel case, the feature map Φ(x) is now given
+explicitly and can be learned via backpropagation to pro-
+duce the desired cluster structure. We define the outlier
+function:
+
+ok(x) = ‖Φ(x)− µk‖2
+
+Injecting it in Eq. (3) lets us rewrite the full model as a neural
+network composed of the L layers used for computing
+the deep representation followed by two more layers for
+obtaining cluster scores:
+
+Deep k-means
+
+a = ΦL ◦ · · · ◦ Φ1(x) (layers 1 . . . L)
+hk = w
+
+>
+k a+ b (layer L+ 1)
+
+fc = β ·min
+k 6=c
+
+β{hk} (layer L+ 2)
+
+where wk = 2 · (µc − µk) and b = ‖µk‖2 − ‖µc‖2. The last
+two layers are of same type as for standard k-means, except
+that they receive neuron activations as input. The overall
+architecture is illustrated in Fig. 2 (right).
+
+4 PROPAGATING THE CLUSTER PREDICTION
+We now come back to our main objective: explaining cluster
+assignments in terms of input features. The problem of
+explanation has been studied extensively in the context
+of supervised learning (e.g. classification and regression).
+In particular, layer-wise relevance propagation (LRP) [16] was
+shown to stably and quickly explain the predictions of a
+broad range of classifiers in a variety of applications (e.g.
+[55], [56], [57], [58]). A requirement of LRP is that the model
+is structured as a neural network.
+
+Our next step will be to extend LRP to standard /
+kernel / deep k-means, for which we have performed in Sec-
+tion 3 the prerequisite step of neuralization. Specifically, LRP
+will be used to explain evidence for cluster membership,
+as it appears at the output of these unsupervised neural
+networks.
+
+The LRP procedure is illustrated for a simple neural
+network in Fig. 3. It starts in the top layer with Rc set to fc,
+the neural network output. The quantity Rc must then be
+propagated from layer to layer, towards the input. Letting j
+and k be indices for neurons at consecutive layers, the prop-
+agation procedure is designed such that we have for each
+neuron
+
+∑
+j Rj←k = Rk and Rj =
+
+∑
+k Rj←k. By extension,
+
+we have
+∑
+iRi =
+
+∑
+j Rj =
+
+∑
+k Rk = fc, i.e. the outcome of
+
+the propagation procedure is a sum-decomposition of fc on
+the input variables (cf. [27], [29], [59] for other techniques
+with a similar conservation mechanism).
+
+Deep Taylor decomposition (DTD) [28] was developed as
+a way of determining how the redistribution rules should
+be set at each layer. DTD views the task of redistribution as
+identifying the terms of a Taylor expansion of Rk expressed
+as a function of the lower-layer activations (aj)j . These
+terms define the messages Rj←k to be sent to the lower-
+layer neurons. Let a = (aj)j be the vector of lower-layer
+
+Ex
+pl
+
+an
+at
+
+io
+n
+
+In
+pu
+
+t
+
+O
+ut
+
+pu
+t
+
+xi aj ak
+
+fc
+
+Rc
+
+RkRjRi
+
+Fig. 3. Illustration of the LRP technique used for explanation. The neural
+network output is propagated in the neural network by means of local
+redistribution rules until the input variables are reached.
+
+activations to which neuron k is directly connected. A first-
+order Taylor expansion of Rk(a) at reference point ã can be
+written as:
+
+Rk(a) = Rk(ã) +
+∑
+j [∇Rk(ã)]j · (aj − ãj) +O(aa>)
+
+The elements of the sum are linear terms that will serve as
+messages Rj←k. However, because the function Rk(a) can
+be complex, finding a good reference point ã can be difficult,
+and it is also unclear whether a first-order expansion is
+sufficient to model Rk accurately. Therefore, a second idea
+of deep Taylor decomposition is to use in place of Rk, a
+‘relevance model’ R̂k which is easier to analyze. In the
+following, we choose R̂k = pk · (ak + θk), which is an affine
+function of the neuron activation, with constant parameters
+pk > 0 and θk ≤ 0 set in a way that Rk(a) = R̂k(a).
+
+When applying deep Taylor decomposition we need to
+consider two aspects: (1) The root point ã must be chosen
+such that the first-order terms of the Taylor expansion ap-
+proximate the function well on the relevant domain. (2) The
+redistribution step must result in scores (Rj)j that can again
+be modeled well as an affine function, i.e. R̂j = pj · (aj +θj)
+with pj > 0 and θj ≤ 0. This second criterion allows the
+propagation procedure to be pursued on the layer below,
+and to continue until the input layer.
+
+4.1 Propagation in Pooling Layers
+Consider propagation in the soft-min-pooling layer ak =
+min
+
+β
+j {aj}. This type of layer is used to compute the top-
+
+layer logit, and to pool over members of the competing
+clusters in kernel-based clustering. The relevance model is
+given by
+
+R̂k(a) = pk ·
+(
+min
+j
+
+β {aj}+ θk
+)
+
+We observe that the function R̂k is linear on the parameter-
+ized line {a− t ·1, t ∈ R}. Taking the root point ã along that
+line, a Taylor expansion gives the first-order terms:
+
+Rj←k =
+exp(−βaj)∑
+j exp(−βaj)
+
+·Rk (9)
+
+This is a min-take-most redistribution scheme. Observe that∑
+j Rj←k = Rk, implying that the redistribution is con-
+
+servative. When applied to the top-layer, this propagation
+
+
+
+6
+
+rule redistributes relevance mainly to the nearest competing
+clusters. When applied to the third layer of kernel clustering,
+the propagation rule redistributes mainly to the most active
+data points in the competing clusters. For the soft-max-
+pooling operation in the second layer of kernel clustering,
+similar results follow, in particular, we get a max-take-most
+redistribution scheme, where the negative signs of Eq. (9)
+are replaced by positive signs.
+
+Proposition 3. The redistributed relevance in a pooling layer is a
+locally approximately linear function of its neuron activation, i.e.
+Rj = pj ·(aj+θj) where pj ≥ 0 and θj ≤ 0. The approximation
+becomes increasingly better as β → ∞ (proof in Appendix D of
+the Supplement).
+
+This last result ensures that the scores Rj can be further
+redistributed on the lower layers.
+
+4.2 Propagation in Linear Layers
+The second type of layers occurring in the studied clustering
+models are linear layers of the type ak = w>k a + bk. The
+relevance model for these layers is given by:
+
+R̂k(a) = pk · (w>k a+ bk + θk)
+A Taylor expansion at some root point ã gives R̂k(a) =∑
+j pk wjk · (aj − ãj) where we note the absence of second-
+
+and higher-order terms due to the linearity of the relevance
+model. Here, we have a vast choice in how to choose the root
+point. The simplest strategy is to view the bias as another
+input neuron “0”, i.e. a0 = 1, w0k = bk + θk, and to choose
+the root point ã = 0. In that case, we get the ‘z-rule’ [28]:
+
+Rj =
+∑
+
+k
+
+ajwjk∑
+0,j ajwjk
+
+·Rk (10)
+
+Observing that the relevance can also be written as Rj =∑
+k ajwjkpk = ajpj with pj =
+
+∑
+k wjkpk, having pk lo-
+
+cally approximately constant implies that pj is also locally
+approximately constant, which is the condition set by deep
+Taylor decomposition to be able to continue the propagation
+one layer below. Note that the redistribution procedure is
+only approximately conservative here, because some of the
+relevance was redistributed on the neuron a0. In practice,
+the root point ã = 0 can be far from the data and in
+turn produce negative scores (Rj)j . Nearer root points were
+proposed by [28] leading to the z+ and zB-rules where the
+contributions ajwjk in Eq. (10) are replaced by ajw
+
++
+jk and
+
+xiwij − liw+ij − hiw
+−
+ij respectively, with (·)+ = max(0, ·),
+
+(·)− = min(0, ·), and li ≤ xi ≤ hi. These modified rules
+apply to layers of activations, and pixel layers respectively.
+
+5 EXPERIMENTS
+Sections 3 and 4 have described in details the two steps
+of our neuralization-propagation (NEON) approach. In the
+following, we test our method on several showcases: Sec-
+tion 5.1 tests NEON’s performance on the MNIST data for
+standard / kernel / deep k-means models. Section 5.2 shows
+on the 20newsgroups data how NEON produces a better
+assessment of cluster quality compared to a more con-
+ventional purity metric. Section 5.3 demonstrates how the
+proposed method can be used as a data analysis technique
+to extract insights from the multiple layers of a VGG-16
+image classifier.
+
+5.1 Cluster Explanations on MNIST Data
+
+Our first experiment tests NEON on the MNIST handwrit-
+ten digits dataset. The cluster structure is here given by class
+labels. Our goal in this section will not be to learn the cluster
+structure, but to study how standard, kernel, and deep k-
+means are able to represent these clusters, and how NEON
+explains cluster assignments pixel-wise. More specifically,
+we solve the optimization problems in Eqs. (4), (5), (8), but
+keep the assignment δik fixed to the ground truth.
+
+The standard k-means model is built by simply averag-
+ing the data points of each class. For kernel k-means we
+reduce computation by first building a set of 10 ‘support
+vectors’ per class, obtained by standard k-means. For deep
+k-means, we fix top layer centroids to constant values,
+and learn the cluster structure by backpropagating the
+k-means error in a three-layer fully connected network.
+We choose as a nonlinearity the modified ReLU function
+max(0, x) − 0.75 · max(0, x− 1), where the second term
+encourages the agglomeration of the data into compact
+clusters. For each architecture, the stiffness parameter β is
+chosen such that the highest soft-assignment probability is
+on average 0.9 (we lower it to 0.8 for standard k-means to
+account for the higher rigidity of the model). The kernel
+parameter γ is chosen such that self-similarity scores rep-
+resent 90% of the total similarity scores between support
+vectors. Figure 4-A shows a visualization of the modeled k-
+means clusters (here, a t-SNE visualization of cluster logits),
+along with the classification accuracy. Unsurprisingly, the
+nonlinearity added by kernel and deep k-means allows to
+build a cluster structure that better matches class labels
+(accuracy above 0.9 vs. 0.63 for standard k-means).
+
+Figure 4-B shows the NEON pixel-wise explanation of
+cluster assignments by each model for some digits of the
+MNIST test set. Red color indicates pixels that are rele-
+vant for cluster membership. Irrelevant pixels are shown
+in white, and pixels that appear contradictory are shown in
+blue. The pixel-wise explanations are similar across models,
+although small differences can be observed. NEON applied
+to standard k-means produces heatmaps of varying inten-
+sity and not fully aligned with the digits. This effect can
+be attributed to the rigidity of standard k-means which
+cannot fully express the class structure. Kernel k-means
+and deep k-means are able to represent the class structure
+more accurately, and NEON explanations are consequently
+also more closely and uniformly aligned with the input
+digit. For example, for the digit “3”, cluster assignments are
+performed based on two pixel areas at the left extremity
+of the digit. These pixels are indeed relevant for cluster
+membership as filling them would turn the digit “3” into
+an “8”.
+
+Figure 4-C shows a further functionality of NEON which
+it inherits from its explicit reliance on the neural network
+structure: Part of the relevance flow in the neural network
+can be isolated to highlight distinct aspects of the expla-
+nation. Here, we isolate the relevance flowing through the
+neurons representing the various competing clusters. This
+detailed analysis sheds light on their individual contribu-
+tions to the overall cluster assignment: Explanation for digit
+“0” is composed of a vertical bar that differentiates it from
+the competitor “1”, a top-level stroke emanating from the
+
+
+
+7
+
+kernel
+(acc: 0.94)
+
+deep
+(acc: 0.96)
+
+standard
+(acc: 0.63)
+
+A K-Means Clusters B Cluster Explanations with NEON C Detailed NEON Explanations
+1 3
+
+5 7 9
+
+0 2 4
+
+6 8
+
+1 3
+
+5 7 9
+
+0 2 4
+
+6 8
+
+Fig. 4. Various cluster models explained by NEON (in this experiment, clusters are hard-coded to represent digit classes). On the right panel,
+detailed explanation obtained by dissociating the relevance flow along each competitor branch of the neural network.
+
+competitor “3”, and other singular patterns for the next
+competitors. The second example identifies the competitor
+“5” as important for supporting the cluster assignment
+“3”, and highlights the top-part of the digit as an expla-
+nation. Other competitors that receive some relevance are
+the clusters “2” and “8”. In principle, even more detailed
+explanations could be obtained (e.g. in terms of support
+vectors or neuron activations) depending on the choice of
+architecture.
+
+Benchmark Evaluation
+Because there is currently no established method for ex-
+plaining cluster membership, we construct four simple base-
+line methods similar to those used for explaining classifiers:
+
+SA(x, fc) = (∇fc(x))2
+GI(x, fc) = ∇fc(x)� x
+
+SR(x̃,x, fc) = (x− x̃)2/‖x− x̃‖2 · fc(x)
+IG(x̃,x, fc) =
+
+∫ x
+ξ=x̃
+∇fc(ξ)� dξ.
+
+These constructed baselines do not rely on the neural net-
+work structures identified in Section 3 and can therefore
+
+be described as one-step or ‘structure-agnostic’ approaches.
+The first baseline, sensitivity analysis (SA), is based on
+the locally evaluated gradient [23]. The second baseline,
+Gradient× Input (GI) integrates both the gradient and the
+input data [60]. Like NEON, these two baselines run in
+O(forward pass). The third and fourth baselines make use
+of an optimized reference point x̃ = arg minξ ‖x − ξ‖2
+subject to f(ξ) ≤ 0. This optimization step is compu-
+tationally expensive but reveals useful global information
+about the function. The baseline ‘SR’ can be understood as
+building a surrogate linear model on {x, x̃} followed by a
+decomposition of its prediction. It can be seen as a variant
+of LIME [17]. The baseline ‘IG’ computes the path integral
+of f on the segment between x̃ and x and can be seen as a
+special case of Integrated Gradients [25].
+
+Figure 5-A shows examples of explanations produced
+by these different techniques. GI tends to produce spurious
+negative evidence in the explanation. SA does not align well
+with the digit, and has imbalances in the way scores are
+spatially distributed. SR and IG are similar to NEON but
+sparser.
+
+Figure 5-B evaluates the accuracy of the explanations
+
+∇f ⊙ x (∇f)2 SR(...) IG(...)NEON
+
+accurate
+
+fast
+
+detailed
+
+✗
+
+✓
+
+✗
+
+✓
+
+✓*
+
+✓
+
+✗
+
+✓
+
+✗
+
+✓
+
+✗
+
+✗
+
+✓
+
+✗
+
+✗
+
+standard
+
+kernel
+
+deep
+
+∇f ⊙ x (∇f)2 SR(...) IG(...)NEON
+
+BA
+
+C
+
+cl
+us
+
+te
+r 
+
+ev
+id
+
+en
+ce
+
+  f
+(x
+
+)
+
+* for kernel k-means, one requires a support vectors reduction heuristic.
+
+standard kernel deep
+
+0 2 8 18 32 51 73 100
+
+percentage flipped
+
+∇f ⊙ x
+(∇f)2
+NEON
+
+SR(...)
+
+IG(...)
+
+0 2 8 18 32 51 73 100
+
+percentage flipped
+
+∇f ⊙ x
+(∇f)2
+NEON
+
+SR(...)
+
+IG(...)
+
+0 2 8 18 32 51 73 100
+
+percentage flipped
+
+∇f ⊙ x
+(∇f)2
+NEON
+
+SR(...)
+
+IG(...)
+
+Fig. 5. Benchmark evaluation of NEON. The table on the left shows explanations obtained by various techniques and a summary of their strengths
+and weaknesses. Accuracy of the explanation is assessed quantitatively with pixel flipping (cf. plots on the right). The lower the pixel-flipping curve,
+the more accurate the explanation. Note that pixel-flipping tends to overstate the performance of SR(...) and IG(...) due to sharing with them the
+same root point x̃. Bottom plots contain the same information but cluster evidence is shown here relative to NEON.
+
+
+
+8
+
+produced by NEON and the competing approaches using
+the pixel-flipping [42] analysis. Pixel-flipping sequentially
+“flips” pixels from most to least relevant. The flipping oper-
+ation we use here consists of replacing features of x by those
+of the root point x̃ found above. Throughout the flipping
+procedure, we monitor how quickly the function value f(x)
+representing cluster evidence drops. The faster it drops, the
+better the explanation. Unlike the original method [42], the
+ordering of features is computed over all pixels and all data
+points rather than for each data point individually. Our
+variant better reflects the ability of an explanation technique
+to assign relevance in proportion to the actual evidence
+for each example. We observe that NEON is systematically
+better than SA and GI, but inferior to SR and IG. We note
+however that the last two baselines are advantaged due to
+sharing the same root point x̃ as the evaluation procedure.
+
+Figure 5-C gives a summarized tabular comparison be-
+tween the different explanation techniques. SA and GI can
+be computed quickly but the explanations lack accuracy as
+demonstrated by our pixel-flipping evaluation. The SR and
+IG baselines are accurate but they are significantly more
+expensive to compute.
+
+Overall, our benchmark experiments have verified that
+NEON not only provides a solution to the so far unsolved
+problem of explaining cluster assignments, it also does so in
+a way that is accurate, computationally efficient, and with a
+potentially high level of detail.
+
+5.2 Explaining Kernel Clustering of Newsgroup Data
+
+The following experiment shows how NEON can be used
+to produce a rich and nuanced assessment of cluster qual-
+ity that goes beyond conventional metrics such as cluster
+purity. We consider for this experiment the 20newsgroups
+
+dataset [61] that contains messages from 20 public mailing
+lists, recorded around the year 1996. Headers, footers and
+quotes are removed from the messages. We extract consecu-
+tive letters of length 3 or longer as tokens t from document
+D and project them into a general purpose word-vector
+space ϕ(t) ∈ W [62]. Stop words are removed. Hereafter,
+empty documents are removed. Document embeddings are
+then aggregated in vector space by taking the mean of
+word vectors (x = 1D
+
+∑
+t∈D ϕ(t)). These document vectors
+
+are then reduced to 50 dimensions via PCA to improve
+clustering runtime.
+
+A t-SNE embedding of the preprocessed data color-
+coded by the ‘true’ labels (i.e. the mailing list where the
+message was posted) is given in Fig. 6 (top right). As for any
+clustering algorithm, the objective is to assign nearby points
+to the same cluster. We consider a kernel k-means model.
+Bandwidth parameter γ of the Gaussian kernel is chosen
+such that 50% of similarity scores falls to the b#data points
+
+#clusters c
+nearest neighbors. Initializing the kernel clustering with
+ground truth labels and training the kernel k-means model
+with an EM-style procedure (see Appendix E of the Sup-
+plement for details), the cluster assignment converges to
+a local optimum with the final assignment given in Fig. 6
+(bottom middle). We observe that clusters are now much
+more separated than at initialization.
+
+We now focus on assessing the quality of the learned
+clusters. The standard cluster purity metric gives a score
+of 45% on the test set. From this score, one could conclude
+that the algorithm has learned ‘bad’ clusters. Instead, NEON
+will aim to expose to the user what in a given document is
+relevant for its membership to a certain cluster.
+
+Here, explanation in terms of the dimensions of the input
+vector x would not be easily interpretable by a human as
+
+A. Document in Word-Vector Space
+
+𝒲
+
+keyboard
+
+i
+
+am
+
+mouse
+
+computer
+apple
+
+fruit
+
+𝙭 = 𝟣|𝒟| ∑𝗍∈𝒟 φ(𝗍)
+
+B. Network View of Redistribution
+
+av
+er
+
+ag
+e
+
+lin
+ea
+
+r
+
+m
+ax
+
+-p
+oo
+
+l
+
+m
+in
+
+-p
+oo
+
+l
+
+m
+in
+
+-p
+oo
+
+lφ(𝗍𝟢)
+φ(𝗍𝟣)
+φ(𝗍𝟤)
+φ(𝗍𝟥)
+
+𝘧𝘤
+𝑅𝗍𝟢
+𝑅𝗍𝟣
+𝑅𝗍𝟤
+𝑅𝗍𝟥
+
+C. Function View of Redistribution
+
+𝒲
+
+keyboard
+
+i
+
+am
+
+mouse
+
+computer
+apple
+
+fruit
+
+𝙭
+
+True Labels
+
+Cluster Assignments
+
+F. rec.motorcycles
+
+I'm not sure on the older bikes, but the Yamaha Virago 535 has spec'd
+seat height of 27.6 in. and the Honda Shadow 27.2 in.
+
+G. misc.forsale
+
+For Sale: A Thule Car rack with 2 bike holder accessories.
+Comes with Nissan Pathfinder brackets but you can buy the
+appropriate ones for your car cheap.
+Looking for $100.00 for everything. I live in the Bethesda area.
+Thanks for your interest.
+
+D. talk.politics.guns
+
+Even if it were a capital offense, the warrant was not even an arrest warrant,
+but a search warrant. In other words, there was no evidence of illegal
+arms, just enough of a suggestion to get a judge to sign a license to
+search for illegal evidence.
+
+E. sci.crypt
+
+You can find the salient difference in any number of 5th amendment
+related Supreme Court opinions. The Court limits 5th amendment
+protections to what they call "testimonial" evidence, as opposed to
+physical evidence.
+
+The whole question would hinge on whether a crypto key would be
+considered "testimonial" evidence. I suppose arguments could be made
+either way, though obviously I would hope it would be considered
+testimonial.
+
+Fig. 6. Application of NEON to the clustering of newsgroup data. Top left: Depiction of the cluster assignment and explanation process. Top right:
+True labels in the t-SNE embedding. Bottom: Newsgroup texts where words relevant for cluster membership are highlighted. Gray words are out of
+vocabulary.
+
+
+
+9
+
+word and document embeddings are usually abstract. A
+more interpretable word-level explanation can be achieved,
+by first observing that the mapping from words to docu-
+ment (an averaging of word vectors) and the first layer of
+the neuralized kernel k-means, are both linear. Thus, they
+can be combined into a single ‘big’ linear layer (cf. Figure
+6-B) that takes as input each word distinctly.
+
+In the redistribution phase, we apply the z-rule (Eq. (10))
+to this big layer, leading to an attribution of cluster evidence
+to each individual word and dimension. These scores can
+then be pooled over word dimensions, leading to a single
+relevance score Rt for each individual word t (cf. Figure 6-
+C). These explanations can also be rendered as highlighted
+text.
+
+Messages in Fig. 6-D and E are assigned the same cluster
+but were posted to different newsgroups. Here, NEON
+highlights in both documents the term “evidence”. Closely
+related terms like “court”, “warrant”, “illegal” and “testi-
+monial” are highlighted as well. The fact that “evidence”
+was found in both messages and that other related words
+were present constitutes an explanation and justification for
+these two messages being assigned to the same cluster.
+
+As a second example, consider messages in Figures 6-F
+and G, posted on two different groups, but that are assigned
+to the same cluster. Message F is discussing specifications
+of motorcycles, whilst message G is a sale offer for a bike
+holding car rack. The most relevant terms are brands and
+the terms “bike” and “car”. Also parts like “rack” and “seat”
+provide evidence for cluster membership. Here again, the
+words that have been selected hint at meaningful similarity
+between these two messages, thus justifying the assignment
+of these messages to the same cluster.
+
+Overall, in this showcase experiment, minimizing the
+clustering objective has led to a rather low purity score.
+According to common validation procedures, this would
+constitute a reason for rejection. Instead, the cluster mem-
+bership explanations produced by NEON could pinpoint
+to the user meaningful cluster membership decisions that
+speak in favor of the learned cluster structure.
+
+5.3 Analyzing Deep Representations
+
+Our final experiment demonstrates how NEON can be
+applied beyond clusters assessment, in particular, how it can
+be used to better understand the representations at various
+layers of a deep neural network. This problem has received
+growing attention in recent years [63], [64], [65].
+
+We perform our experiments on the pretrained “VGG16”
+convolutional network [66]. We feed one image at a time into
+the network, leading to spatial activation feature maps at
+each layer. Collecting the activations after each max-pooling
+layer, we build a dataset, where each spatial location in the
+layer corresponds to one data point. We then rescale the
+data points to unit norm, because the their strong dispersion
+would otherwise lead to singular clusters. After this, we
+apply k-means with k = 8 clusters. Using NEON, we obtain
+relevance values for assignment of each data point to any of
+the 8 clusters. Contrary to the experiments previously dis-
+cussed in this text, we now compute relevances at each data
+point at the same time and pool their relevance. To focus
+the analysis on positive cluster evidence, we only propagate
+
+relevance of data points with fc(a) ≥ 0. The relevance is
+then propagated backward through the network, resulting
+in a heatmap of pixels contributing to each cluster.
+
+Since the complexity of features increases with each layer
+in a deep neural network, we expect this to be represented
+in the NEON explanations as well. The feature extraction
+part of VGG-16 consists of 31 layers, alternating between
+3× 3 convolutional layers, ReLU layers and in total five
+2× 2 max-pooling layers. The layers we picked for our
+experiments were layers 17, 24 and 31. Layer 17 is the third
+max-pooling layer, layer 24 is the fourth max-pooling layer
+and layer 31 is the fifth. Cluster explanations are shown in
+Fig. 7 for an artificial spiral image, a city and streetcar image,
+and one of the well-known “dogs playing poker” images,
+titled “Poker Game” by Cassius Marcellus Coolidge, 1894.
+All images were used at resolution 448× 448, which is twice
+the resolution of ImageNet images. This was done in order
+to have more datapoints for clustering in the upper layers
+of the network. When propagating the relevance through
+the layers of VGG-16, a hybrid z/z+-rule is used with
+contributions set to aj · (wjk + γ · w+jk) and with γ set to
+0.25 for layers 1-17 and 0.1 for layers 18 and above. The
+higher value of γ for the lower layer makes the explanation
+less noisy.
+
+In the artificial spiral image, clusters at layer 17 map to
+edges with certain angle orientations as well as colors (black
+and white) or edge types (black-to-white, or white-to-black).
+Interestingly, strictly vertical and strictly horizontal edges
+fall in clusters with very high angle specificity, whereas
+edges with other angles fall into broader clusters. When
+building clusters at layer 24, color and edge information
+become less prominent. Clusters are now very selective for
+the angle of the curvature. For the spiral image we do not
+show heatmaps for layer 31 like we do for the other two im-
+ages. This is because the information contained in the spiral
+picture is so simple and artificial, that the neural network
+can not extract more complex features at higher layers and
+therefore the extracted clusters seem meaningless.
+
+In the city and streetcar image, clusters at layer 17 also
+map to colors and edges with similar angles, similarly to the
+artificial spiral image. Note that the circle in the traffic signs
+in the top right corner has been split up into four seperate
+clusters, two for different diagonal edges, and the clusters
+for vertical and horizontal edges. There is a cluster encoding
+a sky texture, a cluster for bushes/plants texture and a
+cluster for street texture. At layer 31, the receptive field of a
+neuron spans about a quarter of the image (receptive field
+size is 212× 212, and the image size is 448× 448). Clusters at
+this level are, as expected, much more abstract and capture
+real-world objects. There is a cluster which exclusively rep-
+resents the streetcar, and a cluster representing traffic signs
+and traffic lights. Interestingly, there is also a cluster which
+specifically represents the tiny street light.
+
+In the Poker Game image, we see similar clusters as for
+the street car image. At layer 17, there are several clusters
+representing horizontal and vertical edges. Additionally, we
+have a cluster for a specific shade of green texture in the
+background of the image. At layer 31, the clusters once again
+form high level concepts. There is a cluster for the big lamp
+at the top of the image, a cluster for the painting in the
+upper right, and a cluster that represents the dogs. Note
+
+
+
+10
+
+la
+ye
+
+r 
+17
+
+la
+ye
+
+r 
+31
+
+la
+ye
+
+r 
+ 1
+
+7
+la
+
+ye
+r 
+
+ 2
+4
+
+la
+ye
+
+r 
+17
+
+la
+ye
+
+r 
+31
+
+Artificial spiral
+
+City and streetcar
+
+"Poker Game" (Coolidge, 1894)
+
+vertical edges
+
+less specific
+for diagonal
+edges
+
+selective for
+curvature
+
+street car
+
+traffic lights,
+traffic signs
+
+greens texture
+
+dogs
+
+horizontal
+edges
+
+horizontal
+edges
+
+vertical edges
+
+horizontal
+edges
+
+sky
+texture
+
+vertical
+edges
+
+lamp
+
+green
+background
+
+fur texture
+
+street
+light
+
+buildings
+
+diagonal
+edges
+
+diagonal
+edges
+
+street
+texture
+
+top-left
+curvature
+
+painting
+
+table clutter
+
+building
+texture
+
+Fig. 7. NEON analysis of images represented at different layers of a deep neural network (pretrained VGG16). K-means clustering with K = 8 is
+performed at these two layers. Each column shows the pixel-contributions for one of these clusters.
+
+that some clusters in layer 31 have little heat overall. This
+is because they do not code for specific enough objects with
+highly separate clusters, which would result in high soft-
+assignment probabilities. Accordingly, they result in little
+relevance to be propagated. Also, the little relevance which
+is propagated, gets diluted onto more parts of the image,
+leading to an even fainter heatmap.
+
+Our NEON-based analysis of deep networks could make
+sense of VGG-16 representations from a few selected images.
+The last two images (streetcar and poker) were helpful for
+understanding how VGG-16 represents and progressively
+disentangles natural concepts in outdoor/indoor scenes. In-
+stead, the first image (spiral) was useful when interested in a
+specific property of the neural network, e.g. the modeling of
+curvature at each layer, thereby demonstrating the flexibility
+of the analysis.
+
+6 CONCLUSION
+
+We have proposed a general framework for explaining clus-
+ter assignments. The method converts, without retraining,
+the clustering model into a functionally equivalent neural
+network composed of detection and pooling layers. This
+
+conversion step which we have called ‘neuralization’ en-
+ables cluster assignments to be efficiently attributed to input
+variables by means of a reverse propagation procedure.
+
+Quantitative evaluation shows that our explanation
+method is capable of identifying cluster-relevant input fea-
+tures in a precise and systematic manner. It can extract
+insightful patterns on a variety of data involving text, natu-
+ral images, and their representations. The neural network
+structures elicited by it allow for detailed and targeted
+explanations.
+
+Overall, the method we have proposed complements
+standard cluster validation techniques by providing a rich
+interpretable feedback into the nature of the clusters that
+have been built. Furthermore, when paired with a well-
+functioning clustering algorithm, it provides a useful tool
+for data analysis where complex data distributions are first
+summarized into finitely many clusters, that are then ex-
+posed to the human in an interpretable manner.
+
+ACKNOWLEDGEMENTS
+This work was supported by the German Ministry for Edu-
+cation and Research as Berlin Big Data Centre (01IS14013A)
+and Berlin Center for Machine Learning (01IS18037I), and
+
+
+
+11
+
+the German Research Foundation (DFG) as Math+: Berlin
+Mathematics Research Center (EXC 2046/1, project-ID:
+390685689). This work was partly supported by the Institute
+for Information & Communications Technology Planning &
+Evaluation (IITP) grant funded by the Korea government
+(No. 2017-0-00451, No. 2017-0-01779).
+
+REFERENCES
+
+[1] A. K. Jain, M. N. Murty, and P. J. Flynn, “Data clustering: A
+review,” ACM Comput. Surv., vol. 31, no. 3, pp. 264–323, 1999.
+
+[2] R. Xu and D. C. W. II, “Survey of clustering algorithms,” IEEE
+Trans. Neural Networks, vol. 16, no. 3, pp. 645–678, 2005.
+
+[3] A. K. Jain and R. C. Dubes, Algorithms for Clustering Data. Upper
+Saddle River, NJ, USA: Prentice-Hall, Inc., 1988.
+
+[4] T. Hastie, R. Tibshirani, and J. Friedman, The Elements of Statistical
+Learning. Springer New York, 2009.
+
+[5] D. Jiang, C. Tang, and A. Zhang, “Cluster analysis for gene
+expression data: A survey,” IEEE Trans. Knowl. Data Eng., vol. 16,
+no. 11, pp. 1370–1386, 2004.
+
+[6] H. Celiker and J. Gore, “Clustering in community structure across
+replicate ecosystems following a long-term bacterial evolution
+experiment,” Nature Communications, vol. 5, no. 1, Aug. 2014.
+
+[7] D. Mekala, V. Gupta, B. Paranjape, and H. Karnick, “SCDV :
+Sparse composite document vectors using soft clustering over
+distributional representations,” in Proceedings of the 2017 Conference
+on Empirical Methods in Natural Language Processing, 2017, pp. 659–
+669.
+
+[8] A. K. Jain, “Data clustering: 50 years beyond k-means,” Pattern
+Recognition Letters, vol. 31, no. 8, pp. 651–666, 2010.
+
+[9] J. MacQueen, “Some methods for classification and analysis of
+multivariate observations,” in Proceedings of the Fifth Berkeley Sym-
+posium on Mathematical Statistics and Probability, Volume 1: Statistics.
+Berkeley, Calif.: University of California Press, 1967, pp. 281–297.
+
+[10] J. Shi and J. Malik, “Normalized cuts and image segmentation,”
+IEEE Trans. Pattern Anal. Mach. Intell., vol. 22, no. 8, pp. 888–905,
+2000.
+
+[11] I. S. Dhillon, Y. Guan, and B. Kulis, “Kernel k-means: spectral
+clustering and normalized cuts,” in Proceedings of the Tenth ACM
+SIGKDD International Conference on Knowledge Discovery and Data
+Mining, 2004, pp. 551–556.
+
+[12] J. Xie, R. B. Girshick, and A. Farhadi, “Unsupervised deep embed-
+ding for clustering analysis,” in Proceedings of the 33nd International
+Conference on Machine Learning, 2016, pp. 478–487.
+
+[13] J. R. Hershey, Z. Chen, J. L. Roux, and S. Watanabe, “Deep
+clustering: Discriminative embeddings for segmentation and sep-
+aration,” in IEEE International Conference on Acoustics, Speech and
+Signal Processing, 2016, pp. 31–35.
+
+[14] M. Caron, P. Bojanowski, A. Joulin, and M. Douze, “Deep cluster-
+ing for unsupervised learning of visual features,” in 15th European
+Conference on Computer Vision, 2018, pp. 139–156.
+
+[15] M. D. Zeiler and R. Fergus, “Visualizing and understanding
+convolutional networks,” in 13th European Conference on Computer
+Vision, 2014, pp. 818–833.
+
+[16] S. Bach, A. Binder, G. Montavon, F. Klauschen, K.-R. Müller, and
+W. Samek, “On pixel-wise explanations for non-linear classifier de-
+cisions by layer-wise relevance propagation,” PLOS ONE, vol. 10,
+no. 7, p. e0130140, 2015.
+
+[17] M. T. Ribeiro, S. Singh, and C. Guestrin, “”why should I trust
+you?”: Explaining the predictions of any classifier,” in Proceedings
+of the 22nd ACM SIGKDD International Conference on Knowledge
+Discovery and Data Mining, 2016, pp. 1135–1144.
+
+[18] R. R. Selvaraju, M. Cogswell, A. Das, R. Vedantam, D. Parikh, and
+D. Batra, “Grad-CAM: Visual explanations from deep networks
+via gradient-based localization,” in IEEE International Conference
+on Computer Vision, 2017, pp. 618–626.
+
+[19] M. Alber, S. Lapuschkin, P. Seegerer, M. Hägele, K. T. Schütt,
+G. Montavon, W. Samek, K. Müller, S. Dähne, and P. Kindermans,
+“iNNvestigate neural networks!” Journal of Machine Learning Re-
+search, vol. 20, pp. 1–8, 2019.
+
+[20] S. Tavazoie, J. D. Hughes, M. J. Campbell, R. J. Cho, and G. M.
+Church, “Systematic determination of genetic network architec-
+ture,” Nature Genetics, vol. 22, no. 3, pp. 281–285, Jul. 1999.
+
+[21] G. Ciriello, M. L. Miller, B. A. Aksoy, Y. Senbabaoglu, N. Schultz,
+and C. Sander, “Emerging landscape of oncogenic signatures
+across human cancers,” Nature Genetics, vol. 45, no. 10, pp. 1127–
+1133, Sep. 2013.
+
+[22] A. K. Kau, Y. E. Tang, and S. Ghose, “Typology of online shop-
+pers,” Journal of Consumer Marketing, vol. 20, no. 2, pp. 139–156,
+Apr. 2003.
+
+[23] J. M. Zurada, A. Malinowski, and I. Cloete, “Sensitivity analysis
+for minimization of input data dimension for feedforward neural
+network,” in IEEE International Symposium on Circuits and Systems,
+1994, pp. 447–450.
+
+[24] D. Baehrens, T. Schroeter, S. Harmeling, M. Kawanabe, K. Hansen,
+and K. Müller, “How to explain individual classification deci-
+sions,” Journal of Machine Learning Research, vol. 11, pp. 1803–1831,
+2010.
+
+[25] M. Sundararajan, A. Taly, and Q. Yan, “Axiomatic attribution for
+deep networks,” in Proceedings of the 34th International Conference
+on Machine Learning, 2017, pp. 3319–3328.
+
+[26] S. M. Lundberg and S. Lee, “A unified approach to interpreting
+model predictions,” in Advances in Neural Information Processing
+Systems 30, 2017, pp. 4768–4777.
+
+[27] W. Landecker, M. D. Thomure, L. M. A. Bettencourt, M. Mitchell,
+G. T. Kenyon, and S. P. Brumby, “Interpreting individual classifi-
+cations of hierarchical networks,” in IEEE Symposium on Computa-
+tional Intelligence and Data Mining, 2013, pp. 32–38.
+
+[28] G. Montavon, S. Lapuschkin, A. Binder, W. Samek, and K. Müller,
+“Explaining nonlinear classification decisions with deep Taylor
+decomposition,” Pattern Recognition, vol. 65, pp. 211–222, 2017.
+
+[29] A. Shrikumar, P. Greenside, and A. Kundaje, “Learning important
+features through propagating activation differences,” in Proceed-
+ings of the 34th International Conference on Machine Learning, 2017.
+
+[30] G. Montavon, W. Samek, and K. Müller, “Methods for interpreting
+and understanding deep neural networks,” Digital Signal Process-
+ing, vol. 73, pp. 1–15, 2018.
+
+[31] J. Kauffmann, K. Müller, and G. Montavon, “Towards explaining
+anomalies: A deep Taylor decomposition of one-class models,”
+CoRR, vol. abs/1805.06230, 2018.
+
+[32] L. Arras, G. Montavon, K. Müller, and W. Samek, “Explaining
+recurrent neural network predictions in sentiment analysis,” in
+Proceedings of the 8th Workshop on Computational Approaches to
+Subjectivity, Sentiment and Social Media Analysis, 2017, pp. 159–168.
+
+[33] M. Halkidi, Y. Batistakis, and M. Vazirgiannis, “On clustering
+validation techniques,” J. Intell. Inf. Syst., vol. 17, no. 2-3, pp. 107–
+145, 2001.
+
+[34] T. Lange, V. Roth, M. L. Braun, and J. M. Buhmann, “Stability-
+based validation of clustering solutions,” Neural Computation,
+vol. 16, no. 6, pp. 1299–1323, 2004.
+
+[35] M. Meila, “How to tell when a clustering is (approximately)
+correct using convex relaxations,” in Advances in Neural Information
+Processing Systems 31, 2018, pp. 7418–7429.
+
+[36] C. D. Manning, P. Raghavan, and H. Schütze, Introduction to
+information retrieval. Cambridge University Press, 2008.
+
+[37] T. Metsalu and J. Vilo, “ClustVis: a web tool for visualizing
+clustering of multivariate data using principal component analysis
+and heatmap,” Nucleic Acids Research, vol. 43, no. W1, pp. W566–
+W570, May 2015.
+
+[38] M. Kern, A. Lex, N. Gehlenborg, and C. R. Johnson, “Interactive
+visual exploration and refinement of cluster assignments,” BMC
+Bioinformatics, vol. 18, no. 1, Sep. 2017.
+
+[39] M. Ester, H. Kriegel, J. Sander, and X. Xu, “A density-based
+algorithm for discovering clusters in large spatial databases with
+noise,” in Proceedings of the Second International Conference on
+Knowledge Discovery and Data Mining, 1996, pp. 226–231.
+
+[40] D. Dueck and B. J. Frey, “Non-metric affinity propagation for
+unsupervised image categorization,” in IEEE 11th International
+Conference on Computer Vision, 2007, pp. 1–8.
+
+[41] J. H. Ward, “Hierarchical grouping to optimize an objective func-
+tion,” Journal of the American Statistical Association, vol. 58, no. 301,
+pp. 236–244, Mar. 1963.
+
+[42] W. Samek, A. Binder, G. Montavon, S. Lapuschkin, and K.-R.
+Müller, “Evaluating the visualization of what a deep neural net-
+work has learned,” IEEE transactions on neural networks and learning
+systems, vol. 28, no. 11, pp. 2660–2673, 2017.
+
+[43] D. H. Hubel and T. N. Wiesel, “Receptive fields, binocular inter-
+action and functional architecture in the cat’s visual cortex,” The
+Journal of Physiology, vol. 160, no. 1, pp. 106–154, Jan. 1962.
+
+
+
+12
+
+[44] J. Von Neumann, “Probabilistic logics and the synthesis of reliable
+organisms from unreliable components,” Automata studies, vol. 34,
+pp. 43–98, 1956.
+
+[45] T. Hofmann and J. M. Buhmann, “Pairwise data clustering by
+deterministic annealing,” IEEE Trans. Pattern Anal. Mach. Intell.,
+vol. 19, no. 1, pp. 1–14, 1997.
+
+[46] J. C. Bezdek, Pattern Recognition with Fuzzy Objective Function
+Algorithms. Norwell, MA, USA: Kluwer Academic Publishers,
+1981.
+
+[47] Z.-D. Wu, W.-X. Xie, and J.-P. Yu, “Fuzzy c-means clustering al-
+gorithm based on kernel method,” in Proceedings Fifth International
+Conference on Computational Intelligence and Multimedia Applications,
+2003, pp. 49–54.
+
+[48] M. Meila and J. Shi, “Learning segmentation by random walks,”
+in Advances in Neural Information Processing Systems 13, 2000, pp.
+873–879.
+
+[49] A. Y. Ng, M. I. Jordan, and Y. Weiss, “On spectral clustering:
+Analysis and an algorithm,” in Advances in Neural Information
+Processing Systems 14, 2001, pp. 849–856.
+
+[50] Y. Kanzawa, “A maximizing model of Bezdek-like spherical fuzzy
+c-means clustering,” in IEEE International Conference on Fuzzy
+Systems, 2014, pp. 2482–2488.
+
+[51] ——, “On kernelization for a maximizing model of bezdek-like
+spherical fuzzy c-means clustering,” in 11th International Conference
+on Modeling Decisions for Artificial Intelligence, 2014, pp. 108–121.
+
+[52] B. Schölkopf, S. Mika, C. J. C. Burges, P. Knirsch, K. Müller,
+G. Rätsch, and A. J. Smola, “Input space versus feature space in
+kernel-based methods,” IEEE Trans. Neural Networks, vol. 10, no. 5,
+pp. 1000–1017, 1999.
+
+[53] B. Schölkopf and A. J. Smola, Learning with Kernels: support vector
+machines, regularization, optimization, and beyond. MIT Press, 2002.
+
+[54] R. Zhang and A. I. Rudnicky, “A large scale clustering scheme
+for kernel k-means,” in 16th International Conference on Pattern
+Recognition, 2002, pp. 289–292.
+
+[55] S. Lapuschkin, A. Binder, K.-R. Müller, and W. Samek, “Under-
+standing and comparing deep neural networks for age and gender
+classification,” in Proceedings of the IEEE International Conference on
+Computer Vision Workshops, 2017, pp. 1629–1638.
+
+[56] Y. Ding, Y. Liu, H. Luan, and M. Sun, “Visualizing and under-
+standing neural machine translation,” in Proceedings of the 55th
+Annual Meeting of the Association for Computational Linguistics, 2017,
+pp. 1150–1159.
+
+[57] F. Horst, S. Lapuschkin, W. Samek, K.-R. Müller, and W. I.
+Schöllhorn, “Explaining the unique nature of individual gait pat-
+terns with deep learning,” Scientific Reports, vol. 9, no. 1, Feb. 2019.
+
+[58] L. Perotin, R. Serizel, E. Vincent, and A. Guérin, “CRNN-based
+multiple DoA estimation using acoustic intensity features for
+ambisonics recordings,” J. Sel. Topics Signal Processing, vol. 13,
+no. 1, pp. 22–33, 2019.
+
+[59] J. Zhang, S. A. Bargal, Z. Lin, J. Brandt, X. Shen, and S. Sclaroff,
+“Top-down neural attention by excitation backprop,” International
+Journal of Computer Vision, vol. 126, no. 10, pp. 1084–1102, 2018.
+
+[60] M. Ancona, E. Ceolini, C. Öztireli, and M. Gross, “Towards better
+understanding of gradient-based attribution methods for deep
+neural networks,” in 6th International Conference on Learning Repre-
+sentations, 2018.
+
+[61] T. Joachims, “A probabilistic analysis of the Rocchio algorithm
+with TFIDF for text categorization,” in Proceedings of the Fourteenth
+International Conference on Machine Learning, 1997, pp. 143–151.
+
+[62] T. Mikolov, K. Chen, G. Corrado, and J. Dean, “Efficient estima-
+tion of word representations in vector space,” in 1st International
+Conference on Learning Representations, 2013.
+
+[63] A. Nguyen, A. Dosovitskiy, J. Yosinski, T. Brox, and J. Clune,
+“Synthesizing the preferred inputs for neurons in neural networks
+via deep generator networks,” in Advances in Neural Information
+Processing Systems 29, 2016, pp. 3387–3395.
+
+[64] B. Zhou, D. Bau, A. Oliva, and A. Torralba, “Interpreting deep
+visual representations via network dissection,” IEEE Transactions
+on Pattern Analysis and Machine Intelligence, pp. 1–1, 2018.
+
+[65] S. Lapuschkin, S. Wäldchen, A. Binder, G. Montavon, W. Samek,
+and K.-R. Müller, “Unmasking clever hans predictors and assess-
+ing what machines really learn,” Nature Communications, vol. 10,
+p. 1096, 2019.
+
+[66] K. Simonyan and A. Zisserman, “Very deep convolutional net-
+works for large-scale image recognition,” in 3rd International Con-
+ference on Learning Representations, 2015.
+
+
+
+1
+
+From Clustering to Cluster Explanations
+via Neural Networks
+
+(SUPPLEMENTARY MATERIAL)
+
+Jacob Kauffmann, Malte Esders, Grégoire Montavon, Wojciech Samek, Klaus-Robert Müller
+
+This document contains supplementary material supporting
+the results and experiments from the main paper. Appen-
+dices A–C contain proofs and justifications for some of the
+non-trivial steps taken in Section 3 to neuralize the k-means
+models. Appendix D provides theoretical justification for
+the treatment of min-pooling layers in Section 4. Appendix
+E describes the modified training procedure used for pro-
+ducing the kernel k-means model of Section 5.
+
+APPENDIX A
+NEURALIZED SOFT CLUSTER ASSIGNMENTS
+We prove Proposition 1 of the main paper, that expresses the
+logit of cluster assignment probabilities as a neural network
+type min-pooling over differences of outlier scores.
+
+Proof. The soft cluster assignment model is given by
+
+P (ωc | x) =
+exp(−β · oc(x))∑
+k exp(−β · ok(x))
+
+. (1)
+
+We consider the logit of the probability score
+
+logit(ωc | x) = log
+( P (ωc | x)
+
+1− P (ωc | x)
+)
+
+(2)
+
+which describes well the evidence for cluster membership.
+We would like to express this quantity as a neural network.
+Inserting (1) into (2) gives:
+
+logit(ωc | x) = log
+( exp(−β·oc(x))∑
+
+k exp(−β·ok(x))
+
+1− exp(−β·oc(x))∑
+k exp(−β·ok(x))
+
+)
+
+= log
+exp(−β · oc(x))∑
+k 6=c exp(−β · ok(x))
+
+= log
+1∑
+
+k 6=c exp(−β · (ok(x)− oc(x)))
+= − log
+
+∑
+
+k 6=c
+exp(−β · (ok(x)− oc(x)))
+
+= β ·min
+k 6=c
+
+β{ok(x)− oc(x)}
+
+where the underlying min-pooling structure of the cluster
+assignment logit now appears explicitly.
+
+APPENDIX B
+CONNECTION TO POWER CLUSTER ASSIGNMENTS
+This appendix proves Proposition 2 of the main paper
+stating for kernel k-means that the proposed soft-min clus-
+ter assignment over outlier scores defined as oc(x) =
+
+−γ−1 log ic(x) can also be expressed as a power-based
+softmax assignment via the measure of inlierness ic(x).
+
+Proof. This result follows directly from the property ab =
+exp(b · log(a)) for a > 0 and b ∈ R:
+
+P (ωc | x) =
+exp(−β · oc(x))∑
+k exp(−β · ok(x))
+
+=
+exp(β
+
+γ
+log ic(x))
+
+∑
+k exp(
+
+β
+γ
+
+log ik(x))
+
+=
+ic(x)
+
+β/γ
+
+∑
+k ik(x)
+
+β/γ
+
+which is a power-based soft-assignment model.
+
+APPENDIX C
+IMPROVED NEURALIZED KERNEL K-MEANS
+
+In this appendix, we show the functional equivalence of
+the naive and improved variants of the neuralized kernel
+k-means model described in Section 3.3.
+
+First, we show that the minβ {·} operator is commutative
+w.r.t. additive scalars:
+
+min
+j
+
+β {aj}+ c =
+[
+− 1
+
+β
+log
+∑
+
+j
+
+exp(−β · aj)
+]
+
++ c
+
+= − 1
+β
+
+log
+∑
+
+j
+
+exp(−β · (aj + c))
+
+= min
+j
+
+β {aj + c}
+
+This allows for a more high level point of view that holds
+for hard- as well as soft-min pools: a difference of minima
+equals a minimax of differences,
+
+min
+j
+
+(aj)−min
+i
+
+(bi) = min
+j
+
+(max
+i
+
+(aj − bi)).
+
+By exploiting this fact multiple times, we derive the follow-
+ing reformulation of the logit for kernel clustering:
+
+fc = β ·min
+k 6=c
+
+β {ok − oc}
+
+= β ·min
+k 6=c
+
+β
+
+{
+min
+j∈Ck
+
+γ{dj} −min
+i∈Cc
+
+γ {di}
+}
+
+= β ·min
+k 6=c
+
+β
+
+{
+min
+j∈Ck
+
+γ
+
+{
+max
+i∈Cc
+
+γ {dj − di}
+}}
+
+.
+
+Finally, defining aij := dj − di completes the derivation.
+
+ar
+X
+
+iv
+:1
+
+90
+6.
+
+07
+63
+
+3v
+1 
+
+ [
+cs
+
+.L
+G
+
+] 
+ 1
+
+8 
+Ju
+
+n 
+20
+
+19
+
+
+
+2
+
+APPENDIX D
+REDISTRIBUTION IN MIN-POOLING LAYERS
+This appendix proves Proposition 3 of the main paper. We
+show that the redistributed relevance in soft min-pooling
+layers is locally approximately linear in the input activa-
+tions. For that, we show that pj asymptotically approaches
+a (hard-min) indicator function.
+
+Proof. We first rewrite the relevance function for input aj of
+the pooling layer R̂k(a) as:
+
+R̂k︷ ︸︸ ︷
+Rj =
+
+exp(−βaj)∑
+j exp(−βaj)
+
+· pk
+︸ ︷︷ ︸
+
+pj
+
+·(aj + min
+j′
+
+β{aj′ − aj}
+︸ ︷︷ ︸
+
+θj
+
+)
+
+We now show that the relevance Rj can be locally approxi-
+mated as a linear function of aj with j = 1, . . . ,m. For this,
+we identify two cases.
+
+Case 1: When aj is the smallest input by at least some
+margin ∆ from the second smallest input, we can bound pj
+by rewriting:
+
+pj =
+exp(−βaj)∑
+j′ exp(−βaj′)
+
+=
+1
+
+1 +
+∑
+j′ 6=j exp(−β(aj′ − aj︸ ︷︷ ︸
+
+≥∆
+
+))
+
+≥ (1 + (m− 1) · e−β∆)−1
+
+such that pj is bounded by (1+(m−1) ·e−β∆)−1 ≤ pj ≤ 1,
+which converges to 1 when β → ∞ or ∆ → ∞. Similarly,
+we can bound θj by rewriting:
+
+θj = min
+j′
+
+β{aj′ − aj}
+
+= −β−1 log
+[
+1 +
+
+∑
+
+j′ 6=j
+exp(−β(aj′ − aj︸ ︷︷ ︸
+
+≥∆
+
+))
+]
+
+≥ −β−1 log(1 + (m− 1) · e−β∆)
+as −β−1 log(1 + (m− 1) · e−β∆) ≤ θj ≤ 0 which converges
+to 0 when β → ∞ or ∆ → ∞. In this asymptotic case, the
+relevance Rj becomes the activation aj itself and can thus
+be expressed in terms of quantities in the lower layers.
+
+Case 2: When aj fails to be the smallest input by at
+least some margin ∆, the term pj can be bounded by 0 ≤
+pj ≤ (1+eβ∆)−1, which converges to 0 when β →∞. Then,
+the product pjθj can also be bounded as −pjβ−1 log(1 +
+eβ∆) ≤ pjθj ≤ 0, which converges to 0 when β →∞.
+
+Therefore, both for all inputs, the linearity of the re-
+distributed relevance holds when the stiffness parameter β
+grows large.
+
+APPENDIX E
+MODIFIED TRAINING OF KERNEL K-MEANS
+Here, we detail the training procedure for the kernel k-
+means model used in Section 5.2. Kernel k-means has an
+issue when the kernel bandwidth is small: the local density
+at point x0 is dominated by the Gaussian bump K(x0, ·)
+and the objective has local optima at almost every possible
+cluster assignment. To smooth the training procedure, we
+modify the standard expectation-maximization algorithm,
+by minimizing instead distance to the nearest centroid in
+
+feature space with bump K(x0, ·) being removed before
+computing the distances in feature space. The learning
+procedure can be summarized by the following steps [1]:
+
+1) Initialize a random assignment or some informed
+starting point, e.g. standard k-means or ground
+truth label assignments.
+
+2) Compute the normalized leave-one-out centroids
+for every data point x` and cluster k = 1, . . . ,K :
+
+µ
+(−`)
+k = α
+
+(−`)
+k ·
+
+∑
+
+j∈Ck\{`}
+Φ(xj)
+
+Normalization is performed via kernel expansion:
+
+α
+(−`)
+k =
+
+(∑
+j,j′∈Ck\{`}K(xj ,xj′)
+
+)− 1
+2
+
+3) Assign data point x` to the cluster with smallest
+distance in feature space.
+
+4) Reiterate from step 2 until convergence.
+
+Note that the whole procedure can be performed with
+kernel expansions. The map Φ is never computed explicitly.
+The kernel matrix must be computed only once. The leave-
+one-out trick makes training more robust against bad local
+optima.
+
+Once training is finished, final normalized centroids are
+computed from the full set of cluster members and the logit
+can be computed by the neural network equivalent from
+Section 3.
+
+REFERENCES
+[1] X.-L. Meng and D. B. Rubin, “Maximum likelihood estimation via
+
+the ECM algorithm: A general framework,” Biometrika, vol. 80,
+no. 2, pp. 267–278, 1993.
+
+
