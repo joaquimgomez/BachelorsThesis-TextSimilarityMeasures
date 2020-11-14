@@ -186,13 +186,10 @@ class BERTSimilarity():
 
 class ELMoSimilarity:
 	def elmoEmbedding(self, text):
-		embedding = elmo(text, signature = "default", as_dict = True)["elmo"]
+		embedding = self.model(text, signature = "default", as_dict = True)["elmo"]
 
-		with tf.Session() as sess:
-			sess.run(tf.global_variables_initializer())
-			sess.run(tf.tables_initializer())
-			# return average of ELMo features
-			return sess.run(tf.reduce_mean(embedding,1))
+		# return average of ELMo features
+		return self.tfSession.run(tf.reduce_mean(embedding, 1))
 
 	def distance(self, pathDoc1, pathDoc2):
 		f1 = open(pathDoc1, 'r')
@@ -203,20 +200,28 @@ class ELMoSimilarity:
 		f2_text = f2.read()
 		f2.close()
 
-		embeddingDoc1 = self.elmoEmbedding(f1_text)
-		embeddingDoc2 = self.elmoEmbedding(f2_text)
+		embeddingDoc1 = self.elmoEmbedding([f1_text])
+		embeddingDoc2 = self.elmoEmbedding([f2_text])
 
 		return(cosine(embeddingDoc1, embeddingDoc2))
+
+	def closeTFSession():
+		self.tfSession.close()
 
 	def __init__(self, modelPath):
 		self.path = modelPath
 
-		self.model = hub.Model(self.path, trainable = False)
+		self.model = hub.Module(self.path)
 
-class NRCSimilarity():
+		self.tfSession = tf.Session()
+		self.tfSession.run(tf.global_variables_initializer())
+		self.tfSession.run(tf.tables_initializer())
+
+
+class NRCSimilarity:
 	def distance(self, reference, target):
-		cmd = "%s -g 0.98 -r %s -tk 5 1/100 -tk 7 1/100 -t %s"%(self.path, reference, target)
-		#cmd = "%s -rk 2 -rk 3 -r %s -t %s"%(self.path, reference, target)
+		#cmd = "%s -g 0.98 -r %s -tk 5 1/100 -tk 7 1/100 -t %s"%(self.path, reference, target)
+		cmd = "%s -rk 2 -rk 3 -r %s -t %s"%(self.path, reference, target)
 		cmd = cmd + " | tail -1"
 
 		output = str(subprocess.check_output(cmd.split()))

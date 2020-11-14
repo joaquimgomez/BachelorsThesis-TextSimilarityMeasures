@@ -56,85 +56,85 @@ GloVeModelSpaCy="/Users/joaquingomez/Downloads/Experimentacion/models/GloVe/spac
 # ----- word2vec -----
 
 #echo "word2vec running"
-#python3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_6_Org -r $DIR_180_6_Dest > $DIR_180_6_Dest/results_word2vec.txt
-#python3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_168_Org -r $DIR_180_168_Dest > $DIR_180_168_Dest/results_word2vec.txt
-#python3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_579_Org -r $DIR_180_579_Dest > $DIR_180_579_Dest/results_word2vec.txt
-#python3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_735_Org -r $DIR_180_735_Dest > $DIR_180_735_Dest/results_word2vec.txt
-#python3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_836_Org -r $DIR_180_836_Dest > $DIR_180_836_Dest/results_word2vec.txt
+pyton3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_6_Org -r $DIR_180_6_Dest > $DIR_180_6_Dest/results_word2vec.txt
+pyton3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_168_Org -r $DIR_180_168_Dest > $DIR_180_168_Dest/results_word2vec.txt
+pyton3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_579_Org -r $DIR_180_579_Dest > $DIR_180_579_Dest/results_word2vec.txt
+pyton3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_735_Org -r $DIR_180_735_Dest > $DIR_180_735_Dest/results_word2vec.txt
+pyton3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_836_Org -r $DIR_180_836_Dest > $DIR_180_836_Dest/results_word2vec.txt
 
-#python3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_185_Org -r $DIR_180_185_Dest > $DIR_180_185_Dest/results_word2vec.txt
-#python3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_194_Org -r $DIR_180_194_Dest > $DIR_180_194_Dest/results_word2vec.txt
-#python3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_206_Org -r $DIR_180_206_Dest > $DIR_180_206_Dest/results_word2vec.txt
-#python3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_207_Org -r $DIR_180_207_Dest > $DIR_180_207_Dest/results_word2vec.txt
-#python3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_235_Org -r $DIR_180_235_Dest > $DIR_180_235_Dest/results_word2vec.txt
+pyton3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_185_Org -r $DIR_180_185_Dest > $DIR_180_185_Dest/results_word2vec.txt
+pyton3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_194_Org -r $DIR_180_194_Dest > $DIR_180_194_Dest/results_word2vec.txt
+pyton3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_206_Org -r $DIR_180_206_Dest > $DIR_180_206_Dest/results_word2vec.txt
+pyton3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_207_Org -r $DIR_180_207_Dest > $DIR_180_207_Dest/results_word2vec.txt
+pyton3 experiment1-small_text.py -t word2vec -m $word2vecModel -s $word2vecModelSpaCy -d $DIR_180_235_Org -r $DIR_180_235_Dest > $DIR_180_235_Dest/results_word2vec.txt
 #echo "\n"
 
 
 # ----- fastText -----
 
 #echo "fastText running"
-#python3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_6_Org -r $DIR_180_6_Dest > $DIR_180_6_Dest/results_fastText.txt
-#python3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_168_Org -r $DIR_180_168_Dest > $DIR_180_168_Dest/results_fastText.txt
-#python3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_579_Org -r $DIR_180_579_Dest > $DIR_180_579_Dest/results_fastText.txt
-#python3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_735_Org -r $DIR_180_735_Dest > $DIR_180_735_Dest/results_fastText.txt
-#python3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_836_Org -r $DIR_180_836_Dest > $DIR_180_836_Dest/results_fastText.txt
+pyton3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_6_Org -r $DIR_180_6_Dest > $DIR_180_6_Dest/results_fastText.txt
+pyton3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_168_Org -r $DIR_180_168_Dest > $DIR_180_168_Dest/results_fastText.txt
+pyton3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_579_Org -r $DIR_180_579_Dest > $DIR_180_579_Dest/results_fastText.txt
+pyton3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_735_Org -r $DIR_180_735_Dest > $DIR_180_735_Dest/results_fastText.txt
+pyton3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_836_Org -r $DIR_180_836_Dest > $DIR_180_836_Dest/results_fastText.txt
 
-#python3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_185_Org -r $DIR_180_185_Dest > $DIR_180_185_Dest/results_fastText.txt
-#python3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_194_Org -r $DIR_180_194_Dest > $DIR_180_194_Dest/results_fastText.txt
-#python3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_206_Org -r $DIR_180_206_Dest > $DIR_180_206_Dest/results_fastText.txt
-#python3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_207_Org -r $DIR_180_207_Dest > $DIR_180_207_Dest/results_fastText.txt
-#python3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_235_Org -r $DIR_180_235_Dest > $DIR_180_235_Dest/results_fastText.txt
+pyton3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_185_Org -r $DIR_180_185_Dest > $DIR_180_185_Dest/results_fastText.txt
+pyton3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_194_Org -r $DIR_180_194_Dest > $DIR_180_194_Dest/results_fastText.txt
+pyton3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_206_Org -r $DIR_180_206_Dest > $DIR_180_206_Dest/results_fastText.txt
+pyton3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_207_Org -r $DIR_180_207_Dest > $DIR_180_207_Dest/results_fastText.txt
+pyton3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_235_Org -r $DIR_180_235_Dest > $DIR_180_235_Dest/results_fastText.txt
 #echo "\n"
 
 
 # ----- GloVe -----
 
 #echo "GloVe running"
-#python3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_6_Org -r $DIR_180_6_Dest > $DIR_180_6_Dest/results_GloVe.txt
-#python3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_168_Org -r $DIR_180_168_Dest > $DIR_180_168_Dest/results_GloVe.txt
-#python3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_579_Org -r $DIR_180_579_Dest > $DIR_180_579_Dest/results_GloVe.txt
-#python3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_735_Org -r $DIR_180_735_Dest > $DIR_180_735_Dest/results_GloVe.txt
-#python3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_836_Org -r $DIR_180_836_Dest > $DIR_180_836_Dest/results_GloVe.txt
+pyton3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_6_Org -r $DIR_180_6_Dest > $DIR_180_6_Dest/results_GloVe.txt
+pyton3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_168_Org -r $DIR_180_168_Dest > $DIR_180_168_Dest/results_GloVe.txt
+pyton3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_579_Org -r $DIR_180_579_Dest > $DIR_180_579_Dest/results_GloVe.txt
+pyton3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_735_Org -r $DIR_180_735_Dest > $DIR_180_735_Dest/results_GloVe.txt
+pyton3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_836_Org -r $DIR_180_836_Dest > $DIR_180_836_Dest/results_GloVe.txt
 
-#python3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_185_Org -r $DIR_180_185_Dest > $DIR_180_185_Dest/results_GloVe.txt
-#python3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_194_Org -r $DIR_180_194_Dest > $DIR_180_194_Dest/results_GloVe.txt
-#python3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_206_Org -r $DIR_180_206_Dest > $DIR_180_206_Dest/results_GloVe.txt
-#python3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_207_Org -r $DIR_180_207_Dest > $DIR_180_207_Dest/results_GloVe.txt
-#python3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_235_Org -r $DIR_180_235_Dest > $DIR_180_235_Dest/results_GloVe.txt
+pyton3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_185_Org -r $DIR_180_185_Dest > $DIR_180_185_Dest/results_GloVe.txt
+pyton3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_194_Org -r $DIR_180_194_Dest > $DIR_180_194_Dest/results_GloVe.txt
+pyton3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_206_Org -r $DIR_180_206_Dest > $DIR_180_206_Dest/results_GloVe.txt
+pyton3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_207_Org -r $DIR_180_207_Dest > $DIR_180_207_Dest/results_GloVe.txt
+pyton3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_235_Org -r $DIR_180_235_Dest > $DIR_180_235_Dest/results_GloVe.txt
 #echo "\n"
 
 
 # ----- doc2vec -----
 
 #echo "doc2vec running"
-#python3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NON -d $DIR_180_6_Org -r $DIR_180_6_Dest > $DIR_180_6_Dest/results_doc2vec.txt
-#python3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_168_Org -r $DIR_180_168_Dest > $DIR_180_168_Dest/results_doc2vec.txt
-#python3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_579_Org -r $DIR_180_579_Dest > $DIR_180_579_Dest/results_doc2vec.txt
-#python3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_735_Org -r $DIR_180_735_Dest > $DIR_180_735_Dest/results_doc2vec.txt
-#python3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_836_Org -r $DIR_180_836_Dest > $DIR_180_836_Dest/results_doc2vec.txt
+pyton3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NON -d $DIR_180_6_Org -r $DIR_180_6_Dest > $DIR_180_6_Dest/results_doc2vec.txt
+pyton3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_168_Org -r $DIR_180_168_Dest > $DIR_180_168_Dest/results_doc2vec.txt
+pyton3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_579_Org -r $DIR_180_579_Dest > $DIR_180_579_Dest/results_doc2vec.txt
+pyton3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_735_Org -r $DIR_180_735_Dest > $DIR_180_735_Dest/results_doc2vec.txt
+pyton3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_836_Org -r $DIR_180_836_Dest > $DIR_180_836_Dest/results_doc2vec.txt
 
-#python3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_185_Org -r $DIR_180_185_Dest > $DIR_180_185_Dest/results_doc2vec.txt
-#python3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_194_Org -r $DIR_180_194_Dest > $DIR_180_194_Dest/results_doc2vec.txt
-#python3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_206_Org -r $DIR_180_206_Dest > $DIR_180_206_Dest/results_doc2vec.txt
-#python3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_207_Org -r $DIR_180_207_Dest > $DIR_180_207_Dest/results_doc2vec.txt
-#python3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_235_Org -r $DIR_180_235_Dest > $DIR_180_235_Dest/results_doc2vec.txt
+pyton3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_185_Org -r $DIR_180_185_Dest > $DIR_180_185_Dest/results_doc2vec.txt
+pyton3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_194_Org -r $DIR_180_194_Dest > $DIR_180_194_Dest/results_doc2vec.txt
+pyton3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_206_Org -r $DIR_180_206_Dest > $DIR_180_206_Dest/results_doc2vec.txt
+pyton3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_207_Org -r $DIR_180_207_Dest > $DIR_180_207_Dest/results_doc2vec.txt
+pyton3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_235_Org -r $DIR_180_235_Dest > $DIR_180_235_Dest/results_doc2vec.txt
 #echo "\n"
 
 
 # ----- ELMO -----
 
 echo "ELMo running"
-#python3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NON -d $DIR_180_6_Org -r $DIR_180_6_Dest > $DIR_180_6_Dest/results_ELMo.txt
-#python3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NONE -d $DIR_180_168_Org -r $DIR_180_168_Dest > $DIR_180_168_Dest/results_ELMo.txt
-#python3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NONE -d $DIR_180_579_Org -r $DIR_180_579_Dest > $DIR_180_579_Dest/results_ELMo.txt
-#python3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NONE -d $DIR_180_735_Org -r $DIR_180_735_Dest > $DIR_180_735_Dest/results_ELMo.txt
-#python3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NONE -d $DIR_180_836_Org -r $DIR_180_836_Dest > $DIR_180_836_Dest/results_ELMo.txt
+pyton3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NON -d $DIR_180_6_Org -r $DIR_180_6_Dest > $DIR_180_6_Dest/results_ELMo.txt
+pyton3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NONE -d $DIR_180_168_Org -r $DIR_180_168_Dest > $DIR_180_168_Dest/results_ELMo.txt
+pyton3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NONE -d $DIR_180_579_Org -r $DIR_180_579_Dest > $DIR_180_579_Dest/results_ELMo.txt
+pyton3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NONE -d $DIR_180_735_Org -r $DIR_180_735_Dest > $DIR_180_735_Dest/results_ELMo.txt
+pyton3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NONE -d $DIR_180_836_Org -r $DIR_180_836_Dest > $DIR_180_836_Dest/results_ELMo.txt
 
-#python3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NONE -d $DIR_180_185_Org -r $DIR_180_185_Dest > $DIR_180_185_Dest/results_ELMo.txt
-#python3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NONE -d $DIR_180_194_Org -r $DIR_180_194_Dest > $DIR_180_194_Dest/results_ELMo.txt
-#python3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NONE -d $DIR_180_206_Org -r $DIR_180_206_Dest > $DIR_180_206_Dest/results_ELMo.txt
-#python3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NONE -d $DIR_180_207_Org -r $DIR_180_207_Dest > $DIR_180_207_Dest/results_ELMo.txt
-#python3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NONE -d $DIR_180_235_Org -r $DIR_180_235_Dest > $DIR_180_235_Dest/results_ELMo.txt
+pyton3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NONE -d $DIR_180_185_Org -r $DIR_180_185_Dest > $DIR_180_185_Dest/results_ELMo.txt
+pyton3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NONE -d $DIR_180_194_Org -r $DIR_180_194_Dest > $DIR_180_194_Dest/results_ELMo.txt
+pyton3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NONE -d $DIR_180_206_Org -r $DIR_180_206_Dest > $DIR_180_206_Dest/results_ELMo.txt
+pyton3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NONE -d $DIR_180_207_Org -r $DIR_180_207_Dest > $DIR_180_207_Dest/results_ELMo.txt
+pyton3 experiment1-small_text.py -t ELMo -m $ELMoModel -s NONE -d $DIR_180_235_Org -r $DIR_180_235_Dest > $DIR_180_235_Dest/results_ELMo.txt
 echo "\n"
 
 
