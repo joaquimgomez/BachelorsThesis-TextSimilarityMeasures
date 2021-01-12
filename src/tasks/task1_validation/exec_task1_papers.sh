@@ -72,7 +72,7 @@ echo "\n"
 
 # ----- fastText -----
 
-#echo "fastText running"
+echo "fastText running"
 python3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_6_Org -r $DIR_180_6_Dest > $DIR_180_6_Dest/results_fastText.txt
 python3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_168_Org -r $DIR_180_168_Dest > $DIR_180_168_Dest/results_fastText.txt
 python3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_579_Org -r $DIR_180_579_Dest > $DIR_180_579_Dest/results_fastText.txt
@@ -84,12 +84,12 @@ python3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextMode
 python3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_206_Org -r $DIR_180_206_Dest > $DIR_180_206_Dest/results_fastText.txt
 python3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_207_Org -r $DIR_180_207_Dest > $DIR_180_207_Dest/results_fastText.txt
 python3 experiment1-small_text.py -t fastText -m $fastTextModel -s $fastTextModelSpaCy -d $DIR_180_235_Org -r $DIR_180_235_Dest > $DIR_180_235_Dest/results_fastText.txt
-#echo "\n"
+echo "\n"
 
 
 # ----- GloVe -----
 
-#echo "GloVe running"
+echo "GloVe running"
 python3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_6_Org -r $DIR_180_6_Dest > $DIR_180_6_Dest/results_GloVe.txt
 python3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_168_Org -r $DIR_180_168_Dest > $DIR_180_168_Dest/results_GloVe.txt
 python3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_579_Org -r $DIR_180_579_Dest > $DIR_180_579_Dest/results_GloVe.txt
@@ -101,12 +101,12 @@ python3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d
 python3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_206_Org -r $DIR_180_206_Dest > $DIR_180_206_Dest/results_GloVe.txt
 python3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_207_Org -r $DIR_180_207_Dest > $DIR_180_207_Dest/results_GloVe.txt
 python3 experiment1-small_text.py -t GloVe -m $GloVeModel -s $GloVeModelSpaCy -d $DIR_180_235_Org -r $DIR_180_235_Dest > $DIR_180_235_Dest/results_GloVe.txt
-#echo "\n"
+echo "\n"
 
 
 # ----- doc2vec -----
 
-#echo "doc2vec running"
+echo "doc2vec running"
 python3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NON -d $DIR_180_6_Org -r $DIR_180_6_Dest > $DIR_180_6_Dest/results_doc2vec.txt
 python3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_168_Org -r $DIR_180_168_Dest > $DIR_180_168_Dest/results_doc2vec.txt
 python3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_579_Org -r $DIR_180_579_Dest > $DIR_180_579_Dest/results_doc2vec.txt
@@ -118,7 +118,7 @@ python3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_18
 python3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_206_Org -r $DIR_180_206_Dest > $DIR_180_206_Dest/results_doc2vec.txt
 python3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_207_Org -r $DIR_180_207_Dest > $DIR_180_207_Dest/results_doc2vec.txt
 python3 experiment1-small_text.py -t doc2vec -m $doc2vecModel -s NONE -d $DIR_180_235_Org -r $DIR_180_235_Dest > $DIR_180_235_Dest/results_doc2vec.txt
-#echo "\n"
+echo "\n"
 
 
 # ----- ELMO -----
