@@ -123,8 +123,5 @@ if __name__ == "__main__":
 						help = "Destination of the senteces.",
 						default = "./")
 
-
-	# TODO: AÑADIR ARGUMENTOS PARA EL DOCUMENTO FROM Y EL DOCUMENTO TO
-
 	args = parser.parse_args()
 	main(args.origen, args.destination, args.fromm, args.to)

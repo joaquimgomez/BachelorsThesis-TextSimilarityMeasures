@@ -1,8 +1,3 @@
-"""To train your own GloVe vectors, first you'll need to prepare your corpus as a single text file
-with all words separated by one or more spaces or tabs. If your corpus has multiple documents,
-the documents (only) should be separated by new line characters.
-Cooccurrence contexts for words do not extend past newline characters."""
-
 import argparse
 from nltk.tokenize import word_tokenize
 from os import listdir, mkdir
