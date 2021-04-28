@@ -2,7 +2,7 @@
 
 This is the repository for the Barchelor's Degree Thesis/Project carried out during the 2020/21 Winter Semester by Joaquim Gómez Sanchez.
 
-The thesis/project is available in: [Pending publication]().
+The thesis/project is available in: [UPC's Repository](http://hdl.handle.net/2117/343180).
 
 ## Code and Models
 
